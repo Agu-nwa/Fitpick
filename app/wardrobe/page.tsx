@@ -1,13 +1,9 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { WardrobeItemCard } from "@/components/wardrobe/WardrobeItemCard";
+import { WardrobeListClient } from "@/components/wardrobe/WardrobeListClient";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ProgressCard } from "@/components/ui/ProgressCard";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { emptyStates, wardrobeItems } from "@/lib/mock-data";
 
 const categories = ["All", "Tops", "Bottoms", "Shoes", "Native", "Accessories"];
 const filters = ["Color", "Occasion", "Weather", "Recently worn", "Needs care"];
@@ -25,23 +21,7 @@ export default function WardrobePage() {
         {filters.map((filter) => <Chip key={filter}>{filter}</Chip>)}
       </div>
 
-      <ProgressCard title="Wardrobe strength" body="32 items tagged. Add shoes and accessories for stronger outfit picks." progress={68} />
-
-      <section className="mt-7">
-        <SectionHeader title="All items" />
-        <div className="grid grid-cols-2 gap-3">
-          {wardrobeItems.map((item) => (
-            <Link key={item.id} href={`/wardrobe/${item.id}`} className="focus-ring rounded-xl3">
-              <WardrobeItemCard item={item} />
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <SectionHeader title="Empty state sample" />
-        <EmptyState {...emptyStates.shoes} />
-      </section>
+      <WardrobeListClient />
     </AppShell>
   );
 }

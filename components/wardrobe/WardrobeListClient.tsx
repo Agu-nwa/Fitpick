@@ -105,7 +105,9 @@ export function WardrobeListClient() {
 
   const displaySummary = useMemo(() => wardrobe?.summary || mockSummary, [wardrobe]);
 
-  if (session.status === "loading" || status === "loading") return <WardrobeLoadingState />;
+  if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
+    return <WardrobeLoadingState />;
+  }
 
   if (session.status === "logged-out") {
     return (

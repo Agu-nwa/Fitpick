@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
 
@@ -90,6 +90,20 @@ export function WardrobeTagReviewForm({
   const [occasions, setOccasions] = useState(joinTags(defaults.occasions));
   const [weather, setWeather] = useState(joinTags(defaults.weather));
   const [condition, setCondition] = useState<WardrobeCondition>(defaults.condition);
+
+  useEffect(() => {
+    setName(defaults.name || "");
+    setCategory(defaults.category);
+    setSubcategory(defaults.subcategory || "");
+    setColor(defaults.color);
+    setPattern(defaults.pattern || "");
+    setFabric(defaults.fabric || "");
+    setFit(defaults.fit || "");
+    setFormality(joinTags(defaults.formality));
+    setOccasions(joinTags(defaults.occasions));
+    setWeather(joinTags(defaults.weather));
+    setCondition(defaults.condition);
+  }, [defaults]);
 
   return (
     <form

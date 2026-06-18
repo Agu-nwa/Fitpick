@@ -1,5 +1,3 @@
-import { z } from "zod";
+import { paymentCheckoutSchema } from "@/schemas/payment.schema";
 
-export const checkoutSchema = z.object({
-  plan: z.enum(["plus_monthly", "plus_yearly"])
-});
+export const checkoutSchema = paymentCheckoutSchema;

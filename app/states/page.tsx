@@ -11,7 +11,7 @@ import { emptyStates, errorStates, stateSamples } from "@/lib/mock-data";
 export default function StatesPage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="System states" title="Frontend readiness states" subtitle="Mobile UI patterns for loading, empty, error, permission, offline, and premium-locked flows." />
+      <PageHeader eyebrow="System states" title="Deployment readiness states" subtitle="Mobile UI patterns for loading, empty, error, permission, offline, upload, AI tagging, and premium flows. Testing is complete and deployment setup is underway." />
 
       <section className="mt-7">
         <SectionHeader title="Loading" />

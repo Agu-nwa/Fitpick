@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ProfileSessionCard } from "@/components/auth/ProfileSessionCard";
 import { AppShell } from "@/components/layout/AppShell";
+import { ProfileIntegrationClient } from "@/components/profile/ProfileIntegrationClient";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { ToggleRow } from "@/components/ui/ToggleRow";
 import { stylePreferences } from "@/lib/mock-data";
 
 const links = [
@@ -21,6 +21,7 @@ export default function ProfilePage() {
       <PageHeader eyebrow="Profile" title="Your style profile" subtitle="Personalization, privacy, notifications, and FitPick Plus." />
 
       <ProfileSessionCard />
+      <ProfileIntegrationClient />
 
       <section className="mt-7">
         <SectionHeader title="Style preferences" action={<Link href="/profile/preferences" className="text-xs font-semibold text-cocoa">Edit</Link>} />
@@ -34,24 +35,6 @@ export default function ProfilePage() {
             </Card>
           ))}
         </div>
-      </section>
-
-      <section className="mt-7">
-        <SectionHeader title="Privacy and permissions" />
-        <div className="space-y-3">
-          <ToggleRow label="Wardrobe photo privacy" description="Wardrobe photos stay private to your account once backend storage is added." />
-          <ToggleRow label="Weather tips" description="Use weather to avoid outfits that feel too hot, cold, or rainy." />
-          <ToggleRow label="Outfit reminders" description="Get soft reminders for mornings, events, weather changes, and saved looks." defaultOn={false} />
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <SectionHeader title="FitPick Plus" />
-        <Card className="bg-cocoa text-white">
-          <h3 className="text-lg font-semibold">Unlock deeper outfit memory</h3>
-          <p className="mt-2 text-sm leading-6 text-white/75">More outfit options, event planning, travel packing, and smarter repeats.</p>
-          <Link href="/plus"><Button variant="secondary" className="mt-5 w-full bg-white text-cocoa">See Plus</Button></Link>
-        </Card>
       </section>
 
       <section className="mt-7">

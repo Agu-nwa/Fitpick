@@ -17,9 +17,19 @@ const required = [
   "app/states/page.tsx",
   "app/backend-ready/page.tsx",
   "app/frontend-complete/page.tsx",
+  "app/login/page.tsx",
+  "app/register/page.tsx",
 ];
 
 const missing = required.filter((file) => !existsSync(file));
+
+for (const file of required) {
+  const route = file
+    .replace(/^app/, "")
+    .replace(/\/page\.tsx$/, "")
+    .replace(/\/\[id\]/, "/[id]") || "/";
+  console.log(`${existsSync(file) ? "FOUND" : "MISSING"} ${route} -> ${file}`);
+}
 
 if (missing.length) {
   console.error("Missing required frontend routes:");

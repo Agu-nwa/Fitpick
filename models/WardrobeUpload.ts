@@ -13,7 +13,14 @@ const WardrobeUploadSchema = new Schema(
     imageUrl: { type: String, default: "" },
     thumbnailUrl: { type: String, default: "" },
     uploadStatus: { type: String, enum: ["pending", "uploaded", "failed"], default: "pending" },
-    aiTagStatus: { type: String, enum: ["not_started", "queued", "suggested", "reviewed", "failed"], default: "not_started" },
+    aiTagStatus: {
+      type: String,
+      enum: ["not_started", "queued", "suggested", "completed", "needs-review", "reviewed", "failed"],
+      default: "not_started"
+    },
+    aiProvider: { type: String, default: "" },
+    aiConfidence: { type: Number, default: 0 },
+    aiErrorSafeMessage: { type: String, default: "" },
     suggestedTags: { type: Schema.Types.Mixed, default: {} },
     reviewedAt: { type: Date },
     createdItemId: { type: Schema.Types.ObjectId, ref: "WardrobeItem" }

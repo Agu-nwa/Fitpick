@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import Link from "next/link";
 import { ReadinessCard } from "@/components/system/ReadinessCard";
 import { BackendReadyCard } from "@/components/system/BackendReadyCard";
 import { Card } from "@/components/ui/Card";
@@ -9,20 +10,20 @@ import { apiContracts } from "@/lib/api-contract";
 import { frontendReadiness } from "@/lib/frontend-readiness";
 
 const nextIntegrations = [
-  "Auth screens and session-aware navigation",
-  "Wardrobe API list, create, upload metadata, and tag review",
-  "Outfit recommendation, swap, save, wear, and feedback",
-  "Looks history and saved outfits",
-  "FitPick Plus status, limits, and respectful upgrade prompts"
+  "Deployment Phase 8: EC2, PM2, Nginx, security groups, HTTPS readiness, and release checks",
+  "Production payment activation for Stripe and Paystack",
+  "Production AI provider tuning",
+  "Push notification delivery",
+  "App store packaging"
 ];
 
 export default function FrontendCompletePage() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Integration ready"
-        title="Frontend and backend complete"
-        subtitle="FitPick has completed the mobile-first frontend and backend foundation. Integration has started with safe API client, health, and session checks."
+        eyebrow="Deployment ready"
+        title="Frontend, backend, and testing complete"
+        subtitle="FitPick has completed the mobile-first frontend, backend, storage, AI tagging foundation, integration, and testing phases."
       />
 
       <Card className="bg-cocoa text-white">
@@ -30,9 +31,9 @@ export default function FrontendCompletePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Product foundation</p>
           <StatusBadge tone="success">complete</StatusBadge>
         </div>
-        <h2 className="mt-4 text-2xl font-semibold tracking-tight">Ready for screen-by-screen API integration.</h2>
+        <h2 className="mt-4 text-2xl font-semibold tracking-tight">Ready for production deployment setup.</h2>
         <p className="mt-3 text-sm leading-6 text-white/75">
-          Mock-data fallbacks remain available while auth, wardrobe, outfit, looks, and Plus flows connect to live endpoints.
+          Auth, wardrobe, uploads, AI tagging, outfits, looks, preferences, Plus, and payment foundation are connected with safe fallbacks and QA scripts.
         </p>
       </Card>
 
@@ -54,6 +55,7 @@ export default function FrontendCompletePage() {
               </div>
             ))}
           </div>
+          <Link href="/backend-ready" className="mt-4 block text-sm font-semibold text-cocoa">Open integration readiness</Link>
         </Card>
       </section>
 

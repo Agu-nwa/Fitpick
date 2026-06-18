@@ -17,7 +17,13 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {outfit.items.map((item) => (
-            <div key={item.id} className={cn("h-32 rounded-xl3 bg-gradient-to-br", item.imageTone)} role="img" aria-label={item.name} />
+            <div
+              key={item.id}
+              className={cn("h-32 rounded-xl3 bg-gradient-to-br bg-cover bg-center", item.imageTone || "from-stone-100 to-stone-300")}
+              style={item.thumbnailUrl || item.imageUrl ? { backgroundImage: `url(${item.thumbnailUrl || item.imageUrl})` } : undefined}
+              role="img"
+              aria-label={item.name}
+            />
           ))}
         </div>
       </div>

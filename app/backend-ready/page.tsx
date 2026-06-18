@@ -1,4 +1,5 @@
 import { AuthStatusCard } from "@/components/auth/AuthStatusCard";
+import Link from "next/link";
 import { BackendHealthCard } from "@/components/integration/BackendHealthCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackendReadyCard } from "@/components/system/BackendReadyCard";
@@ -9,29 +10,28 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { apiContracts } from "@/lib/api-contract";
 
 const integrationSteps = [
-  "Phase 6A: API client, health check, and session check foundation",
-  "Phase 6B: authentication screens and session-aware navigation",
-  "Phase 6C: wardrobe list, create, upload metadata, and tag review",
-  "Phase 6D: outfit recommendation, looks, feedback, and Plus status"
+  "Integration complete: auth, wardrobe, uploads, AI tag review, outfits, looks, preferences, and Plus status",
+  "Testing complete: route checks, safety copy scan, secret scan, build, and backend smoke are ready",
+  "Deployment path: EC2, PM2, Nginx reverse proxy, and HTTPS-ready production notes"
 ];
 
 export default function BackendReadyPage() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Integration Phase 6A"
-        title="Backend connected foundation"
-        subtitle="Frontend and backend foundations are complete. FitPick is now starting safe, screen-by-screen API integration."
+        eyebrow="Deployment Phase 8"
+        title="Production path ready"
+        subtitle="Frontend, backend, storage, AI tagging foundation, integration, and testing are complete. FitPick is prepared for EC2, PM2, and Nginx deployment."
       />
 
       <Card className="bg-cocoa text-white">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Integration status</p>
-          <StatusBadge tone="warning">in progress</StatusBadge>
+          <StatusBadge tone="success">complete</StatusBadge>
         </div>
-        <h2 className="mt-4 text-2xl font-semibold tracking-tight">API client, health, and session checks are available.</h2>
+        <h2 className="mt-4 text-2xl font-semibold tracking-tight">FitPick is ready for deployment hardening.</h2>
         <p className="mt-3 text-sm leading-6 text-white/75">
-          Mock data remains in place while live backend integration begins carefully across auth, wardrobe, outfits, looks, and Plus.
+          Mock fallback remains available while live auth, wardrobe, outfits, looks, preferences, Plus, storage, and AI tagging flows move toward production.
         </p>
       </Card>
 
@@ -51,7 +51,11 @@ export default function BackendReadyPage() {
             ["Backend complete", "Auth, wardrobe, outfits, Plus, uploads, admin seed, audit, and smoke checks are available.", "complete"],
             ["API client available", "Safe requests include credentials and mobile-friendly fallback messages.", "complete"],
             ["Health endpoint connected", "GET /api/health is checked from the readiness screen.", "complete"],
-            ["Session check connected", "GET /api/auth/me is checked without forcing route protection yet.", "complete"]
+            ["Session check connected", "GET /api/auth/me is checked without forcing route protection yet.", "complete"],
+            ["Cloudinary storage integrated", "Signed upload and wardrobe image metadata flows are connected.", "complete"],
+            ["AI tagging foundation integrated", "Uploaded clothing photos can request suggested tags before user review.", "complete"],
+            ["Testing complete", "Route, safety, secret, build, and smoke-test scripts are available.", "complete"],
+            ["Deployment started", "PM2, Nginx, security group, HTTPS, and production checklist docs are available.", "next"]
           ].map(([title, detail, status]) => (
             <Card key={title} className="p-4">
               <div className="flex items-start justify-between gap-3">
@@ -77,6 +81,7 @@ export default function BackendReadyPage() {
               </div>
             ))}
           </div>
+          <Link href="/states" className="mt-4 block text-sm font-semibold text-cocoa">Review QA state patterns</Link>
         </Card>
       </section>
 

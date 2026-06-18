@@ -9,7 +9,12 @@
     "lint": "next lint",
     "check:routes": "node scripts/check-routes.mjs",
     "test:backend-smoke": "node scripts/backend-smoke-test.mjs",
-    "qa": "npm run check:routes && npm run build"
+    "test:authenticated-flow": "node scripts/authenticated-flow-test.mjs",
+    "test:safety-copy": "node scripts/safety-copy-scan.mjs",
+    "test:secret-scan": "node scripts/secret-scan.mjs",
+    "deploy:check": "node scripts/deploy-check.mjs",
+    "test:qa": "npm run check:routes && npm run test:safety-copy && npm run test:secret-scan && npm run build",
+    "qa": "npm run test:qa"
   },
   "dependencies": {
     "@types/node": "^20.14.10",
@@ -23,6 +28,7 @@
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "stripe": "^22.2.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

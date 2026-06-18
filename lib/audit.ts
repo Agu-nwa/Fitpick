@@ -9,6 +9,7 @@ export type AuditAction =
   | "preferences.update"
   | "admin.seed"
   | "wardrobe.upload"
+  | "wardrobe.upload.suggest_tags"
   | "wardrobe.create"
   | "wardrobe.update"
   | "wardrobe.tags.review"

@@ -2,7 +2,6 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card } from "@/components/ui/Card";
-import { UploadCard } from "@/components/upload/UploadCard";
 import { WardrobeAddClient } from "@/components/wardrobe/WardrobeAddClient";
 import { uploadPreviewItems } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,7 @@ export default function AddClothesPage() {
   return (
     <AppShell>
       <PageHeader eyebrow="Wardrobe upload" title="Add clothes" subtitle="Start with the items you wear often. You can edit tags anytime." />
-      <UploadCard />
+      <WardrobeAddClient />
 
       <section className="mt-7">
         <SectionHeader title="Photo tips" />
@@ -44,8 +43,6 @@ export default function AddClothesPage() {
           ))}
         </div>
       </section>
-
-      <WardrobeAddClient />
     </AppShell>
   );
 }

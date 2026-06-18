@@ -40,10 +40,16 @@ function tagPayload(values: WardrobeTagFormValues) {
 function ItemDetails({ item }: { item: WardrobeItem }) {
   const status = item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Needs more tags" : "Ready";
   const imageTone = item.imageTone || "from-stone-100 to-stone-300";
+  const imageUrl = item.thumbnailUrl || item.imageUrl;
 
   return (
     <>
-      <div className={cn("h-80 rounded-[2rem] border border-line bg-gradient-to-br shadow-soft", imageTone)} role="img" aria-label={item.name} />
+      <div
+        className={cn("h-80 rounded-[2rem] border border-line bg-gradient-to-br bg-cover bg-center shadow-soft", imageTone)}
+        style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+        role="img"
+        aria-label={item.name}
+      />
 
       <section className="mt-7">
         <SectionHeader title="Item tags" />
@@ -86,6 +92,7 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
   const router = useRouter();
   const [item, setItem] = useState<WardrobeItem | null>(mockItem || null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "not-found" | "unavailable" | "error">("idle");
+  const [isEditable, setIsEditable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -94,17 +101,20 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
     const result = await getWardrobeItem(id);
     if (result.ok) {
       setItem(result.data.item);
+      setIsEditable(true);
       setStatus("ready");
       return;
     }
 
     if (mockItem) {
       setItem(mockItem);
+      setIsEditable(false);
       setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "ready");
       return;
     }
 
     setItem(null);
+    setIsEditable(false);
     setStatus(result.error.code === "NOT_FOUND" ? "not-found" : result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
   }, [id, mockItem]);
 
@@ -120,6 +130,7 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
 
     if (result.ok) {
       setItem(result.data.item);
+      setIsEditable(true);
       setNotice("Item details saved.");
       return;
     }
@@ -135,6 +146,7 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
 
     if (result.ok) {
       setItem(result.data.item);
+      setIsEditable(true);
       setNotice("Tags saved.");
       return;
     }
@@ -156,7 +168,9 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
     setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
   }
 
-  if (session.status === "loading" || status === "loading") return <WardrobeLoadingState />;
+  if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle" && !mockItem)) {
+    return <WardrobeLoadingState />;
+  }
 
   if (session.status === "logged-out") {
     return (
@@ -200,26 +214,36 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
       {notice ? <WardrobeSaveSuccessState title={notice} body={`${item.name} is up to date.`} /> : null}
       <ItemDetails item={item} />
 
-      <section className="mt-7">
+      {!isEditable ? (
+        <Card className="mt-7 p-4">
+          <p className="text-sm font-semibold text-ink">Preview item</p>
+          <p className="mt-2 text-xs leading-5 text-muted">Sign in with a saved wardrobe item to edit tags or archive it.</p>
+          <Link href="/wardrobe/add">
+            <Button className="mt-4 w-full">Add similar</Button>
+          </Link>
+        </Card>
+      ) : null}
+
+      {isEditable ? <section className="mt-7">
         <SectionHeader title="Edit item" />
         <Card>
           <WardrobeTagReviewForm initialItem={item} showName submitLabel="Save item" disabled={isSaving} onSubmit={handleUpdate} />
         </Card>
-      </section>
+      </section> : null}
 
-      <section className="mt-7">
+      {isEditable ? <section className="mt-7">
         <SectionHeader title="Review tags" />
         <Card>
           <WardrobeTagReviewForm initialItem={item} submitLabel="Save tags" disabled={isSaving} onSubmit={handleTagUpdate} />
         </Card>
-      </section>
+      </section> : null}
 
-      <CTABar className="mt-6 grid grid-cols-2 gap-2">
-        <Button variant="danger" onClick={() => void handleArchive()} disabled={isSaving}>Archive</Button>
+      {isEditable ? <CTABar className="mt-6 grid grid-cols-2 gap-2">
+        <Button variant="danger" onClick={() => void handleArchive()} disabled={isSaving}>Archive item</Button>
         <Link href="/wardrobe/add">
           <Button variant="secondary" className="w-full">Add similar</Button>
         </Link>
-      </CTABar>
+      </CTABar> : null}
     </>
   );
 }
