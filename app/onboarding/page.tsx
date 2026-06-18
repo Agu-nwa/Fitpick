@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OnboardingAccountCard } from "@/components/auth/OnboardingAccountCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -37,6 +38,9 @@ export default function OnboardingPage() {
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {preferences.map((item, index) => <Chip key={item} active={index < 2}>{item}</Chip>)}
+        </div>
+        <div className="mt-5">
+          <OnboardingAccountCard />
         </div>
       </section>
       <div className="mt-8 grid gap-3">

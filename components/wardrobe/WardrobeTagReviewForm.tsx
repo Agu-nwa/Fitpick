@@ -1,0 +1,179 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import type { WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
+
+export type WardrobeTagFormValues = {
+  name?: string;
+  category: WardrobeCategory;
+  subcategory?: string;
+  color: string;
+  pattern?: string;
+  fabric?: string;
+  fit?: string;
+  formality: string[];
+  occasions: string[];
+  weather: string[];
+  condition: WardrobeCondition;
+};
+
+const categoryOptions: Array<{ value: WardrobeCategory; label: string }> = [
+  { value: "tops", label: "Tops" },
+  { value: "bottoms", label: "Bottoms" },
+  { value: "dresses", label: "Dresses" },
+  { value: "native", label: "Native wear" },
+  { value: "outerwear", label: "Outerwear" },
+  { value: "shoes", label: "Shoes" },
+  { value: "bags", label: "Bags" },
+  { value: "accessories", label: "Accessories" }
+];
+
+const conditionOptions: Array<{ value: WardrobeCondition; label: string }> = [
+  { value: "ready", label: "Ready" },
+  { value: "needs-care", label: "Needs care" },
+  { value: "missing-tags", label: "Needs more tags" }
+];
+
+const inputClass =
+  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
+
+function splitTags(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function joinTags(values?: string[]) {
+  return (values || []).join(", ");
+}
+
+function initialValues(item?: Partial<WardrobeItem>): WardrobeTagFormValues {
+  return {
+    name: item?.name || "",
+    category: item?.category || "tops",
+    subcategory: item?.subcategory || "",
+    color: item?.color || "",
+    pattern: item?.pattern || "",
+    fabric: item?.fabric || "",
+    fit: item?.fit || "",
+    formality: item?.formality || ["balanced"],
+    occasions: item?.occasions || ["casual"],
+    weather: item?.weather || ["dry"],
+    condition: item?.condition || "ready"
+  };
+}
+
+export function WardrobeTagReviewForm({
+  initialItem,
+  showName = false,
+  submitLabel = "Save tags",
+  disabled = false,
+  onSubmit
+}: {
+  initialItem?: Partial<WardrobeItem>;
+  showName?: boolean;
+  submitLabel?: string;
+  disabled?: boolean;
+  onSubmit: (values: WardrobeTagFormValues) => void | Promise<void>;
+}) {
+  const defaults = useMemo(() => initialValues(initialItem), [initialItem]);
+  const [name, setName] = useState(defaults.name || "");
+  const [category, setCategory] = useState<WardrobeCategory>(defaults.category);
+  const [subcategory, setSubcategory] = useState(defaults.subcategory || "");
+  const [color, setColor] = useState(defaults.color);
+  const [pattern, setPattern] = useState(defaults.pattern || "");
+  const [fabric, setFabric] = useState(defaults.fabric || "");
+  const [fit, setFit] = useState(defaults.fit || "");
+  const [formality, setFormality] = useState(joinTags(defaults.formality));
+  const [occasions, setOccasions] = useState(joinTags(defaults.occasions));
+  const [weather, setWeather] = useState(joinTags(defaults.weather));
+  const [condition, setCondition] = useState<WardrobeCondition>(defaults.condition);
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit({
+          name: name.trim(),
+          category,
+          subcategory: subcategory.trim(),
+          color: color.trim(),
+          pattern: pattern.trim(),
+          fabric: fabric.trim(),
+          fit: fit.trim(),
+          formality: splitTags(formality),
+          occasions: splitTags(occasions),
+          weather: splitTags(weather),
+          condition
+        });
+      }}
+    >
+      {showName ? (
+        <label className="block text-xs font-semibold text-ink">
+          Item name
+          <input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="White linen shirt" required />
+        </label>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-xs font-semibold text-ink">
+          Category
+          <select className={inputClass} value={category} onChange={(event) => setCategory(event.target.value as WardrobeCategory)}>
+            {categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-ink">
+          Color
+          <input className={inputClass} value={color} onChange={(event) => setColor(event.target.value)} placeholder="Navy" required />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-xs font-semibold text-ink">
+          Subcategory
+          <input className={inputClass} value={subcategory} onChange={(event) => setSubcategory(event.target.value)} placeholder="Shirt" />
+        </label>
+        <label className="block text-xs font-semibold text-ink">
+          Pattern
+          <input className={inputClass} value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Plain" />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-xs font-semibold text-ink">
+          Fabric
+          <input className={inputClass} value={fabric} onChange={(event) => setFabric(event.target.value)} placeholder="Cotton" />
+        </label>
+        <label className="block text-xs font-semibold text-ink">
+          Fit
+          <input className={inputClass} value={fit} onChange={(event) => setFit(event.target.value)} placeholder="Regular" />
+        </label>
+      </div>
+
+      <label className="block text-xs font-semibold text-ink">
+        Formality
+        <input className={inputClass} value={formality} onChange={(event) => setFormality(event.target.value)} placeholder="balanced, business" />
+      </label>
+      <label className="block text-xs font-semibold text-ink">
+        Occasions
+        <input className={inputClass} value={occasions} onChange={(event) => setOccasions(event.target.value)} placeholder="work, church, casual" />
+      </label>
+      <label className="block text-xs font-semibold text-ink">
+        Weather
+        <input className={inputClass} value={weather} onChange={(event) => setWeather(event.target.value)} placeholder="dry, indoor" />
+      </label>
+
+      <label className="block text-xs font-semibold text-ink">
+        Readiness
+        <select className={inputClass} value={condition} onChange={(event) => setCondition(event.target.value as WardrobeCondition)}>
+          {conditionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>
+
+      <Button type="submit" className="w-full" disabled={disabled}>{submitLabel}</Button>
+    </form>
+  );
+}

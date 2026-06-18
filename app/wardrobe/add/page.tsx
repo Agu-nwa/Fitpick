@@ -2,10 +2,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card } from "@/components/ui/Card";
-import { ErrorState } from "@/components/ui/ErrorState";
 import { UploadCard } from "@/components/upload/UploadCard";
-import { TagReviewCard } from "@/components/upload/TagReviewCard";
-import { uploadPreviewItems, errorStates } from "@/lib/mock-data";
+import { WardrobeAddClient } from "@/components/wardrobe/WardrobeAddClient";
+import { uploadPreviewItems } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const tips = [
@@ -46,15 +45,7 @@ export default function AddClothesPage() {
         </div>
       </section>
 
-      <section className="mt-7">
-        <SectionHeader title="Review tags" eyebrow="Next step" />
-        <TagReviewCard />
-      </section>
-
-      <section className="mt-7">
-        <SectionHeader title="Error state sample" />
-        <ErrorState {...errorStates.unclear} />
-      </section>
+      <WardrobeAddClient />
     </AppShell>
   );
 }

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "check:routes": "node scripts/check-routes.mjs",
+    "test:backend-smoke": "node scripts/backend-smoke-test.mjs",
     "qa": "npm run check:routes && npm run build"
   },
   "dependencies": {
@@ -15,6 +16,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
     "framer-motion": "^11.3.8",
     "jose": "^5.6.3",
     "mongoose": "^8.5.1",

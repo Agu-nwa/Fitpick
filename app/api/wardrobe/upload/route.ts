@@ -24,10 +24,15 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     const storage = assertStorageConfigured();
-    const storageKey = createWardrobeStorageKey({
-      userId: String(auth.user._id),
-      filename: parsed.data.filename
-    });
+    const storageKey =
+      parsed.data.publicId ||
+      parsed.data.storageKey ||
+      createWardrobeStorageKey({
+        userId: String(auth.user._id),
+        filename: parsed.data.filename
+      });
+    const imageUrl = parsed.data.secureUrl || parsed.data.imageUrl || "";
+    const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
 
     const upload = await WardrobeUpload.create({
       userId: auth.user._id,
@@ -37,8 +42,10 @@ export async function POST(request: NextRequest) {
       sizeBytes: parsed.data.sizeBytes,
       width: parsed.data.width || 0,
       height: parsed.data.height || 0,
-      provider: storage.provider,
-      uploadStatus: storage.ready ? "pending" : "uploaded",
+      provider: parsed.data.provider || storage.provider,
+      imageUrl,
+      thumbnailUrl,
+      uploadStatus: parsed.data.uploadStatus || (imageUrl ? "uploaded" : storage.ready ? "pending" : "uploaded"),
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",
       suggestedTags: parsed.data.suggestedTags || {}
     });

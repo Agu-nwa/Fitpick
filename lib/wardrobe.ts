@@ -33,6 +33,7 @@ export function serializeWardrobeItem(item: any) {
     condition: item.condition,
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     archivedAt: item.archivedAt ? new Date(item.archivedAt).toISOString() : null,
+    imageUrl: item.imageUrl || "",
     thumbnailUrl: item.thumbnailUrl || "",
     hasImage: Boolean(item.storageKey || item.thumbnailUrl)
   };
@@ -46,9 +47,10 @@ export function serializeWardrobeUpload(upload: any) {
     sizeBytes: upload.sizeBytes || 0,
     width: upload.width || 0,
     height: upload.height || 0,
-    storageKey: upload.storageKey,
     uploadStatus: upload.uploadStatus,
     aiTagStatus: upload.aiTagStatus,
+    imageUrl: upload.imageUrl || "",
+    thumbnailUrl: upload.thumbnailUrl || "",
     suggestedTags: upload.suggestedTags || {},
     reviewedAt: upload.reviewedAt ? new Date(upload.reviewedAt).toISOString() : null,
     createdItemId: upload.createdItemId ? String(upload.createdItemId) : null

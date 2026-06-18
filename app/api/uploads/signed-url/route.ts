@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
       entityId: upload.storageKey
     });
 
-    return apiSuccess({ upload }, { message: "Signed upload scaffold created." });
+    return apiSuccess(
+      { upload },
+      { message: upload.ready ? "Upload access created." : "Image upload is not configured yet." }
+    );
   } catch (error) {
     console.error("FitPick signed upload error:", error);
     return apiError("INTERNAL_ERROR", "Unable to create upload access right now.");

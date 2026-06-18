@@ -42,8 +42,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       condition,
       userId: auth.user._id,
       storageKey: upload.storageKey,
-      imageUrl: "",
-      thumbnailUrl: ""
+      imageUrl: upload.imageUrl || "",
+      thumbnailUrl: upload.thumbnailUrl || ""
     });
 
     upload.createdItemId = item._id;

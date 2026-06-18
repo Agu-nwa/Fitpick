@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProfileSessionCard } from "@/components/auth/ProfileSessionCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,7 +11,7 @@ import { stylePreferences } from "@/lib/mock-data";
 const links = [
   { label: "Frontend state library", href: "/states", helper: "Loading, empty, error, offline, permission, and premium states." },
   { label: "Backend readiness map", href: "/backend-ready", helper: "API contract notes for the next engineering phase." },
-  { label: "Support", href: "/profile", helper: "Help and product feedback placeholder." },
+  { label: "Sign in", href: "/login", helper: "Access your saved wardrobe, preferences, and outfit history." },
   { label: "Delete/export data", href: "/profile", helper: "Privacy action placeholder for backend phase." },
 ];
 
@@ -19,15 +20,7 @@ export default function ProfilePage() {
     <AppShell>
       <PageHeader eyebrow="Profile" title="Your style profile" subtitle="Personalization, privacy, notifications, and FitPick Plus." />
 
-      <Card>
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-cocoa text-xl font-semibold text-white" aria-hidden>F</div>
-          <div>
-            <h2 className="text-base font-semibold text-ink">FitPick user</h2>
-            <p className="mt-1 text-sm text-muted">Clean, polished, culturally fluent picks.</p>
-          </div>
-        </div>
-      </Card>
+      <ProfileSessionCard />
 
       <section className="mt-7">
         <SectionHeader title="Style preferences" action={<Link href="/profile/preferences" className="text-xs font-semibold text-cocoa">Edit</Link>} />

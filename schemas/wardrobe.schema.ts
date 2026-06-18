@@ -84,9 +84,16 @@ const allowedMimeTypes = [
 export const uploadMetadataSchema = z.object({
   filename: z.string().trim().min(1).max(180),
   mimeType: z.enum(allowedMimeTypes),
-  sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+  sizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
   width: z.number().int().positive().max(12000).optional(),
   height: z.number().int().positive().max(12000).optional(),
+  provider: z.enum(["cloudinary", "local_placeholder", "metadata"]).optional(),
+  storageKey: z.string().trim().max(260).optional(),
+  publicId: z.string().trim().max(260).optional(),
+  imageUrl: z.string().trim().url().max(600).optional(),
+  secureUrl: z.string().trim().url().max(600).optional(),
+  thumbnailUrl: z.string().trim().url().max(600).optional(),
+  uploadStatus: z.enum(["pending", "uploaded", "failed"]).optional(),
   suggestedTags: z.record(z.unknown()).optional()
 });
 

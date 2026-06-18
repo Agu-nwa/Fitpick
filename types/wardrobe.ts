@@ -23,9 +23,12 @@ export type WardrobeItem = {
   weather: string[];
   condition: WardrobeCondition;
   lastWorn?: string;
+  lastWornAt?: string | null;
   archivedAt?: string | null;
+  imageUrl?: string;
   thumbnailUrl?: string;
-  imageTone: string;
+  hasImage?: boolean;
+  imageTone?: string;
 };
 
 export type WardrobeSummary = {
