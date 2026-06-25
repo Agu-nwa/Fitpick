@@ -44,7 +44,6 @@ export function generateCombinations(
             scoringInput.preferences
           );
         }
-
         outfits.push({
           items,
           score

@@ -1,5 +1,8 @@
 export const dynamic = "force-dynamic";
 
+import {
+  getWeather
+} from "@/lib/weather/weather-service";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
@@ -25,10 +28,10 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
 
 import { outfitRecommendationRequestSchema }
-from "@/schemas/outfit.schema";
+  from "@/schemas/outfit.schema";
 
 import { generateAiOutfit }
-from "@/lib/ai/outfit-generator";
+  from "@/lib/ai/outfit-generator";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -100,12 +103,12 @@ export async function POST(request: NextRequest) {
 
       parsed.data.occasionId
         ? Occasion.findOne({
-            _id: parsed.data.occasionId,
-            $or: [
-              { isGlobal: true },
-              { userId: auth.user._id }
-            ]
-          }).lean()
+          _id: parsed.data.occasionId,
+          $or: [
+            { isGlobal: true },
+            { userId: auth.user._id }
+          ]
+        }).lean()
         : null
     ]);
 
@@ -115,6 +118,26 @@ export async function POST(request: NextRequest) {
         "Add wardrobe items before requesting an outfit."
       );
     }
+
+    let liveWeather = null;
+
+    if (
+      parsed.data.latitude &&
+      parsed.data.longitude
+    ) {
+      try {
+        liveWeather = await getWeather(
+          parsed.data.latitude,
+          parsed.data.longitude
+        );
+      } catch (error) {
+        console.error(
+          "Weather fetch failed:",
+          error
+        );
+      }
+    }
+
 
     const occasionName =
       parsed.data.customOccasion?.name ||
@@ -162,53 +185,57 @@ export async function POST(request: NextRequest) {
     const built =
       selectedItems.length > 0
         ? {
-            title: `${occasionName} outfit`,
-            occasion: occasionName,
-            confidence:
-              aiRecommendation?.confidence ||
-              "Strong match",
-            summary:
-              aiRecommendation?.summary ||
-              "AI generated outfit.",
-            items: selectedItems,
-            reasonChips: [
-              "AI selected"
-            ],
-            weatherContext:
-              parsed.data.weatherContext ||
-              "",
-            repetitionNote: "",
-            careNote: "",
-            colorNote: "",
-            swapGroups: []
-          }
+          title: `${occasionName} outfit`,
+          occasion: occasionName,
+          confidence:
+            aiRecommendation?.confidence ||
+            "Strong match",
+          summary:
+            aiRecommendation?.summary ||
+            "AI generated outfit.",
+          items: selectedItems,
+          reasonChips: [
+            "AI selected"
+          ],
+          weatherContext:
+            parsed.data.weatherContext ||
+            "",
+          repetitionNote: "",
+          careNote: "",
+          colorNote: "",
+          swapGroups: []
+        }
         : buildRecommendation({
-            occasionName,
-            occasionGroup:
-              parsed.data.customOccasion
-                ?.group ||
-              occasion?.group,
+          occasionName,
+          occasionGroup:
+            parsed.data.customOccasion
+              ?.group ||
+            occasion?.group,
 
-            formality:
-              parsed.data.formality ||
-              parsed.data.customOccasion
-                ?.formality ||
-              occasion?.formality ||
-              preferences?.formality,
+          weather: liveWeather,
 
-            weatherContext:
-              parsed.data.weatherContext,
+          formality:
+            parsed.data.formality ||
+            parsed.data.customOccasion
+              ?.formality ||
+            occasion?.formality ||
+            preferences?.formality,
 
-            allowNeedsCare:
-              parsed.data.allowNeedsCare,
+          weatherContext:
+            liveWeather
+              ? `${liveWeather.city} • ${liveWeather.temperature}°C • ${liveWeather.condition}`
+              : parsed.data.weatherContext || "",
 
-            styleDirection:
-              parsed.data.styleDirection,
+          allowNeedsCare:
+            parsed.data.allowNeedsCare,
 
-            preferences,
-            wardrobeItems,
-            wornLooks
-          });
+          styleDirection:
+            parsed.data.styleDirection,
+
+          preferences,
+          wardrobeItems,
+          wornLooks
+        });
 
     const recommendation =
       await OutfitRecommendation.create({

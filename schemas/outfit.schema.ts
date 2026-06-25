@@ -11,6 +11,8 @@ export const outfitRecommendationRequestSchema = z.object({
       formality: z.enum(["relaxed", "balanced", "polished", "formal"]).optional()
     })
     .optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   occasionName: z.string().trim().min(2).max(80).optional(),
   formality: z.enum(["relaxed", "balanced", "polished", "formal"]).optional(),
   weatherContext: z.string().trim().max(120).optional(),
