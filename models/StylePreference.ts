@@ -15,6 +15,12 @@ const StylePreferenceSchema = new Schema(
   { timestamps: true }
 );
 
+  // add favorite fields to the main schema
+  StylePreferenceSchema.add({
+    favoriteColors: { type: [String], default: [] },
+    favoriteCategories: { type: [String], default: [] }
+  });
+
 export type StylePreferenceDocument = InferSchemaType<typeof StylePreferenceSchema> & {
   _id: mongoose.Types.ObjectId;
 };
@@ -22,3 +28,5 @@ export type StylePreferenceDocument = InferSchemaType<typeof StylePreferenceSche
 export const StylePreference =
   (mongoose.models.StylePreference as Model<StylePreferenceDocument>) ||
   mongoose.model<StylePreferenceDocument>("StylePreference", StylePreferenceSchema);
+// Note: additional fields like favoriteColors / favoriteCategories can be
+// added to the primary StylePreferenceSchema above if needed.

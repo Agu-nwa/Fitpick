@@ -14,6 +14,7 @@ import { OutfitItemCard } from "@/components/outfit/OutfitItemCard";
 import { OutfitApiErrorState } from "@/components/outfit/OutfitIntegrationStates";
 import { saveOutfit, submitOutfitFeedback, swapOutfitItem, wearOutfit } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
+import { OutfitPreview } from "@/components/outfit/OutfitPreview";
 
 const swapDirections = [
   { value: "best-match", label: "Best match" },
@@ -73,6 +74,8 @@ export function OutfitResult({
   const [selectedFeedbackTags, setSelectedFeedbackTags] = useState<string[]>([]);
   const [toast, setToast] = useState("");
   const [actionFailed, setActionFailed] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const previewUrl = outfit.items[0]?.imageUrl || outfit.items[0]?.thumbnailUrl || "";
 
   async function handleSwap() {
     if (!selectedItemId) return;
@@ -134,9 +137,30 @@ export function OutfitResult({
       <OutfitCard outfit={outfit} />
 
       <section className="mt-7">
+        <SectionHeader title="AI Outfit Preview" />
+
+        <div className="mt-4">
+          <Button onClick={() => setPreviewOpen(true)}>View preview</Button>
+        </div>
+
+        {previewOpen ? (
+          <OutfitPreview
+            previewUrl={previewUrl}
+            onClose={() => setPreviewOpen(false)}
+          />
+        ) : null}
+      </section>
+
+      <section className="mt-7">
         <SectionHeader title="Items in this look" />
+
         <div className="mobile-scrollbar flex gap-3 overflow-x-auto pb-2">
-          {outfit.items.map((item) => <OutfitItemCard key={item.id} item={item} />)}
+          {outfit.items.map((item) => (
+            <OutfitItemCard
+              key={item.id}
+              item={item}
+            />
+          ))}
         </div>
       </section>
 
@@ -144,6 +168,8 @@ export function OutfitResult({
         <SectionHeader title="Why this works" />
         <Notes outfit={outfit} />
       </section>
+
+      {/* remaining code unchanged */}
 
       {outfit.swapGroups?.length ? (
         <section className="mt-7">
@@ -221,8 +247,28 @@ export function OutfitResult({
             ))}
           </div>
         </div>
+        <button
+          className="rounded-xl bg-black px-4 py-2 text-white"
+        >
+          Generate AI Preview
+        </button>
         <Button className="mt-5 w-full" onClick={() => void handleFeedback()}>Save feedback</Button>
-        <Button className="mt-2 w-full" variant="ghost" onClick={() => void handleSave(true)}>Favorite this look</Button>
+        <Button className="mt-2 w-full" variant="ghost" onClick={() => void handleSave(true)}>Favorite this look
+          <Button
+            className="mt-5 w-full"
+            onClick={() => void handleFeedback()}
+          >
+            Save feedback
+          </Button>
+
+          <Button
+            className="mt-2 w-full"
+            variant="ghost"
+            onClick={() => void handleSave(true)}
+          >
+            Favorite this look
+          </Button>
+        </Button>
       </BottomSheet>
     </>
   );

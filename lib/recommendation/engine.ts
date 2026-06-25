@@ -53,7 +53,9 @@ export type EngineInput = {
   styleDirection?: string;
   preferences?: any;
   wardrobeItems: any[];
+  previousLooks?: any[];
   wornLooks?: any[];
+  weather?: any;
 };
 
 export function buildRecommendation(input: EngineInput) {
@@ -100,7 +102,8 @@ export function buildRecommendation(input: EngineInput) {
       formality: input.formality,
       weatherContext: input.weatherContext,
       repeatDays,
-      allowNeedsCare: input.allowNeedsCare
+      allowNeedsCare: input.allowNeedsCare,
+      previousLooks: input.previousLooks || []
     }
   );
 
