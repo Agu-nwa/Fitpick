@@ -20,6 +20,7 @@ export function WardrobeEmptyState() {
       title={emptyStates.wardrobe.title}
       body={emptyStates.wardrobe.body}
       cta={emptyStates.wardrobe.cta}
+      href="/wardrobe/add"
     />
   );
 }

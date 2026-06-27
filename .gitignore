@@ -9,3 +9,9 @@ npm-debug.log*
 .env.local
 .env.local.save
 .env
+.env.*.local
+
+# Local secret backups
+.env.local.save
+.env.*.save
+*.env.save

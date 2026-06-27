@@ -22,7 +22,6 @@ import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
-import { WardrobeItem } from "@/models/WardrobeItem";
 
 type RouteContext = {
   params: {

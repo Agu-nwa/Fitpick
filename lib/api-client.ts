@@ -155,6 +155,7 @@ export type WardrobeTagSuggestionData = {
   suggestedTags: AiSuggestedWardrobeTags;
   aiAnalysis?: WardrobeAiAnalysis | null;
   safeMessage?: string;
+  job?: JobStatusData["job"];
 };
 
 export type OccasionsData = {

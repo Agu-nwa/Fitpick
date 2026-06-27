@@ -94,7 +94,7 @@ function fallback(message: string): AiTaggingResult {
     aiTagStatus: "completed",
     confidence: 0.3,
     suggestedTags: {
-      category: "unknown",
+      category: "accessories",
       subcategory: "",
       color: "",
       pattern: "",

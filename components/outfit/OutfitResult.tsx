@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -42,23 +43,32 @@ const feedbackTags = [
 ];
 
 function Notes({ outfit }: { outfit: OutfitRecommendation }) {
+  const notes = [
+    outfit.occasionFit ? { label: "Occasion", body: outfit.occasionFit } : null,
+    outfit.whyItWorks ? { label: "Why it works", body: outfit.whyItWorks } : null,
+    { label: "Weather", body: outfit.weatherFit },
+    { label: "Color", body: outfit.colorNote },
+    outfit.materialNote ? { label: "Material", body: outfit.materialNote } : null,
+    outfit.silhouetteNote ? { label: "Silhouette", body: outfit.silhouetteNote } : null,
+    outfit.improvementNote ? { label: "Improve", body: outfit.improvementNote } : null,
+    outfit.addLater ? { label: "Add later", body: outfit.addLater } : null,
+    { label: "Repeat", body: outfit.repeatNote },
+    { label: "Care", body: outfit.careNote }
+  ].filter(Boolean) as Array<{ label: string; body: string }>;
+
   return (
     <Card>
       <p className="text-sm leading-6 text-muted">{outfit.summary}</p>
-      <div className="mt-4 space-y-3 text-sm text-muted">
-        {outfit.occasionFit ? <p><strong className="text-ink">Occasion:</strong> {outfit.occasionFit}</p> : null}
-        {outfit.whyItWorks ? <p><strong className="text-ink">Why:</strong> {outfit.whyItWorks}</p> : null}
-        <p><strong className="text-ink">Weather:</strong> {outfit.weatherFit}</p>
-        <p><strong className="text-ink">Color:</strong> {outfit.colorNote}</p>
-        {outfit.materialNote ? <p><strong className="text-ink">Material:</strong> {outfit.materialNote}</p> : null}
-        {outfit.silhouetteNote ? <p><strong className="text-ink">Silhouette:</strong> {outfit.silhouetteNote}</p> : null}
-        {outfit.improvementNote ? <p><strong className="text-ink">Improve:</strong> {outfit.improvementNote}</p> : null}
-        {outfit.addLater ? <p><strong className="text-ink">Add later:</strong> {outfit.addLater}</p> : null}
-        <p><strong className="text-ink">Repeat:</strong> {outfit.repeatNote}</p>
-        <p><strong className="text-ink">Care:</strong> {outfit.careNote}</p>
+      <div className="mt-4 grid gap-3">
+        {notes.map((note) => (
+          <div key={note.label} className="rounded-2xl border border-line bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{note.label}</p>
+            <p className="mt-1 text-sm leading-6 text-ink">{note.body}</p>
+          </div>
+        ))}
         {outfit.stylingTips?.length ? (
           <div>
-            <strong className="text-ink">Styling tips:</strong>
+            <p className="text-xs font-semibold text-ink">Styling tips</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {outfit.stylingTips.map((tip) => <Chip key={tip}>{tip}</Chip>)}
             </div>
@@ -254,7 +264,7 @@ export function OutfitResult({
           {previewUrl ? (
             <button
               type="button"
-              className="focus-ring block w-full overflow-hidden rounded-xl border border-line bg-canvas"
+              className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
               onClick={() => setPreviewOpen(true)}
             >
               <img src={previewUrl} alt={`${outfit.title} AI preview`} className="aspect-square w-full object-cover" />
@@ -265,7 +275,12 @@ export function OutfitResult({
             </div>
           )}
 
-          <p className="mt-3 text-xs leading-5 text-muted">AI visualization only, not an exact virtual try-on.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Badge tone={previewStatus === "ready" ? "success" : previewStatus === "failed" ? "danger" : "premium"}>
+              {previewStatus === "ready" ? "Preview ready" : previewStatus === "failed" ? "Preview failed" : "AI visualization"}
+            </Badge>
+            <p className="text-xs leading-5 text-muted">Not an exact virtual try-on.</p>
+          </div>
           {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
             <p className="mt-3 text-sm font-semibold text-cocoa">Your preview is being styled. This may take a moment for premium AI processing.</p>
           ) : null}

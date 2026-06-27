@@ -1,5 +1,7 @@
 import type { OutfitRecommendation } from "@/types/outfit";
+import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 import { ReasonChip } from "@/components/outfit/ReasonChip";
 import { cn } from "@/lib/utils";
 
@@ -13,16 +15,16 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{outfit.title}</h2>
             <p className="mt-1 text-sm text-muted">{outfit.summary}</p>
           </div>
-          <span className="rounded-full bg-success/15 px-3 py-1.5 text-[11px] font-bold text-success">{outfit.confidence}</span>
+          <Badge tone={outfit.confidence === "Strong match" ? "success" : outfit.confidence === "Good match" ? "premium" : "warning"}>{outfit.confidence}</Badge>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {outfit.items.map((item) => (
-            <div
+            <ImageFrame
               key={item.id}
-              className={cn("h-32 rounded-xl3 bg-gradient-to-br bg-cover bg-center", item.imageTone || "from-stone-100 to-stone-300")}
-              style={item.thumbnailUrl || item.imageUrl ? { backgroundImage: `url(${item.thumbnailUrl || item.imageUrl})` } : undefined}
-              role="img"
-              aria-label={item.name}
+              src={item.thumbnailUrl || item.imageUrl}
+              alt={item.name}
+              className={cn("border-0", item.thumbnailUrl || item.imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300")}
+              placeholder={item.name}
             />
           ))}
         </div>

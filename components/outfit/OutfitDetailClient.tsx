@@ -38,35 +38,6 @@ export function OutfitDetailClient({
 
   const [canSwap, setCanSwap] = useState(false);
 
-  async function sendFeedback(
-    liked: boolean,
-    reason = ""
-  ) {
-    try {
-      await fetch(
-        `/api/outfits/${id}/feedback`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            liked,
-            reason
-          })
-        }
-      );
-
-      alert(
-        liked
-          ? "Thanks! We'll learn from this outfit."
-          : "Thanks for the feedback."
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
   const loadOutfit = useCallback(async () => {
     setStatus("loading");
 
@@ -169,35 +140,10 @@ export function OutfitDetailClient({
   }
 
   return (
-    <>
-      <OutfitResult
-        outfit={outfit}
-        canSwap={canSwap}
-        onOutfitChange={setOutfit}
-      />
-
-      <div className="mt-6 flex gap-4">
-        <button
-          className="rounded-lg border px-4 py-2"
-          onClick={() =>
-            sendFeedback(true)
-          }
-        >
-          👍 Love this outfit
-        </button>
-
-        <button
-          className="rounded-lg border px-4 py-2"
-          onClick={() =>
-            sendFeedback(
-              false,
-              "Too formal"
-            )
-          }
-        >
-          👎 Not for me
-        </button>
-      </div>
-    </>
+    <OutfitResult
+      outfit={outfit}
+      canSwap={canSwap}
+      onOutfitChange={setOutfit}
+    />
   );
 }

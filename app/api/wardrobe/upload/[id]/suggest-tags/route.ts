@@ -12,17 +12,14 @@ import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 export async function POST(request: NextRequest, context: { params: { id: string } }) {
   const meta = requestMeta(request);
-<<<<<<< HEAD
 
   const limited = rateLimitPlaceholder({
     key: `wardrobe-suggest-tags:${meta.ip}`,
     limit: 20,
-    windowMs: 60 * 1000
+    windowMs: 60 * 1000,
+    operation: "wardrobe-ai-analyze"
   });
 
-=======
-  const limited = rateLimitPlaceholder({ key: `wardrobe-suggest-tags:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "wardrobe-ai-analyze" });
->>>>>>> 77470c6 (AI)
   if (limited) return limited;
 
   try {
@@ -93,15 +90,11 @@ export async function POST(request: NextRequest, context: { params: { id: string
     upload.aiConfidence = result.confidence ?? 0;
     upload.aiTagStatus = result.ok ? result.aiTagStatus : "failed";
     upload.suggestedTags = result.suggestedTags || {};
-<<<<<<< HEAD
+    upload.aiAnalysis = result.aiAnalysis || null;
     upload.aiErrorSafeMessage = result.ok
       ? ""
-      : result.safeMessage || "We could not analyze this image.";
+      : result.safeMessage || "We could not suggest tags for this item. You can add them manually.";
 
-=======
-    upload.aiAnalysis = result.aiAnalysis || null;
-    upload.aiErrorSafeMessage = result.ok ? "" : result.safeMessage || "We could not suggest tags for this item. You can add them manually.";
->>>>>>> 77470c6 (AI)
     await upload.save();
 
     await recordAuditEvent({
@@ -132,7 +125,6 @@ export async function POST(request: NextRequest, context: { params: { id: string
       aiAnalysis: result.aiAnalysis || null,
       safeMessage: result.safeMessage
     });
-
   } catch (error) {
     console.error("Tagging error:", error);
 

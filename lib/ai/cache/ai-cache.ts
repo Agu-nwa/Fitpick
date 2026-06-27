@@ -7,6 +7,8 @@ type CacheEntry = {
 
 const memoryCache = new Map<string, CacheEntry>();
 
+export type AiCacheProvider = "memory" | "redis";
+
 export type AiCacheStore = {
   get<T>(key: string): Promise<T | null>;
   set(key: string, value: unknown, ttlSeconds: number): Promise<void>;
@@ -60,6 +62,14 @@ export const aiCache: AiCacheStore = {
   }
 };
 
+export function cacheProvider(): AiCacheProvider {
+  return process.env.AI_CACHE_PROVIDER === "redis" && process.env.REDIS_URL ? "redis" : "memory";
+}
+
+export function redisCacheReady() {
+  return cacheProvider() === "redis";
+}
+
 function sanitizePayload(payload: unknown) {
   return JSON.stringify(payload, (_key, value) => {
     if (typeof value !== "string") return value;
@@ -86,3 +96,7 @@ export function namespacedCache(namespace: string, defaultTtlSeconds = 600) {
     }
   };
 }
+
+// Future Redis adapter boundary:
+// Implement AiCacheStore with REDIS_URL and swap aiCache construction based on cacheProvider().
+// Current memory fallback is intentional so cache failures never break user flows.

@@ -7,16 +7,16 @@ import { uploadPreviewItems } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const tips = [
-  "Use a clear photo.",
-  "One item per photo works best.",
+  "Use a clear photo of one garment.",
+  "Capture the full front and back.",
   "Natural light helps FitPick read color better.",
-  "Lay the item flat or hang it against a simple background."
+  "Keep the care label flat so OCR can read it."
 ];
 
 export default function AddClothesPage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="Wardrobe upload" title="Add clothes" subtitle="Start with the items you wear often. You can edit tags anytime." />
+      <PageHeader eyebrow="Wardrobe upload" title="Add garment intelligence" subtitle="Upload front, back, fabric, and label photos so FitPick can analyze the item before you confirm it." />
       <WardrobeAddClient />
 
       <section className="mt-7">

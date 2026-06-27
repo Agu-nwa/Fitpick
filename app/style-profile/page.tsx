@@ -8,7 +8,7 @@ export default function StyleProfilePage() {
       <PageHeader
         eyebrow="Personalization"
         title="Your Style DNA"
-        subtitle="Teach FitPick how you like to dress."
+        subtitle="Teach FitPick how you like to dress. These preferences help your AI stylist refine every recommendation."
       />
       <div className="mt-7">
         <StyleProfileForm />

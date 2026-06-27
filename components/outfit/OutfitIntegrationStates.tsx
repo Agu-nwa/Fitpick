@@ -25,8 +25,8 @@ export function OutfitAuthRequiredState() {
 export function NotEnoughWardrobeItemsState() {
   return (
     <Card className="p-4">
-      <p className="text-sm font-semibold text-ink">Add more clothes</p>
-      <p className="mt-2 text-xs leading-5 text-muted">Add more clothes to build this outfit. Start with a top, bottom, and shoes.</p>
+      <p className="text-sm font-semibold text-ink">Your wardrobe needs one more anchor</p>
+      <p className="mt-2 text-xs leading-5 text-muted">FitPick only recommends items you own. Add a top, bottom, dress, shoes, or native piece to unlock stronger outfit builds.</p>
       <Link href="/wardrobe/add">
         <Button className="mt-4 w-full">Add clothes</Button>
       </Link>

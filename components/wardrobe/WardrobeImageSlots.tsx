@@ -1,11 +1,13 @@
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
+import { Badge } from "@/components/ui/Badge";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 import { cn } from "@/lib/utils";
 
-const slotLabels: Array<{ key: WardrobeImagePurpose; label: string }> = [
-  { key: "front", label: "Front" },
-  { key: "back", label: "Back" },
-  { key: "fabricCloseUp", label: "Fabric" },
-  { key: "label", label: "Label" }
+const slotLabels: Array<{ key: WardrobeImagePurpose; label: string; helper: string }> = [
+  { key: "front", label: "Front", helper: "Shape and color" },
+  { key: "back", label: "Back", helper: "Fit and construction" },
+  { key: "fabricCloseUp", label: "Fabric", helper: "Texture and pattern" },
+  { key: "label", label: "Label", helper: "Size, care, brand" }
 ];
 
 export function WardrobeImageSlots({
@@ -18,7 +20,7 @@ export function WardrobeImageSlots({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 gap-3">
       {slotLabels.map((slot) => {
         const image = images[slot.key];
         return (
@@ -26,15 +28,31 @@ export function WardrobeImageSlots({
             key={slot.key}
             type="button"
             className={cn(
-              "focus-ring aspect-square overflow-hidden rounded-2xl border border-line bg-stone-50 text-left text-[11px] font-semibold text-ink",
-              image?.url ? "bg-cover bg-center" : "p-2"
+              "focus-ring group min-w-0 rounded-2xl text-left transition active:scale-[0.99]",
+              disabled ? "cursor-not-allowed opacity-80" : "hover:-translate-y-0.5"
             )}
-            style={image?.url ? { backgroundImage: `url(${image.url})` } : undefined}
             onClick={() => onSelect?.(slot.key)}
-            disabled={disabled}
+            disabled={disabled || !onSelect}
             aria-label={`${slot.label} photo slot`}
           >
-            {!image?.url ? slot.label : <span className="sr-only">{slot.label}</span>}
+            <ImageFrame
+              src={image?.url}
+              alt={`${slot.label} photo`}
+              placeholder={
+                <span>
+                  <span className="block text-sm text-ink">{slot.label}</span>
+                  <span className="mt-1 block text-[11px] font-medium text-muted">{slot.helper}</span>
+                </span>
+              }
+              overlay={
+                <div className="flex items-center justify-between gap-2">
+                  <Badge tone={image?.url ? "success" : "neutral"}>{image?.url ? "Added" : "Needed"}</Badge>
+                  <span className="truncate rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-card">
+                    {slot.label}
+                  </span>
+                </div>
+              }
+            />
           </button>
         );
       })}

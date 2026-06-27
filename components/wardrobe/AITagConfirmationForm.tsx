@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { FieldGroup } from "@/components/ui/FieldGroup";
 import { ConfidenceBadge } from "@/components/wardrobe/ConfidenceBadge";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import type { WardrobeCategory } from "@/types/wardrobe";
@@ -63,6 +65,45 @@ const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "nati
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
 
+const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
+  {
+    title: "Identity",
+    body: "Core information FitPick uses to find this item quickly.",
+    keys: ["garmentType", "category", "subcategory", "brand", "size"]
+  },
+  {
+    title: "Color and Pattern",
+    body: "These fields drive color harmony and outfit balance.",
+    keys: ["primaryColor", "secondaryColors", "pattern"]
+  },
+  {
+    title: "Fabric and Label",
+    body: "Label and fabric intelligence improve care, comfort, and weather recommendations.",
+    keys: ["fabricEstimate", "fabricComposition", "texture", "thicknessEstimate", "careInstructions"]
+  },
+  {
+    title: "Fit and Silhouette",
+    body: "Shape details help FitPick build cleaner proportions.",
+    keys: ["fit", "silhouette", "sleeveLength", "necklineCollar", "length", "layeringSuitability"]
+  },
+  {
+    title: "Occasion and Season",
+    body: "Use these to tune church, wedding, work, travel, and cultural styling.",
+    keys: ["formalityScore", "luxuryScore", "weatherSuitability", "seasonSuitability", "occasionSuitability", "culturalTraditionalRelevance"]
+  },
+  {
+    title: "Styling",
+    body: "Short notes FitPick can use when explaining future outfits.",
+    keys: ["stylingNotes"]
+  }
+];
+
+const fieldsByKey = new Map(fields.map((field) => [field.key, field]));
+
+function isFieldConfig(field: FieldConfig | undefined): field is FieldConfig {
+  return Boolean(field);
+}
+
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "number") return String(value);
@@ -93,6 +134,14 @@ function sourceLabel(source?: string) {
   return "Unknown";
 }
 
+function sourceTone(source?: string) {
+  if (source === "ocr") return "info" as const;
+  if (source === "vision") return "premium" as const;
+  if (source === "user_confirmed") return "success" as const;
+  if (source === "system_inferred") return "neutral" as const;
+  return "warning" as const;
+}
+
 export function AITagConfirmationForm({
   aiAnalysis,
   disabled = false,
@@ -112,6 +161,13 @@ export function AITagConfirmationForm({
   const [name, setName] = useState("");
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [error, setError] = useState("");
+  const lowConfidenceCount = useMemo(() => {
+    if (!aiAnalysis?.fields) return 0;
+    return fields.filter((field) => {
+      const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
+      return (aiField?.confidence ?? 0) < 0.65;
+    }).length;
+  }, [aiAnalysis]);
 
   useEffect(() => {
     const next = initialValues;
@@ -179,54 +235,81 @@ export function AITagConfirmationForm({
         submit();
       }}
     >
-      <label className="block text-xs font-semibold text-ink">
-        Item name
-        <input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="White cotton shirt" required />
-      </label>
+      <div className="rounded-2xl border border-line bg-white p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-ink">Confirm what FitPick detected</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Edits become the trusted wardrobe source.</p>
+          </div>
+          <Badge tone={lowConfidenceCount ? "warning" : "success"}>
+            {lowConfidenceCount ? `${lowConfidenceCount} to verify` : "Ready to save"}
+          </Badge>
+        </div>
+        <FieldGroup label="Item name" htmlFor="ai-field-name" required>
+          <input id="ai-field-name" className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="White cotton shirt" required />
+        </FieldGroup>
+      </div>
 
       {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
-      <div className="space-y-3">
-        {fields.map((field) => {
-          const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
-          const lowConfidence = (aiField?.confidence ?? 0) < 0.65;
-
-          return (
-            <div key={field.key} className="rounded-2xl border border-line bg-white p-3">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-semibold text-ink">{field.label}{field.required ? " *" : ""}</p>
-                  <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{sourceLabel(aiField?.source)}</p>
-                </div>
-                <ConfidenceBadge confidence={aiField?.confidence ?? 0} />
-              </div>
-              {field.kind === "category" ? (
-                <select className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
-                  {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              ) : field.kind === "list" ? (
-                <textarea
-                  className={`${inputClass} min-h-20`}
-                  value={values[field.key] || ""}
-                  onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                  placeholder="Comma-separated values"
-                />
-              ) : (
-                <input
-                  className={inputClass}
-                  value={values[field.key] || ""}
-                  onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                  placeholder={field.required ? "Required" : "Unknown"}
-                  required={field.required}
-                />
-              )}
-              {lowConfidence ? <p className="mt-2 text-[11px] font-semibold text-warning">Low confidence — please verify</p> : null}
+      <div className="space-y-4">
+        {fieldGroups.map((group) => (
+          <section key={group.title} className="rounded-2xl border border-line bg-white p-3">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-ink">{group.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted">{group.body}</p>
             </div>
-          );
-        })}
+            <div className="space-y-3">
+              {group.keys.map((key) => fieldsByKey.get(key)).filter(isFieldConfig).map((field) => {
+                const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
+                const lowConfidence = (aiField?.confidence ?? 0) < 0.65;
+                const fieldId = `ai-field-${field.key}`;
+
+                return (
+                  <FieldGroup
+                    key={field.key}
+                    label={field.label}
+                    htmlFor={fieldId}
+                    required={field.required}
+                    meta={
+                      <div className="flex max-w-full flex-wrap justify-end gap-1.5">
+                        <Badge tone={sourceTone(aiField?.source)}>{sourceLabel(aiField?.source)}</Badge>
+                        <ConfidenceBadge confidence={aiField?.confidence ?? 0} />
+                      </div>
+                    }
+                    help={lowConfidence ? "Low confidence — please verify" : undefined}
+                  >
+                    {field.kind === "category" ? (
+                      <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
+                        {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    ) : field.kind === "list" ? (
+                      <textarea
+                        id={fieldId}
+                        className={`${inputClass} min-h-20`}
+                        value={values[field.key] || ""}
+                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                        placeholder="Comma-separated values"
+                      />
+                    ) : (
+                      <input
+                        id={fieldId}
+                        className={inputClass}
+                        value={values[field.key] || ""}
+                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                        placeholder={field.required ? "Required" : "Unknown"}
+                        required={field.required}
+                      />
+                    )}
+                  </FieldGroup>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button type="button" variant="secondary" onClick={submit} disabled={disabled}>
           Confirm all
         </Button>

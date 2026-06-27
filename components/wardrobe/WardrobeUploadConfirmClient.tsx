@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ConfidenceBadge } from "@/components/wardrobe/ConfidenceBadge";
 import { WardrobeImageSlots } from "@/components/wardrobe/WardrobeImageSlots";
@@ -54,6 +56,14 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
     if (!fields) return 0;
     return Object.values(fields).filter((field) => field.confidence < 0.65).length;
   }, [upload]);
+  const reviewSteps = useMemo(
+    () => [
+      { label: "Photos uploaded", status: "complete" as const },
+      { label: "AI analysis", status: isAnalyzing ? "current" as const : upload?.aiAnalysis ? "complete" as const : "warning" as const },
+      { label: "Verified save", status: createdItem ? "complete" as const : "pending" as const }
+    ],
+    [createdItem, isAnalyzing, upload?.aiAnalysis]
+  );
 
   const loadUpload = useCallback(async () => {
     setStatus("loading");
@@ -186,8 +196,9 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
       <section>
         <SectionHeader title="Uploaded photos" eyebrow="AI review" />
         <Card className="space-y-4">
+          <ProgressSteps steps={reviewSteps} />
           <WardrobeImageSlots images={upload.images as any} disabled />
-          <div className="rounded-2xl bg-cocoa/10 px-3 py-2 text-xs leading-5 text-ink">
+          <div className="rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs leading-5 text-ink">
             <div className="flex items-center justify-between gap-3">
               <p className="font-semibold">{isAnalyzing ? "Analyzing photos..." : upload.aiAnalysis ? "Review your garment intelligence" : "Waiting for analysis"}</p>
               {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
@@ -196,7 +207,10 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
           </div>
           {warnings.length || lowConfidenceCount ? (
             <div className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
-              <p className="font-semibold">Confirm what FitPick detected</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">Confirm what FitPick detected</p>
+                <Badge tone="warning">Needs review</Badge>
+              </div>
               {lowConfidenceCount ? <p className="mt-1 text-muted">{lowConfidenceCount} field{lowConfidenceCount === 1 ? "" : "s"} marked low confidence — please verify.</p> : null}
               {warnings.map((warning) => <p key={warning} className="mt-1 text-muted">{warning}</p>)}
             </div>

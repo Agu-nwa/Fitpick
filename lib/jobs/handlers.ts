@@ -48,9 +48,10 @@ export async function runBackgroundJobByType(job: any) {
       style: payload.style || "flat_lay",
       cacheKey: payload.cacheKey
     });
+    const preview = result.preview?.toObject?.() ?? result.preview;
 
     return {
-      preview: serializeOutfitPreview({ ...result.preview?.toObject?.() ?? result.preview, cached: result.cached })
+      preview: serializeOutfitPreview({ ...preview, cached: result.cached })
     };
   }
 

@@ -8,6 +8,14 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
+export type RateLimitProvider = "memory" | "redis";
+
+export function rateLimitProvider(): RateLimitProvider {
+  return process.env.RATE_LIMIT_PROVIDER === "redis" && (process.env.RATE_LIMIT_REDIS_URL || process.env.REDIS_URL)
+    ? "redis"
+    : "memory";
+}
+
 export function rateLimit(input: {
   key: string;
   limit?: number;
@@ -41,3 +49,7 @@ export function rateLimit(input: {
 }
 
 export const rateLimitPlaceholder = rateLimit;
+
+// Future Redis adapter boundary:
+// Keep the rateLimit(input) contract and move bucket increments into Redis
+// when RATE_LIMIT_PROVIDER=redis is enabled with a Redis client installed.

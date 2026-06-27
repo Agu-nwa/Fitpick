@@ -19,7 +19,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "focus-ring inline-flex min-h-11 touch-manipulation items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-ring inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-normal rounded-2xl px-5 py-3 text-center text-sm font-semibold leading-5 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         className
       )}

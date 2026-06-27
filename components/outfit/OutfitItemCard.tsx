@@ -1,19 +1,24 @@
 import type { WardrobeItem } from "@/types/wardrobe";
+import { Badge } from "@/components/ui/Badge";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 import { cn } from "@/lib/utils";
 
 export function OutfitItemCard({ item }: { item: WardrobeItem }) {
   const imageUrl = item.thumbnailUrl || item.imageUrl;
 
   return (
-    <article className="min-w-[126px] rounded-2xl border border-line bg-surface p-3">
-      <div
-        className={cn("mb-3 h-24 rounded-2xl bg-gradient-to-br bg-cover bg-center", item.imageTone || "from-stone-100 to-stone-300")}
-        style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
-        role="img"
-        aria-label={item.name}
+    <article className="min-w-[136px] rounded-2xl border border-line bg-surface p-3 shadow-card">
+      <ImageFrame
+        src={imageUrl}
+        alt={item.name}
+        className={cn("mb-3 border-0", imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300")}
+        placeholder={item.category}
       />
-      <h4 className="text-xs font-semibold text-ink">{item.name}</h4>
-      <p className="mt-1 text-[11px] text-muted">{item.color} · {item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Missing tags" : "Ready"}</p>
+      <h4 className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</h4>
+      <p className="mt-1 text-[11px] text-muted">{item.color}</p>
+      <Badge className="mt-2" tone={item.condition === "ready" ? "success" : item.condition === "needs-care" ? "warning" : "premium"}>
+        {item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Missing tags" : "Ready"}
+      </Badge>
     </article>
   );
 }

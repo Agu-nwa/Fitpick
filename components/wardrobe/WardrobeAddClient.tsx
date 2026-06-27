@@ -3,8 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import {
   WardrobeApiErrorState,
@@ -104,6 +107,11 @@ export function WardrobeAddClient() {
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
   const selectedCount = Object.keys(slotFiles).length;
   const missingRequired = slotOrder.filter((purpose) => !slotFiles[purpose]);
+  const uploadSteps = [
+    { label: "Capture 4 photos", status: selectedCount === slotOrder.length ? "complete" : "current" },
+    { label: "Upload together", status: isSaving ? "current" : selectedCount === slotOrder.length ? "complete" : "pending" },
+    { label: "AI review", status: isAnalyzing ? "current" : "pending" }
+  ] as const;
 
   function handleSelectSlot(purpose: WardrobeImagePurpose) {
     setActivePurpose(purpose);
@@ -282,6 +290,13 @@ export function WardrobeAddClient() {
       <section>
         <SectionHeader title="Add item photos" eyebrow="Front, back, fabric, label" />
         <Card className="space-y-4">
+          <ProgressSteps steps={[...uploadSteps]} />
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-white px-3 py-2">
+            <p className="text-xs font-semibold text-ink">Garment intelligence photos</p>
+            <Badge tone={missingRequired.length ? "warning" : "success"}>
+              {selectedCount}/4 ready
+            </Badge>
+          </div>
           <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} />
           <input
             ref={fileInputRef}
@@ -300,9 +315,9 @@ export function WardrobeAddClient() {
             {slotOrder.map((purpose) => {
               const slot = slotFiles[purpose];
               return (
-                <div key={purpose} className="rounded-2xl border border-line bg-white p-3">
+                <div key={purpose} className="rounded-2xl border border-line bg-white p-3 shadow-card">
                   <p className="text-xs font-semibold text-ink">{slotCopy[purpose].title}</p>
-                  <p className="mt-1 min-h-8 text-[11px] leading-4 text-muted">{slot ? slot.file.name : slotCopy[purpose].body}</p>
+                  <p className="mt-1 min-h-8 break-words text-[11px] leading-4 text-muted">{slot ? slot.file.name : slotCopy[purpose].body}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(purpose)} disabled={isSaving || isAnalyzing}>
                       {slot ? "Replace" : "Add"}
@@ -317,7 +332,7 @@ export function WardrobeAddClient() {
           </div>
 
           <Button type="button" className="w-full" onClick={() => void handleMultiPhotoUpload()} disabled={isSaving || isAnalyzing}>
-            {isSaving ? "Uploading photos..." : isAnalyzing ? "Analyzing item..." : "Upload and analyze"}
+            {isSaving ? "Uploading photos..." : isAnalyzing ? "Analyzing garment intelligence..." : "Upload and analyze"}
           </Button>
 
           {message ? (
@@ -331,7 +346,14 @@ export function WardrobeAddClient() {
       <section>
         <SectionHeader title="Add manually" />
         <Card>
-          <WardrobeTagReviewForm showName submitLabel="Create wardrobe item" disabled={isSaving || isAnalyzing} onSubmit={handleManualCreate} />
+          <FieldGroup
+            label="Manual fallback"
+            help="Use this only when photos are unavailable. AI confirmation gives FitPick stronger wardrobe data."
+          >
+            <div className="mt-3">
+              <WardrobeTagReviewForm showName submitLabel="Create wardrobe item" disabled={isSaving || isAnalyzing} onSubmit={handleManualCreate} />
+            </div>
+          </FieldGroup>
         </Card>
       </section>
 

@@ -3,9 +3,11 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
+import { FieldGroup } from "@/components/ui/FieldGroup";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { OutfitResult } from "@/components/outfit/OutfitResult";
 import {
@@ -79,6 +81,10 @@ export function OutfitRecommendationClient() {
       <section className="mb-7">
         <SectionHeader title="Outfit request" eyebrow={String(requestBody.occasionName)} />
         <Card className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-ink">Build from verified wardrobe items</p>
+            <Badge tone="premium">Owned items only</Badge>
+          </div>
           <div>
             <p className="mb-2 text-xs font-semibold text-ink">Style direction</p>
             <div className="flex flex-wrap gap-2">
@@ -89,15 +95,15 @@ export function OutfitRecommendationClient() {
               ))}
             </div>
           </div>
-          <label className="block text-xs font-semibold text-ink">
-            Weather context
+          <FieldGroup label="Weather context" htmlFor="weather-context">
             <input
+              id="weather-context"
               className="focus-ring mt-1 min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink"
               value={weatherContext}
               onChange={(event) => setWeatherContext(event.target.value)}
               placeholder="hot, rainy, indoor"
             />
-          </label>
+          </FieldGroup>
           <Button className="w-full" onClick={() => void handleGenerate()} disabled={session.status !== "authenticated"}>
             Generate outfit
           </Button>
