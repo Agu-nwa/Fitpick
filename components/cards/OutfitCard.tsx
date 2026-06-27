@@ -11,7 +11,7 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
       <div className="p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Today's pick</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Today&apos;s pick</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{outfit.title}</h2>
             <p className="mt-1 text-sm text-muted">{outfit.summary}</p>
           </div>

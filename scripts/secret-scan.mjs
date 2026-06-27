@@ -2,14 +2,30 @@ import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const roots = ["app", "components", "lib", "schemas", "types", "docs", "scripts"];
+const roots = ["app", "components", "lib", "schemas", "types", "docs", "scripts", "workers"];
+const rootFiles = [
+  "ecosystem.config.js",
+  "next.config.mjs",
+  "package.json",
+  "tsconfig.json",
+  ".env.example"
+];
 const ignoredDirs = new Set(["node_modules", ".next", ".git"]);
 const riskyPatterns = [
+  /AKIA[0-9A-Z]{16}/,
+  /ASIA[0-9A-Z]{16}/,
+  /AIza[0-9A-Za-z_-]{20,}/,
+  /sk-[A-Za-z0-9_-]{20,}/,
   /sk_live_[A-Za-z0-9]+/,
   /sk_test_[A-Za-z0-9]+/,
   /pk_live_[A-Za-z0-9]{20,}/,
+  /mongodb(?:\+srv)?:\/\/[^<\s"']+:[^<\s"']+@/i,
+  /S3_SECRET_ACCESS_KEY\s*[:=]\s*['"][^'"]+['"]/,
+  /S3_ACCESS_KEY_ID\s*[:=]\s*['"][^'"]+['"]/,
+  /OPENAI_API_KEY\s*[:=]\s*['"][^'"]+['"]/,
   /PAYSTACK_SECRET_KEY\s*=\s*['"][^'"]+['"]/,
   /CLOUDINARY_API_SECRET\s*=\s*['"][^'"]+['"]/,
+  /CLOUDINARY_(CLOUD_NAME|API_KEY|API_SECRET)\s*:\s*['"][^'"]+['"]/,
   /JWT_SECRET\s*=\s*['"][^'"]+['"]/,
   /-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----/
 ];
@@ -37,6 +53,7 @@ function scan(path) {
 }
 
 for (const root of roots) if (existsSync(root)) walk(root);
+for (const file of rootFiles) if (existsSync(file)) scan(file);
 
 try {
   const tracked = execSync("git ls-files .env.local", { encoding: "utf8" }).trim();

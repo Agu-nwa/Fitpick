@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { logSafeError } from "@/lib/security/safe-log";
 import { validateBody } from "@/lib/validation";
 import { SavedLook } from "@/models/SavedLook";
 import { WornLook } from "@/models/WornLook";
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error("FitPick looks error:", error);
+    logSafeError("looks.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load looks right now.");
   }
 }

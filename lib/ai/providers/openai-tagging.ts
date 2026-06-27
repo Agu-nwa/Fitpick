@@ -1,4 +1,5 @@
 import { openai } from "@/lib/ai/openai";
+import { logSafeError } from "@/lib/security/safe-log";
 import type { AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
 
 export async function suggestWithOpenAiProvider(
@@ -75,7 +76,7 @@ Return ONLY JSON for clothing analysis:
     };
 
   } catch (error: any) {
-    console.error("OpenAI tagging error:", error);
+    logSafeError("ai.openai-tagging", error);
 
     // 🔥 CRITICAL FIX: NEVER FAIL APP ON QUOTA
     const msg =

@@ -11,6 +11,7 @@ import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/co
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
       groundedItemCount: wardrobe.length
     });
   } catch (error) {
-    console.error(error);
+    logSafeError("stylist.chat", error);
 
     return apiError(
       "INTERNAL_ERROR",

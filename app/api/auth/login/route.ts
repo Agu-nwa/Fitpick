@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { setSessionCookie } from "@/lib/cookies";
+import { logSafeError } from "@/lib/security/safe-log";
 import { connectDB } from "@/lib/db";
 import { createSessionToken } from "@/lib/jwt";
 import { verifyPassword } from "@/lib/password";
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     setSessionCookie(response, request, token);
     return response;
   } catch (error) {
-    console.error("FitPick login error:", error);
+    logSafeError("auth.login", error);
     return apiError("INTERNAL_ERROR", "Unable to sign in right now.");
   }
 }

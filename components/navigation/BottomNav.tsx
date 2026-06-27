@@ -9,6 +9,7 @@ const nav = [
   { label: "Occasion", href: "/occasion", icon: "◇" },
   { label: "Wardrobe", href: "/wardrobe", icon: "▦" },
   { label: "Looks", href: "/looks", icon: "◌" },
+  { label: "Avatar", href: "/avatar", icon: "◈" },
   { label: "AI Stylist", href: "/stylist", icon: "✦" },
   { label: "Profile", href: "/profile", icon: "○" }
 ];
@@ -20,7 +21,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] border-t border-line bg-surface/95 px-3 pb-[calc(0.75rem+var(--safe-bottom))] pt-3 backdrop-blur md:absolute md:left-1/2 md:-translate-x-1/2 md:rounded-b-[2.25rem]"
       aria-label="Primary navigation"
     >
-      <div className="grid grid-cols-6 gap-1">
+      <div className="grid grid-cols-7 gap-1">
         {nav.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (

@@ -3,12 +3,18 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { updateUserSchema } from "@/schemas/user.schema";
 import { toSafeUser } from "@/models/User";
 
 export async function PATCH(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `users-me:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "users-me-patch" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -32,7 +38,7 @@ export async function PATCH(request: NextRequest) {
 
     return apiSuccess({ user: toSafeUser(auth.user) }, { message: "Profile updated." });
   } catch (error) {
-    console.error("FitPick profile update error:", error);
+    logSafeError("users.me.patch", error);
     return apiError("INTERNAL_ERROR", "Unable to update your profile right now.");
   }
 }

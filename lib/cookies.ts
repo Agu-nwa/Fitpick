@@ -14,7 +14,7 @@ export function requestUsesHttps(request: NextRequest) {
 export function setSessionCookie(response: NextResponse, request: NextRequest, token: string) {
   response.cookies.set(sessionCookieName(), token, {
     httpOnly: true,
-    secure: requestUsesHttps(request),
+    secure: process.env.NODE_ENV === "production" ? true : requestUsesHttps(request),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30
@@ -24,7 +24,7 @@ export function setSessionCookie(response: NextResponse, request: NextRequest, t
 export function clearSessionCookie(response: NextResponse, request: NextRequest) {
   response.cookies.set(sessionCookieName(), "", {
     httpOnly: true,
-    secure: requestUsesHttps(request),
+    secure: process.env.NODE_ENV === "production" ? true : requestUsesHttps(request),
     sameSite: "lax",
     path: "/",
     maxAge: 0

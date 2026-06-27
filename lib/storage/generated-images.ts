@@ -7,6 +7,7 @@ type UploadOptions = {
   userId: string;
   outfitId: string;
   cacheKey: string;
+  storageKey?: string;
   contentType?: string;
   format?: "png" | "jpeg" | "webp";
   width?: number;
@@ -24,14 +25,13 @@ type UploadedGeneratedImage = {
 };
 
 const service = "s3";
-const defaultBucket = "fitpick1";
 const allowedGeneratedFormats = new Set(["png", "jpeg", "webp"]);
 const allowedGeneratedContentTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function s3Config() {
   return {
-    bucket: process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || defaultBucket,
-    region: process.env.S3_REGION || process.env.AWS_REGION || "us-east-1",
+    bucket: process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || "",
+    region: process.env.S3_REGION || process.env.AWS_REGION || "",
     accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "",
     publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_GENERATED_IMAGES_URL || process.env.CLOUDFRONT_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_URL || ""
@@ -78,6 +78,7 @@ function bufferFromImage(input: Buffer | string) {
 function makeStorageKey(options: UploadOptions) {
   const format = options.format || "png";
   if (!allowedGeneratedFormats.has(format)) throw new Error("Unsupported generated image format.");
+  if (options.storageKey) return normalizeStorageKey(options.storageKey);
   const hashPart = crypto.createHash("sha256").update(options.cacheKey).digest("hex").slice(0, 24);
   return normalizeStorageKey(`generated-previews/${options.userId}/${options.outfitId}/${hashPart}.${format}`);
 }

@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { getPlanEntitlements } from "@/lib/entitlements";
 import { billingReady, providerReadiness } from "@/lib/payments";
+import { logSafeError } from "@/lib/security/safe-log";
 import { getRemainingDailyPicks } from "@/lib/usage-limits";
 import { PlusSubscription } from "@/models/PlusSubscription";
 
@@ -36,7 +37,7 @@ export async function GET() {
       availableProviders: providerReadiness()
     });
   } catch (error) {
-    console.error("FitPick plus status error:", error);
+    logSafeError("billing.plus-status", error);
     return apiError("INTERNAL_ERROR", "Unable to load Plus status right now.");
   }
 }

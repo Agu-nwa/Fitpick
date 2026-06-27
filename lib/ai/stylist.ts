@@ -3,7 +3,7 @@ import { openai } from "@/lib/ai/openai";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { buildStylistPrompt } from "@/lib/ai/prompts";
-import { assertWardrobeGrounding, safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
+import { assertWardrobeGrounding, containsPromptInjectionSignals, safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { stylistResponseSchema, type StylistIntent, type StylistResponse } from "@/lib/ai/schemas/stylist.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 
@@ -97,6 +97,11 @@ export async function askStylist({
 }) {
   const model = getAiModel("stylistChat");
   const sanitizedMessage = sanitizeUserPrompt(message);
+  const sanitizedRecentMessages = recentMessages.slice(-8).map((entry) => ({
+    role: entry.role,
+    content: sanitizeUserPrompt(entry.content)
+  }));
+  const promptInjectionDetected = containsPromptInjectionSignals(sanitizedMessage);
   const intent = detectIntent(sanitizedMessage, allowShoppingAdvice);
   const fallbackResponse = fallbackStylistResponse({
     message: sanitizedMessage,
@@ -141,7 +146,7 @@ export async function askStylist({
         userMessage: sanitizedMessage,
         allowShoppingAdvice,
         fallback,
-        recentMessages,
+        recentMessages: sanitizedRecentMessages,
         deterministicRecommendation
       })
     });
@@ -150,7 +155,16 @@ export async function askStylist({
     if (!json.ok) throw new Error(json.reason);
     const validated = validateJsonResponse(stylistResponseSchema, json.data);
     if (!validated.ok) throw new Error(validated.reason);
-    const grounded = groundStylistResponse(validated.data, ownedItemIds, allowShoppingAdvice);
+    const groundedBase = groundStylistResponse(validated.data, ownedItemIds, allowShoppingAdvice);
+    const grounded = promptInjectionDetected
+      ? {
+          ...groundedBase,
+          safetyWarnings: [
+            ...groundedBase.safetyWarnings,
+            "Ignored prompt-injection style instruction in user text."
+          ]
+        }
+      : groundedBase;
 
     await aiCache.set(cacheKey, grounded, 60 * 10);
     logAiEvent({ operation: "stylist-chat", model, latencyMs: Date.now() - startedAt, status: "success", cacheHit: false });
@@ -168,7 +182,10 @@ export async function askStylist({
       deterministicRecommendation,
       allowShoppingAdvice,
       fallback,
-      safetyWarnings: [safeAIError(error)]
+      safetyWarnings: [
+        ...(promptInjectionDetected ? ["Ignored prompt-injection style instruction in user text."] : []),
+        safeAIError(error)
+      ]
     });
     return {
       ok: false,

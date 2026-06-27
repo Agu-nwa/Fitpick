@@ -8,11 +8,11 @@ Do not commit real credentials.
 
 ```env
 STORAGE_PROVIDER=s3
-S3_BUCKET=fitpick1
-S3_REGION=eu-north-1
+S3_BUCKET=your-fitpick-production-bucket
+S3_REGION=your-aws-region
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
-S3_PUBLIC_BASE_URL=https://your-cloudfront-domain.cloudfront.net
+S3_PUBLIC_BASE_URL=https://your-cloudfront-distribution-domain
 NEXT_PUBLIC_APP_URL=https://your-app-domain
 ```
 
@@ -39,7 +39,7 @@ Use this as the starting point for browser uploads. Replace the production origi
 
 ## CloudFront Access
 
-CloudFront must be allowed to read objects from `fitpick1`. Prefer Origin Access Control rather than making the bucket broadly public.
+CloudFront must be allowed to read objects from the configured `S3_BUCKET`. Prefer Origin Access Control (OAC) for production. Do not make the S3 bucket broadly public when CloudFront is the intended public image layer.
 
 Make sure CloudFront caches these prefixes:
 
@@ -49,6 +49,13 @@ Make sure CloudFront caches these prefixes:
 ## IAM
 
 Use least privilege. The application only needs object-level `PutObject`, `GetObject`, and `DeleteObject` for the bucket paths it manages. See `docs/deployment/iam-s3-fitpick-policy.json`.
+
+The application should only write server-generated object keys under:
+
+- `wardrobe/<userId>/*`
+- `generated-previews/<userId>/*`
+
+Browser presigned uploads must not accept arbitrary object keys from the client.
 
 ## Key Rotation
 

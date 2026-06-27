@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { setSessionCookie } from "@/lib/cookies";
+import { logSafeError } from "@/lib/security/safe-log";
 import { connectDB } from "@/lib/db";
 import { createSessionToken } from "@/lib/jwt";
 import { hashPassword } from "@/lib/password";
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     setSessionCookie(response, request, token);
     return response;
   } catch (error) {
-    console.error("FitPick register error:", error);
+    logSafeError("auth.register", error);
     return apiError("INTERNAL_ERROR", "Unable to create your account right now.");
   }
 }

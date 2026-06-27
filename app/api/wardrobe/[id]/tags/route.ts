@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -51,7 +52,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ item: serializeWardrobeItem(item) }, { message: "Wardrobe tags reviewed." });
   } catch (error) {
-    console.error("FitPick wardrobe tag review error:", error);
+    logSafeError("wardrobe.tags", error);
     return apiError("INTERNAL_ERROR", "Unable to review wardrobe tags right now.");
   }
 }

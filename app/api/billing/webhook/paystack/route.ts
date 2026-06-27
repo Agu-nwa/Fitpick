@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { logSafeError } from "@/lib/security/safe-log";
 import { verifyPaystackSignature } from "@/lib/payments/webhooks";
 import { BillingEvent } from "@/models/BillingEvent";
 import { PlusSubscription } from "@/models/PlusSubscription";
@@ -34,6 +35,7 @@ async function updateSubscriptionFromPaystack(event: any) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
+    if (body.length > 1024 * 1024) return apiError("BAD_REQUEST", "Webhook payload is too large.");
     if (!process.env.PAYSTACK_WEBHOOK_SECRET) return apiError("SETUP_REQUIRED", "Paystack webhook is not configured.");
     if (!verifyPaystackSignature(body, request.headers.get("x-paystack-signature"))) {
       return apiError("FORBIDDEN", "Webhook signature could not be verified.");
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess({ received: true });
   } catch (error) {
-    console.error("FitPick Paystack webhook error:", error);
+    logSafeError("billing.webhook.paystack", error);
     return apiError("BAD_REQUEST", "Webhook could not be processed.");
   }
 }

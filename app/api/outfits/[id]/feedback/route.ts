@@ -3,16 +3,20 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { StylePreference } from "@/models/StylePreference";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { learnFromFeedback } from "@/lib/recommendation/learning";
 import { readJson, validateBody } from "@/lib/validation";
+import { isObjectId } from "@/lib/wardrobe";
 import { z } from "zod";
 
 const schema = z.object({
   liked: z.boolean(),
-  reason: z.string().optional()
+  reason: z.string().trim().max(240).optional()
 });
 
 type RouteContext = {
@@ -25,6 +29,10 @@ export async function POST(
   request: NextRequest,
   context: RouteContext
 ) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `outfit-feedback:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-feedback" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
 
@@ -39,6 +47,10 @@ export async function POST(
 
     if (!parsed.ok) {
       return parsed.response;
+    }
+
+    if (!isObjectId(context.params.id)) {
+      return apiError("NOT_FOUND", "Outfit not found.");
     }
 
     const outfit =
@@ -58,7 +70,8 @@ export async function POST(
       await WardrobeItem.find({
         _id: {
           $in: outfit.itemIds
-        }
+        },
+        userId: auth.user._id
       });
 
     const preferences =
@@ -95,10 +108,7 @@ export async function POST(
         "Feedback saved successfully."
     });
   } catch (error) {
-    console.error(
-      "Feedback error:",
-      error
-    );
+    logSafeError("outfit.feedback", error);
 
     return apiError(
       "INTERNAL_ERROR",

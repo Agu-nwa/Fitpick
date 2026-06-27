@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ look: serializeWornLook(look) }, { message: "Outfit marked as worn.", status: 201 });
   } catch (error) {
-    console.error("FitPick wear outfit error:", error);
+    logSafeError("outfit.wear", error);
     return apiError("INTERNAL_ERROR", "Unable to mark outfit as worn right now.");
   }
 }

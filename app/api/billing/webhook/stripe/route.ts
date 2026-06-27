@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { logSafeError } from "@/lib/security/safe-log";
 import { constructStripeEvent } from "@/lib/payments/webhooks";
 import { BillingEvent } from "@/models/BillingEvent";
 import { PlusSubscription } from "@/models/PlusSubscription";
@@ -33,6 +34,7 @@ async function updateSubscriptionFromStripe(event: any) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
+    if (body.length > 1024 * 1024) return apiError("BAD_REQUEST", "Webhook payload is too large.");
     const event = constructStripeEvent(body, request.headers.get("stripe-signature"));
     if (!event) return apiError("SETUP_REQUIRED", "Stripe webhook is not configured.");
 
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess({ received: true });
   } catch (error) {
-    console.error("FitPick Stripe webhook error:", error);
+    logSafeError("billing.webhook.stripe", error);
     return apiError("BAD_REQUEST", "Webhook could not be processed.");
   }
 }

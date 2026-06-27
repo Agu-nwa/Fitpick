@@ -4,7 +4,10 @@ import Stripe from "stripe";
 export function verifyPaystackSignature(body: string, signature: string | null) {
   if (!process.env.PAYSTACK_WEBHOOK_SECRET) return false;
   const hash = crypto.createHmac("sha512", process.env.PAYSTACK_WEBHOOK_SECRET).update(body).digest("hex");
-  return Boolean(signature && crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(signature)));
+  if (!signature) return false;
+  const expected = Buffer.from(hash, "hex");
+  const received = Buffer.from(signature, "hex");
+  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
 }
 
 export function constructStripeEvent(body: string, signature: string | null) {

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { buildSwappedPayload } from "@/lib/recommendation/swap";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ outfit: payload }, { message: "Outfit item swapped." });
   } catch (error) {
-    console.error("FitPick outfit swap error:", error);
+    logSafeError("outfit.swap", error);
     return apiError("INTERNAL_ERROR", "Unable to swap outfit item right now.");
   }
 }

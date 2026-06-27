@@ -1,4 +1,5 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
+import { runAvatarPreviewGenerationJob, serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
@@ -48,10 +49,26 @@ export async function runBackgroundJobByType(job: any) {
       style: payload.style || "flat_lay",
       cacheKey: payload.cacheKey
     });
-    const preview = result.preview?.toObject?.() ?? result.preview;
+    const preview = (result.preview as any)?.toObject?.() ?? result.preview;
 
     return {
       preview: serializeOutfitPreview({ ...preview, cached: result.cached })
+    };
+  }
+
+  if (job.type === "avatar_preview_generation") {
+    const result = await runAvatarPreviewGenerationJob({
+      userId,
+      outfitId: String(payload.outfitId || ""),
+      avatarProfileId: String(payload.avatarProfileId || ""),
+      visualizationStyle: payload.visualizationStyle || undefined,
+      posePreset: payload.posePreset || undefined,
+      cacheKey: payload.cacheKey
+    });
+    const preview = (result.preview as any)?.toObject?.() ?? result.preview;
+
+    return {
+      preview: serializeAvatarPreview({ ...preview, cached: result.cached })
     };
   }
 

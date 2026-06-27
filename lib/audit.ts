@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { logSafeError } from "@/lib/security/safe-log";
 import { AuditEvent } from "@/models/AuditEvent";
 
 export type AuditAction =
@@ -59,6 +60,6 @@ export async function recordAuditEvent(input: {
       userAgent: meta.userAgent
     });
   } catch (error) {
-    console.warn("Audit event was not recorded.", error);
+    logSafeError("audit.record", error, { action: input.action, entityType: input.entityType });
   }
 }

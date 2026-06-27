@@ -21,8 +21,9 @@ export function normalizeStorageKey(storageKey: string) {
 }
 
 export function s3PublicObjectUrl(input: { bucket?: string; region?: string; storageKey: string }) {
-  const bucket = input.bucket || process.env.S3_BUCKET || "fitpick1";
-  const region = input.region || process.env.S3_REGION || "eu-north-1";
+  const bucket = input.bucket || process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || "";
+  const region = input.region || process.env.S3_REGION || process.env.AWS_REGION || "";
+  if (!bucket || !region) return "";
   const host = region === "us-east-1" ? `${bucket}.s3.amazonaws.com` : `${bucket}.s3.${region}.amazonaws.com`;
   return `https://${host}/${encodeStorageKey(normalizeStorageKey(input.storageKey))}`;
 }

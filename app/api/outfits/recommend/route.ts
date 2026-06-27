@@ -8,6 +8,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import {
   buildRecommendation,
   serializeOutfit
@@ -136,10 +137,7 @@ export async function POST(request: NextRequest) {
           parsed.data.longitude
         );
       } catch (error) {
-        console.error(
-          "Weather fetch failed:",
-          error
-        );
+        logSafeError("outfit.recommend.weather", error);
       }
     }
 
@@ -273,10 +271,7 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error(
-      "FitPick recommend outfit error:",
-      error
-    );
+    logSafeError("outfit.recommend", error);
 
     return apiError(
       "INTERNAL_ERROR",

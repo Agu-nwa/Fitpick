@@ -38,7 +38,7 @@ export function PremiumLimitState() {
   return (
     <Card className="border-cocoa/20 bg-cocoa/10 p-4">
       <p className="text-sm font-semibold text-ink">Daily picks used</p>
-      <p className="mt-2 text-xs leading-5 text-muted">You have used today's free outfit picks. FitPick Plus unlocks more options.</p>
+      <p className="mt-2 text-xs leading-5 text-muted">You have used today&apos;s free outfit picks. FitPick Plus unlocks more options.</p>
       <Link href="/plus">
         <Button className="mt-4 w-full">View Plus</Button>
       </Link>

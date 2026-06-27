@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { NotificationPreference } from "@/models/NotificationPreference";
 import { notificationPreferenceSchema } from "@/schemas/notification.schema";
@@ -31,12 +33,16 @@ export async function GET() {
 
     return apiSuccess({ preferences: serializeNotificationPreferences(preferences) });
   } catch (error) {
-    console.error("FitPick notification preferences error:", error);
+    logSafeError("notifications.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load notification preferences right now.");
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `notifications:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "notifications-patch" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -60,7 +66,7 @@ export async function PATCH(request: NextRequest) {
 
     return apiSuccess({ preferences: serializeNotificationPreferences(preferences) }, { message: "Notification preferences updated." });
   } catch (error) {
-    console.error("FitPick notification preferences update error:", error);
+    logSafeError("notifications.patch", error);
     return apiError("INTERNAL_ERROR", "Unable to update notification preferences right now.");
   }
 }

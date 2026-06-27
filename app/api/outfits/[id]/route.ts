@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { serializeOutfit } from "@/lib/recommendation/engine";
+import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -23,7 +24,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ outfit: serializeOutfit(outfit, items) });
   } catch (error) {
-    console.error("FitPick outfit detail error:", error);
+    logSafeError("outfit.detail", error);
     return apiError("INTERNAL_ERROR", "Unable to load outfit right now.");
   }
 }

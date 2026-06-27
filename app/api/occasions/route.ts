@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { logSafeError } from "@/lib/security/safe-log";
 import { Occasion } from "@/models/Occasion";
 
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
 
     return apiSuccess({ occasions });
   } catch (error) {
-    console.error("FitPick occasions get error:", error);
+    logSafeError("occasions.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load occasions right now.");
   }
 }

@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin";
 import { connectDB } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { ContentRule } from "@/models/ContentRule";
 import { Occasion } from "@/models/Occasion";
 
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
       { message: "Seed skeleton completed." }
     );
   } catch (error) {
-    console.error("FitPick seed error:", error);
+    logSafeError("admin.seed", error);
     return apiError("INTERNAL_ERROR", "Unable to run seed skeleton right now.");
   }
 }

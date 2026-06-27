@@ -6,6 +6,7 @@ export type BackgroundJobType =
   | "wardrobe_analysis"
   | "label_ocr"
   | "outfit_preview_generation"
+  | "avatar_preview_generation"
   | "style_profile_learning"
   | "memory_rollup";
 

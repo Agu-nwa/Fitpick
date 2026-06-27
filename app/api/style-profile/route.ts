@@ -4,6 +4,9 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import {
   getOrCreateStyleProfile,
@@ -53,12 +56,16 @@ export async function GET() {
 
     return apiSuccess({ profile: serializeStyleProfile(updated) });
   } catch (error) {
-    console.error("FitPick style profile GET error:", error);
+    logSafeError("style-profile.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load your Style DNA right now.");
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `style-profile:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "style-profile-patch" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -69,7 +76,7 @@ export async function PATCH(request: NextRequest) {
     const profile = await updateStyleProfile(auth.user._id, parsed.data);
     return apiSuccess({ profile: serializeStyleProfile(profile) }, { message: "Style DNA saved." });
   } catch (error) {
-    console.error("FitPick style profile PATCH error:", error);
+    logSafeError("style-profile.patch", error);
     return apiError("INTERNAL_ERROR", "Unable to save your Style DNA right now.");
   }
 }

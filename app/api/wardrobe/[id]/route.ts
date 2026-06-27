@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -27,7 +28,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ item: serializeWardrobeItem(item) });
   } catch (error) {
-    console.error("FitPick wardrobe detail error:", error);
+    logSafeError("wardrobe.detail", error);
     return apiError("INTERNAL_ERROR", "Unable to load wardrobe item right now.");
   }
 }
@@ -67,7 +68,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ item: serializeWardrobeItem(existing) }, { message: "Wardrobe item updated." });
   } catch (error) {
-    console.error("FitPick wardrobe update error:", error);
+    logSafeError("wardrobe.update", error);
     return apiError("INTERNAL_ERROR", "Unable to update wardrobe item right now.");
   }
 }
@@ -111,7 +112,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ item: serializeWardrobeItem(item), archived: true }, { message: "Wardrobe item archived." });
   } catch (error) {
-    console.error("FitPick wardrobe delete error:", error);
+    logSafeError("wardrobe.delete", error);
     return apiError("INTERNAL_ERROR", "Unable to archive wardrobe item right now.");
   }
 }

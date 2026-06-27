@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem, serializeWardrobeUpload } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       { message: "Upload reviewed and wardrobe item created.", status: 201 }
     );
   } catch (error) {
-    console.error("FitPick upload tag review error:", error);
+    logSafeError("wardrobe.upload.review-tags", error);
     return apiError("INTERNAL_ERROR", "Unable to review upload tags right now.");
   }
 }

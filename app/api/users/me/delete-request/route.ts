@@ -3,12 +3,18 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { PrivacyPreference } from "@/models/PrivacyPreference";
 import { deleteRequestSchema } from "@/schemas/user.schema";
 
 export async function POST(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `users-me-delete:${meta.ip}`, limit: 5, windowMs: 60 * 60 * 1000, operation: "users-me-delete-request" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest) {
       nextAction: "backend_deletion_workflow_pending"
     });
   } catch (error) {
-    console.error("FitPick delete request error:", error);
+    logSafeError("users.me.delete-request", error);
     return apiError("INTERNAL_ERROR", "Unable to request account deletion right now.");
   }
 }

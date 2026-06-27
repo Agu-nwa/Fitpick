@@ -5,11 +5,53 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
-import { assertStorageConfigured, createWardrobeStorageKey } from "@/lib/storage";
+import { assertStorageConfigured, createWardrobeStorageKey, storageKeyBelongsToUser } from "@/lib/storage";
+import { logSafeError } from "@/lib/security/safe-log";
+import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
 import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
+
+function sanitizeImageAssets(images: any, userId: string) {
+  if (!images) return { ok: true as const, images: undefined };
+
+  function sanitizeAsset(asset: any, purpose: string) {
+    if (!asset) return undefined;
+    const storageKey = normalizeStorageKey(asset.storageKey || "");
+    if (asset.provider === "s3" && !storageKeyBelongsToUser({ userId, storageKey, prefix: "wardrobe" })) {
+      return null;
+    }
+
+    return {
+      ...asset,
+      purpose,
+      storageKey,
+      url: asset.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : asset.url
+    };
+  }
+
+  const front = sanitizeAsset(images.front, "front");
+  const back = sanitizeAsset(images.back, "back");
+  const fabricCloseUp = sanitizeAsset(images.fabricCloseUp, "fabricCloseUp");
+  const label = sanitizeAsset(images.label, "label");
+  const additional = (images.additional || []).map((asset: any) => sanitizeAsset(asset, "additional"));
+
+  if ([front, back, fabricCloseUp, label, ...additional].some((asset) => asset === null)) {
+    return { ok: false as const, response: apiError("BAD_REQUEST", "Upload image reference is invalid.") };
+  }
+
+  return {
+    ok: true as const,
+    images: {
+      ...(front ? { front } : {}),
+      ...(back ? { back } : {}),
+      ...(fabricCloseUp ? { fabricCloseUp } : {}),
+      ...(label ? { label } : {}),
+      additional: additional.filter(Boolean)
+    }
+  };
+}
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -23,17 +65,25 @@ export async function POST(request: NextRequest) {
     const parsed = validateBody(uploadMetadataSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
+    const userId = String(auth.user._id);
     const storage = assertStorageConfigured();
+    const submittedStorageKey = normalizeStorageKey(parsed.data.publicId || parsed.data.storageKey || "");
+    if (submittedStorageKey && !storageKeyBelongsToUser({ userId, storageKey: submittedStorageKey, prefix: "wardrobe" })) {
+      return apiError("BAD_REQUEST", "Upload object is invalid.");
+    }
+
+    const sanitizedImages = sanitizeImageAssets(parsed.data.images, userId);
+    if (!sanitizedImages.ok) return sanitizedImages.response;
+
     const storageKey =
-      parsed.data.publicId ||
-      parsed.data.storageKey ||
+      submittedStorageKey ||
       createWardrobeStorageKey({
-        userId: String(auth.user._id),
+        userId,
         filename: parsed.data.filename
       });
-    const imageUrl = parsed.data.secureUrl || parsed.data.imageUrl || "";
+    const imageUrl = parsed.data.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
     const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
-    const images = parsed.data.images || (imageUrl
+    const images = sanitizedImages.images || (imageUrl
       ? {
           front: {
             url: imageUrl,
@@ -84,7 +134,7 @@ export async function POST(request: NextRequest) {
       { message: "Wardrobe upload record created.", status: 201 }
     );
   } catch (error) {
-    console.error("FitPick wardrobe upload error:", error);
+    logSafeError("wardrobe.upload.create", error);
     return apiError("INTERNAL_ERROR", "Unable to create wardrobe upload right now.");
   }
 }

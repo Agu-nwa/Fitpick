@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { requestMeta } from "@/lib/audit";
 import { isObjectId, serializeWardrobeUpload } from "@/lib/wardrobe";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ upload: serializeWardrobeUpload(upload) });
   } catch (error) {
-    console.error("FitPick wardrobe upload detail error:", error);
+    logSafeError("wardrobe.upload.detail", error);
     return apiError("INTERNAL_ERROR", "Unable to load wardrobe upload right now.");
   }
 }

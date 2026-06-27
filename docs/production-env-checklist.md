@@ -17,6 +17,7 @@ Notes:
 - `APP_URL` and `NEXT_PUBLIC_APP_URL` should use the production domain after DNS is ready.
 - `JWT_SECRET` must be a long, random secret.
 - Keep session cookies HTTP-only through the backend session implementation.
+- In production, session cookies must be `httpOnly`, `secure`, `sameSite=lax`, and scoped to `/`.
 
 ## Database
 
@@ -34,8 +35,8 @@ Notes:
 
 ```bash
 STORAGE_PROVIDER=s3
-S3_BUCKET=fitpick1
-S3_REGION=eu-north-1
+S3_BUCKET=
+S3_REGION=
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 S3_PUBLIC_BASE_URL=
@@ -46,6 +47,7 @@ Notes:
 - `S3_SECRET_ACCESS_KEY` must remain server-only.
 - Test signed S3 upload before public launch.
 - Customer UI should never show raw S3 errors, signed URLs, access keys, or provider internals.
+- Prefer CloudFront Origin Access Control and avoid direct public S3 access for production.
 
 ## AI Tagging
 

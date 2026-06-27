@@ -179,7 +179,7 @@ export function OccasionPickerClient() {
             <div className="flex flex-wrap gap-2">
               {formalityLevels.map((level) => <Chip key={level.value} active={level.value === selectedFormality}>{level.label}</Chip>)}
             </div>
-            <div className="mt-5 rounded-2xl bg-canvas p-4 text-sm text-muted">Use today's weather: <strong className="text-ink">On</strong></div>
+            <div className="mt-5 rounded-2xl bg-canvas p-4 text-sm text-muted">Use today&apos;s weather: <strong className="text-ink">On</strong></div>
           </Card>
         </section>
       ) : null}

@@ -3,12 +3,18 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { createSignedUploadUrl } from "@/lib/storage";
 import { readJson, validateBody } from "@/lib/validation";
 import { signedUploadSchema } from "@/schemas/upload.schema";
 
 export async function POST(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `signed-upload:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "signed-upload" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -37,7 +43,7 @@ export async function POST(request: NextRequest) {
       { message: upload.ready ? "Upload access created." : "Image upload is not configured yet." }
     );
   } catch (error) {
-    console.error("FitPick signed upload error:", error);
+    logSafeError("uploads.signed-url", error);
     return apiError("INTERNAL_ERROR", "Unable to create upload access right now.");
   }
 }

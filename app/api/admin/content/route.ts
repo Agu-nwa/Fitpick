@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin";
+import { logSafeError } from "@/lib/security/safe-log";
 import { ContentRule } from "@/models/ContentRule";
 import { Occasion } from "@/models/Occasion";
 
@@ -29,7 +30,7 @@ export async function GET() {
       }))
     });
   } catch (error) {
-    console.error("FitPick admin content error:", error);
+    logSafeError("admin.content", error);
     return apiError("INTERNAL_ERROR", "Unable to load content summary right now.");
   }
 }

@@ -6,6 +6,7 @@ import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest, context: { params: { id: string
       safeMessage: result.safeMessage
     });
   } catch (error) {
-    console.error("Tagging error:", error);
+    logSafeError("wardrobe.upload.suggest-tags", error);
 
     return apiError(
       "INTERNAL_ERROR",

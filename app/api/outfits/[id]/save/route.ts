@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -25,6 +27,10 @@ function serializeSavedLook(look: any) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `outfit-save:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-save" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -64,7 +70,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ look: serializeSavedLook(look) }, { message: "Outfit saved." });
   } catch (error) {
-    console.error("FitPick save outfit error:", error);
+    logSafeError("outfit.save", error);
     return apiError("INTERNAL_ERROR", "Unable to save outfit right now.");
   }
 }

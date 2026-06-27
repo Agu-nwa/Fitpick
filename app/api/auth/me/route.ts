@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { logSafeError } from "@/lib/security/safe-log";
 import { NotificationPreference } from "@/models/NotificationPreference";
 import { PlusSubscription } from "@/models/PlusSubscription";
 import { StylePreference } from "@/models/StylePreference";
@@ -25,7 +26,7 @@ export async function GET() {
       subscription
     });
   } catch (error) {
-    console.error("FitPick me error:", error);
+    logSafeError("auth.me", error);
     return apiError("INTERNAL_ERROR", "Unable to load your session right now.");
   }
 }

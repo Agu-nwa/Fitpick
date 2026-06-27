@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit";
-import { createSignedViewUrl } from "@/lib/storage";
+import { logSafeError } from "@/lib/security/safe-log";
+import { createSignedViewUrl, storageKeyBelongsToUser } from "@/lib/storage";
+import { normalizeStorageKey } from "@/lib/storage/url";
+import { OutfitPreview } from "@/models/OutfitPreview";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
@@ -19,10 +22,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
 
-    const storageKey = decodeURIComponent(context.params.key);
+    const storageKey = normalizeStorageKey(decodeURIComponent(context.params.key));
+    const userId = String(auth.user._id);
+    if (
+      !storageKeyBelongsToUser({ userId, storageKey, prefix: "wardrobe" }) &&
+      !storageKeyBelongsToUser({ userId, storageKey, prefix: "generated-previews" })
+    ) {
+      return apiError("NOT_FOUND", "Image access was not found.");
+    }
+
     const ownedObject =
       (await WardrobeUpload.findOne({ userId: auth.user._id, storageKey }).select("_id").lean()) ||
-      (await WardrobeItem.findOne({ userId: auth.user._id, storageKey }).select("_id").lean());
+      (await WardrobeItem.findOne({ userId: auth.user._id, storageKey }).select("_id").lean()) ||
+      (await OutfitPreview.findOne({ userId: auth.user._id, storageKey }).select("_id").lean());
 
     if (!ownedObject) return apiError("NOT_FOUND", "Image access was not found.");
 
@@ -38,7 +50,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ view });
   } catch (error) {
-    console.error("FitPick signed view error:", error);
+    logSafeError("uploads.view", error);
     return apiError("INTERNAL_ERROR", "Unable to create image access right now.");
   }
 }

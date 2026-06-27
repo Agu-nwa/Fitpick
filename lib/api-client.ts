@@ -280,6 +280,48 @@ export type StyleProfileData = {
   };
 };
 
+export type AvatarProfileData = {
+  profile: {
+    id: string;
+    genderPresentation: "masculine" | "feminine" | "neutral";
+    bodyPreset: "slim" | "average" | "athletic" | "curvy" | "plus";
+    heightPreset: "short" | "average" | "tall" | null;
+    skinTonePreset: string | null;
+    hairStylePreset: string | null;
+    posePreset: "standing" | "walking" | "editorial" | "runway" | "casual";
+    visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial";
+    avatarProvider: "ready_player_me" | "fitpick_preset" | "custom_glb";
+    avatarUrl: string | null;
+    glbStorageKey: string | null;
+    consentAccepted: boolean;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+};
+
+export type AvatarPreviewData = {
+  preview: {
+    id: string;
+    status: "not_started" | "generating" | "ready" | "failed" | string;
+    provider: "s3" | string;
+    storageKey: string;
+    imageUrl: string;
+    previewUrl: string;
+    cacheKey: string;
+    promptVersion: string;
+    model: string;
+    visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial" | string;
+    posePreset: "standing" | "walking" | "editorial" | "runway" | "casual" | string;
+    generatedAt: string | null;
+    errorMessage: string;
+    attempts: number;
+    cached: boolean;
+    visualizationNote: string;
+  };
+  avatarProfile?: AvatarProfileData["profile"];
+  job?: JobStatusData["job"];
+};
+
 export type FashionMemorySummary = {
   eventCount: number;
   positive: {
@@ -402,3 +444,8 @@ export const updateNotificationPreferences = (body: unknown) =>
 export const requestSignedUploadUrl = (body: unknown) => apiRequest<SignedUploadData>("/api/uploads/signed-url", { method: "POST", body });
 export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-profile", { cache: "no-store" });
 export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });
+export const getAvatarProfile = () => apiRequest<AvatarProfileData>("/api/avatar-profile", { cache: "no-store" });
+export const updateAvatarProfile = (body: unknown) => apiRequest<AvatarProfileData>("/api/avatar-profile", { method: "PATCH", body });
+export const getAvatarPreview = (id: string) => apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { cache: "no-store" });
+export const generateAvatarPreview = (id: string, options: unknown = {}) =>
+  apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { method: "POST", body: options });

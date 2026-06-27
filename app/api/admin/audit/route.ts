@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/admin";
+import { logSafeError } from "@/lib/security/safe-log";
 import { AuditEvent } from "@/models/AuditEvent";
 
 export async function GET() {
@@ -32,7 +33,7 @@ export async function GET() {
       summary: summary.map((row) => ({ action: row._id, count: row.count }))
     });
   } catch (error) {
-    console.error("FitPick admin audit error:", error);
+    logSafeError("admin.audit", error);
     return apiError("INTERNAL_ERROR", "Unable to load audit summary right now.");
   }
 }

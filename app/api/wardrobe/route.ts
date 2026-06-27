@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, serializeWardrobeItem, wardrobeSummary } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       summary: wardrobeSummary(items)
     });
   } catch (error) {
-    console.error("FitPick wardrobe list error:", error);
+    logSafeError("wardrobe.list", error);
     return apiError("INTERNAL_ERROR", "Unable to load wardrobe right now.");
   }
 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess({ item: serializeWardrobeItem(item) }, { message: "Wardrobe item created.", status: 201 });
   } catch (error) {
-    console.error("FitPick wardrobe create error:", error);
+    logSafeError("wardrobe.create", error);
     return apiError("INTERNAL_ERROR", "Unable to create wardrobe item right now.");
   }
 }

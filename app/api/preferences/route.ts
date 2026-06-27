@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { StylePreference } from "@/models/StylePreference";
 import { PrivacyPreference } from "@/models/PrivacyPreference";
@@ -23,12 +25,16 @@ export async function GET() {
 
     return apiSuccess({ preferences, privacy });
   } catch (error) {
-    console.error("FitPick preferences get error:", error);
+    logSafeError("preferences.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load preferences right now.");
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitPlaceholder({ key: `preferences:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "preferences-patch" });
+  if (limited) return limited;
+
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
@@ -75,7 +81,7 @@ export async function PATCH(request: NextRequest) {
 
     return apiSuccess({ preferences, privacy }, { message: "Preferences updated." });
   } catch (error) {
-    console.error("FitPick preferences patch error:", error);
+    logSafeError("preferences.patch", error);
     return apiError("INTERNAL_ERROR", "Unable to update preferences right now.");
   }
 }
