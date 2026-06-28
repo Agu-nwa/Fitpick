@@ -34,8 +34,8 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
     <Card className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Digital Human Preview</p>
-          <p className="mt-1 text-xs leading-5 text-muted">AI fashion visualization, not exact body-measurement virtual try-on.</p>
+          <p className="text-sm font-semibold text-ink">My Avatar</p>
+          <p className="mt-1 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
         </div>
         <Badge tone={profile?.consentAccepted ? "premium" : "warning"}>
           {profile?.consentAccepted ? "Ready" : "Review"}
@@ -54,10 +54,10 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
           </select>
         </label>
         <Button type="button" variant={autoRotate ? "primary" : "secondary"} className="self-end" onClick={() => setAutoRotate((value) => !value)}>
-          {autoRotate ? "360 on" : "360 off"}
+          {autoRotate ? "Stand still" : "Turn around"}
         </Button>
         <Button type="button" variant={animatedPreview ? "primary" : "secondary"} className="self-end" onClick={() => setAnimatedPreview((value) => !value)}>
-          {animatedPreview ? "Walking on" : "Walking mode"}
+          {animatedPreview ? "Stand still" : "Walk preview"}
         </Button>
       </div>
 
@@ -72,14 +72,17 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Badge tone="neutral">{profile?.avatarProvider === "ready_player_me" ? "Ready Player Me" : profile?.avatarProvider === "custom_glb" ? "Custom GLB" : "FitPick preset"}</Badge>
-        <Badge tone="neutral">{posePreset}</Badge>
-        <Badge tone="neutral">{profile?.visualizationStyle || "luxury"}</Badge>
-        {autoRotate ? <Badge tone="info">360 view</Badge> : null}
-        {animatedPreview ? <Badge tone="warning">Animated preview mode</Badge> : null}
-      </div>
-      <p className="text-xs leading-5 text-muted">Manual orbit controls are enabled. Animated preview mode uses available GLB animations when present, otherwise subtle viewer movement only.</p>
+      <details className="rounded-2xl border border-line bg-white p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge tone="neutral">{profile?.avatarProvider === "ready_player_me" ? "Ready Player Me" : profile?.avatarProvider === "custom_glb" ? "Custom GLB" : "FitPick preset"}</Badge>
+          <Badge tone="neutral">{posePreset}</Badge>
+          <Badge tone="neutral">{profile?.visualizationStyle || "luxury"}</Badge>
+          {autoRotate ? <Badge tone="info">360 view</Badge> : null}
+          {animatedPreview ? <Badge tone="warning">Walk preview mode</Badge> : null}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-muted">Manual turn controls are enabled. Walk preview uses available avatar animations when present, otherwise simple viewer movement only.</p>
+      </details>
     </Card>
   );
 }

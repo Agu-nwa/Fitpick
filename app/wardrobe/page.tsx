@@ -11,8 +11,8 @@ const filters = ["Color", "Occasion", "Weather", "Recently worn", "Needs care"];
 export default function WardrobePage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="Wardrobe" title="Your verified wardrobe" subtitle="Manage the pieces FitPick can confidently style from." />
-      <Link href="/wardrobe/add"><Button className="mb-5 w-full">Add garment intelligence</Button></Link>
+      <PageHeader eyebrow="Closet" title="Your saved clothes" subtitle="Manage the clothes FitPick can choose from." />
+      <Link href="/wardrobe/add"><Button className="mb-5 w-full">Add clothes</Button></Link>
 
       <div className="mobile-scrollbar mb-4 flex gap-2 overflow-x-auto pb-1">
         {categories.map((category, index) => <Chip key={category} active={index === 0}>{category}</Chip>)}

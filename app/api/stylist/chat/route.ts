@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             previewId: null,
             imageUrl: null,
             cacheKey: null,
-            errorMessage: "Digital Human generation is busy right now. Please try again shortly."
+            errorMessage: "Avatar preview is busy right now. Please try again shortly."
           }
         });
       } else {
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
               previewId: null,
               imageUrl: null,
               cacheKey: null,
-              errorMessage: "Unable to create the Digital Human look right now."
+              errorMessage: "Unable to show the outfit on your avatar right now."
             }
           });
         }

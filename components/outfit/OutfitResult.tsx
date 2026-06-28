@@ -25,6 +25,7 @@ import {
   swapOutfitItem,
   wearOutfit
 } from "@/lib/api-client";
+import { simplePreviewType } from "@/lib/copy/simple-copy";
 import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
@@ -302,7 +303,7 @@ export function OutfitResult({
       }
     }
 
-    setPreviewError("This may take a moment for premium AI processing. Check back shortly.");
+    setPreviewError("This preview is still being prepared. Check back shortly.");
   }
 
   async function handleGenerateAvatarPreview(regenerate = false) {
@@ -322,17 +323,17 @@ export function OutfitResult({
       setAvatarPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setAvatarPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
-        setToast("Your Digital Human Preview is being styled.");
+        setToast("Showing it on your avatar.");
         void pollAvatarPreviewJob(result.data.job.id);
         return;
       }
-      setToast(preview.cached ? "Digital Human cache loaded" : "Digital Human Preview ready.");
+      setToast(preview.cached ? "Avatar preview loaded." : "Avatar preview ready.");
       window.setTimeout(() => setToast(""), 1800);
       return;
     }
 
     setAvatarPreviewStatus("failed");
-    setAvatarPreviewError(result.error.message || "Unable to generate Digital Human Preview right now.");
+    setAvatarPreviewError(result.error.message || "Unable to show it on your avatar right now.");
   }
 
   async function pollAvatarPreviewJob(jobId: string) {
@@ -353,27 +354,30 @@ export function OutfitResult({
           setAvatarPreviewOpen(true);
         }
         setAvatarPreviewJobId("");
-        setToast("Digital Human Preview ready.");
+        setToast("Avatar preview ready.");
         window.setTimeout(() => setToast(""), 1800);
         return;
       }
 
       if (job.status === "failed" || job.status === "cancelled") {
-        setAvatarPreviewError(job.errorMessage || "Unable to generate Digital Human Preview right now.");
+        setAvatarPreviewError(job.errorMessage || "Unable to show it on your avatar right now.");
         setAvatarPreviewJobId("");
         return;
       }
     }
 
-    setAvatarPreviewError("This may take a moment for premium AI processing. Check back shortly.");
+    setAvatarPreviewError("This avatar preview is still being prepared. Check back shortly.");
   }
 
   return (
     <>
-      <OutfitCard outfit={outfit} />
+      <section>
+        <SectionHeader title="Your outfit" />
+        <OutfitCard outfit={outfit} />
+      </section>
 
       <section className="mt-7">
-        <SectionHeader title="Premium AI Preview" />
+        <SectionHeader title="Your outfit preview" />
 
         <Card className="mt-4">
           {previewUrl ? (
@@ -382,34 +386,40 @@ export function OutfitResult({
               className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
               onClick={() => setPreviewOpen(true)}
             >
-              <img src={previewUrl} alt={`${outfit.title} AI preview`} className="aspect-square w-full object-cover" />
+              <img src={previewUrl} alt={`${outfit.title} outfit preview`} className="aspect-square w-full object-cover" />
             </button>
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
-              <p className="text-sm leading-6 text-muted">Generate a premium AI visualization from your owned wardrobe items.</p>
+              <p className="text-sm leading-6 text-muted">Show a preview from your saved clothes.</p>
             </div>
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge tone={previewStatus === "ready" ? "success" : previewStatus === "failed" ? "danger" : "premium"}>
-              {previewStatus === "ready" ? "Preview ready" : previewStatus === "failed" ? "Preview failed" : "AI visualization"}
+              {previewStatus === "ready" ? "Preview ready" : previewStatus === "failed" ? "Preview failed" : "Outfit preview"}
             </Badge>
-            {previewAccuracyLevel ? <Badge tone="premium">{previewAccuracyLevel.label}</Badge> : null}
-            <p className="text-xs leading-5 text-muted">Not an exact virtual try-on.</p>
+            <p className="text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
           </div>
           {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
-            <p className="mt-3 text-sm font-semibold text-cocoa">Your preview is being styled. This may take a moment for premium AI processing.</p>
+            <p className="mt-3 text-sm font-semibold text-cocoa">Your preview is being prepared. This may take a moment.</p>
           ) : null}
-          {previewJobId ? <p className="mt-2 text-xs text-muted">Job queued: {previewJobId.slice(-8)}</p> : null}
           {previewError ? <p className="mt-3 text-sm font-semibold text-red-600">{previewError}</p> : null}
+
+          <details className="mt-3 rounded-2xl border border-line bg-white p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {previewAccuracyLevel ? <Badge tone="premium">Preview type: {simplePreviewType(previewAccuracyLevel)}</Badge> : null}
+              {previewJobId ? <Badge tone="neutral">Job {previewJobId.slice(-8)}</Badge> : null}
+            </div>
+          </details>
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button onClick={() => void handleGeneratePreview(false)} disabled={isGeneratingPreview || previewStatus === "generating"}>
-              {isGeneratingPreview ? "Generating..." : previewUrl ? "View cached preview" : "Generate premium preview"}
+              {isGeneratingPreview ? "Showing outfit..." : "Show outfit"}
             </Button>
             {previewUrl ? (
               <Button variant="secondary" onClick={() => void handleGeneratePreview(true)} disabled={isGeneratingPreview}>
-                Regenerate preview
+                Try again
               </Button>
             ) : null}
           </div>
@@ -424,7 +434,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Digital Human Try-On" />
+        <SectionHeader title="See it on your avatar" />
 
         <div className="mt-4">
           <DigitalHumanTryOnPanel

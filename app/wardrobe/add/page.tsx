@@ -16,7 +16,7 @@ const tips = [
 export default function AddClothesPage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="Wardrobe upload" title="Add garment intelligence" subtitle="Upload front, back, fabric, and label photos so FitPick can analyze the item before you confirm it." />
+      <PageHeader eyebrow="Add clothes" title="Upload your clothing photos" subtitle="Add front, back, fabric, and label photos. FitPick will check the details before you save." />
       <WardrobeAddClient />
 
       <section className="mt-7">

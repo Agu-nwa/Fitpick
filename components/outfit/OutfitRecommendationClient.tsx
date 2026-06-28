@@ -19,7 +19,6 @@ import {
 } from "@/components/outfit/OutfitIntegrationStates";
 import { useSession } from "@/hooks/use-session";
 import { createRecommendation } from "@/lib/api-client";
-import { outfitRecommendations } from "@/lib/mock-data";
 import type { OutfitRecommendation } from "@/types/outfit";
 
 const styleDirections = [
@@ -36,7 +35,6 @@ export function OutfitRecommendationClient() {
   const [status, setStatus] = useState<"idle" | "loading" | "unavailable" | "not-enough" | "premium" | "error">("idle");
   const [styleDirection, setStyleDirection] = useState("polished");
   const [weatherContext, setWeatherContext] = useState("indoor");
-  const fallback = outfitRecommendations[0];
 
   const requestBody = useMemo(() => {
     const occasionId = searchParams.get("occasionId") || "";
@@ -82,8 +80,8 @@ export function OutfitRecommendationClient() {
         <SectionHeader title="Outfit request" eyebrow={String(requestBody.occasionName)} />
         <Card className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-ink">Build from verified wardrobe items</p>
-            <Badge tone="premium">Owned items only</Badge>
+            <p className="text-sm font-semibold text-ink">Choose from my saved clothes</p>
+            <Badge tone="premium">Saved clothes only</Badge>
           </div>
           <div>
             <p className="mb-2 text-xs font-semibold text-ink">Style direction</p>
@@ -105,13 +103,20 @@ export function OutfitRecommendationClient() {
             />
           </FieldGroup>
           <Button className="w-full" onClick={() => void handleGenerate()} disabled={session.status !== "authenticated"}>
-            Generate outfit
+            Pick outfit
           </Button>
           <Link href="/occasion" className="block text-center text-sm font-semibold text-cocoa">Change occasion</Link>
         </Card>
       </section>
 
-      <OutfitResult outfit={outfit || fallback} canSwap={Boolean(outfit)} onOutfitChange={setOutfit} />
+      {!outfit ? (
+        <Card className="mb-7 p-4">
+          <p className="text-sm font-semibold text-ink">No outfit picked yet.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Tap Pick outfit and FitPick will choose from your saved clothes.</p>
+        </Card>
+      ) : null}
+
+      {outfit ? <OutfitResult outfit={outfit} canSwap onOutfitChange={setOutfit} /> : null}
     </>
   );
 }

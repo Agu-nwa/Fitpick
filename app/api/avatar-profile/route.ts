@@ -53,7 +53,7 @@ export async function GET() {
     return apiSuccess({ profile: serializeAvatarProfile(profile) });
   } catch (error) {
     logSafeError("avatar-profile.get", error);
-    return apiError("INTERNAL_ERROR", "Unable to load your Digital Human right now.");
+    return apiError("INTERNAL_ERROR", "Unable to load your avatar right now.");
   }
 }
 
@@ -70,12 +70,12 @@ export async function PATCH(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     const profile = await updateAvatarProfile(auth.user._id, parsed.data);
-    return apiSuccess({ profile: serializeAvatarProfile(profile) }, { message: "Digital Human saved." });
+    return apiSuccess({ profile: serializeAvatarProfile(profile) }, { message: "Avatar saved." });
   } catch (error) {
     if (error instanceof Error && error.message === "invalid_avatar_url") {
       return apiError("VALIDATION_ERROR", "Use a secure HTTPS GLB avatar URL.");
     }
     logSafeError("avatar-profile.patch", error);
-    return apiError("INTERNAL_ERROR", "Unable to save your Digital Human right now.");
+    return apiError("INTERNAL_ERROR", "Unable to save your avatar right now.");
   }
 }

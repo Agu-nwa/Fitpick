@@ -5,6 +5,7 @@ import { AvatarViewer } from "@/components/avatar/AvatarViewer";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation, PreviewAccuracySummary } from "@/types/outfit";
 
@@ -26,12 +27,7 @@ type DigitalHumanTryOnPanelProps = {
 };
 
 function fitStatusLabel(status?: string) {
-  if (status === "likely_fits") return "Likely fits";
-  if (status === "may_be_tight") return "May be tight";
-  if (status === "may_be_loose") return "May be loose";
-  if (status === "oversized_intended") return "Oversized intended";
-  if (status === "measurements_needed") return "Measurements needed";
-  return "Fit unknown";
+  return simpleFitStatus(status);
 }
 
 export function DigitalHumanTryOnPanel({
@@ -57,11 +53,11 @@ export function DigitalHumanTryOnPanel({
       <Card className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-ink">Digital Human try-on foundation</p>
-            <p className="mt-1 text-xs leading-5 text-muted">AI Visualization and Garment-Referenced previews are not exact virtual try-on.</p>
+            <p className="text-sm font-semibold text-ink">See it on your avatar</p>
+            <p className="mt-1 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
           </div>
           <Badge tone={accuracyLevel?.id === "fit_locked" ? "success" : "premium"}>
-            {accuracyLevel?.label || "AI Visualization"}
+            {simplePreviewType(accuracyLevel)}
           </Badge>
         </div>
 
@@ -71,11 +67,11 @@ export function DigitalHumanTryOnPanel({
             className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
             onClick={onOpenPreview}
           >
-            <img src={previewUrl} alt={`${outfit.title} Digital Human Preview`} className="aspect-square w-full object-cover" />
+            <img src={previewUrl} alt={`${outfit.title} avatar preview`} className="aspect-square w-full object-cover" />
           </button>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
-            <p className="text-sm leading-6 text-muted">Generate a fit-locked preview from this owned wardrobe look.</p>
+            <p className="text-sm leading-6 text-muted">Show this outfit on your avatar.</p>
           </div>
         )}
 
@@ -86,7 +82,6 @@ export function DigitalHumanTryOnPanel({
           <Badge tone={fitStatus === "likely_fits" || fitStatus === "oversized_intended" ? "success" : "warning"}>
             {fitStatusLabel(fitStatus)}
           </Badge>
-          <Badge tone="neutral">Confidence {Math.round((fitConfidence || 0) * 100)}%</Badge>
         </div>
 
         <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
@@ -114,27 +109,35 @@ export function DigitalHumanTryOnPanel({
         ) : null}
 
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
-          <p className="text-sm font-semibold text-cocoa">Your Digital Human Preview is being styled. This may take a moment.</p>
+          <p className="text-sm font-semibold text-cocoa">Showing it on your avatar. This may take a moment.</p>
         ) : null}
-        {previewJobId ? <p className="text-xs text-muted">Job queued: {previewJobId.slice(-8)}</p> : null}
         {previewError ? <p className="text-sm font-semibold text-red-600">{previewError}</p> : null}
+
+        <details className="rounded-2xl border border-line bg-canvas p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge tone="neutral">Preview type: {simplePreviewType(accuracyLevel)}</Badge>
+            <Badge tone="neutral">Size accuracy {Math.round((fitConfidence || 0) * 100)}%</Badge>
+            {previewJobId ? <Badge tone="neutral">Job {previewJobId.slice(-8)}</Badge> : null}
+          </div>
+        </details>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
-            {isGenerating ? "Generating..." : previewUrl ? "View fit-locked preview" : "Generate fit-locked preview"}
+            {isGenerating ? "Showing outfit..." : previewUrl ? "Show better fit" : "Show outfit on avatar"}
           </Button>
           <Link href="/avatar">
-            <Button type="button" variant="secondary" className="w-full">Add measurements</Button>
+            <Button type="button" variant="secondary" className="w-full">Add my size</Button>
           </Link>
           <Link href="/avatar">
-            <Button type="button" variant="secondary" className="w-full">Improve fit accuracy</Button>
+            <Button type="button" variant="secondary" className="w-full">Improve size details</Button>
           </Link>
-          <Button type="button" variant="secondary" disabled title="Connect a real 3D garment simulation provider first.">
-            Request True 3D Simulation
+          <Button type="button" variant="secondary" disabled title="Advanced try-on needs a real 3D clothing simulation provider first.">
+            Request advanced try-on
           </Button>
           {previewUrl ? (
             <Button type="button" variant="ghost" onClick={onRegenerate} disabled={isGenerating}>
-              Regenerate preview
+              Try again
             </Button>
           ) : null}
         </div>

@@ -110,7 +110,7 @@ export function WardrobeAddClient() {
   const uploadSteps = [
     { label: "Capture 4 photos", status: selectedCount === slotOrder.length ? "complete" : "current" },
     { label: "Upload together", status: isSaving ? "current" : selectedCount === slotOrder.length ? "complete" : "pending" },
-    { label: "AI review", status: isAnalyzing ? "current" : "pending" }
+    { label: "Check clothes", status: isAnalyzing ? "current" : "pending" }
   ] as const;
 
   function handleSelectSlot(purpose: WardrobeImagePurpose) {
@@ -245,7 +245,7 @@ export function WardrobeAddClient() {
       setIsAnalyzing(false);
 
       if (!analysis.ok) {
-        setMessage("Upload saved, but AI analysis did not finish. You can review manually on the next screen.");
+        setMessage("Upload saved, but the clothing check did not finish. You can review manually on the next screen.");
       }
 
       router.push(`/wardrobe/${result.data.upload.id}/confirm`);
@@ -292,7 +292,7 @@ export function WardrobeAddClient() {
         <Card className="space-y-4">
           <ProgressSteps steps={[...uploadSteps]} />
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-white px-3 py-2">
-            <p className="text-xs font-semibold text-ink">Garment intelligence photos</p>
+            <p className="text-xs font-semibold text-ink">Clothing photos</p>
             <Badge tone={missingRequired.length ? "warning" : "success"}>
               {selectedCount}/4 ready
             </Badge>
@@ -332,7 +332,7 @@ export function WardrobeAddClient() {
           </div>
 
           <Button type="button" className="w-full" onClick={() => void handleMultiPhotoUpload()} disabled={isSaving || isAnalyzing}>
-            {isSaving ? "Uploading photos..." : isAnalyzing ? "Analyzing garment intelligence..." : "Upload and analyze"}
+            {isSaving ? "Uploading photos..." : isAnalyzing ? "Checking clothes..." : "Upload and check clothes"}
           </Button>
 
           {message ? (
@@ -348,7 +348,7 @@ export function WardrobeAddClient() {
         <Card>
           <FieldGroup
             label="Manual fallback"
-            help="Use this only when photos are unavailable. AI confirmation gives FitPick stronger wardrobe data."
+            help="Use this only when photos are unavailable. Checking photos gives FitPick better wardrobe details."
           >
             <div className="mt-3">
               <WardrobeTagReviewForm showName submitLabel="Create wardrobe item" disabled={isSaving || isAnalyzing} onSubmit={handleManualCreate} />

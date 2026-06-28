@@ -5,7 +5,7 @@ import { WardrobeUploadConfirmClient } from "@/components/wardrobe/WardrobeUploa
 export default function WardrobeConfirmPage({ params }: { params: { id: string } }) {
   return (
     <AppShell>
-      <PageHeader eyebrow="AI confirmation" title="Review your garment intelligence" subtitle="Confirm what FitPick detected before it becomes trusted wardrobe data." />
+      <PageHeader eyebrow="Check details" title="FitPick found these details" subtitle="Please check them and change anything that looks wrong." />
       <WardrobeUploadConfirmClient uploadId={params.id} />
     </AppShell>
   );

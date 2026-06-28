@@ -7,8 +7,8 @@ export default function StyleProfilePage() {
     <AppShell>
       <PageHeader
         eyebrow="Personalization"
-        title="Your Style DNA"
-        subtitle="Teach FitPick how you like to dress. These preferences help your AI stylist refine every recommendation."
+        title="Your style preferences"
+        subtitle="Teach FitPick how you like to dress so outfit ideas feel more like you."
       />
       <div className="mt-7">
         <StyleProfileForm />

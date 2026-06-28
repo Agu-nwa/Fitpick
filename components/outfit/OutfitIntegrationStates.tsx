@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 export function OutfitGeneratingState() {
-  return <LoadingCard title="Building outfit" />;
+  return <LoadingCard title="Choosing clothes" />;
 }
 
 export function OutfitBackendUnavailableState({ onRetry }: { onRetry?: () => void | Promise<void> }) {
@@ -25,8 +25,8 @@ export function OutfitAuthRequiredState() {
 export function NotEnoughWardrobeItemsState() {
   return (
     <Card className="p-4">
-      <p className="text-sm font-semibold text-ink">Your wardrobe needs one more anchor</p>
-      <p className="mt-2 text-xs leading-5 text-muted">FitPick only recommends items you own. Add a top, bottom, dress, shoes, or native piece to unlock stronger outfit builds.</p>
+      <p className="text-sm font-semibold text-ink">Add more clothes first.</p>
+      <p className="mt-2 text-xs leading-5 text-muted">FitPick only chooses clothes you own. Add a top, bottom, dress, shoes, or native piece.</p>
       <Link href="/wardrobe/add">
         <Button className="mt-4 w-full">Add clothes</Button>
       </Link>

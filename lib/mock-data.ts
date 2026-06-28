@@ -114,7 +114,7 @@ export const uploadPreviewItems = [
 ];
 
 export const emptyStates = {
-  wardrobe: { title: "Your wardrobe is empty", body: "Add a few clothes you wear often so FitPick can build your first outfit.", cta: "Add clothes" },
+  wardrobe: { title: "Your wardrobe is empty.", body: "Add your first clothing item.", cta: "Add clothes" },
   shoes: { title: "No shoes added", body: "Shoes help FitPick finish your look and match the occasion.", cta: "Add shoes" },
   looks: { title: "No saved looks yet", body: "Save outfits you like so you can wear them again later.", cta: "Pick outfit" }
 };

@@ -59,8 +59,8 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   const reviewSteps = useMemo(
     () => [
       { label: "Photos uploaded", status: "complete" as const },
-      { label: "AI analysis", status: isAnalyzing ? "current" as const : upload?.aiAnalysis ? "complete" as const : "warning" as const },
-      { label: "Verified save", status: createdItem ? "complete" as const : "pending" as const }
+      { label: "Clothing check", status: isAnalyzing ? "current" as const : upload?.aiAnalysis ? "complete" as const : "warning" as const },
+      { label: "Save item", status: createdItem ? "complete" as const : "pending" as const }
     ],
     [createdItem, isAnalyzing, upload?.aiAnalysis]
   );
@@ -88,7 +88,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
       if ((result.data as any).job?.id) {
         const jobId = (result.data as any).job.id;
         setAnalysisJobId(jobId);
-        setMessage("FitPick is analyzing your garment intelligence. This may take a moment for premium AI processing.");
+        setMessage("FitPick is checking your clothing photos. This may take a moment.");
 
         for (let attempt = 0; attempt < 30; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 2500));
@@ -99,7 +99,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
             setAnalysisJobId("");
             setIsAnalyzing(false);
             const refreshed = await loadUpload();
-            setMessage("AI analysis is ready for review.");
+            setMessage("Your clothing details are ready to check.");
             return refreshed;
           }
 
@@ -112,18 +112,18 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
         }
 
         setIsAnalyzing(false);
-        setMessage("FitPick is still analyzing your garment intelligence. Refresh shortly to continue.");
+        setMessage("FitPick is still checking your clothing photos. Refresh shortly to continue.");
         return await loadUpload();
       }
 
       setIsAnalyzing(false);
       const refreshed = await loadUpload();
-      setMessage(result.data.aiTagStatus === "failed" ? result.data.safeMessage || "Analysis failed. Add tags manually." : "AI analysis is ready for review.");
+      setMessage(result.data.aiTagStatus === "failed" ? result.data.safeMessage || "Clothing check failed. Add details manually." : "Your clothing details are ready to check.");
       return refreshed;
     }
 
     setIsAnalyzing(false);
-    setMessage("AI analysis is unavailable. You can still save tags manually.");
+    setMessage("Clothing check is unavailable. You can still save details manually.");
     setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
     return null;
   }, [loadUpload, uploadId]);
@@ -194,13 +194,13 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   return (
     <div className="mt-7 space-y-7">
       <section>
-        <SectionHeader title="Uploaded photos" eyebrow="AI review" />
+        <SectionHeader title="Uploaded photos" eyebrow="Clothing check" />
         <Card className="space-y-4">
           <ProgressSteps steps={reviewSteps} />
           <WardrobeImageSlots images={upload.images as any} disabled />
           <div className="rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs leading-5 text-ink">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold">{isAnalyzing ? "Analyzing photos..." : upload.aiAnalysis ? "Review your garment intelligence" : "Waiting for analysis"}</p>
+              <p className="font-semibold">{isAnalyzing ? "Checking photos..." : upload.aiAnalysis ? "Check the clothing details" : "Waiting for clothing check"}</p>
               {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
             </div>
             {message ? <p className="mt-1 text-muted">{message}</p> : null}
@@ -216,13 +216,13 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
             </div>
           ) : null}
           <Button type="button" variant="secondary" className="w-full" onClick={() => void analyzeUpload()} disabled={isAnalyzing || isSaving}>
-            {isAnalyzing ? "Analyzing..." : "Run AI analysis again"}
+            {isAnalyzing ? "Checking..." : "Check photos again"}
           </Button>
         </Card>
       </section>
 
       <section>
-        <SectionHeader title="Confirm what FitPick detected" eyebrow="Verified save" />
+        <SectionHeader title="Check details" eyebrow="Save item" />
         <Card>
           <AITagConfirmationForm
             aiAnalysis={upload.aiAnalysis}

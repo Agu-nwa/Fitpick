@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const summary = await getMemorySummary(auth.user._id);
     return apiSuccess({ summary: serializeMemorySummary(summary) });
   } catch {
-    return apiError("INTERNAL_ERROR", "Unable to load fashion memory right now.");
+    return apiError("INTERNAL_ERROR", "Unable to load your style history right now.");
   }
 }
 
@@ -112,6 +112,6 @@ export async function POST(request: NextRequest) {
       { message: "Fashion memory updated.", status: 201 }
     );
   } catch {
-    return apiError("INTERNAL_ERROR", "Unable to save fashion memory right now.");
+    return apiError("INTERNAL_ERROR", "Unable to save your style history right now.");
   }
 }

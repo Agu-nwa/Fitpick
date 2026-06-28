@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     logSafeError("avatar-preview.get", error);
-    return apiError("INTERNAL_ERROR", "Unable to load Digital Human Preview right now.");
+    return apiError("INTERNAL_ERROR", "Unable to load your avatar preview right now.");
   }
 }
 
@@ -88,17 +88,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!parsed.ok) return parsed.response;
 
     if (!process.env.OPENAI_API_KEY) {
-      return apiError("INTERNAL_ERROR", "Digital Human image generation is not configured yet.");
+      return apiError("INTERNAL_ERROR", "Avatar preview is not configured yet.");
     }
 
     const loaded = await loadOwnedAvatarPreviewSubject(activeUserId, context.params.id);
     if (!loaded) return apiError("NOT_FOUND", "Outfit was not found.");
     if (loaded.missingItems || !loaded.items.length) {
-      return apiError("BAD_REQUEST", "This Digital Human Preview needs all selected owned wardrobe items available.");
+      return apiError("BAD_REQUEST", "This avatar preview needs all selected saved clothes available.");
     }
 
     if (!loaded.avatarProfile.consentAccepted) {
-      return apiError("BAD_REQUEST", "Please review and save your Digital Human settings before generating an avatar look.");
+      return apiError("BAD_REQUEST", "Please review and save your avatar settings before showing the outfit.");
     }
 
     activeAvatarProfileId = String(loaded.avatarProfile._id);
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiSuccess({
         preview: serializeAvatarPreview(inFlight),
         avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
-      }, { message: "Digital Human Preview generation is already in progress." });
+      }, { message: "Avatar preview is already being prepared." });
     }
 
     const latestAttempt = await AvatarOutfitPreview.findOne({
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }).lean() as any;
 
     if ((latestAttempt?.attempts || 0) >= 5 && !parsed.data.regenerate) {
-      return apiError("RATE_LIMITED", "Digital Human Preview generation has been retried several times. Please try again later.");
+      return apiError("RATE_LIMITED", "Avatar preview has been retried several times. Please try again later.");
     }
 
     await markAvatarPreviewStatus(
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
           job: serializeJob(job)
         },
-        { message: "Your Digital Human Preview is being styled.", status: 202 }
+        { message: "Your avatar preview is being prepared.", status: 202 }
       );
     }
 
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return apiSuccess({
       preview: serializeAvatarPreview(saved),
       avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
-    }, { message: "Digital Human Preview generated.", status: 201 });
+    }, { message: "Avatar preview ready.", status: 201 });
   } catch (error) {
     try {
       if (activeUserId && activeAvatarProfileId && isObjectId(context.params.id)) {
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           {
             cacheKey: activeCacheKey || `failed:${context.params.id}`,
             status: "failed",
-            errorMessage: "Unable to generate Digital Human Preview right now.",
+            errorMessage: "Unable to show it on your avatar right now.",
             lastAttemptAt: new Date()
           }
         );
@@ -255,6 +255,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       errorCategory: errorCategory(error)
     });
 
-    return apiError("INTERNAL_ERROR", "Unable to generate Digital Human Preview right now.");
+    return apiError("INTERNAL_ERROR", "Unable to show it on your avatar right now.");
   }
 }

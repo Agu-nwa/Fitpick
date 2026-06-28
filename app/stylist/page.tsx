@@ -6,9 +6,9 @@ export default function StylistPage() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="AI stylist"
+        eyebrow="Stylist"
         title="FitPick Stylist"
-        subtitle="Ask for church, wedding, date night, business casual, travel, or a full wardrobe-grounded outfit."
+        subtitle="Ask what to wear for church, a wedding, date night, work, travel, or the weekend."
       />
       <StylistChat />
     </AppShell>

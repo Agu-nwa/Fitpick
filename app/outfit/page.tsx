@@ -8,9 +8,9 @@ export default function OutfitPage() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Outfit engine"
+        eyebrow="Looks"
         title="Build today’s look"
-        subtitle="Generate a wardrobe-grounded outfit with occasion, weather, Style DNA, and fashion memory."
+        subtitle="Tell FitPick what you need and it will choose from your saved clothes."
       />
       <Suspense fallback={<OutfitGeneratingState />}>
         <OutfitRecommendationClient />

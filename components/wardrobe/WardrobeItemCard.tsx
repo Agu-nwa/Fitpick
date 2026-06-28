@@ -3,6 +3,14 @@ import { Badge } from "@/components/ui/Badge";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { cn } from "@/lib/utils";
 
+function measurementLabel(source: string) {
+  if (source === "label_ocr") return "From label";
+  if (source === "user_confirmed") return "Checked by you";
+  if (source === "manual") return "Measured";
+  if (source === "ai_estimated") return "Estimated size";
+  return "Size unknown";
+}
+
 export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const status = item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Missing tags" : "Ready";
   const tone = item.condition === "ready" ? "success" : item.condition === "needs-care" ? "warning" : "premium";
@@ -31,9 +39,9 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
         {item.category ? <Badge>{item.category}</Badge> : null}
         {item.taggedSize && item.taggedSize !== "unknown" ? <Badge tone="info">Size {item.taggedSize}</Badge> : null}
         {item.garmentFit && item.garmentFit !== "unknown" ? <Badge tone="neutral">{item.garmentFit} fit</Badge> : null}
-        {item.measurementSource && item.measurementSource !== "unknown" ? <Badge tone={item.measurementSource === "ai_estimated" ? "warning" : "success"}>{item.measurementSource.replace("_", " ")}</Badge> : null}
-        {processingStatus === "processing" ? <Badge tone="info">Creating studio image</Badge> : null}
-        {processingStatus === "unavailable" ? <Badge tone="warning">Studio image unavailable</Badge> : null}
+        {item.measurementSource && item.measurementSource !== "unknown" ? <Badge tone={item.measurementSource === "ai_estimated" ? "warning" : "success"}>{measurementLabel(item.measurementSource)}</Badge> : null}
+        {processingStatus === "processing" ? <Badge tone="info">Creating clean photo</Badge> : null}
+        {processingStatus === "unavailable" ? <Badge tone="warning">Original photo</Badge> : null}
       </div>
     </article>
   );

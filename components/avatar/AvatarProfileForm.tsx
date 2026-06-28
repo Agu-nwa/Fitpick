@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -108,20 +109,22 @@ export function AvatarProfileForm({
 
     setSaving(false);
     if (!result.ok) {
-      setError(result.error.message || "Unable to save your Digital Human.");
+      setError(result.error.message || "Unable to save your avatar.");
       return;
     }
 
     onSaved(result.data.profile);
-    setNotice("Digital Human saved.");
+    setNotice("Avatar saved.");
   }
+
+  const hasSizeDetails = Object.values(measurements).some((value) => value.trim()) || Boolean(shoeSize.trim());
 
   return (
     <Card className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Choose how FitPick visualizes your outfits.</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Your Digital Human helps FitPick generate premium outfit previews.</p>
+          <p className="text-sm font-semibold text-ink">Choose how your avatar looks.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Adding your size helps FitPick show outfits better. You can skip this and add it later.</p>
         </div>
         <Badge tone="premium">User controlled</Badge>
       </div>
@@ -130,14 +133,14 @@ export function AvatarProfileForm({
       {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
 
       <section className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-2">
-        <FieldGroup label="Gender presentation" htmlFor="avatar-gender">
+        <FieldGroup label="Avatar look" htmlFor="avatar-gender">
           <select id="avatar-gender" className={inputClass} value={genderPresentation} onChange={(event) => setGenderPresentation(event.target.value as AvatarProfile["genderPresentation"])}>
             <option value="neutral">Neutral</option>
             <option value="masculine">Masculine</option>
             <option value="feminine">Feminine</option>
           </select>
         </FieldGroup>
-        <FieldGroup label="Body preset" htmlFor="avatar-body" help="Preset only, not a stored body measurement.">
+        <FieldGroup label="Body shape" htmlFor="avatar-body" help="A simple avatar shape, not exact body measuring.">
           <select id="avatar-body" className={inputClass} value={bodyPreset} onChange={(event) => setBodyPreset(event.target.value as AvatarProfile["bodyPreset"])}>
             <option value="average">Average</option>
             <option value="slim">Slim</option>
@@ -146,7 +149,7 @@ export function AvatarProfileForm({
             <option value="plus">Plus</option>
           </select>
         </FieldGroup>
-        <FieldGroup label="Height preset" htmlFor="avatar-height">
+        <FieldGroup label="Height" htmlFor="avatar-height">
           <select id="avatar-height" className={inputClass} value={heightPreset || ""} onChange={(event) => setHeightPreset((event.target.value || null) as AvatarProfile["heightPreset"])}>
             <option value="">Unspecified</option>
             <option value="short">Short</option>
@@ -165,7 +168,7 @@ export function AvatarProfileForm({
             <option value="back">Back</option>
           </select>
         </FieldGroup>
-        <FieldGroup label="Visualization style" htmlFor="avatar-style">
+        <FieldGroup label="Avatar style" htmlFor="avatar-style">
           <select id="avatar-style" className={inputClass} value={visualizationStyle} onChange={(event) => setVisualizationStyle(event.target.value as AvatarProfile["visualizationStyle"])}>
             <option value="luxury">Luxury</option>
             <option value="minimal">Minimal</option>
@@ -173,7 +176,7 @@ export function AvatarProfileForm({
             <option value="editorial">Editorial</option>
           </select>
         </FieldGroup>
-        <FieldGroup label="Avatar provider" htmlFor="avatar-provider">
+        <FieldGroup label="Avatar type" htmlFor="avatar-provider">
           <select id="avatar-provider" className={inputClass} value={avatarProvider} onChange={(event) => setAvatarProvider(event.target.value as AvatarProfile["avatarProvider"])}>
             <option value="fitpick_preset">FitPick preset</option>
             <option value="ready_player_me">Ready Player Me</option>
@@ -183,7 +186,7 @@ export function AvatarProfileForm({
       </section>
 
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
-        <FieldGroup label="Ready Player Me or GLB URL" htmlFor="avatar-url" help="Use a secure HTTPS .glb URL. FitPick does not execute scripts from avatar links.">
+        <FieldGroup label="Custom avatar link" htmlFor="avatar-url" help="Optional. Use this only if you already have a secure avatar file link.">
           <input
             id="avatar-url"
             className={inputClass}
@@ -205,8 +208,13 @@ export function AvatarProfileForm({
 
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Body measurements</p>
-          <p className="mt-1 text-xs leading-5 text-muted">Measurements help FitPick reduce random fit changes. They are not used to infer identity.</p>
+          <p className="text-sm font-semibold text-ink">My size</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Adding your size helps FitPick show outfits better. These details are not used to infer identity.</p>
+          {!hasSizeDetails ? (
+            <p className="mt-2 rounded-2xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
+              No size details yet. Add your size later to improve outfit previews.
+            </p>
+          ) : null}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {measurementFields.map((field) => (
@@ -226,7 +234,7 @@ export function AvatarProfileForm({
           <FieldGroup label="Shoe size" htmlFor="avatar-shoe-size">
             <input id="avatar-shoe-size" className={inputClass} value={shoeSize} onChange={(event) => setShoeSize(event.target.value)} placeholder="EU 43 / US 10" />
           </FieldGroup>
-          <FieldGroup label="Fit preference" htmlFor="avatar-fit-preference">
+          <FieldGroup label="How I like clothes to fit" htmlFor="avatar-fit-preference">
             <select id="avatar-fit-preference" className={inputClass} value={bodyFitPreference} onChange={(event) => setBodyFitPreference(event.target.value as AvatarProfile["bodyFitPreference"])}>
               <option value="true_to_size">True to size</option>
               <option value="slim">Slim</option>
@@ -235,7 +243,7 @@ export function AvatarProfileForm({
               <option value="oversized">Oversized</option>
             </select>
           </FieldGroup>
-          <FieldGroup label="Measurement source" htmlFor="avatar-measurement-source">
+          <FieldGroup label="How size was added" htmlFor="avatar-measurement-source">
             <select id="avatar-measurement-source" className={inputClass} value={bodyMeasurementSource} onChange={(event) => setBodyMeasurementSource(event.target.value as AvatarProfile["bodyMeasurementSource"])}>
               <option value="unknown">Unknown</option>
               <option value="manual">Manual</option>
@@ -243,7 +251,7 @@ export function AvatarProfileForm({
               <option value="body_scan">Body scan</option>
             </select>
           </FieldGroup>
-          <FieldGroup label="Measurement confidence" htmlFor="avatar-measurement-confidence" help="0 to 1. Use lower confidence for estimates.">
+          <FieldGroup label="Size accuracy" htmlFor="avatar-measurement-confidence" help="Use a lower number when this is only a guess.">
             <input id="avatar-measurement-confidence" type="number" min="0" max="1" step="0.05" className={inputClass} value={bodyMeasurementConfidence} onChange={(event) => setBodyMeasurementConfidence(event.target.value)} />
           </FieldGroup>
         </div>
@@ -257,13 +265,18 @@ export function AvatarProfileForm({
           onChange={(event) => setConsentAccepted(event.target.checked)}
         />
         <span>
-          I understand this is an AI fashion visualization, not exact body-measurement virtual try-on.
+          I understand this is a preview, not a perfect fitting.
         </span>
       </label>
 
-      <Button type="button" className="w-full" onClick={() => void saveProfile()} disabled={saving}>
-        {saving ? "Saving..." : "Save Digital Human"}
-      </Button>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Button type="button" className="w-full" onClick={() => void saveProfile()} disabled={saving}>
+          {saving ? "Saving..." : "Save my size"}
+        </Button>
+        <Link href="/home">
+          <Button type="button" variant="secondary" className="w-full" disabled={saving}>Skip for now</Button>
+        </Link>
+      </div>
     </Card>
   );
 }

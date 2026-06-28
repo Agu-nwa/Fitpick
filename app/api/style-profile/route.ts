@@ -57,7 +57,7 @@ export async function GET() {
     return apiSuccess({ profile: serializeStyleProfile(updated) });
   } catch (error) {
     logSafeError("style-profile.get", error);
-    return apiError("INTERNAL_ERROR", "Unable to load your Style DNA right now.");
+    return apiError("INTERNAL_ERROR", "Unable to load your style preferences right now.");
   }
 }
 
@@ -74,9 +74,9 @@ export async function PATCH(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     const profile = await updateStyleProfile(auth.user._id, parsed.data);
-    return apiSuccess({ profile: serializeStyleProfile(profile) }, { message: "Style DNA saved." });
+    return apiSuccess({ profile: serializeStyleProfile(profile) }, { message: "Style preferences saved." });
   } catch (error) {
     logSafeError("style-profile.patch", error);
-    return apiError("INTERNAL_ERROR", "Unable to save your Style DNA right now.");
+    return apiError("INTERNAL_ERROR", "Unable to save your style preferences right now.");
   }
 }

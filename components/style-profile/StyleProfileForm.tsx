@@ -44,7 +44,7 @@ export function StyleProfileForm() {
       const result = await getStyleProfile();
       setLoading(false);
       if (!result.ok) {
-        setError("Unable to load your Style DNA.");
+        setError("Unable to load your style preferences.");
         return;
       }
 
@@ -80,16 +80,16 @@ export function StyleProfileForm() {
     setSaving(false);
 
     if (!result.ok) {
-      setError("Unable to save your Style DNA.");
+      setError("Unable to save your style preferences.");
       return;
     }
 
     setProfile(result.data.profile);
-    setNotice("Style DNA saved.");
+    setNotice("Style preferences saved.");
   }
 
   if (loading) {
-    return <LoadingState title="Loading your Style DNA" />;
+    return <LoadingState title="Loading your style preferences" />;
   }
 
   return (
@@ -162,7 +162,7 @@ export function StyleProfileForm() {
       ) : null}
 
       <Button type="button" className="w-full" onClick={() => void saveProfile()} disabled={saving}>
-        {saving ? "Saving..." : "Save Style DNA"}
+        {saving ? "Saving..." : "Save style preferences"}
       </Button>
     </Card>
   );

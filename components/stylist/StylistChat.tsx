@@ -12,6 +12,7 @@ import {
   saveOutfit,
   sendStylistMessage
 } from "@/lib/api-client";
+import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 
@@ -36,6 +37,12 @@ const promptSuggestions = [
   "Give me a business casual look for a hot day"
 ];
 
+const loadingSteps = [
+  "Choosing clothes from your wardrobe...",
+  "Checking what matches...",
+  "Showing it on your avatar..."
+];
+
 function messageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -52,11 +59,11 @@ function previewTone(status?: string) {
 }
 
 function previewLabel(status?: string) {
-  if (status === "ready") return "Digital Human ready";
+  if (status === "ready") return "Avatar ready";
   if (status === "failed") return "Preview failed";
-  if (status === "queued") return "Preview queued";
-  if (status === "generating" || status === "processing") return "Creating look";
-  return "Digital Human";
+  if (status === "queued") return "Preview waiting";
+  if (status === "generating" || status === "processing") return "Showing outfit";
+  return "See it on you";
 }
 
 function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarPreview {
@@ -77,7 +84,7 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
 function ItemStrip({ outfit }: { outfit: OutfitRecommendation }) {
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-xs font-semibold text-ink">Recommended from your wardrobe</p>
+      <p className="text-xs font-semibold text-ink">Clothes from your closet</p>
       <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
         {outfit.items.map((item) => (
           <div key={item.id} className="w-32 shrink-0 overflow-hidden rounded-xl border border-line bg-white">
@@ -140,7 +147,7 @@ export function StylistChat() {
           }),
           jobId: null
         });
-        showToast("Digital Human Preview ready.");
+        showToast("Avatar preview ready.");
         return;
       }
 
@@ -148,7 +155,7 @@ export function StylistChat() {
         patchMessage(messageIdToPatch, {
           avatarPreview: compactPreview({
             status: "failed",
-            errorMessage: job.errorMessage || "Unable to generate Digital Human Preview right now."
+            errorMessage: job.errorMessage || "Unable to show it on your avatar right now."
           }),
           jobId: null
         });
@@ -168,7 +175,7 @@ export function StylistChat() {
       avatarPreview: compactPreview({
         status: "generating",
         jobId,
-        errorMessage: "This may take a moment for premium AI processing. Check back shortly."
+        errorMessage: "This preview is still being prepared. Check back shortly."
       }),
       jobId
     });
@@ -183,7 +190,7 @@ export function StylistChat() {
     const assistantEntry: ChatMessage = {
       id: assistantId,
       role: "assistant",
-      content: "Your stylist is building your look..."
+      content: "Choosing clothes from your wardrobe..."
     };
     const sessionMessages = [...messages, userEntry, assistantEntry];
 
@@ -250,7 +257,7 @@ export function StylistChat() {
       patchMessage(entry.id, {
         avatarPreview: compactPreview({
           status: "failed",
-          errorMessage: result.error.message || "Unable to regenerate Digital Human Preview right now."
+          errorMessage: result.error.message || "Unable to show it on your avatar right now."
         })
       });
       return;
@@ -294,27 +301,25 @@ export function StylistChat() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
               {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
-              {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>{preview.accuracyLevel.label}</Badge> : null}
-              {entry.fitLock?.fitStatus ? <Badge tone={entry.fitLock.fitStatus === "likely_fits" ? "success" : "warning"}>{entry.fitLock.fitStatus.replace(/_/g, " ")}</Badge> : null}
             </div>
 
             {preview?.imageUrl ? (
               <div className="mt-3 overflow-hidden rounded-xl border border-line bg-white">
-                <img src={preview.imageUrl} alt="FitPick Digital Human visualization" className="aspect-square w-full object-cover" />
+                <img src={preview.imageUrl} alt="FitPick avatar outfit preview" className="aspect-square w-full object-cover" />
               </div>
             ) : status === "queued" || status === "generating" || status === "processing" ? (
               <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line bg-white px-4 text-center">
-                <p className="text-sm font-semibold text-cocoa">Creating your Digital Human look...</p>
+                <p className="text-sm font-semibold text-cocoa">Showing it on your avatar...</p>
               </div>
             ) : (
               <div className="mt-3 rounded-xl border border-dashed border-line bg-white px-4 py-5 text-center">
                 <p className="text-sm leading-6 text-muted">
-                  {preview?.errorMessage || "Digital Human Preview will appear here when available."}
+                  {preview?.errorMessage || "Your avatar preview will appear here when available."}
                 </p>
               </div>
             )}
 
-            <p className="mt-3 text-xs leading-5 text-muted">{entry.visualizationDisclaimer || "AI visualization, not exact virtual try-on."}</p>
+            <p className="mt-3 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
             {(entry.fitLock?.warnings?.length || preview?.fitWarnings?.length) ? (
               <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
                 {(entry.fitLock?.warnings || preview?.fitWarnings || []).slice(0, 3).map((warning) => (
@@ -322,26 +327,44 @@ export function StylistChat() {
                 ))}
               </div>
             ) : null}
-            {entry.jobId ? <p className="mt-1 text-[11px] text-muted">Job queued: {entry.jobId.slice(-8)}</p> : null}
+            <details className="mt-3 rounded-xl border border-line bg-white p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-ink">Preview details</summary>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>Preview type: {simplePreviewType(preview.accuracyLevel)}</Badge> : null}
+                {entry.fitLock?.fitStatus ? <Badge tone={entry.fitLock.fitStatus === "likely_fits" ? "success" : "warning"}>Fit: {simpleFitStatus(entry.fitLock.fitStatus)}</Badge> : null}
+                {entry.jobId ? <Badge tone="neutral">Job {entry.jobId.slice(-8)}</Badge> : null}
+              </div>
+            </details>
 
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {entry.outfitRecommendationId ? (
                 <Button type="button" onClick={() => void handleSaveLook(entry)}>
-                  Save look
+                  Save this look
+                </Button>
+              ) : null}
+              {entry.outfitRecommendationId ? (
+                <Button type="button" variant="secondary" onClick={() => void submitStylistMessage(`Try another ${outfit?.occasion || "look"} from my wardrobe`, { includeVisualization: true })}>
+                  Try another look
                 </Button>
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Button type="button" variant="secondary" onClick={() => void handleRegenerate(entry)}>
-                  Regenerate avatar look
+                  See it on you
                 </Button>
               ) : null}
               <Link href="/avatar" className="block">
                 <Button type="button" variant="secondary" className="w-full">
-                  Improve fit accuracy
+                  Improve size details
                 </Button>
               </Link>
               {outfit ? (
                 <>
+                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} smarter`, { includeVisualization: true })}>
+                    Make it smarter
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} simpler`, { includeVisualization: true })}>
+                    Make it simpler
+                  </Button>
                   <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} more formal`, { includeVisualization: true })}>
                     Make it more formal
                   </Button>
@@ -362,8 +385,8 @@ export function StylistChat() {
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-ink">Premium personal stylist</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Grounded in your wardrobe, Style DNA, and fashion memory.</p>
+            <p className="text-sm font-semibold text-ink">Your personal stylist</p>
+            <p className="mt-1 text-xs leading-5 text-muted">FitPick answers using your saved clothes and style preferences.</p>
           </div>
           <Badge tone="premium">Wardrobe-only</Badge>
         </div>
@@ -403,14 +426,16 @@ export function StylistChat() {
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-line bg-white px-4 py-5 text-center">
-              <p className="text-sm font-semibold text-ink">Ask for a complete look</p>
-              <p className="mt-2 text-xs leading-5 text-muted">Try occasion, weather, mood, or dress code. FitPick will stay grounded in what you own.</p>
+              <p className="text-sm font-semibold text-ink">Ask what to wear</p>
+              <p className="mt-2 text-xs leading-5 text-muted">Tell FitPick the occasion, weather, or mood. It will choose from clothes you own.</p>
             </div>
           )}
 
           {loading ? (
             <div className="mr-8 rounded-2xl border border-line bg-white px-3 py-2 text-sm leading-6 text-muted">
-              Your stylist is building your look...
+              <div className="space-y-1">
+                {loadingSteps.map((step) => <p key={step}>{step}</p>)}
+              </div>
             </div>
           ) : null}
         </div>
@@ -440,15 +465,15 @@ export function StylistChat() {
                 onChange={(event) => setIncludeVisualization(event.target.checked)}
                 className="h-4 w-4 rounded border-line text-cocoa"
               />
-              Digital Human
+              See it on my avatar
             </label>
             <Badge tone={includeVisualization ? "premium" : "neutral"}>
-              {includeVisualization ? "Visual styling on" : "Text only"}
+              {includeVisualization ? "Avatar preview on" : "Text only"}
             </Badge>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading || !message.trim()}>
-            {loading ? "Styling..." : "Ask FitPick Stylist"}
+            {loading ? "Styling..." : "Ask FitPick"}
           </Button>
         </form>
       </Card>
