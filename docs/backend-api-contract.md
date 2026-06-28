@@ -87,6 +87,7 @@ Required for real backend use:
 - `MONGODB_URI`
 - `JWT_SECRET`
 - `SESSION_COOKIE_NAME`
+- `SESSION_COOKIE_SECURE`
 - `APP_URL`
 - `NEXT_PUBLIC_APP_URL`
 

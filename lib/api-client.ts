@@ -50,10 +50,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 export type BackendHealth = {
+  ok?: boolean;
   service: string;
+  version?: string;
   status: string;
   databaseConfigured: boolean;
   timestamp: string;
+  time?: string;
+  checks?: {
+    app: "ok" | "skipped" | "degraded" | "not_checked" | string;
+    database: "ok" | "skipped" | "degraded" | "not_checked" | string;
+    storage: "ok" | "skipped" | "degraded" | "not_checked" | string;
+    worker: "ok" | "skipped" | "degraded" | "not_checked" | string;
+  };
 };
 
 export type CurrentUserSummary = {

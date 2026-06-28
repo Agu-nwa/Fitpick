@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
 import { PlusStatusCard } from "@/components/plus/PlusStatusClient";
@@ -55,9 +54,9 @@ export function ProfileIntegrationClient() {
     if (result.ok) setNotifications(result.data.preferences);
   }
 
-  if (session.status === "loading" || state === "loading") return <LoadingCard title="Loading profile" />;
-  if (session.status === "logged-out") return <AuthRequiredState />;
-  if (session.status === "backend-unavailable" || state === "unavailable") return <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadProfileData} />;
+  if (session.status === "loading" || session.status === "logged-out" || session.status === "backend-unavailable") return null;
+  if (state === "loading") return <LoadingCard title="Loading profile" />;
+  if (state === "unavailable") return <BackendUnavailableState onRetry={loadProfileData} />;
 
   return (
     <>

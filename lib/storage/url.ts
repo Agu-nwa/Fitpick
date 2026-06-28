@@ -21,7 +21,7 @@ export function normalizeStorageKey(storageKey: string) {
 }
 
 export function s3PublicObjectUrl(input: { bucket?: string; region?: string; storageKey: string }) {
-  const bucket = input.bucket || process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || "";
+  const bucket = input.bucket || process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || "";
   const region = input.region || process.env.S3_REGION || process.env.AWS_REGION || "";
   if (!bucket || !region) return "";
   const host = region === "us-east-1" ? `${bucket}.s3.amazonaws.com` : `${bucket}.s3.${region}.amazonaws.com`;
@@ -31,6 +31,7 @@ export function s3PublicObjectUrl(input: { bucket?: string; region?: string; sto
 export function getPublicStorageUrl(storageKey: string) {
   const key = normalizeStorageKey(storageKey);
   const cloudFront =
+    cleanBaseUrl(process.env.CLOUDFRONT_PUBLIC_URL) ||
     cleanBaseUrl(process.env.CLOUDFRONT_URL) ||
     cleanBaseUrl(process.env.NEXT_PUBLIC_CLOUDFRONT_URL) ||
     cleanBaseUrl(process.env.S3_PUBLIC_BASE_URL);

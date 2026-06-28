@@ -9,12 +9,14 @@ NODE_ENV=production
 APP_URL=
 NEXT_PUBLIC_APP_URL=
 SESSION_COOKIE_NAME=fitpick_session
+SESSION_COOKIE_SECURE=false
 JWT_SECRET=
 ```
 
 Notes:
 
 - `APP_URL` and `NEXT_PUBLIC_APP_URL` should use the production domain after DNS is ready.
+- Use `SESSION_COOKIE_SECURE=false` for temporary plain HTTP EC2 IP testing. Switch to `SESSION_COOKIE_SECURE=true` when HTTPS is enabled.
 - `JWT_SECRET` must be a long, random secret.
 - Keep session cookies HTTP-only through the backend session implementation.
 - In production, session cookies must be `httpOnly`, `secure`, `sameSite=lax`, and scoped to `/`.

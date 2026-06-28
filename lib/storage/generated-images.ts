@@ -30,11 +30,11 @@ const allowedGeneratedContentTypes = new Set(["image/png", "image/jpeg", "image/
 
 function s3Config() {
   return {
-    bucket: process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || "",
+    bucket: process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || "",
     region: process.env.S3_REGION || process.env.AWS_REGION || "",
     accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "",
-    publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_GENERATED_IMAGES_URL || process.env.CLOUDFRONT_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_URL || ""
+    publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_PUBLIC_URL || process.env.CLOUDFRONT_GENERATED_IMAGES_URL || process.env.CLOUDFRONT_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_URL || ""
   };
 }
 
