@@ -5,6 +5,8 @@ type AvatarPreviewPromptInput = {
   fitLockConstraints?: string;
   previewAccuracyLabel?: string;
   fitWarnings?: string[];
+  visualGroundingChecklist?: string;
+  visualizationWarnings?: string[];
   visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial";
 };
 
@@ -16,7 +18,7 @@ function styleInstruction(style: AvatarPreviewPromptInput["visualizationStyle"])
 }
 
 export function buildAvatarPreviewPrompt(input: AvatarPreviewPromptInput) {
-  return `Create a premium Digital Human Preview for FitPick using only the selected owned wardrobe item details.
+  return `Create a premium avatar preview for FitPick using only the selected owned wardrobe item details.
 
 Selected owned outfit:
 ${input.outfitDescription}
@@ -36,12 +38,22 @@ ${input.fitLockConstraints || "No fit-lock constraints are available. Do not imp
 Fit warnings:
 ${input.fitWarnings?.length ? input.fitWarnings.join("\n") : "No additional fit warnings."}
 
+Visual grounding checklist:
+${input.visualGroundingChecklist || "No visual grounding checklist available."}
+
+Visualization warnings:
+${input.visualizationWarnings?.length ? input.visualizationWarnings.join("\n") : "No visual grounding warnings."}
+
 Visualization style:
 ${styleInstruction(input.visualizationStyle)}
 
 Hard rules:
 - Use only the owned wardrobe items described above.
+- Every selected wardrobe item ID must be represented in the visualization.
 - Do not invent garments, shoes, bags, jewelry, logos, text, watermarks, or shopping items.
+- Preserve item category exactly: tops stay tops, jeans stay jeans, trousers stay trousers, sneakers stay sneakers, loafers stay loafers, sandals stay sandals, boots stay boots.
+- Do not replace selected jeans with trousers or selected trousers with jeans.
+- Do not replace selected shoes with a different shoe type.
 - Preserve garment colors, visible patterns, fabrics, textures, and silhouettes from verified wardrobe metadata.
 - Use actual wardrobe item image references and exact selected item names when available.
 - Preserve garment tagged size, garment fit style, fabric drape, and intended silhouette from metadata.
@@ -55,5 +67,5 @@ Hard rules:
 - If details are uncertain, keep the visualization restrained instead of adding guesses.
 - No text in the image.
 
-Metadata note for product display: AI digital human visualization, not exact virtual try-on.`;
+Metadata note for product display: This is a preview, not a perfect fitting.`;
 }

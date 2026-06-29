@@ -8,6 +8,7 @@ import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildAvatarPromptContext, getOrCreateAvatarProfile, type PosePreset, type VisualizationStyle } from "@/lib/avatar/avatar-profile";
 import { buildFitLockPromptConstraints, evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
+import { preferredVisualReferenceUrl, summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { AvatarProfile } from "@/models/AvatarProfile";
@@ -103,13 +104,16 @@ function selectedItemDetails(items: any[]) {
         ["Silhouette", metadataValue(item, "silhouette")],
         ["Texture", metadataValue(item, "texture")],
         ["Length", metadataValue(item, "length")],
-        ["Cultural relevance", metadataValue(item, "culturalTraditionalRelevance")]
+        ["Cultural relevance", metadataValue(item, "culturalTraditionalRelevance")],
+        ["Recognized entity", metadataValue(item, "recognizedEntity")],
+        ["Visual reference image", preferredVisualReferenceUrl(item)]
       ]
         .filter(([, value]) => value)
         .map(([label, value]) => `${label}: ${Array.isArray(value) ? value.join(", ") : value}`);
 
       return [
         `Item ID: ${String(item._id)}`,
+        `Wardrobe item ID: ${String(item._id)}`,
         `Name: ${item.name || "unknown"}`,
         `Category: ${item.category || "unknown"}`,
         `Subcategory: ${item.subcategory || "unknown"}`,
@@ -117,6 +121,17 @@ function selectedItemDetails(items: any[]) {
       ].join("\n");
     })
     .join("\n\n");
+}
+
+function visualGroundingChecklistText(checklist: ReturnType<typeof summarizeVisualizationRisks>["checklist"]) {
+  return checklist.map((item) => [
+    `Wardrobe item ID: ${item.wardrobeItemId}`,
+    `Name: ${item.name}`,
+    `Category: ${item.category}`,
+    `Subcategory: ${item.subcategory || "unknown"}`,
+    `Image reference attached: ${item.hasImageReference ? "yes" : "no"}`,
+    item.imageReferenceUrl ? `Image reference URL: ${item.imageReferenceUrl}` : ""
+  ].filter(Boolean).join(" | ")).join("\n");
 }
 
 function avatarStorageKey(userId: string, outfitId: string, avatarProfileId: string, cacheKey: string) {
@@ -158,11 +173,13 @@ export async function loadOwnedAvatarPreviewSubject(userId: string, outfitId: st
   if (!outfit) return null;
 
   const itemIds = (outfit.itemIds || []).map(String);
-  const items = await WardrobeItem.find({
+  const loadedItems = await WardrobeItem.find({
     _id: { $in: itemIds },
     userId,
     archivedAt: null
   }).lean();
+  const itemsById = new Map(loadedItems.map((item: any) => [String(item._id), item]));
+  const items = itemIds.map((id) => itemsById.get(id)).filter(Boolean);
 
   const avatarProfile = await getOrCreateAvatarProfile(userId);
 
@@ -186,7 +203,7 @@ export async function markAvatarPreviewStatus(
   const update: Record<string, unknown> = { $set: patch };
   if (incrementAttempt) update.$inc = { attempts: 1 };
 
-  return AvatarOutfitPreview.findOneAndUpdate(
+  const preview = await AvatarOutfitPreview.findOneAndUpdate(
     { userId, outfitId, cacheKey },
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -205,18 +222,22 @@ export async function generateAvatarOutfitPreview(
   const visualizationStyle = options.visualizationStyle || avatarProfile.visualizationStyle || "luxury";
   const posePreset = options.posePreset || avatarProfile.posePreset || "standing";
   const fitEvaluation = evaluateOutfitFitOnAvatar(avatarProfile, items);
+  const outfitDescription = selectedItemDetails(items);
+  const visualGrounding = summarizeVisualizationRisks(items, { outfitDescription });
   const fitLockConstraints = buildFitLockPromptConstraints({
     avatarProfile,
     outfitItems: items,
     fitEvaluation
   });
   const prompt = buildAvatarPreviewPrompt({
-    outfitDescription: selectedItemDetails(items),
+    outfitDescription,
     occasion: sanitizeUserPrompt(outfit.occasion || "Today"),
     avatarContext: buildAvatarPromptContext({ ...avatarProfile.toObject?.(), ...avatarProfile, posePreset, visualizationStyle }),
     fitLockConstraints,
     previewAccuracyLabel: fitEvaluation.accuracyLevel.label,
     fitWarnings: fitEvaluation.warnings,
+    visualGroundingChecklist: visualGroundingChecklistText(visualGrounding.checklist),
+    visualizationWarnings: visualGrounding.visualizationWarnings,
     visualizationStyle
   });
 
@@ -254,6 +275,11 @@ export async function generateAvatarOutfitPreview(
       fitConfidence: fitEvaluation.fitConfidence,
       fitWarnings: fitEvaluation.warnings,
       fitLockInstructions: fitEvaluation.lockedFitInstructions,
+      groundedItemIds: visualGrounding.groundedItemIds,
+      missingVisualItemIds: visualGrounding.missingVisualItemIds,
+      visualizationWarnings: visualGrounding.visualizationWarnings,
+      footwearIncluded: visualGrounding.footwearIncluded,
+      visualGroundingStatus: visualGrounding.visualGroundingStatus,
       cacheKey: options.cacheKey || buildAvatarPreviewCacheKey(userId, String(outfit._id), items.map((item) => JSON.stringify(itemFingerprint(item))), avatarProfile, options)
     };
   } catch (error) {
@@ -290,7 +316,7 @@ export async function saveAvatarPreview(
     height: generatedImage.height
   });
 
-  return AvatarOutfitPreview.findOneAndUpdate(
+  const preview = await AvatarOutfitPreview.findOneAndUpdate(
     { userId, outfitId, cacheKey },
     {
       $set: {
@@ -312,6 +338,11 @@ export async function saveAvatarPreview(
         fitConfidence: generatedImage.fitConfidence || 0,
         fitWarnings: generatedImage.fitWarnings || [],
         fitLockInstructions: generatedImage.fitLockInstructions || [],
+        groundedItemIds: generatedImage.groundedItemIds || itemIds,
+        missingVisualItemIds: generatedImage.missingVisualItemIds || [],
+        visualizationWarnings: generatedImage.visualizationWarnings || [],
+        footwearIncluded: Boolean(generatedImage.footwearIncluded),
+        visualGroundingStatus: generatedImage.visualGroundingStatus || "partially_grounded",
         generatedAt: new Date(),
         format: uploaded.format,
         width: uploaded.width,
@@ -323,6 +354,30 @@ export async function saveAvatarPreview(
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+
+  await OutfitRecommendation.findOneAndUpdate(
+    { _id: outfitId, userId },
+    {
+      $set: {
+        "preview.status": "ready",
+        "preview.provider": "s3",
+        "preview.storageKey": uploaded.storageKey,
+        "preview.imageUrl": uploaded.url,
+        "preview.cacheKey": cacheKey,
+        "preview.promptVersion": generatedImage.promptVersion,
+        "preview.model": generatedImage.model,
+        "preview.groundedItemIds": generatedImage.groundedItemIds || itemIds,
+        "preview.missingVisualItemIds": generatedImage.missingVisualItemIds || [],
+        "preview.visualizationWarnings": generatedImage.visualizationWarnings || [],
+        "preview.footwearIncluded": Boolean(generatedImage.footwearIncluded),
+        "preview.visualGroundingStatus": generatedImage.visualGroundingStatus || "partially_grounded",
+        "preview.generatedAt": new Date(),
+        "preview.errorMessage": ""
+      }
+    }
+  );
+
+  return preview;
 }
 
 export function serializeAvatarPreview(preview: any) {
@@ -344,11 +399,16 @@ export function serializeAvatarPreview(preview: any) {
     fitConfidence: typeof preview?.fitConfidence === "number" ? preview.fitConfidence : 0,
     fitWarnings: preview?.fitWarnings || [],
     fitLockInstructions: preview?.fitLockInstructions || [],
+    groundedItemIds: (preview?.groundedItemIds || []).map(String),
+    missingVisualItemIds: (preview?.missingVisualItemIds || []).map(String),
+    visualizationWarnings: preview?.visualizationWarnings || [],
+    footwearIncluded: Boolean(preview?.footwearIncluded),
+    visualGroundingStatus: preview?.visualGroundingStatus || "partially_grounded",
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
     errorMessage: preview?.errorMessage || "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
-    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} Not exact virtual try-on.`
+    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} This is a preview, not a perfect fitting.`
   };
 }
 
@@ -385,6 +445,9 @@ export async function runAvatarPreviewGenerationJob(input: {
   const cacheKey = input.cacheKey || buildAvatarCacheKeyFromItems(input.userId, input.outfitId, loaded.items, avatarProfile, options);
   const cached = await getCachedAvatarPreview(input.userId, input.outfitId, cacheKey);
   if (cached) return { preview: cached, cached: true };
+  const visualGrounding = summarizeVisualizationRisks(loaded.items, {
+    outfitDescription: loaded.items.map((item) => `Wardrobe item ID: ${String(item._id)} Category: ${item.category || "unknown"}`).join("\n")
+  });
 
   await markAvatarPreviewStatus(input.userId, input.outfitId, String(avatarProfile._id), cacheKey, {
     userId: input.userId,
@@ -397,6 +460,11 @@ export async function runAvatarPreviewGenerationJob(input: {
     model: getAiModel("imageGeneration"),
     visualizationStyle: options.visualizationStyle,
     posePreset: options.posePreset,
+    groundedItemIds: visualGrounding.groundedItemIds,
+    missingVisualItemIds: visualGrounding.missingVisualItemIds,
+    visualizationWarnings: visualGrounding.visualizationWarnings,
+    footwearIncluded: visualGrounding.footwearIncluded,
+    visualGroundingStatus: visualGrounding.visualGroundingStatus,
     errorMessage: "",
     lastAttemptAt: new Date()
   });

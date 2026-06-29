@@ -208,7 +208,7 @@ export function serializeOutfitPreview(preview: any) {
     errorMessage: preview?.errorMessage || "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
-    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} Not an exact virtual try-on.`
+    visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} This is a preview, not a perfect fitting.`
   };
 }
 

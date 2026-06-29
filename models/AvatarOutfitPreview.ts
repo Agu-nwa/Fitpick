@@ -29,6 +29,15 @@ const AvatarOutfitPreviewSchema = new Schema(
     fitConfidence: { type: Number, default: 0, min: 0, max: 1 },
     fitWarnings: { type: [String], default: [] },
     fitLockInstructions: { type: [String], default: [] },
+    groundedItemIds: { type: [String], default: [] },
+    missingVisualItemIds: { type: [String], default: [] },
+    visualizationWarnings: { type: [String], default: [] },
+    footwearIncluded: { type: Boolean, default: false },
+    visualGroundingStatus: {
+      type: String,
+      enum: ["grounded", "partially_grounded", "missing_references", "failed"],
+      default: "partially_grounded"
+    },
     attempts: { type: Number, default: 0 },
     lastAttemptAt: { type: Date, default: null },
     generatedAt: { type: Date, default: null },

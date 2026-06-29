@@ -49,6 +49,10 @@ function compactRecommendationForStylist(recommendation: any) {
     whyItWorks: recommendation.whyItWorks,
     improvementNote: recommendation.improvementNote,
     addLater: recommendation.addLater,
+    completenessStatus: recommendation.completenessStatus,
+    missingCategories: recommendation.missingCategories || [],
+    completenessWarnings: recommendation.completenessWarnings || [],
+    footwearIncluded: Boolean(recommendation.footwearIncluded),
     stylingTips: recommendation.stylingTips || [],
     items: (recommendation.items || []).map((item: any) => ({
       id: String(item._id),

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
+import { completenessLabel } from "@/lib/recommendation/completeness";
 import type { AvatarProfileData } from "@/lib/api-client";
-import type { OutfitRecommendation, PreviewAccuracySummary } from "@/types/outfit";
+import type { OutfitRecommendation, PreviewAccuracySummary, VisualGroundingStatus } from "@/types/outfit";
 
 type DigitalHumanTryOnPanelProps = {
   outfit: OutfitRecommendation;
@@ -21,6 +22,8 @@ type DigitalHumanTryOnPanelProps = {
   fitStatus?: string;
   fitConfidence?: number;
   fitWarnings?: string[];
+  visualizationWarnings?: string[];
+  visualGroundingStatus?: VisualGroundingStatus;
   onOpenPreview?: () => void;
   onGenerateFitLocked?: () => void;
   onRegenerate?: () => void;
@@ -42,6 +45,8 @@ export function DigitalHumanTryOnPanel({
   fitStatus,
   fitConfidence = 0,
   fitWarnings = [],
+  visualizationWarnings = [],
+  visualGroundingStatus,
   onOpenPreview,
   onGenerateFitLocked,
   onRegenerate
@@ -82,6 +87,7 @@ export function DigitalHumanTryOnPanel({
           <Badge tone={fitStatus === "likely_fits" || fitStatus === "oversized_intended" ? "success" : "warning"}>
             {fitStatusLabel(fitStatus)}
           </Badge>
+          {outfit.completenessStatus ? <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge> : null}
         </div>
 
         <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
@@ -108,6 +114,14 @@ export function DigitalHumanTryOnPanel({
           </div>
         ) : null}
 
+        {outfit.completenessWarnings?.length || visualizationWarnings.length ? (
+          <div className="space-y-2 rounded-2xl border border-warning/20 bg-warning/10 p-3">
+            {[...(outfit.completenessWarnings || []), ...visualizationWarnings].slice(0, 4).map((warning) => (
+              <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
+            ))}
+          </div>
+        ) : null}
+
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
           <p className="text-sm font-semibold text-cocoa">Showing it on your avatar. This may take a moment.</p>
         ) : null}
@@ -118,6 +132,7 @@ export function DigitalHumanTryOnPanel({
           <div className="mt-3 flex flex-wrap gap-2">
             <Badge tone="neutral">Preview type: {simplePreviewType(accuracyLevel)}</Badge>
             <Badge tone="neutral">Size accuracy {Math.round((fitConfidence || 0) * 100)}%</Badge>
+            {visualGroundingStatus ? <Badge tone={visualGroundingStatus === "grounded" ? "success" : "warning"}>{visualGroundingStatus === "grounded" ? "Grounded" : "Needs review"}</Badge> : null}
             {previewJobId ? <Badge tone="neutral">Job {previewJobId.slice(-8)}</Badge> : null}
           </div>
         </details>
@@ -126,6 +141,9 @@ export function DigitalHumanTryOnPanel({
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
             {isGenerating ? "Showing outfit..." : previewUrl ? "Show better fit" : "Show outfit on avatar"}
           </Button>
+          <Link href={`/outfit/${outfit.id}/preview`}>
+            <Button type="button" variant="secondary" className="w-full">View full look</Button>
+          </Link>
           <Link href="/avatar">
             <Button type="button" variant="secondary" className="w-full">Add my size</Button>
           </Link>

@@ -264,6 +264,6 @@ export function buildFitLockPromptConstraints(input: {
     "- Do not idealize fit.",
     "- Do not convert loose garments into slim fit.",
     "- Do not change garment length randomly.",
-    "- Never label this generated image as exact try-on unless true 3D simulation is active."
+    "- Never label this generated image as perfect fitting unless true 3D simulation is active."
   ].join("\n");
 }

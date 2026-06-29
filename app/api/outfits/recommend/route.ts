@@ -236,6 +236,18 @@ export async function POST(request: NextRequest) {
         confidenceScore:
           built.confidenceScore,
 
+        completenessStatus:
+          built.completenessStatus,
+
+        missingCategories:
+          built.missingCategories,
+
+        completenessWarnings:
+          built.completenessWarnings,
+
+        footwearIncluded:
+          built.footwearIncluded,
+
         swapGroups:
           built.swapGroups,
 

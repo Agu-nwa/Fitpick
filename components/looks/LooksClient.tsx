@@ -28,27 +28,27 @@ function BackendLooks({ data, tab }: { data: LooksData; tab: (typeof tabs)[numbe
   return (
     <div className="space-y-3">
       {showSaved ? saved.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.outfitId}`} className="block rounded-xl3">
+        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="block rounded-xl3">
           <Card className="p-4">
             <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block text-sm font-semibold text-ink">{look.title}</span>
                 <span className="mt-1 block text-xs text-muted">{look.occasion} · {look.favorite ? "Favorite" : "Saved"}</span>
               </span>
-              <Button variant="secondary">Open</Button>
+              <Button variant="secondary">View full look</Button>
             </div>
           </Card>
         </Link>
       )) : null}
       {showWorn ? data.worn.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.outfitId}`} className="block rounded-xl3">
+        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="block rounded-xl3">
           <Card className="p-4">
             <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block text-sm font-semibold text-ink">{look.occasion} outfit</span>
                 <span className="mt-1 block text-xs text-muted">{look.wornAt ? new Date(look.wornAt).toLocaleDateString() : "Worn"} {look.rating ? `· ${look.rating}` : ""}</span>
               </span>
-              {look.repeatWarning ? <Chip>{look.repeatWarning}</Chip> : <Button variant="secondary">Open</Button>}
+              {look.repeatWarning ? <Chip>{look.repeatWarning}</Chip> : <Button variant="secondary">View full look</Button>}
             </div>
           </Card>
         </Link>
@@ -61,7 +61,7 @@ function MockLooks() {
   return (
     <div className="space-y-4">
       {savedLooks.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.id}`} className="block rounded-xl3">
+        <Link key={look.id} href={`/outfit/${look.id}/preview`} className="block rounded-xl3">
           <OutfitCard outfit={look} />
         </Link>
       ))}

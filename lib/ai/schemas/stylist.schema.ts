@@ -66,7 +66,7 @@ export const stylistResponseSchema = z
       .string()
       .trim()
       .max(180)
-      .default("AI visualization, not exact virtual try-on."),
+      .default("This is a preview, not a perfect fitting."),
     fitLock: z
       .object({
         fitStatus: z.string().trim().max(60),

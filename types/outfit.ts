@@ -1,6 +1,8 @@
 import type { WardrobeItem } from "./wardrobe";
 
 export type OutfitConfidence = "Strong match" | "Good match" | "Needs review";
+export type OutfitCompletenessStatus = "complete" | "missing_footwear" | "missing_bottom" | "missing_core_item";
+export type VisualGroundingStatus = "grounded" | "partially_grounded" | "missing_references" | "failed";
 
 export type OutfitRecommendation = {
   id: string;
@@ -20,6 +22,10 @@ export type OutfitRecommendation = {
   addLater?: string;
   confidenceScore?: number;
   stylingTips?: string[];
+  completenessStatus?: OutfitCompletenessStatus;
+  missingCategories?: string[];
+  completenessWarnings?: string[];
+  footwearIncluded?: boolean;
   repeatNote: string;
   careNote: string;
   source?: "rule_based" | "manual" | "ai_placeholder" | "ai" | "outfit_page" | "stylist_chat" | "system" | string;
@@ -34,6 +40,11 @@ export type OutfitRecommendation = {
     model?: string;
     accuracyLevel?: PreviewAccuracySummary;
     fitWarnings?: string[];
+    groundedItemIds?: string[];
+    missingVisualItemIds?: string[];
+    visualizationWarnings?: string[];
+    footwearIncluded?: boolean;
+    visualGroundingStatus?: VisualGroundingStatus;
     generatedAt?: string | null;
     errorMessage?: string;
     attempts?: number;
@@ -91,6 +102,11 @@ export type StylistAvatarPreview = {
   fitStatus?: string;
   fitConfidence?: number;
   fitWarnings?: string[];
+  groundedItemIds?: string[];
+  missingVisualItemIds?: string[];
+  visualizationWarnings?: string[];
+  footwearIncluded?: boolean;
+  visualGroundingStatus?: VisualGroundingStatus;
 };
 
 export type StylistResponse = {

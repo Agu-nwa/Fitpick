@@ -22,6 +22,15 @@ const OutfitRecommendationSchema = new Schema(
     addLater: { type: String, default: "" },
     stylingTips: { type: [String], default: [] },
     confidenceScore: { type: Number, default: 0 },
+    completenessStatus: {
+      type: String,
+      enum: ["complete", "missing_footwear", "missing_bottom", "missing_core_item"],
+      default: "missing_core_item",
+      index: true
+    },
+    missingCategories: { type: [String], default: [] },
+    completenessWarnings: { type: [String], default: [] },
+    footwearIncluded: { type: Boolean, default: false },
     preview: {
       status: {
         type: String,
@@ -34,6 +43,15 @@ const OutfitRecommendationSchema = new Schema(
       cacheKey: { type: String, default: "" },
       promptVersion: { type: String, default: "" },
       model: { type: String, default: "" },
+      groundedItemIds: { type: [String], default: [] },
+      missingVisualItemIds: { type: [String], default: [] },
+      visualizationWarnings: { type: [String], default: [] },
+      footwearIncluded: { type: Boolean, default: false },
+      visualGroundingStatus: {
+        type: String,
+        enum: ["grounded", "partially_grounded", "missing_references", "failed"],
+        default: "partially_grounded"
+      },
       generatedAt: { type: Date, default: null },
       errorMessage: { type: String, default: "" },
       attempts: { type: Number, default: 0 },

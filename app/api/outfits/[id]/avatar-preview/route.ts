@@ -20,6 +20,7 @@ import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
 import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
+import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
@@ -37,6 +38,22 @@ const avatarPreviewRequestSchema = z.object({
   posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual"]).optional(),
   regenerate: z.boolean().default(false)
 });
+
+function groundingPatch(items: any[], preview?: any) {
+  const grounding = summarizeVisualizationRisks(items, {
+    outfitDescription: items.map((item) => `Wardrobe item ID: ${String(item._id)} Category: ${item.category || "unknown"}`).join("\n")
+  });
+  const previewGroundedIds = Array.isArray(preview?.groundedItemIds) && preview.groundedItemIds.length ? preview.groundedItemIds : grounding.groundedItemIds;
+  const previewMissingIds = Array.isArray(preview?.missingVisualItemIds) && preview.missingVisualItemIds.length ? preview.missingVisualItemIds : grounding.missingVisualItemIds;
+  const previewWarnings = Array.isArray(preview?.visualizationWarnings) && preview.visualizationWarnings.length ? preview.visualizationWarnings : grounding.visualizationWarnings;
+  return {
+    groundedItemIds: previewGroundedIds.map(String),
+    missingVisualItemIds: previewMissingIds.map(String),
+    visualizationWarnings: previewWarnings,
+    footwearIncluded: typeof preview?.footwearIncluded === "boolean" ? preview.footwearIncluded : grounding.footwearIncluded,
+    visualGroundingStatus: preview?.visualGroundingStatus || grounding.visualGroundingStatus
+  };
+}
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
@@ -60,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const latest = cached || await AvatarOutfitPreview.findOne({ userId: auth.user._id, outfitId: context.params.id }).sort({ updatedAt: -1 }).lean();
 
     return apiSuccess({
-      preview: serializeAvatarPreview(latest || null),
+      preview: serializeAvatarPreview(latest ? { ...latest, ...groundingPatch(loaded.items, latest) } : groundingPatch(loaded.items)),
       avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
     });
   } catch (error) {
@@ -107,6 +124,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       posePreset: parsed.data.posePreset || loaded.avatarProfile.posePreset || "standing"
     };
     const fitEvaluation = evaluateOutfitFitOnAvatar(loaded.avatarProfile, loaded.items);
+    const visualGrounding = groundingPatch(loaded.items);
     const cacheKey = buildAvatarCacheKeyFromItems(activeUserId, context.params.id, loaded.items, loaded.avatarProfile, options);
     activeCacheKey = cacheKey;
 
@@ -121,7 +139,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         provider: cached.provider || "s3"
       });
       return apiSuccess({
-        preview: serializeAvatarPreview({ ...cached, cached: true }),
+        preview: serializeAvatarPreview({ ...cached, ...groundingPatch(loaded.items, cached), cached: true }),
         avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
       });
     }
@@ -136,7 +154,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (inFlight && !parsed.data.regenerate) {
       return apiSuccess({
-        preview: serializeAvatarPreview(inFlight),
+        preview: serializeAvatarPreview({ ...inFlight, ...groundingPatch(loaded.items, inFlight) }),
         avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
       }, { message: "Avatar preview is already being prepared." });
     }
@@ -173,6 +191,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         fitConfidence: fitEvaluation.fitConfidence,
         fitWarnings: fitEvaluation.warnings,
         fitLockInstructions: fitEvaluation.lockedFitInstructions,
+        groundedItemIds: visualGrounding.groundedItemIds,
+        missingVisualItemIds: visualGrounding.missingVisualItemIds,
+        visualizationWarnings: visualGrounding.visualizationWarnings,
+        footwearIncluded: visualGrounding.footwearIncluded,
+        visualGroundingStatus: visualGrounding.visualGroundingStatus,
         errorMessage: "",
         lastAttemptAt: new Date()
       },
@@ -209,7 +232,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             fitStatus: fitEvaluation.fitStatus,
             fitConfidence: fitEvaluation.fitConfidence,
             fitWarnings: fitEvaluation.warnings,
-            fitLockInstructions: fitEvaluation.lockedFitInstructions
+            fitLockInstructions: fitEvaluation.lockedFitInstructions,
+            ...visualGrounding
           }),
           avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
           job: serializeJob(job)

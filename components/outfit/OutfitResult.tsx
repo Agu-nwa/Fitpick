@@ -26,6 +26,7 @@ import {
   wearOutfit
 } from "@/lib/api-client";
 import { simplePreviewType } from "@/lib/copy/simple-copy";
+import { completenessLabel } from "@/lib/recommendation/completeness";
 import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
@@ -129,6 +130,8 @@ export function OutfitResult({
   const [avatarFitStatus, setAvatarFitStatus] = useState("");
   const [avatarFitConfidence, setAvatarFitConfidence] = useState(0);
   const [avatarFitWarnings, setAvatarFitWarnings] = useState<string[]>([]);
+  const [avatarVisualizationWarnings, setAvatarVisualizationWarnings] = useState<string[]>([]);
+  const [avatarVisualGroundingStatus, setAvatarVisualGroundingStatus] = useState<any>();
   const outfitItemIds = outfit.items.map((item) => item.id).filter(Boolean);
 
   function applyAvatarPreview(preview: any, profile?: AvatarProfileData["profile"] | null) {
@@ -138,6 +141,8 @@ export function OutfitResult({
     setAvatarFitStatus(preview.fitStatus || "");
     setAvatarFitConfidence(typeof preview.fitConfidence === "number" ? preview.fitConfidence : 0);
     setAvatarFitWarnings(Array.isArray(preview.fitWarnings) ? preview.fitWarnings : []);
+    setAvatarVisualizationWarnings(Array.isArray(preview.visualizationWarnings) ? preview.visualizationWarnings : []);
+    setAvatarVisualGroundingStatus(preview.visualGroundingStatus || "");
     if (profile !== undefined) setAvatarProfile(profile);
   }
 
@@ -373,6 +378,17 @@ export function OutfitResult({
     <>
       <section>
         <SectionHeader title="Your outfit" />
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>
+            {completenessLabel(outfit.completenessStatus)}
+          </Badge>
+          {outfit.footwearIncluded === false ? <Badge tone="warning">Shoes missing</Badge> : null}
+        </div>
+        {outfit.completenessWarnings?.length ? (
+          <Card className="mb-4 space-y-1 border-warning/25 bg-warning/10">
+            {outfit.completenessWarnings.slice(0, 3).map((warning) => <p key={warning} className="text-sm leading-6 text-ink">{warning}</p>)}
+          </Card>
+        ) : null}
         <OutfitCard outfit={outfit} />
       </section>
 
@@ -417,6 +433,9 @@ export function OutfitResult({
             <Button onClick={() => void handleGeneratePreview(false)} disabled={isGeneratingPreview || previewStatus === "generating"}>
               {isGeneratingPreview ? "Showing outfit..." : "Show outfit"}
             </Button>
+            <Link href={`/outfit/${outfit.id}/preview`}>
+              <Button variant="secondary" className="w-full">View full look</Button>
+            </Link>
             {previewUrl ? (
               <Button variant="secondary" onClick={() => void handleGeneratePreview(true)} disabled={isGeneratingPreview}>
                 Try again
@@ -449,6 +468,8 @@ export function OutfitResult({
             fitStatus={avatarFitStatus}
             fitConfidence={avatarFitConfidence}
             fitWarnings={avatarFitWarnings}
+            visualizationWarnings={avatarVisualizationWarnings}
+            visualGroundingStatus={avatarVisualGroundingStatus}
             onOpenPreview={() => setAvatarPreviewOpen(true)}
             onGenerateFitLocked={() => void handleGenerateAvatarPreview(false)}
             onRegenerate={() => void handleGenerateAvatarPreview(true)}
@@ -505,6 +526,7 @@ export function OutfitResult({
         {canSwap ? <Button onClick={() => void handleQuickMemory("outfit_liked")}>Refine my style</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
         {canSwap ? <Button variant="secondary" onClick={() => setSwapOpen(true)}>Swap item</Button> : <Link href={`/outfit/${outfit.id}`}><Button variant="secondary" className="w-full">Open detail</Button></Link>}
         {canSwap ? <Button variant="secondary" onClick={() => void handleSave(false)}>Save this look</Button> : null}
+        {canSwap ? <Link href={`/outfit/${outfit.id}/preview`}><Button variant="secondary" className="w-full">View full look</Button></Link> : null}
         {canSwap ? <Button variant="secondary" onClick={() => void handleWear()}>Mark as worn</Button> : null}
         {canSwap ? <Button variant="ghost" onClick={() => void handleQuickMemory("outfit_rejected")}>Not my style</Button> : null}
         {canSwap ? <Button variant="ghost" onClick={() => setFeedbackOpen(true)}>Rate</Button> : null}

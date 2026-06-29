@@ -1,4 +1,5 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
+import { completenessLabel, evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/recommendation/outfit-structures";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import {
@@ -202,6 +203,7 @@ export function buildRecommendation(input: EngineInput) {
   const coreItems: any[] = bestOutfit?.items || [];
 
   if (!coreItems.length) {
+    const completeness = evaluateOutfitCompleteness([]);
     return {
       title: "No outfit found",
       occasion: input.occasionName || "Today",
@@ -222,9 +224,16 @@ export function buildRecommendation(input: EngineInput) {
       improvementNote: missing.length ? `Add or verify ${missing.join(", ")} items to unlock stronger recommendations.` : "Add more verified wardrobe metadata.",
       addLater: missing.length ? `Optional add later: ${missing[0]}.` : "",
       confidenceScore: 0,
+      completenessStatus: completeness.completenessStatus,
+      missingCategories: completeness.missingCategories,
+      completenessWarnings: completeness.completenessWarnings,
+      footwearIncluded: completeness.footwearIncluded,
       stylingTips: ["Add more verified wardrobe items, then request this occasion again."]
     };
   }
+
+  const completeness = evaluateOutfitCompleteness(coreItems);
+  const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
 
   const score = scoreOutfit(coreItems, {
     occasionName: input.occasionName,
@@ -285,27 +294,31 @@ export function buildRecommendation(input: EngineInput) {
     occasion,
     occasionGroup,
     weatherContext: input.weatherContext,
-    missing,
+    missing: completenessMissing,
     score
   });
+  const completenessSummary = completeness.completenessWarnings.length ? ` ${completeness.completenessWarnings.join(" ")}` : "";
+  const addLater = completeness.completenessStatus === "missing_footwear"
+    ? "Add black shoes, loafers, sneakers, or sandals to complete this look."
+    : explanation.addLater;
   const styleProfileNote = input.styleProfile
-    ? ` Style DNA considered: ${[
+    ? ` Style preferences considered: ${[
         input.styleProfile.fashionRiskLevel ? `${input.styleProfile.fashionRiskLevel} risk` : "",
         input.styleProfile.comfortPriority ? `${input.styleProfile.comfortPriority} comfort` : "",
         input.styleProfile.favoriteColors?.length ? `colors ${input.styleProfile.favoriteColors.slice(0, 3).join(", ")}` : ""
       ].filter(Boolean).join("; ")}.`
     : "";
   const memoryNote = input.memorySummary?.eventCount
-    ? ` Fashion Memory considered: recent likes, saves, rejections, and worn items were used gently.`
+    ? ` Style history considered: recent likes, saves, rejections, and worn items were used gently.`
     : "";
 
   return {
     title: `${occasion} outfit`,
     occasion,
     confidence,
-    summary: `${explanation.whyItWorks}${styleProfileNote}${memoryNote} Confidence ${Math.round(boundedConfidenceScore(score) * 100)}%.`,
+    summary: `${explanation.whyItWorks}${completenessSummary}${styleProfileNote}${memoryNote} Confidence ${Math.round(boundedConfidenceScore(score) * 100)}%.`,
     items: coreItems,
-    reasonChips: chips,
+    reasonChips: [completenessLabel(completeness.completenessStatus), ...chips],
     weatherContext: input.weatherContext || "",
     repetitionNote: freshnessNote(
       coreItems,
@@ -315,7 +328,12 @@ export function buildRecommendation(input: EngineInput) {
     colorNote: colorNote(coreItems),
     swapGroups: buildSwapGroups(coreItems, available),
     confidenceScore: boundedConfidenceScore(score),
-    ...explanation
+    ...explanation,
+    addLater,
+    completenessStatus: completeness.completenessStatus,
+    missingCategories: completeness.missingCategories,
+    completenessWarnings: completeness.completenessWarnings,
+    footwearIncluded: completeness.footwearIncluded
   };
 }
 
@@ -362,6 +380,31 @@ export function serializeOutfit(
   outfit: any,
   items: any[]
 ) {
+  const computedCompleteness = evaluateOutfitCompleteness(items);
+  const previewDefaults = {
+    status: "not_started",
+    provider: "",
+    storageKey: "",
+    imageUrl: "",
+    cacheKey: "",
+    promptVersion: "",
+    model: "",
+    accuracyLevel: {
+      id: "inspired_visualization",
+      label: "AI Visualization",
+      meaning: "Looks inspired by selected items but may not match exact garment fit.",
+      rank: 1
+    },
+    fitWarnings: [],
+    groundedItemIds: [],
+    missingVisualItemIds: [],
+    visualizationWarnings: [],
+    footwearIncluded: computedCompleteness.footwearIncluded,
+    visualGroundingStatus: "partially_grounded",
+    generatedAt: null,
+    errorMessage: "",
+    attempts: 0
+  };
   return {
     id: String(outfit._id),
     title:
@@ -383,27 +426,13 @@ export function serializeOutfit(
     improvementNote: outfit.improvementNote || "",
     addLater: outfit.addLater || "",
     confidenceScore: outfit.confidenceScore || 0,
+    completenessStatus: outfit.completenessStatus || computedCompleteness.completenessStatus,
+    missingCategories: outfit.missingCategories || computedCompleteness.missingCategories,
+    completenessWarnings: outfit.completenessWarnings || computedCompleteness.completenessWarnings,
+    footwearIncluded: typeof outfit.footwearIncluded === "boolean" ? outfit.footwearIncluded : computedCompleteness.footwearIncluded,
     stylingTips: outfit.stylingTips || [],
     source: outfit.source || "rule_based",
-    preview: outfit.preview || {
-      status: "not_started",
-      provider: "",
-      storageKey: "",
-      imageUrl: "",
-      cacheKey: "",
-      promptVersion: "",
-      model: "",
-      accuracyLevel: {
-        id: "inspired_visualization",
-        label: "AI Visualization",
-        meaning: "Looks inspired by selected items but may not match exact garment fit.",
-        rank: 1
-      },
-      fitWarnings: [],
-      generatedAt: null,
-      errorMessage: "",
-      attempts: 0
-    },
+    preview: { ...previewDefaults, ...(outfit.preview || {}) },
     colorNote:
       outfit.colorNote || colorNote(items),
     repeatNote:

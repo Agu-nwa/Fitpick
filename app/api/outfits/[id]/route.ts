@@ -20,7 +20,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const outfit = await OutfitRecommendation.findOne({ _id: context.params.id, userId: auth.user._id }).lean();
     if (!outfit) return apiError("NOT_FOUND", "Outfit was not found.");
 
-    const items = await WardrobeItem.find({ _id: { $in: outfit.itemIds }, userId: auth.user._id }).lean();
+    const itemIds = (outfit.itemIds || []).map(String);
+    const loadedItems = await WardrobeItem.find({ _id: { $in: itemIds }, userId: auth.user._id }).lean();
+    const itemsById = new Map(loadedItems.map((item: any) => [String(item._id), item]));
+    const items = itemIds.map((id) => itemsById.get(id)).filter(Boolean);
 
     return apiSuccess({ outfit: serializeOutfit(outfit, items) });
   } catch (error) {

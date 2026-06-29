@@ -14,6 +14,7 @@ import {
 import type { PosePreset, VisualizationStyle } from "@/lib/avatar/avatar-profile";
 import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
+import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import {
   buildPreviewCacheKeyFromItems,
   generateOutfitPreview as generatePremiumOutfitPreview,
@@ -28,7 +29,7 @@ import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
 
-export const stylistVisualizationDisclaimer = "AI visualization, not exact virtual try-on.";
+export const stylistVisualizationDisclaimer = "This is a preview, not a perfect fitting.";
 
 export type StylistVisualizationOptions = {
   includeVisualization?: boolean;
@@ -50,6 +51,11 @@ type AvatarPreviewSummary = {
   fitStatus?: string;
   fitConfidence?: number;
   fitWarnings?: string[];
+  groundedItemIds?: string[];
+  missingVisualItemIds?: string[];
+  visualizationWarnings?: string[];
+  footwearIncluded?: boolean;
+  visualGroundingStatus?: string;
 };
 
 export type StylistVisualizationResult = {
@@ -108,6 +114,22 @@ function previewFitPatch(fitEvaluation?: FitEvaluation): Partial<AvatarPreviewSu
     fitStatus: fitEvaluation.fitStatus,
     fitConfidence: fitEvaluation.fitConfidence,
     fitWarnings: fitEvaluation.warnings
+  };
+}
+
+function previewGroundingPatch(items: any[], preview?: any): Partial<AvatarPreviewSummary> {
+  const grounding = summarizeVisualizationRisks(items, {
+    outfitDescription: items.map((item) => `Wardrobe item ID: ${String(item._id)} Category: ${item.category || "unknown"}`).join("\n")
+  });
+  const previewGroundedIds = Array.isArray(preview?.groundedItemIds) && preview.groundedItemIds.length ? preview.groundedItemIds : grounding.groundedItemIds;
+  const previewMissingIds = Array.isArray(preview?.missingVisualItemIds) && preview.missingVisualItemIds.length ? preview.missingVisualItemIds : grounding.missingVisualItemIds;
+  const previewWarnings = Array.isArray(preview?.visualizationWarnings) && preview.visualizationWarnings.length ? preview.visualizationWarnings : grounding.visualizationWarnings;
+  return {
+    groundedItemIds: previewGroundedIds.map(String),
+    missingVisualItemIds: previewMissingIds.map(String),
+    visualizationWarnings: previewWarnings,
+    footwearIncluded: typeof preview?.footwearIncluded === "boolean" ? preview.footwearIncluded : grounding.footwearIncluded,
+    visualGroundingStatus: preview?.visualGroundingStatus || grounding.visualGroundingStatus
   };
 }
 
@@ -228,6 +250,12 @@ export async function createOrReuseStylistOutfitRecommendation(
           ? recommendationResult.stylingTips.map((tip: unknown) => cleanText(tip, 180)).filter(Boolean).slice(0, 8)
           : [],
         confidenceScore: Math.max(0, Math.min(1, Number(recommendationResult?.confidenceScore || 0))),
+        completenessStatus: recommendationResult?.completenessStatus || "missing_core_item",
+        missingCategories: Array.isArray(recommendationResult?.missingCategories) ? recommendationResult.missingCategories.slice(0, 8) : [],
+        completenessWarnings: Array.isArray(recommendationResult?.completenessWarnings)
+          ? recommendationResult.completenessWarnings.map((warning: unknown) => cleanText(warning, 220)).filter(Boolean).slice(0, 8)
+          : [],
+        footwearIncluded: Boolean(recommendationResult?.footwearIncluded),
         swapGroups: recommendationResult?.swapGroups || [],
         source,
         requestText,
@@ -336,6 +364,7 @@ async function triggerPremiumPreviewForStylist(
     },
     true
   );
+  const previewRecordId = (previewRecord as any)?._id ? String((previewRecord as any)._id) : null;
 
   if (backgroundJobsEnabled()) {
     const job = await enqueueJob(
@@ -359,7 +388,7 @@ async function triggerPremiumPreviewForStylist(
       avatarPreview: defaultAvatarPreview({
         status: "queued",
         jobId: String(job._id),
-        previewId: previewRecord?._id ? String(previewRecord._id) : null,
+        previewId: previewRecordId,
         cacheKey
       }),
       job
@@ -398,7 +427,7 @@ async function triggerPremiumPreviewForStylist(
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
         status: "failed",
-        previewId: previewRecord?._id ? String(previewRecord._id) : null,
+        previewId: previewRecordId,
         cacheKey,
         errorMessage: "Unable to generate premium preview right now."
       })
@@ -430,7 +459,7 @@ export async function triggerDigitalHumanPreviewForStylist(
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
         status: "failed",
-        errorMessage: "Digital Human image generation is not configured yet."
+        errorMessage: "Avatar preview is not configured yet."
       })
     });
   }
@@ -442,7 +471,7 @@ export async function triggerDigitalHumanPreviewForStylist(
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
         status: "failed",
-        errorMessage: "This Digital Human look needs all selected owned wardrobe items available."
+        errorMessage: "This avatar preview needs all selected owned wardrobe items available."
       })
     });
   }
@@ -452,12 +481,13 @@ export async function triggerDigitalHumanPreviewForStylist(
       visualMode,
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
-        errorMessage: "Please review and save your Digital Human settings before generating an avatar look."
+        errorMessage: "Please review and save your avatar settings before showing the outfit."
       })
     });
   }
 
   const fitEvaluation = evaluateOutfitFitOnAvatar(loaded.avatarProfile, loaded.items);
+  const groundingPatch = previewGroundingPatch(loaded.items);
   const previewOptions = {
     visualizationStyle: options.visualizationStyle || loaded.avatarProfile.visualizationStyle || "luxury",
     posePreset: options.posePreset || loaded.avatarProfile.posePreset || "standing"
@@ -474,7 +504,8 @@ export async function triggerDigitalHumanPreviewForStylist(
         previewId: String(cached._id),
         imageUrl: cached.imageUrl,
         cacheKey,
-        ...previewFitPatch(fitEvaluation)
+        ...previewFitPatch(fitEvaluation),
+        ...previewGroundingPatch(loaded.items, cached)
       }),
       fitLock: fitLockSummary(fitEvaluation)
     });
@@ -497,7 +528,8 @@ export async function triggerDigitalHumanPreviewForStylist(
         previewId: String(inFlight._id),
         imageUrl: inFlight.imageUrl || null,
         cacheKey,
-        ...previewFitPatch(fitEvaluation)
+        ...previewFitPatch(fitEvaluation),
+        ...previewGroundingPatch(loaded.items, inFlight)
       }),
       fitLock: fitLockSummary(fitEvaluation)
     });
@@ -525,11 +557,17 @@ export async function triggerDigitalHumanPreviewForStylist(
       fitConfidence: fitEvaluation.fitConfidence,
       fitWarnings: fitEvaluation.warnings,
       fitLockInstructions: fitEvaluation.lockedFitInstructions,
+      groundedItemIds: groundingPatch.groundedItemIds,
+      missingVisualItemIds: groundingPatch.missingVisualItemIds,
+      visualizationWarnings: groundingPatch.visualizationWarnings,
+      footwearIncluded: groundingPatch.footwearIncluded,
+      visualGroundingStatus: groundingPatch.visualGroundingStatus,
       errorMessage: "",
       lastAttemptAt: new Date()
     },
     true
   );
+  const previewRecordId = (previewRecord as any)?._id ? String((previewRecord as any)._id) : null;
 
   if (backgroundJobsEnabled()) {
     const job = await enqueueJob(
@@ -555,9 +593,10 @@ export async function triggerDigitalHumanPreviewForStylist(
       avatarPreview: defaultAvatarPreview({
         status: "queued",
         jobId: String(job._id),
-        previewId: previewRecord?._id ? String(previewRecord._id) : null,
+        previewId: previewRecordId,
         cacheKey,
-        ...previewFitPatch(fitEvaluation)
+        ...previewFitPatch(fitEvaluation),
+        ...groundingPatch
       }),
       fitLock: fitLockSummary(fitEvaluation),
       job
@@ -577,7 +616,8 @@ export async function triggerDigitalHumanPreviewForStylist(
         previewId: preview.id || null,
         imageUrl: preview.imageUrl || preview.previewUrl || null,
         cacheKey,
-        ...previewFitPatch(fitEvaluation)
+        ...previewFitPatch(fitEvaluation),
+        ...previewGroundingPatch(loaded.items, preview)
       }),
       fitLock: fitLockSummary(fitEvaluation)
     });
@@ -589,7 +629,7 @@ export async function triggerDigitalHumanPreviewForStylist(
       cacheKey,
       {
         status: "failed",
-        errorMessage: "Unable to generate Digital Human Preview right now.",
+        errorMessage: "Unable to show it on your avatar right now.",
         lastAttemptAt: new Date()
       }
     );
@@ -599,10 +639,11 @@ export async function triggerDigitalHumanPreviewForStylist(
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
         status: "failed",
-        previewId: previewRecord?._id ? String(previewRecord._id) : null,
+        previewId: previewRecordId,
         cacheKey,
-        errorMessage: "Unable to generate Digital Human Preview right now.",
-        ...previewFitPatch(fitEvaluation)
+        errorMessage: "Unable to show it on your avatar right now.",
+        ...previewFitPatch(fitEvaluation),
+        ...groundingPatch
       }),
       fitLock: fitLockSummary(fitEvaluation)
     });

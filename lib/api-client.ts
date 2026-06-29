@@ -362,6 +362,11 @@ export type AvatarPreviewData = {
     fitConfidence?: number;
     fitWarnings?: string[];
     fitLockInstructions?: string[];
+    groundedItemIds?: string[];
+    missingVisualItemIds?: string[];
+    visualizationWarnings?: string[];
+    footwearIncluded?: boolean;
+    visualGroundingStatus?: string;
     generatedAt: string | null;
     errorMessage: string;
     attempts: number;

@@ -68,7 +68,7 @@ function fallbackStylistResponse(input: {
     visualMode: "none",
     outfitRecommendationId: null,
     avatarPreview: defaultAvatarPreview(),
-    visualizationDisclaimer: "AI visualization, not exact virtual try-on."
+    visualizationDisclaimer: "This is a preview, not a perfect fitting."
   };
 }
 
@@ -87,7 +87,7 @@ function groundStylistResponse(response: StylistResponse, ownedItemIds: string[]
     visualMode: "none" as const,
     outfitRecommendationId: null,
     avatarPreview: defaultAvatarPreview(),
-    visualizationDisclaimer: "AI visualization, not exact virtual try-on."
+    visualizationDisclaimer: "This is a preview, not a perfect fitting."
   };
 }
 

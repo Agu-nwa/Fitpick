@@ -68,5 +68,5 @@ export function resolvePreviewAccuracyLevel(input: {
 export function previewAccuracyWarning(levelId?: string | null) {
   const level = getPreviewAccuracyLevel(levelId);
   if (level.id === "true_3d_simulation") return "";
-  return `${level.label}: ${level.meaning} This is not exact virtual try-on.`;
+  return `${level.label}: ${level.meaning} This is a preview, not a perfect fitting.`;
 }

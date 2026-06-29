@@ -24,7 +24,7 @@ Hard rules:
 - Do not invent new garments, shoes, bags, accessories, logos, text, or watermarks.
 - Do not change garment colors, visible patterns, materials, or core silhouettes.
 - If details are uncertain, keep the visualization restrained instead of adding guesses.
-- This is a premium visualization, not an exact virtual try-on or body-fit simulation.
+- This is a preview, not a perfect fitting or body-fit simulation.
 - Keep the output polished, modern, and luxury editorial.
 - No text in the image.`;
 }

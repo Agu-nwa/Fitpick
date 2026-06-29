@@ -13,6 +13,7 @@ import {
   sendStylistMessage
 } from "@/lib/api-client";
 import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
+import { completenessLabel } from "@/lib/recommendation/completeness";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 
@@ -77,7 +78,12 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
     accuracyLevel: preview?.accuracyLevel,
     fitStatus: preview?.fitStatus,
     fitConfidence: preview?.fitConfidence,
-    fitWarnings: preview?.fitWarnings
+    fitWarnings: preview?.fitWarnings,
+    groundedItemIds: preview?.groundedItemIds,
+    missingVisualItemIds: preview?.missingVisualItemIds,
+    visualizationWarnings: preview?.visualizationWarnings,
+    footwearIncluded: preview?.footwearIncluded,
+    visualGroundingStatus: preview?.visualGroundingStatus
   };
 }
 
@@ -301,6 +307,7 @@ export function StylistChat() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
               {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
+              {outfit?.completenessStatus ? <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge> : null}
             </div>
 
             {preview?.imageUrl ? (
@@ -327,11 +334,19 @@ export function StylistChat() {
                 ))}
               </div>
             ) : null}
+            {outfit?.completenessWarnings?.length ? (
+              <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
+                {outfit.completenessWarnings.slice(0, 2).map((warning) => (
+                  <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
+                ))}
+              </div>
+            ) : null}
             <details className="mt-3 rounded-xl border border-line bg-white p-3">
               <summary className="cursor-pointer text-xs font-semibold text-ink">Preview details</summary>
               <div className="mt-3 flex flex-wrap gap-2">
                 {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>Preview type: {simplePreviewType(preview.accuracyLevel)}</Badge> : null}
                 {entry.fitLock?.fitStatus ? <Badge tone={entry.fitLock.fitStatus === "likely_fits" ? "success" : "warning"}>Fit: {simpleFitStatus(entry.fitLock.fitStatus)}</Badge> : null}
+                {preview?.visualGroundingStatus ? <Badge tone={preview.visualGroundingStatus === "grounded" ? "success" : "warning"}>{preview.visualGroundingStatus === "grounded" ? "Grounded" : "Needs review"}</Badge> : null}
                 {entry.jobId ? <Badge tone="neutral">Job {entry.jobId.slice(-8)}</Badge> : null}
               </div>
             </details>
@@ -341,6 +356,13 @@ export function StylistChat() {
                 <Button type="button" onClick={() => void handleSaveLook(entry)}>
                   Save this look
                 </Button>
+              ) : null}
+              {entry.outfitRecommendationId ? (
+                <Link href={`/outfit/${entry.outfitRecommendationId}/preview`} className="block">
+                  <Button type="button" className="w-full" variant="secondary">
+                    View full look
+                  </Button>
+                </Link>
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Button type="button" variant="secondary" onClick={() => void submitStylistMessage(`Try another ${outfit?.occasion || "look"} from my wardrobe`, { includeVisualization: true })}>
