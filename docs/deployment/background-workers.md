@@ -2,6 +2,15 @@
 
 FitPick can run expensive AI jobs in a background worker when `ENABLE_BACKGROUND_JOBS=true`.
 
+The worker entrypoint loads environment files before validating configuration. It checks these files from the app directory, without logging secret values:
+
+1. `.env.production.local`
+2. `.env.local`
+3. `.env.production`
+4. `.env`
+
+Real EC2 secrets should live in `.env.local` or in the PM2 environment, never in committed files.
+
 Supported v1 jobs:
 
 - `outfit_preview_generation`
@@ -35,6 +44,8 @@ Runs the worker with file watching for local development.
 
 ## EC2 + PM2
 
+Before starting PM2, confirm `.env.local` exists in the FitPick app directory and includes the worker variables listed below.
+
 ```bash
 pm2 startOrRestart ecosystem.config.js --only fitpick-worker --update-env
 ```
@@ -53,6 +64,8 @@ pm2 logs fitpick-worker --lines 100
 
 Shows the latest worker logs for job processing, retries, and failures.
 
+If `ENABLE_BACKGROUND_JOBS=false`, the worker exits with status `disabled`. PM2 is configured with `stop_exit_codes: [0]`, so this clean exit should not restart in a loop.
+
 ```bash
 pm2 save
 ```
@@ -67,5 +80,30 @@ WORKER_POLL_MS=5000
 AI_CACHE_PROVIDER=memory
 RATE_LIMIT_PROVIDER=memory
 ```
+
+Required production variables for the worker and job handlers:
+
+```env
+NODE_ENV=production
+MONGODB_URI=
+JWT_SECRET=
+OPENAI_API_KEY=
+S3_BUCKET=
+S3_REGION=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_PUBLIC_BASE_URL=
+NEXT_PUBLIC_APP_URL=
+```
+
+Optional, depending on enabled job types:
+
+```env
+BACKGROUND_REMOVAL_PROVIDER=removebg
+BACKGROUND_REMOVAL_API_KEY=
+FITPICK_STUDIO_BACKGROUND_PRESET=ivory
+```
+
+The worker startup log may list missing variable names, but it must never print variable values.
 
 Redis and SQS are not required for this phase. Future adapters should keep the same queue/cache interfaces.
