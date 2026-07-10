@@ -70,6 +70,7 @@ export type CurrentUserSummary = {
     id: string;
     name: string;
     email: string;
+    role: "user" | "admin";
     plan: "free" | "plus";
   };
 };
@@ -461,8 +462,38 @@ export type BillingProvidersData = {
   providers: Record<string, { configured: boolean; currencies: string[]; supportsRecurring: boolean }>;
 };
 
+export type AdminAuditData = {
+  recent: Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    createdAt?: string;
+  }>;
+  summary: Array<{ action: string; count: number }>;
+};
+
+export type AdminContentData = {
+  contentRuleSummary: Array<{ type: string; count: number }>;
+  occasions: Array<{
+    id: string;
+    name: string;
+    group: string;
+    formality: string;
+  }>;
+};
+
+export type AdminSeedData = {
+  occasions: number;
+  reasonChips: number;
+  contentRules: number;
+};
+
 export const getBackendHealth = () => apiRequest<BackendHealth>("/api/health", { cache: "no-store" });
 export const getCurrentUser = () => apiRequest<CurrentUserSummary>("/api/auth/me", { cache: "no-store" });
+export const getAdminAudit = () => apiRequest<AdminAuditData>("/api/admin/audit", { cache: "no-store" });
+export const getAdminContent = () => apiRequest<AdminContentData>("/api/admin/content", { cache: "no-store" });
+export const runAdminSeed = () => apiRequest<AdminSeedData>("/api/admin/seed", { method: "POST" });
 export const register = (body: unknown) => apiRequest("/api/auth/register", { method: "POST", body });
 export const login = (body: unknown) => apiRequest("/api/auth/login", { method: "POST", body });
 export const logout = () => apiRequest("/api/auth/logout", { method: "POST" });

@@ -181,6 +181,25 @@ Expected:
 - Worker exits cleanly only when `ENABLE_BACKGROUND_JOBS=false`.
 - Logs show missing variable names only, never secret values.
 
+## Admin Operations Console
+
+FitPick includes a production admin console at:
+
+```text
+https://YOUR_DOMAIN/admin
+```
+
+The route is server-protected with `requireAdmin()` and only users with `role=admin` can access the console. Public, logged-out, and non-admin users receive the standard 404 page so the admin surface is not exposed as a reachable public screen.
+
+Admin capabilities:
+
+- System health overview for app, database, storage, and worker signals.
+- Audit activity viewer using `/api/admin/audit`.
+- Content readiness view using `/api/admin/content`.
+- Controlled seed action using `/api/admin/seed`.
+
+Before launch, create or promote at least one administrator user in MongoDB. Keep admin accounts limited, audited, and protected by strong credentials.
+
 ## Smoke Test Checklist
 
 Verify these flows after deployment:
@@ -197,6 +216,7 @@ Verify these flows after deployment:
 - Open looks history.
 - Open profile/preferences.
 - Open Plus page.
+- Open `/admin` with an admin account and verify health, audit, content, and seed controls.
 - Run a checkout only in sandbox mode until HTTPS and webhooks are confirmed.
 
 ## Payment Webhooks

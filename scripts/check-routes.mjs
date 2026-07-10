@@ -19,6 +19,7 @@ const required = [
   "app/frontend-complete/page.tsx",
   "app/login/page.tsx",
   "app/register/page.tsx",
+  "app/admin/page.tsx",
 ];
 
 const missing = required.filter((file) => !existsSync(file));
