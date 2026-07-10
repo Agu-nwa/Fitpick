@@ -1,68 +1,882 @@
-# FitPick Frontend Phase 4D
+#Fitpick Beta Phase Deployment
 
-Mobile-first Next.js App Router frontend for FitPick, an occasion-first AI wardrobe and outfit decision assistant.
+## 🖥 Create Custom VPC
+###
+```text
 
-## Phase 4D status
+| Resource | CIDR | Availability Zone | Purpose |
+|---|---:|---|---|
+| VPC | 10.0.0.0/16 | ca-central-1 | FitPick beta network |
+| Public Subnet A | 10.0.1.0/24 | ca-central-1a | ALB and NAT Gateway |
+| Public Subnet B | 10.0.2.0/24 | ca-central-1b | ALB second AZ |
+| Private Subnet A | 10.0.11.0/24 | ca-central-1a | FitPick app EC2 |
+| Private Subnet B | 10.0.12.0/24 | ca-central-1b | Future second app EC2 |
 
-**Frontend is complete for backend handoff.**
+## Route Table Design
 
-This package finalizes the frontend foundation and adds:
+### Public Route Table
 
-- Final frontend readiness page: `/frontend-complete`
-- Backend handoff scope inside the app
-- API contract map for backend integration
-- Route check script
-- Registry-safe `.npmrc` to avoid internal package registry issues
-- Mobile-first app shell, safe-area support, bottom navigation, reusable components, and state patterns
-- Mock-data layer ready to be replaced by backend APIs
+| Destination | Target | Meaning |
+|---|---|---|
+| 10.0.0.0/16 | local | Internal VPC communication |
+| 0.0.0.0/0 | Internet Gateway | Public internet access |
 
-## Run cleanly on Mac
+### Private Route Table
 
-```bash
-cd ~/Documents
-unzip ~/Downloads/fitpick-frontend-phase4d.zip
-cd fitpick-frontend-phase4d
-npm install --registry=https://registry.npmjs.org/
-npm run dev
+| Destination | Target | Meaning |
+|---|---|---|
+| 10.0.0.0/16 | local | Internal VPC communication |
+| 0.0.0.0/0 | NAT Gateway | Outbound internet access for private servers |
+
+## Network Security Position
+
+The FitPick app server will be launched in a private subnet with no public IP address.
+
+Public traffic enters through the Application Load Balancer only.
+
+Private EC2 outbound internet access is provided through NAT Gateway for OpenAI, MongoDB Atlas, GitHub, npm, Ubuntu package repositories, S3, and CloudWatch.
 ```
 
-Open `http://localhost:3000`.
+## ⚙️ Switch to Ubuntu user
 
-## QA commands
-
+### Command
 ```bash
-npm run check:routes
-npm run build
+sudo su - ubuntu
+ubuntu@ip-10-0-11-94:~$
 ```
 
-## Production storage and deployment
+## Verify
 
-FitPick now uses S3 for active image storage and CloudFront for public image delivery. See:
+### Command
+```bash
+whoami
+ubuntu
+ubuntu@ip-10-0-11-94:~$ pwd
+/home/ubuntu
+ubuntu@ip-10-0-11-94:~$ curl -I https://github.com
+HTTP/2 200
+date: Fri, 10 Jul 2026 15:05:16 GMT
+content-type: text/html; charset=utf-8
+vary: X-PJAX, X-PJAX-Container, Turbo-Visit, Turbo-Frame, X-Requested-With, Accept-Language, Sec-Fetch-Site,Accept-Encoding, Accept, X-Requested-With
+content-language: en-US
+etag: W/"9d6ccf462b5132049495a57c58abca3e"
+cache-control: max-age=0, private, must-revalidate
+strict-transport-security: max-age=31536000; includeSubdomains; preload
+x-frame-options: deny
+x-content-type-options: nosniff
+x-xss-protection: 0
+referrer-policy: origin-when-cross-origin, strict-origin-when-cross-origin
+content-security-policy: default-src 'none'; base-uri 'self'; child-src github.githubassets.com github.com/assets-cdn/worker/ github.com/assets/ gist.github.com/assets-cdn/worker/; connect-src 'self' uploads.github.com www.githubstatus.com collector.github.com raw.githubusercontent.com api.github.com github-cloud.s3.amazonaws.com github-production-repository-file-5c1aeb.s3.amazonaws.com github-production-upload-manifest-file-7fdce7.s3.amazonaws.com github-production-user-asset-6210df.s3.amazonaws.com *.rel.tunnels.api.visualstudio.com wss://*.rel.tunnels.api.visualstudio.com github.githubassets.com objects-origin.githubusercontent.com copilot-proxy.githubusercontent.com proxy.individual.githubcopilot.com proxy.business.githubcopilot.com proxy.enterprise.githubcopilot.com *.actions.githubusercontent.com wss://*.actions.githubusercontent.com productionresultssa0.blob.core.windows.net productionresultssa1.blob.core.windows.net productionresultssa2.blob.core.windows.net productionresultssa3.blob.core.windows.net productionresultssa4.blob.core.windows.net productionresultssa5.blob.core.windows.net productionresultssa6.blob.core.windows.net productionresultssa7.blob.core.windows.net productionresultssa8.blob.core.windows.net productionresultssa9.blob.core.windows.net productionresultssa10.blob.core.windows.net productionresultssa11.blob.core.windows.net productionresultssa12.blob.core.windows.net productionresultssa13.blob.core.windows.net productionresultssa14.blob.core.windows.net productionresultssa15.blob.core.windows.net productionresultssa16.blob.core.windows.net productionresultssa17.blob.core.windows.net productionresultssa18.blob.core.windows.net productionresultssa19.blob.core.windows.net github-production-repository-image-32fea6.s3.amazonaws.com github-production-release-asset-2e65be.s3.amazonaws.com insights.github.com wss://alive.github.com wss://alive-staging.github.com api.githubcopilot.com api.individual.githubcopilot.com api.business.githubcopilot.com api.enterprise.githubcopilot.com wss://production-copilot-host.webpubsub.azure.com edge.fullstory.com rs.fullstory.com; font-src github.githubassets.com; form-action 'self' github.com gist.github.com copilot-workspace.githubnext.com objects-origin.githubusercontent.com; frame-ancestors 'none'; frame-src viewscreen.githubusercontent.com notebooks.githubusercontent.com www.youtube-nocookie.com; img-src 'self' data: blob: github.githubassets.com media.githubusercontent.com camo.githubusercontent.com identicons.github.com avatars.githubusercontent.com private-avatars.githubusercontent.com github-cloud.s3.amazonaws.com objects.githubusercontent.com release-assets.githubusercontent.comsecured-user-images.githubusercontent.com user-images.githubusercontent.com private-user-images.githubusercontent.com opengraph.githubassets.com marketplace-screenshots.githubusercontent.com copilotprodattachments.blob.core.windows.net/github-production-copilot-attachments/ github-production-user-asset-6210df.s3.amazonaws.com customer-stories-feed.github.com spotlights-feed.github.com explore-feed.github.com objects-origin.githubusercontent.com *.githubusercontent.com images.ctfassets.net/8aevphvgewt8/; manifest-src 'self'; media-src github.com user-images.githubusercontent.com secured-user-images.githubusercontent.com private-user-images.githubusercontent.com github-production-user-asset-6210df.s3.amazonaws.com gist.github.com github.githubassets.com assets.ctfassets.net/8aevphvgewt8/ videos.ctfassets.net/8aevphvgewt8/; script-src github.githubassets.com; style-src 'unsafe-inline' github.githubassets.com; upgrade-insecure-requests; worker-src github.githubassets.com github.com/assets-cdn/worker/ github.com/assets/ gist.github.com/assets-cdn/worker/
+server: github.com
+accept-ranges: bytes
+set-cookie: _gh_sess=SmNFwL9MVxJwFk0yKXCp3rmwwIBXRFaMb9QtpdhK8BzcJC%2BYIb%2BFMREsq5ZZzy8%2BBYaj0nE1DX5BsXKxc4lerGXoNFLCE7l%2BpjDbRmQsMj%2FVYrABqxRLgLEDIJ4uYokCbt7GyTUdc1d8inqrhZTLGYcWaqR9V5MBXsjXJtuVnbUHzOFi1rbij8kOZ08QWasBQvVXkoaGNXDPwfR%2FIywkaN7bZQUso8Yf0UKCqKKzSSaRq6XpXs2j1W41zJk4gmtC9m2EbGkg4nAVe3ddSlJHEw%3D%3D--v4RDA4vfpK5Pw3Xw--3pLs6ckkbGMb3Pr%2BWWyFeg%3D%3D; path=/; HttpOnly; secure; SameSite=Lax
+set-cookie: _octo=GH1.1.660375333.1783695916; expires=Sat, 10 Jul 2027 15:05:16 GMT; domain=.github.com; path=/; secure; SameSite=Lax
+set-cookie: logged_in=no; expires=Sat, 10 Jul 2027 15:05:16 GMT; domain=.github.com; path=/; HttpOnly; secure; SameSite=Lax
+x-github-request-id: 1B4E:132F24:546336A:767291D:6A510A2C
+ubuntu@ip-10-0-11-94:~$ cat /etc/os-release
+PRETTY_NAME="Ubuntu 26.04 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04 LTS (Resolute Raccoon)"
+VERSION_CODENAME=resolute
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=resolute
+LOGO=ubuntu-logo
+ubuntu@ip-10-0-11-94:~$
+```
 
-- `docs/deployment/s3-cloudfront.md`
-- `docs/deployment/iam-s3-fitpick-policy.json`
-- `docs/deployment/ec2-pm2-production.md`
+# Install Dependencies
 
-Rotate any AWS key that has been shared in chat, logs, screenshots, or documents.
+## ⚙️ Update Package
 
-## Main routes
+### Command
+```bash
+sudo apt update
+Hit:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute InRelease
+Get:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]
+Get:3 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports InRelease [136 kB]
+Get:4 http://security.ubuntu.com/ubuntu resolute-security InRelease [137 kB]
+Get:5 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 Packages [16.3 MB]
+Get:6 http://security.ubuntu.com/ubuntu resolute-security/main amd64v3 Packages [273 kB]
+Get:7 http://security.ubuntu.com/ubuntu resolute-security/main Translation-en [71.6 kB]
+Get:8 http://security.ubuntu.com/ubuntu resolute-security/main amd64 Components [31.2 kB]
+Get:9 http://security.ubuntu.com/ubuntu resolute-security/main amd64 c-n-f Metadata [4616 B]
+Get:10 http://security.ubuntu.com/ubuntu resolute-security/universe amd64v3 Packages [130 kB]
+Get:11 http://security.ubuntu.com/ubuntu resolute-security/universe Translation-en [41.2 kB]
+Get:12 http://security.ubuntu.com/ubuntu resolute-security/universe amd64 Components [43.1 kB]
+Get:13 http://security.ubuntu.com/ubuntu resolute-security/universe amd64 c-n-f Metadata [3552 B]
+Get:14 http://security.ubuntu.com/ubuntu resolute-security/restricted amd64v3 Packages [240 kB]
+Get:15 http://security.ubuntu.com/ubuntu resolute-security/restricted Translation-en [44.3 kB]
+Get:16 http://security.ubuntu.com/ubuntu resolute-security/multiverse amd64 Components [212 B]
+Get:17 http://security.ubuntu.com/ubuntu resolute-security/multiverse amd64 c-n-f Metadata [120 B]
+Get:18 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe Translation-en [6329 kB]
+Get:19 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64 Components [4556 kB]
+Get:20 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64 c-n-f Metadata [313 kB]
+Get:21 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/multiverse amd64v3 Packages [291 kB]
+Get:22 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/multiverse Translation-en [127 kB]
+Get:23 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/multiverse amd64 Components [50.0 kB]
+Get:24 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/multiverse amd64 c-n-f Metadata [8276 B]
+Get:25 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 Packages [330 kB]
+Get:26 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main Translation-en [86.7 kB]
+Get:27 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Components [53.1 kB]
+Get:28 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64 c-n-f Metadata [5756 B]
+Get:29 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/universe amd64v3 Packages [202 kB]
+Get:30 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/universe Translation-en [62.5 kB]
+Get:31 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Components [153 kB]
+Get:32 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 c-n-f Metadata [4704 B]
+Get:33 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/restricted amd64v3 Packages [248 kB]
+Get:34 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/restricted Translation-en [45.5 kB]
+Get:35 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/multiverse amd64v3 Packages [3360 B]
+Get:36 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/multiverse Translation-en [772 B]
+Get:37 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/multiverse amd64 Components [216 B]
+Get:38 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/multiverse amd64 c-n-f Metadata [256 B]
+Get:39 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/main amd64 Components [212 B]
+Get:40 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/main amd64 c-n-f Metadata [112 B]
+Get:41 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/universe amd64 Components [216 B]
+Get:42 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/universe amd64 c-n-f Metadata [116 B]
+Get:43 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/restricted amd64 Components [216 B]
+Get:44 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/restricted amd64 c-n-f Metadata [120 B]
+Get:45 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/multiverse amd64 Components [216 B]
+Get:46 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports/multiverse amd64 c-n-f Metadata [120 B]
+Fetched 30.4 MB in 4s (7387 kB/s)
+60 packages can be upgraded. Run 'apt list --upgradable' to see them.
+ubuntu@ip-10-0-11-94:~$
+```
 
-- `/onboarding`
-- `/home`
-- `/occasion`
-- `/wardrobe`
-- `/wardrobe/add`
-- `/wardrobe/white-shirt`
-- `/outfit`
-- `/outfit/work-polished-01`
-- `/looks`
-- `/profile`
-- `/profile/preferences`
-- `/plus`
-- `/states`
-- `/backend-ready`
-- `/frontend-complete`
+## ⚙️ Install base packages
 
-## Backend handoff
+### Command
+```bash
+sudo apt install -y git curl build-essential unzip
+git is already the newest version (1:2.53.0-1ubuntu1).
+git set to manually installed.
+Upgrading:
+  bpftool  curl  libcurl3t64-gnutls  libcurl4t64  linux-perf  linux-tools-common
 
-The frontend is now ready for the backend prompt. Backend should implement auth, users, wardrobe uploads, image storage, clothing tagging, outfit recommendations, saved/worn looks, ratings, FitPick Plus entitlement, notifications, and API integration using the frontend contract map.
+Installing:
+  build-essential  unzip
+
+Installing dependencies:
+  bzip2                    g++                      gcc-15-x86-64-linux-gnu    libc6-dev               libgomp1      libstdc++-15-dev   rpcsvc-proto
+  cpp                      g++-15                   gcc-x86-64-linux-gnu       libcc1-0                libhwasan0    libtsan2
+  cpp-15                   g++-15-x86-64-linux-gnu  libalgorithm-diff-perl     libcrypt-dev            libisl23      libubsan1
+  cpp-15-x86-64-linux-gnu  g++-x86-64-linux-gnu     libalgorithm-diff-xs-perl  libdpkg-perl            libitm1       linux-libc-dev
+  cpp-x86-64-linux-gnu     gcc                      libalgorithm-merge-perl    libfakeroot             liblsan0      lto-disabled-list
+  dpkg-dev                 gcc-15                   libasan8                   libfile-fcntllock-perl  libmpc3       make
+  fakeroot                 gcc-15-base              libc-dev-bin               libgcc-15-dev           libquadmath0  manpages-dev
+
+Suggested packages:
+  bzip2-doc       cpp-15-doc                 g++-multilib     gcc-multilib  libtool  gdb              gdb-x86-64-linux-gnu  bzr               zip
+  cpp-doc         debian-keyring             g++-15-multilib  autoconf      flex     gcc-doc          libc-devtools         libstdc++-15-doc
+  gcc-15-locales  debian-tag2upload-keyring  gcc-15-doc       automake      bison    gcc-15-multilib  glibc-doc             make-doc
+
+Summary:
+  Upgrading: 6, Installing: 45, Removing: 0, Not Upgrading: 54
+  Download size: 88.4 MB
+  Space needed: 274 MB / 27.6 GB available
+
+Get:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 bpftool amd64 7.7.0+7.0.0-27.27 [945 kB]
+Get:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libc-dev-bin amd64 2.43-2ubuntu2 [23.7 kB]
+Get:3 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 linux-libc-dev amd64 7.0.0-27.27 [1561 kB]
+Get:4 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 rpcsvc-proto amd64 1.4.3-1build1 [68.6 kB]
+Get:5 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libc6-dev amd64 2.43-2ubuntu2 [2277 kB]
+Get:6 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 gcc-15-base amd64 15.2.0-16ubuntu1 [39.1 kB]
+Get:7 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libisl23 amd64 0.27-1build1 [692 kB]
+Get:8 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libmpc3 amd64 1.3.1-3 [55.0 kB]
+Get:9 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 cpp-15-x86-64-linux-gnu amd64 15.2.0-16ubuntu1 [13.0 MB]
+Get:10 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 cpp-15 amd64 15.2.0-16ubuntu1 [1044 B]
+Get:11 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 cpp-x86-64-linux-gnu amd64 4:15.2.0-5ubuntu1 [5852 B]
+Get:12 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 cpp amd64 4:15.2.0-5ubuntu1 [22.4 kB]
+Get:13 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libcc1-0 amd64 16-20260322-1ubuntu1 [53.8 kB]
+Get:14 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libgomp1 amd64 16-20260322-1ubuntu1 [163 kB]
+Get:15 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libitm1 amd64 16-20260322-1ubuntu1 [29.9 kB]
+Get:16 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libasan8 amd64 16-20260322-1ubuntu1 [3181 kB]
+Get:17 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 liblsan0 amd64 16-20260322-1ubuntu1 [1397 kB]
+Get:18 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libtsan2 amd64 16-20260322-1ubuntu1 [2875 kB]
+Get:19 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libubsan1 amd64 16-20260322-1ubuntu1 [1242 kB]
+Get:20 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libhwasan0 amd64 16-20260322-1ubuntu1 [1733 kB]
+Get:21 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libquadmath0 amd64 16-20260322-1ubuntu1 [156 kB]
+Get:22 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libgcc-15-dev amd64 15.2.0-16ubuntu1 [2867 kB]
+Get:23 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 gcc-15-x86-64-linux-gnu amd64 15.2.0-16ubuntu1 [25.6 MB]
+Get:24 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 gcc-15 amd64 15.2.0-16ubuntu1 [539 kB]
+Get:25 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 gcc-x86-64-linux-gnu amd64 4:15.2.0-5ubuntu1 [1220 B]
+Get:26 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 gcc amd64 4:15.2.0-5ubuntu1 [5014 B]
+Get:27 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libstdc++-15-dev amd64 15.2.0-16ubuntu1 [2928 kB]
+Get:28 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 g++-15-x86-64-linux-gnu amd64 15.2.0-16ubuntu1 [14.5 MB]
+Get:29 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 g++-15 amd64 15.2.0-16ubuntu1 [26.8 kB]
+Get:30 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 g++-x86-64-linux-gnu amd64 4:15.2.0-5ubuntu1 [980 B]
+Get:31 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 g++ amd64 4:15.2.0-5ubuntu1 [1110 B]
+Get:32 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 make amd64 4.4.1-3 [197 kB]
+Get:33 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libdpkg-perl all 1.23.7ubuntu1 [289 kB]
+Get:34 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 bzip2 amd64 1.0.8-6build2 [34.4 kB]
+Get:35 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 lto-disabled-list all 79 [14.2 kB]
+Get:36 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 dpkg-dev all 1.23.7ubuntu1 [1062 kB]
+Get:37 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libcrypt-dev amd64 1:4.5.1-1 [122 kB]
+Get:38 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 build-essential amd64 12.12ubuntu2.26.04.1 [5056 B]
+Get:39 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 curl amd64 8.18.0-1ubuntu2.3 [273 kB]
+Get:40 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 libcurl4t64 amd64 8.18.0-1ubuntu2.3 [426 kB]
+Get:41 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libfakeroot amd64 1.37.2-1 [34.0 kB]
+Get:42 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 fakeroot amd64 1.37.2-1 [68.8 kB]
+Get:43 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libalgorithm-diff-perl all 1.201-1 [41.8 kB]
+Get:44 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libalgorithm-diff-xs-perl amd64 0.04-9 [11.3 kB]
+Get:45 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libalgorithm-merge-perl all 0.08-5 [11.4 kB]
+Get:46 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 libcurl3t64-gnutls amd64 8.18.0-1ubuntu2.3 [418 kB]
+Get:47 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libfile-fcntllock-perl amd64 0.22-4ubuntu6 [32.8 kB]
+Get:48 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 linux-perf amd64 7.0.0-27.27 [6983 kB]
+Get:49 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 linux-tools-common all 7.0.0-27.27 [50.6 kB]
+Get:50 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 manpages-dev all 6.17-1 [2183 kB]
+Get:51 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 unzip amd64 6.0-29ubuntu1 [181 kB]
+Fetched 88.4 MB in 1s (73.0 MB/s)
+Extracting templates from packages: 100%
+(Reading database ... 85303 files and directories currently installed.)
+Preparing to unpack .../00-bpftool_7.7.0+7.0.0-27.27_amd64.deb ...
+Unpacking bpftool (7.7.0+7.0.0-27.27) over (7.7.0+7.0.0-22.22) ...
+Selecting previously unselected package libc-dev-bin.
+Preparing to unpack .../01-libc-dev-bin_2.43-2ubuntu2_amd64v3.deb ...
+Unpacking libc-dev-bin (2.43-2ubuntu2) ...
+Selecting previously unselected package linux-libc-dev:amd64.
+Preparing to unpack .../02-linux-libc-dev_7.0.0-27.27_amd64.deb ...
+Unpacking linux-libc-dev:amd64 (7.0.0-27.27) ...
+Selecting previously unselected package rpcsvc-proto.
+Preparing to unpack .../03-rpcsvc-proto_1.4.3-1build1_amd64v3.deb ...
+Unpacking rpcsvc-proto (1.4.3-1build1) ...
+Selecting previously unselected package libc6-dev:amd64.
+Preparing to unpack .../04-libc6-dev_2.43-2ubuntu2_amd64v3.deb ...
+Unpacking libc6-dev:amd64 (2.43-2ubuntu2) ...
+Selecting previously unselected package gcc-15-base:amd64.
+Preparing to unpack .../05-gcc-15-base_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking gcc-15-base:amd64 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package libisl23:amd64.
+Preparing to unpack .../06-libisl23_0.27-1build1_amd64v3.deb ...
+Unpacking libisl23:amd64 (0.27-1build1) ...
+Selecting previously unselected package libmpc3:amd64.
+Preparing to unpack .../07-libmpc3_1.3.1-3_amd64v3.deb ...
+Unpacking libmpc3:amd64 (1.3.1-3) ...
+Selecting previously unselected package cpp-15-x86-64-linux-gnu.
+Preparing to unpack .../08-cpp-15-x86-64-linux-gnu_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking cpp-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Selecting previously unselected package cpp-15.
+Preparing to unpack .../09-cpp-15_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking cpp-15 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package cpp-x86-64-linux-gnu.
+Preparing to unpack .../10-cpp-x86-64-linux-gnu_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking cpp-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package cpp.
+Preparing to unpack .../11-cpp_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking cpp (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package libcc1-0:amd64.
+Preparing to unpack .../12-libcc1-0_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libcc1-0:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libgomp1:amd64.
+Preparing to unpack .../13-libgomp1_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libgomp1:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libitm1:amd64.
+Preparing to unpack .../14-libitm1_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libitm1:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libasan8:amd64.
+Preparing to unpack .../15-libasan8_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libasan8:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package liblsan0:amd64.
+Preparing to unpack .../16-liblsan0_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking liblsan0:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libtsan2:amd64.
+Preparing to unpack .../17-libtsan2_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libtsan2:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libubsan1:amd64.
+Preparing to unpack .../18-libubsan1_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libubsan1:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libhwasan0:amd64.
+Preparing to unpack .../19-libhwasan0_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libhwasan0:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libquadmath0:amd64.
+Preparing to unpack .../20-libquadmath0_16-20260322-1ubuntu1_amd64v3.deb ...
+Unpacking libquadmath0:amd64 (16-20260322-1ubuntu1) ...
+Selecting previously unselected package libgcc-15-dev:amd64.
+Preparing to unpack .../21-libgcc-15-dev_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking libgcc-15-dev:amd64 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package gcc-15-x86-64-linux-gnu.
+Preparing to unpack .../22-gcc-15-x86-64-linux-gnu_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking gcc-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Selecting previously unselected package gcc-15.
+Preparing to unpack .../23-gcc-15_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking gcc-15 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package gcc-x86-64-linux-gnu.
+Preparing to unpack .../24-gcc-x86-64-linux-gnu_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking gcc-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package gcc.
+Preparing to unpack .../25-gcc_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking gcc (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package libstdc++-15-dev:amd64.
+Preparing to unpack .../26-libstdc++-15-dev_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking libstdc++-15-dev:amd64 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package g++-15-x86-64-linux-gnu.
+Preparing to unpack .../27-g++-15-x86-64-linux-gnu_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking g++-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Selecting previously unselected package g++-15.
+Preparing to unpack .../28-g++-15_15.2.0-16ubuntu1_amd64v3.deb ...
+Unpacking g++-15 (15.2.0-16ubuntu1) ...
+Selecting previously unselected package g++-x86-64-linux-gnu.
+Preparing to unpack .../29-g++-x86-64-linux-gnu_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking g++-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package g++.
+Preparing to unpack .../30-g++_4%3a15.2.0-5ubuntu1_amd64v3.deb ...
+Unpacking g++ (4:15.2.0-5ubuntu1) ...
+Selecting previously unselected package make.
+Preparing to unpack .../31-make_4.4.1-3_amd64v3.deb ...
+Unpacking make (4.4.1-3) ...
+Selecting previously unselected package libdpkg-perl.
+Preparing to unpack .../32-libdpkg-perl_1.23.7ubuntu1_all.deb ...
+Unpacking libdpkg-perl (1.23.7ubuntu1) ...
+Selecting previously unselected package bzip2.
+Preparing to unpack .../33-bzip2_1.0.8-6build2_amd64v3.deb ...
+Unpacking bzip2 (1.0.8-6build2) ...
+Selecting previously unselected package lto-disabled-list.
+Preparing to unpack .../34-lto-disabled-list_79_all.deb ...
+Unpacking lto-disabled-list (79) ...
+Selecting previously unselected package dpkg-dev.
+Preparing to unpack .../35-dpkg-dev_1.23.7ubuntu1_all.deb ...
+Unpacking dpkg-dev (1.23.7ubuntu1) ...
+Selecting previously unselected package libcrypt-dev:amd64.
+Preparing to unpack .../36-libcrypt-dev_1%3a4.5.1-1_amd64v3.deb ...
+Unpacking libcrypt-dev:amd64 (1:4.5.1-1) ...
+Selecting previously unselected package build-essential.
+Preparing to unpack .../37-build-essential_12.12ubuntu2.26.04.1_amd64v3.deb ...
+Unpacking build-essential (12.12ubuntu2.26.04.1) ...
+Preparing to unpack .../38-curl_8.18.0-1ubuntu2.3_amd64v3.deb ...
+Unpacking curl (8.18.0-1ubuntu2.3) over (8.18.0-1ubuntu2.1) ...
+Preparing to unpack .../39-libcurl4t64_8.18.0-1ubuntu2.3_amd64v3.deb ...
+Unpacking libcurl4t64:amd64 (8.18.0-1ubuntu2.3) over (8.18.0-1ubuntu2.1) ...
+Selecting previously unselected package libfakeroot:amd64.
+Preparing to unpack .../40-libfakeroot_1.37.2-1_amd64v3.deb ...
+Unpacking libfakeroot:amd64 (1.37.2-1) ...
+Selecting previously unselected package fakeroot.
+Preparing to unpack .../41-fakeroot_1.37.2-1_amd64v3.deb ...
+Unpacking fakeroot (1.37.2-1) ...
+Selecting previously unselected package libalgorithm-diff-perl.
+Preparing to unpack .../42-libalgorithm-diff-perl_1.201-1_all.deb ...
+Unpacking libalgorithm-diff-perl (1.201-1) ...
+Selecting previously unselected package libalgorithm-diff-xs-perl.
+Preparing to unpack .../43-libalgorithm-diff-xs-perl_0.04-9_amd64v3.deb ...
+Unpacking libalgorithm-diff-xs-perl (0.04-9) ...
+Selecting previously unselected package libalgorithm-merge-perl.
+Preparing to unpack .../44-libalgorithm-merge-perl_0.08-5_all.deb ...
+Unpacking libalgorithm-merge-perl (0.08-5) ...
+Preparing to unpack .../45-libcurl3t64-gnutls_8.18.0-1ubuntu2.3_amd64v3.deb ...
+Unpacking libcurl3t64-gnutls:amd64 (8.18.0-1ubuntu2.3) over (8.18.0-1ubuntu2.1) ...
+Selecting previously unselected package libfile-fcntllock-perl.
+Preparing to unpack .../46-libfile-fcntllock-perl_0.22-4ubuntu6_amd64v3.deb ...
+Unpacking libfile-fcntllock-perl (0.22-4ubuntu6) ...
+Preparing to unpack .../47-linux-perf_7.0.0-27.27_amd64.deb ...
+Unpacking linux-perf (7.0.0-27.27) over (7.0.0-22.22) ...
+Preparing to unpack .../48-linux-tools-common_7.0.0-27.27_all.deb ...
+Unpacking linux-tools-common (7.0.0-27.27) over (7.0.0-22.22) ...
+Selecting previously unselected package manpages-dev.
+Preparing to unpack .../49-manpages-dev_6.17-1_all.deb ...
+Unpacking manpages-dev (6.17-1) ...
+Selecting previously unselected package unzip.
+Preparing to unpack .../50-unzip_6.0-29ubuntu1_amd64v3.deb ...
+Unpacking unzip (6.0-29ubuntu1) ...
+Setting up manpages-dev (6.17-1) ...
+Setting up lto-disabled-list (79) ...
+Setting up libcurl4t64:amd64 (8.18.0-1ubuntu2.3) ...
+Setting up libfile-fcntllock-perl (0.22-4ubuntu6) ...
+Setting up libalgorithm-diff-perl (1.201-1) ...
+Setting up bpftool (7.7.0+7.0.0-27.27) ...
+Setting up unzip (6.0-29ubuntu1) ...
+Setting up libcurl3t64-gnutls:amd64 (8.18.0-1ubuntu2.3) ...
+Setting up linux-libc-dev:amd64 (7.0.0-27.27) ...
+Setting up libgomp1:amd64 (16-20260322-1ubuntu1) ...
+Setting up bzip2 (1.0.8-6build2) ...
+Setting up libfakeroot:amd64 (1.37.2-1) ...
+Setting up fakeroot (1.37.2-1) ...
+update-alternatives: using /usr/bin/fakeroot-sysv to provide /usr/bin/fakeroot (fakeroot) in auto mode
+Setting up linux-perf (7.0.0-27.27) ...
+Setting up rpcsvc-proto (1.4.3-1build1) ...
+Setting up make (4.4.1-3) ...
+Setting up libquadmath0:amd64 (16-20260322-1ubuntu1) ...
+Setting up libmpc3:amd64 (1.3.1-3) ...
+Setting up libdpkg-perl (1.23.7ubuntu1) ...
+Setting up libubsan1:amd64 (16-20260322-1ubuntu1) ...
+Setting up libhwasan0:amd64 (16-20260322-1ubuntu1) ...
+Setting up libcrypt-dev:amd64 (1:4.5.1-1) ...
+Setting up libasan8:amd64 (16-20260322-1ubuntu1) ...
+Setting up curl (8.18.0-1ubuntu2.3) ...
+Setting up libtsan2:amd64 (16-20260322-1ubuntu1) ...
+Setting up libisl23:amd64 (0.27-1build1) ...
+Setting up libc-dev-bin (2.43-2ubuntu2) ...
+Setting up gcc-15-base:amd64 (15.2.0-16ubuntu1) ...
+Setting up linux-tools-common (7.0.0-27.27) ...
+Setting up libalgorithm-diff-xs-perl (0.04-9) ...
+Setting up libcc1-0:amd64 (16-20260322-1ubuntu1) ...
+Setting up liblsan0:amd64 (16-20260322-1ubuntu1) ...
+Setting up libitm1:amd64 (16-20260322-1ubuntu1) ...
+Setting up libalgorithm-merge-perl (0.08-5) ...
+Setting up libgcc-15-dev:amd64 (15.2.0-16ubuntu1) ...
+Setting up cpp-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Setting up dpkg-dev (1.23.7ubuntu1) ...
+Setting up gcc-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Setting up cpp-15 (15.2.0-16ubuntu1) ...
+Setting up libc6-dev:amd64 (2.43-2ubuntu2) ...
+Setting up cpp-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Setting up gcc-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Setting up gcc-15 (15.2.0-16ubuntu1) ...
+Setting up libstdc++-15-dev:amd64 (15.2.0-16ubuntu1) ...
+Setting up cpp (4:15.2.0-5ubuntu1) ...
+Setting up g++-15-x86-64-linux-gnu (15.2.0-16ubuntu1) ...
+Setting up gcc (4:15.2.0-5ubuntu1) ...
+Setting up g++-x86-64-linux-gnu (4:15.2.0-5ubuntu1) ...
+Setting up g++-15 (15.2.0-16ubuntu1) ...
+Setting up g++ (4:15.2.0-5ubuntu1) ...
+update-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode
+Setting up build-essential (12.12ubuntu2.26.04.1) ...
+Processing triggers for man-db (2.13.1-1build1) ...
+Processing triggers for libc-bin (2.43-2ubuntu2) ...
+Scanning processes...
+Scanning candidates...
+Scanning linux images...
+
+Running kernel seems to be up-to-date.
+
+Restarting services...
+ systemctl restart packagekit.service
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+ubuntu@ip-10-0-11-94:~$
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo: preserving the entire environment is not supported, '-E' is ignored
+2026-07-10 15:25:40 - Installing pre-requisites
+Hit:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute InRelease
+Hit:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates InRelease
+Hit:3 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports InRelease
+Hit:4 http://security.ubuntu.com/ubuntu resolute-security InRelease
+54 packages can be upgraded. Run 'apt list --upgradable' to see them.
+curl is already the newest version (8.18.0-1ubuntu2.3).
+curl set to manually installed.
+gnupg is already the newest version (2.4.8-4ubuntu3).
+gnupg set to manually installed.
+Upgrading:
+  ca-certificates
+
+Installing:
+  apt-transport-https
+
+Summary:
+  Upgrading: 1, Installing: 1, Removing: 0, Not Upgrading: 53
+  Download size: 142 kB
+  Freed space: 9216 B
+
+Get:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 ca-certificates all 20260601~26.04.1 [139 kB]
+Get:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 apt-transport-https all 3.2.0 [3928 B]
+Fetched 142 kB in 0s (3130 kB/s)
+Preconfiguring packages ...
+(Reading database ... 91675 files and directories currently installed.)
+Preparing to unpack .../ca-certificates_20260601~26.04.1_all.deb ...
+Unpacking ca-certificates (20260601~26.04.1) over (20260223) ...
+Selecting previously unselected package apt-transport-https.
+Preparing to unpack .../apt-transport-https_3.2.0_all.deb ...
+Unpacking apt-transport-https (3.2.0) ...
+Setting up apt-transport-https (3.2.0) ...
+Setting up ca-certificates (20260601~26.04.1) ...
+Updating certificates in /etc/ssl/certs...
+rehash: warning: skipping ca-certificates.crt, it does not contain exactly one certificate or CRL
+2 added, 25 removed; done.
+Processing triggers for man-db (2.13.1-1build1) ...
+Processing triggers for ca-certificates (20260601~26.04.1) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+Scanning processes...
+Scanning linux images...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Hit:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute InRelease
+Hit:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates InRelease
+Hit:3 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-backports InRelease
+Hit:4 http://security.ubuntu.com/ubuntu resolute-security InRelease
+Get:5 https://deb.nodesource.com/node_20.x nodistro InRelease [12.1 kB]
+Get:6 https://deb.nodesource.com/node_20.x nodistro/main amd64 Packages [14.4 kB]
+Fetched 26.6 kB in 0s (111 kB/s)
+53 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2026-07-10 15:25:54 - Repository configured successfully.
+2026-07-10 15:25:54 - To install Node.js, run: apt install nodejs -y
+2026-07-10 15:25:54 - You can use N|solid Runtime as a node.js alternative
+2026-07-10 15:25:54 - To install N|solid Runtime, run: apt install nsolid -y
+
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Install Node.js 20
+
+### Command
+```bash
+sudo apt install -y nodejs
+Installing:
+  nodejs
+
+Summary:
+  Upgrading: 0, Installing: 1, Removing: 0, Not Upgrading: 53
+  Download size: 32.2 MB
+  Space needed: 196 MB / 27.3 GB available
+
+Get:1 https://deb.nodesource.com/node_20.x nodistro/main amd64 nodejs amd64 20.20.2-1nodesource1 [32.2 MB]
+Fetched 32.2 MB in 1s (57.1 MB/s)
+Selecting previously unselected package nodejs.
+(Reading database ... 91656 files and directories currently installed.)
+Preparing to unpack .../nodejs_20.20.2-1nodesource1_amd64.deb ...
+Unpacking nodejs (20.20.2-1nodesource1) ...
+Setting up nodejs (20.20.2-1nodesource1) ...
+Processing triggers for man-db (2.13.1-1build1) ...
+Scanning processes...
+Scanning linux images...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Install PM2
+
+### Command
+```bash
+sudo npm install -g pm2
+
+added 77 packages in 5s
+
+8 packages are looking for funding
+  run `npm fund` for details
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 12.0.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.0
+npm notice To update run: npm install -g npm@12.0.0
+npm notice
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Verify
+
+### Command
+```bash
+pm2 -v
+
+                        -------------
+
+__/\\\\\\\\\\\\\____/\\\\____________/\\\\____/\\\\\\\\\_____
+ _\/\\\/////////\\\_\/\\\\\\________/\\\\\\__/\\\///////\\\___
+  _\/\\\_______\/\\\_\/\\\//\\\____/\\\//\\\_\///______\//\\\__
+   _\/\\\\\\\\\\\\\/__\/\\\\///\\\/\\\/_\/\\\___________/\\\/___
+    _\/\\\/////////____\/\\\__\///\\\/___\/\\\________/\\\//_____
+     _\/\\\_____________\/\\\____\///_____\/\\\_____/\\\//________
+      _\/\\\_____________\/\\\_____________\/\\\___/\\\/___________
+       _\/\\\_____________\/\\\_____________\/\\\__/\\\\\\\\\\\\\\\_
+        _\///______________\///______________\///__\///////////////__
+
+
+                          Runtime Edition
+
+        PM2 is a Production Process Manager for Node.js applications
+                     with a built-in Load Balancer.
+
+                Start and Daemonize any application:
+                $ pm2 start app.js
+
+                Load Balance 4 instances of api.js:
+                $ pm2 start api.js -i 4
+
+                Monitor in production:
+                $ pm2 monitor
+
+                Make pm2 auto-boot at server restart:
+                $ pm2 startup
+
+                To go further checkout:
+                http://pm2.io/
+
+
+                        -------------
+
+[PM2] Spawning PM2 daemon with pm2_home=/home/ubuntu/.pm2
+[PM2] PM2 Successfully daemonized
+7.0.3
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Install AWS CLI
+
+### Command
+```bash
+sudo apt install -y awscli
+Installing:
+  awscli
+
+Installing dependencies:
+  docutils-common  libimagequant0  liblcms2-2      libpaper2     libwebp7        python3-colorama  python3-prompt-toolkit    python3-wcwidth
+  libdeflate0      libjbig0        liblerc4        libraqm0      libwebpdemux2   python3-docutils  python3-roman-numerals
+  libgraphite2-3   libjpeg-turbo8  libopenjp2-7    libsharpyuv0  libwebpmux3     python3-olefile   python3-ruamel.yaml
+  libharfbuzz0b    libjpeg8        libpaper-utils  libtiff6      python3-awscrt  python3-pil       python3-ruamel.yaml.clib
+
+Suggested packages:
+  liblcms2-utils  fonts-linuxlibertine   texlive-lang-french  texlive-latex-recommended
+  docutils-doc    | ttf-linux-libertine  texlive-latex-base   python-pil-doc
+
+Summary:
+  Upgrading: 0, Installing: 30, Removing: 0, Not Upgrading: 53
+  Download size: 16.0 MB
+  Space needed: 148 MB / 27.1 GB available
+
+Get:1 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 python3-awscrt amd64 0.28.4+dfsg-1 [954 kB]
+Get:2 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 python3-colorama all 0.4.6-4build1 [32.2 kB]
+Get:3 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 docutils-common all 0.22.4+dfsg-1 [130 kB]
+Get:4 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 python3-roman-numerals all 4.1.0-1 [8660 B]
+Get:5 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 python3-docutils all 0.22.4+dfsg-1 [439 kB]
+Get:6 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 python3-wcwidth all 0.2.14+dfsg1-1build1 [26.5 kB]
+Get:7 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 python3-prompt-toolkit all 3.0.52-2 [258 kB]
+Get:8 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 python3-ruamel.yaml.clib amd64 0.2.15+ds-1build1 [140 kB]
+Get:9 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 python3-ruamel.yaml all 0.18.10+ds-1build1 [127 kB]
+Get:10 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/universe amd64v3 awscli all 2.31.35-1 [11.1 MB]
+Get:11 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libdeflate0 amd64 1.23-2ubuntu1 [48.9 kB]
+Get:12 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 libgraphite2-3 amd64 1.3.14-11ubuntu1.1 [72.5 kB]
+Get:13 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libharfbuzz0b amd64 12.3.2-2 [525 kB]
+Get:14 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libimagequant0 amd64 4.4.1-1 [264 kB]
+Get:15 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libjpeg-turbo8 amd64 2.1.5-4ubuntu4 [162 kB]
+Get:16 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libjpeg8 amd64 8c-2ubuntu12 [2154 B]
+Get:17 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 liblcms2-2 amd64 2.17-1ubuntu0.2 [172 kB]
+Get:18 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 liblerc4 amd64 4.0.0+ds-5ubuntu2 [212 kB]
+Get:19 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libpaper2 amd64 2.2.5-0.3maysync1 [17.3 kB]
+Get:20 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libpaper-utils amd64 2.2.5-0.3maysync1 [15.6 kB]
+Get:21 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libraqm0 amd64 0.10.4-1 [15.6 kB]
+Get:22 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libsharpyuv0 amd64 1.5.0-0.1build1 [17.6 kB]
+Get:23 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libjbig0 amd64 2.1-6.1ubuntu3 [30.4 kB]
+Get:24 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libwebp7 amd64 1.5.0-0.1build1 [268 kB]
+Get:25 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libtiff6 amd64 4.7.0-3ubuntu4 [212 kB]
+Get:26 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libwebpdemux2 amd64 1.5.0-0.1build1 [12.9 kB]
+Get:27 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 libwebpmux3 amd64 1.5.0-0.1build1 [26.4 kB]
+Get:28 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute/main amd64v3 python3-olefile all 0.47-1build1 [37.2 kB]
+Get:29 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 libopenjp2-7 amd64 2.5.4-1ubuntu0.1 [190 kB]
+Get:30 http://ca-central-1.ec2.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 python3-pil amd64 12.1.1-2ubuntu1.2 [489 kB]
+Fetched 16.0 MB in 1s (21.1 MB/s)
+Preconfiguring packages ...
+Selecting previously unselected package python3-awscrt.
+(Reading database ... 97019 files and directories currently installed.)
+Preparing to unpack .../00-python3-awscrt_0.28.4+dfsg-1_amd64v3.deb ...
+Unpacking python3-awscrt (0.28.4+dfsg-1) ...
+Selecting previously unselected package python3-colorama.
+Preparing to unpack .../01-python3-colorama_0.4.6-4build1_all.deb ...
+Unpacking python3-colorama (0.4.6-4build1) ...
+Selecting previously unselected package docutils-common.
+Preparing to unpack .../02-docutils-common_0.22.4+dfsg-1_all.deb ...
+Unpacking docutils-common (0.22.4+dfsg-1) ...
+Selecting previously unselected package python3-roman-numerals.
+Preparing to unpack .../03-python3-roman-numerals_4.1.0-1_all.deb ...
+Unpacking python3-roman-numerals (4.1.0-1) ...
+Selecting previously unselected package python3-docutils.
+Preparing to unpack .../04-python3-docutils_0.22.4+dfsg-1_all.deb ...
+Unpacking python3-docutils (0.22.4+dfsg-1) ...
+Selecting previously unselected package python3-wcwidth.
+Preparing to unpack .../05-python3-wcwidth_0.2.14+dfsg1-1build1_all.deb ...
+Unpacking python3-wcwidth (0.2.14+dfsg1-1build1) ...
+Selecting previously unselected package python3-prompt-toolkit.
+Preparing to unpack .../06-python3-prompt-toolkit_3.0.52-2_all.deb ...
+Unpacking python3-prompt-toolkit (3.0.52-2) ...
+Selecting previously unselected package python3-ruamel.yaml.clib.
+Preparing to unpack .../07-python3-ruamel.yaml.clib_0.2.15+ds-1build1_amd64v3.deb ...
+Unpacking python3-ruamel.yaml.clib (0.2.15+ds-1build1) ...
+Selecting previously unselected package python3-ruamel.yaml.
+Preparing to unpack .../08-python3-ruamel.yaml_0.18.10+ds-1build1_all.deb ...
+Unpacking python3-ruamel.yaml (0.18.10+ds-1build1) ...
+Selecting previously unselected package awscli.
+Preparing to unpack .../09-awscli_2.31.35-1_all.deb ...
+Unpacking awscli (2.31.35-1) ...
+Selecting previously unselected package libdeflate0:amd64.
+Preparing to unpack .../10-libdeflate0_1.23-2ubuntu1_amd64v3.deb ...
+Unpacking libdeflate0:amd64 (1.23-2ubuntu1) ...
+Selecting previously unselected package libgraphite2-3:amd64.
+Preparing to unpack .../11-libgraphite2-3_1.3.14-11ubuntu1.1_amd64v3.deb ...
+Unpacking libgraphite2-3:amd64 (1.3.14-11ubuntu1.1) ...
+Selecting previously unselected package libharfbuzz0b:amd64.
+Preparing to unpack .../12-libharfbuzz0b_12.3.2-2_amd64v3.deb ...
+Unpacking libharfbuzz0b:amd64 (12.3.2-2) ...
+Selecting previously unselected package libimagequant0:amd64.
+Preparing to unpack .../13-libimagequant0_4.4.1-1_amd64v3.deb ...
+Unpacking libimagequant0:amd64 (4.4.1-1) ...
+Selecting previously unselected package libjpeg-turbo8:amd64.
+Preparing to unpack .../14-libjpeg-turbo8_2.1.5-4ubuntu4_amd64v3.deb ...
+Unpacking libjpeg-turbo8:amd64 (2.1.5-4ubuntu4) ...
+Selecting previously unselected package libjpeg8:amd64.
+Preparing to unpack .../15-libjpeg8_8c-2ubuntu12_amd64v3.deb ...
+Unpacking libjpeg8:amd64 (8c-2ubuntu12) ...
+Selecting previously unselected package liblcms2-2:amd64.
+Preparing to unpack .../16-liblcms2-2_2.17-1ubuntu0.2_amd64v3.deb ...
+Unpacking liblcms2-2:amd64 (2.17-1ubuntu0.2) ...
+Selecting previously unselected package liblerc4:amd64.
+Preparing to unpack .../17-liblerc4_4.0.0+ds-5ubuntu2_amd64v3.deb ...
+Unpacking liblerc4:amd64 (4.0.0+ds-5ubuntu2) ...
+Selecting previously unselected package libpaper2:amd64.
+Preparing to unpack .../18-libpaper2_2.2.5-0.3maysync1_amd64v3.deb ...
+Unpacking libpaper2:amd64 (2.2.5-0.3maysync1) ...
+Selecting previously unselected package libpaper-utils.
+Preparing to unpack .../19-libpaper-utils_2.2.5-0.3maysync1_amd64v3.deb ...
+Unpacking libpaper-utils (2.2.5-0.3maysync1) ...
+Selecting previously unselected package libraqm0:amd64.
+Preparing to unpack .../20-libraqm0_0.10.4-1_amd64v3.deb ...
+Unpacking libraqm0:amd64 (0.10.4-1) ...
+Selecting previously unselected package libsharpyuv0:amd64.
+Preparing to unpack .../21-libsharpyuv0_1.5.0-0.1build1_amd64v3.deb ...
+Unpacking libsharpyuv0:amd64 (1.5.0-0.1build1) ...
+Selecting previously unselected package libjbig0:amd64.
+Preparing to unpack .../22-libjbig0_2.1-6.1ubuntu3_amd64v3.deb ...
+Unpacking libjbig0:amd64 (2.1-6.1ubuntu3) ...
+Selecting previously unselected package libwebp7:amd64.
+Preparing to unpack .../23-libwebp7_1.5.0-0.1build1_amd64v3.deb ...
+Unpacking libwebp7:amd64 (1.5.0-0.1build1) ...
+Selecting previously unselected package libtiff6:amd64.
+Preparing to unpack .../24-libtiff6_4.7.0-3ubuntu4_amd64v3.deb ...
+Unpacking libtiff6:amd64 (4.7.0-3ubuntu4) ...
+Selecting previously unselected package libwebpdemux2:amd64.
+Preparing to unpack .../25-libwebpdemux2_1.5.0-0.1build1_amd64v3.deb ...
+Unpacking libwebpdemux2:amd64 (1.5.0-0.1build1) ...
+Selecting previously unselected package libwebpmux3:amd64.
+Preparing to unpack .../26-libwebpmux3_1.5.0-0.1build1_amd64v3.deb ...
+Unpacking libwebpmux3:amd64 (1.5.0-0.1build1) ...
+Selecting previously unselected package python3-olefile.
+Preparing to unpack .../27-python3-olefile_0.47-1build1_all.deb ...
+Unpacking python3-olefile (0.47-1build1) ...
+Selecting previously unselected package libopenjp2-7:amd64.
+Preparing to unpack .../28-libopenjp2-7_2.5.4-1ubuntu0.1_amd64v3.deb ...
+Unpacking libopenjp2-7:amd64 (2.5.4-1ubuntu0.1) ...
+Selecting previously unselected package python3-pil:amd64.
+Preparing to unpack .../29-python3-pil_12.1.1-2ubuntu1.2_amd64v3.deb ...
+Unpacking python3-pil:amd64 (12.1.1-2ubuntu1.2) ...
+Setting up python3-awscrt (0.28.4+dfsg-1) ...
+Setting up libgraphite2-3:amd64 (1.3.14-11ubuntu1.1) ...
+Setting up liblcms2-2:amd64 (2.17-1ubuntu0.2) ...
+Setting up libsharpyuv0:amd64 (1.5.0-0.1build1) ...
+Setting up liblerc4:amd64 (4.0.0+ds-5ubuntu2) ...
+Setting up python3-colorama (0.4.6-4build1) ...
+Setting up python3-olefile (0.47-1build1) ...
+Setting up python3-ruamel.yaml.clib (0.2.15+ds-1build1) ...
+Setting up libdeflate0:amd64 (1.23-2ubuntu1) ...
+Setting up libjbig0:amd64 (2.1-6.1ubuntu3) ...
+Setting up python3-wcwidth (0.2.14+dfsg1-1build1) ...
+Setting up libimagequant0:amd64 (4.4.1-1) ...
+Setting up libjpeg-turbo8:amd64 (2.1.5-4ubuntu4) ...
+Setting up libwebp7:amd64 (1.5.0-0.1build1) ...
+Setting up python3-ruamel.yaml (0.18.10+ds-1build1) ...
+Setting up docutils-common (0.22.4+dfsg-1) ...
+Setting up python3-roman-numerals (4.1.0-1) ...
+Setting up libopenjp2-7:amd64 (2.5.4-1ubuntu0.1) ...
+Setting up libharfbuzz0b:amd64 (12.3.2-2) ...
+Setting up libpaper2:amd64 (2.2.5-0.3maysync1) ...
+Setting up libwebpmux3:amd64 (1.5.0-0.1build1) ...
+Setting up libjpeg8:amd64 (8c-2ubuntu12) ...
+Setting up python3-prompt-toolkit (3.0.52-2) ...
+Setting up libwebpdemux2:amd64 (1.5.0-0.1build1) ...
+Setting up libpaper-utils (2.2.5-0.3maysync1) ...
+Setting up libraqm0:amd64 (0.10.4-1) ...
+Setting up libtiff6:amd64 (4.7.0-3ubuntu4) ...
+Setting up python3-pil:amd64 (12.1.1-2ubuntu1.2) ...
+Processing triggers for man-db (2.13.1-1build1) ...
+Processing triggers for sgml-base (1.31+nmu1build1) ...
+Setting up python3-docutils (0.22.4+dfsg-1) ...
+Processing triggers for libc-bin (2.43-2ubuntu2) ...
+Setting up awscli (2.31.35-1) ...
+/usr/lib/python3/dist-packages/awscli/customizations/s3/s3handler.py:595: SyntaxWarning: 'return' in a 'finally' block
+  return True
+Scanning processes...
+Scanning linux images...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Verify
+
+### Command
+```bash
+aws --version
+aws-cli/2.31.35 Python/3.14.4 Linux/7.0.0-1006-aws source/x86_64.ubuntu.26
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Confirm EC2 IAM role identity
+
+### Command 
+```bash
+aws sts get-caller-identity
+{
+    "UserId": "AROAULDF5QUUGOR72xxxx:i-07484fxxxxx60xxxx",
+    "Account": "29xxxxx74xxx",
+    "Arn": "arn:aws:sts::29871397xxxx:assumed-role/Fitpick_Connect/i-07484f8xxxx60xxxx"
+}
+ubuntu@ip-10-0-11-94:~$
+```
+
+## ⚙️ Check Disk
+
+### Command
+```bash
+df -h
+Filesystem       Size  Used Avail Use% Mounted on
+/dev/root         28G  3.0G   25G  11% /
+tmpfs            1.9G     0  1.9G   0% /dev/shm
+tmpfs            767M  892K  766M   1% /run
+efivarfs         128K  3.1K  120K   3% /sys/firmware/efi/efivars
+tmpfs            1.9G     0  1.9G   0% /tmp
+none             1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+none             1.0M     0  1.0M   0% /run/credentials/systemd-resolved.service
+/dev/nvme0n1p13  989M   96M  827M  11% /boot
+/dev/nvme0n1p15  105M  6.3M   99M   7% /boot/efi
+none             1.0M     0  1.0M   0% /run/credentials/systemd-networkd.service
+none             1.0M     0  1.0M   0% /run/credentials/getty@tty1.service
+none             1.0M     0  1.0M   0% /run/credentials/serial-getty@ttyS0.service
+tmpfs            384M  8.0K  384M   1% /run/user/1000
+ubuntu@ip-10-0-11-94:~$
+```
+
+
+## ⚙️ Check Memory
+
+### Command
+```bash
+free -h
+               total        used        free      shared  buff/cache   available
+Mem:           3.7Gi       576Mi       1.9Gi       2.7Mi       1.5Gi       3.2Gi
+Swap:             0B
+```
+
+
+
+
