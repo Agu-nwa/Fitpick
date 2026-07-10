@@ -66,7 +66,6 @@ export type WardrobeImageVariant = {
   height?: number;
   bytes?: number;
   status?: WardrobeImageVariantStatus;
-  backgroundPreset?: string;
   processedAt?: string;
   errorMessage?: string;
 };
@@ -79,8 +78,6 @@ export type WardrobeImageAsset = {
   purpose: WardrobeImagePurpose;
   variants?: {
     original?: WardrobeImageVariant;
-    cutout?: WardrobeImageVariant;
-    studio?: WardrobeImageVariant;
     thumbnail?: WardrobeImageVariant;
   };
 };

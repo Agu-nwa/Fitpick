@@ -89,17 +89,6 @@ export type WardrobeArchiveData = {
   deleted?: boolean;
 };
 
-export type ImageProcessingData = {
-  processing: {
-    ok?: boolean;
-    status: "not_started" | "processing" | "ready" | "failed" | "unavailable" | string;
-    safeMessage?: string;
-    variants?: Record<string, unknown>;
-    image?: Record<string, unknown> | null;
-  };
-  job?: JobStatusData["job"];
-};
-
 export type WardrobeUploadRecord = {
   id: string;
   filename: string;
@@ -508,9 +497,6 @@ export const getOutfitPreview = (id: string) => apiRequest<OutfitPreviewData>(`/
 export const generateOutfitPreview = (id: string, options: unknown = {}) =>
   apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { method: "POST", body: options });
 export const getJobStatus = (id: string) => apiRequest<JobStatusData>(`/api/jobs/${id}`, { cache: "no-store" });
-export const getImageProcessingStatus = (jobId: string) => getJobStatus(jobId);
-export const reprocessWardrobeImage = (id: string, body: unknown) =>
-  apiRequest<ImageProcessingData>(`/api/wardrobe/${id}/image-processing`, { method: "POST", body });
 export const saveOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/save`, { method: "POST", body });
 export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/wear`, { method: "POST", body });
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });

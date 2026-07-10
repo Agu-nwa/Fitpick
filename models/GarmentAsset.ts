@@ -1,7 +1,6 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const assetTypes = [
-  "image_cutout",
   "texture_reference",
   "flat_lay",
   "mesh_2d_pattern",
@@ -9,7 +8,7 @@ const assetTypes = [
   "simulation_ready"
 ] as const;
 
-const imageVariants = ["original", "cutout", "studio", "fabric", "label"] as const;
+const imageVariants = ["original", "fabric", "label"] as const;
 const simulationProviders = ["internal", "clo", "browzwear", "pictofit", "custom", "none"] as const;
 const simulationStatuses = ["not_ready", "processing", "ready", "failed"] as const;
 const accuracyLevels = ["inspired_visualization", "garment_referenced", "fit_locked", "true_3d_simulation"] as const;

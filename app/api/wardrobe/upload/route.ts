@@ -5,7 +5,6 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
-import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { assertStorageConfigured, createWardrobeStorageKey, storageKeyBelongsToUser } from "@/lib/storage";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
@@ -146,26 +145,6 @@ export async function POST(request: NextRequest) {
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",
       suggestedTags: parsed.data.suggestedTags || {}
     });
-
-    if (backgroundJobsEnabled()) {
-      const processableSlots = ["front", "back"] as const;
-      await Promise.all(
-        processableSlots
-          .filter((slot) => (upload.images as any)?.[slot]?.storageKey)
-          .map((slot) =>
-            enqueueJob(
-              "garment_background_processing",
-              {
-                uploadId: String(upload._id),
-                imageSlot: slot,
-                originalStorageKey: (upload.images as any)?.[slot]?.storageKey,
-                studioBackgroundPreset: process.env.FITPICK_STUDIO_BACKGROUND_PRESET || "ivory"
-              },
-              { userId: auth.user._id, maxAttempts: 2 }
-            )
-          )
-      );
-    }
 
     await recordAuditEvent({
       request,

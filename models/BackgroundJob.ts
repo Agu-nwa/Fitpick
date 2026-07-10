@@ -5,7 +5,6 @@ const jobTypes = [
   "label_ocr",
   "outfit_preview_generation",
   "avatar_preview_generation",
-  "garment_background_processing",
   "garment_asset_generation",
   "fit_locked_preview_generation",
   "true_3d_tryon_generation",

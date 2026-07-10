@@ -65,10 +65,10 @@ function hasImageReference(item: any) {
     item?.thumbnailUrl ||
     images.front?.url ||
     images.back?.url ||
-    images.front?.variants?.cutout?.url ||
-    images.front?.variants?.studio?.url ||
-    images.back?.variants?.cutout?.url ||
-    images.back?.variants?.studio?.url
+    images.front?.variants?.thumbnail?.url ||
+    images.back?.variants?.thumbnail?.url ||
+    images.front?.variants?.original?.url ||
+    images.back?.variants?.original?.url
   );
 }
 

@@ -64,9 +64,7 @@ export type WardrobeItem = {
   aiAnalysis?: unknown;
   hasImage?: boolean;
   imageTone?: string;
-  studioImageUrl?: string;
   recognizedEntity?: string;
-  imageProcessingStatus?: "not_started" | "processing" | "ready" | "failed" | "unavailable" | string;
 };
 
 export type WardrobeSummary = {

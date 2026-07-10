@@ -9,7 +9,6 @@ const ImageVariantSchema = new Schema(
     height: { type: Number, default: 0 },
     bytes: { type: Number, default: 0 },
     status: { type: String, enum: ["not_started", "processing", "ready", "failed", "unavailable"], default: "not_started" },
-    backgroundPreset: { type: String, default: "" },
     processedAt: { type: Date, default: null },
     errorMessage: { type: String, default: "" }
   },
@@ -29,8 +28,6 @@ const WardrobeImageSchema = new Schema(
     },
     variants: {
       original: { type: ImageVariantSchema },
-      cutout: { type: ImageVariantSchema },
-      studio: { type: ImageVariantSchema },
       thumbnail: { type: ImageVariantSchema }
     }
   },

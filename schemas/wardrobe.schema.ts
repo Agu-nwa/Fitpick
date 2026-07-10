@@ -146,7 +146,6 @@ const wardrobeImageVariantSchema = z
     height: z.number().int().nonnegative().max(12000).optional(),
     bytes: z.number().int().nonnegative().max(20 * 1024 * 1024).optional(),
     status: z.enum(["not_started", "processing", "ready", "failed", "unavailable"]).optional(),
-    backgroundPreset: z.string().trim().max(80).optional().or(z.literal("")),
     processedAt: z.string().datetime().optional(),
     errorMessage: z.string().trim().max(180).optional().or(z.literal(""))
   })
@@ -155,8 +154,6 @@ const wardrobeImageVariantSchema = z
 const wardrobeImageVariantsSchema = z
   .object({
     original: wardrobeImageVariantSchema.optional(),
-    cutout: wardrobeImageVariantSchema.optional(),
-    studio: wardrobeImageVariantSchema.optional(),
     thumbnail: wardrobeImageVariantSchema.optional()
   })
   .strict();

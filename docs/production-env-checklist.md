@@ -84,18 +84,6 @@ Notes:
 - If background jobs should be disabled, set `ENABLE_BACKGROUND_JOBS=false`; the worker exits cleanly and PM2 should not restart it in a loop.
 - Worker logs may show missing variable names, but must not show secret values.
 
-## Background Removal
-
-```bash
-BACKGROUND_REMOVAL_PROVIDER=removebg
-BACKGROUND_REMOVAL_API_KEY=
-FITPICK_STUDIO_BACKGROUND_PRESET=ivory
-```
-
-Notes:
-
-- Required only when using remove.bg garment cutout/studio image processing.
-- If remove.bg is unavailable or unconfigured, FitPick should keep original images as a safe fallback.
 
 ## Payments
 

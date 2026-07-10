@@ -15,8 +15,7 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const status = item.condition === "needs-care" ? "Needs care" : item.condition === "missing-tags" ? "Missing tags" : "Ready";
   const tone = item.condition === "ready" ? "success" : item.condition === "needs-care" ? "warning" : "premium";
   const imageTone = item.imageTone || "from-stone-100 to-stone-300";
-  const imageUrl = item.studioImageUrl || item.thumbnailUrl || item.imageUrl;
-  const processingStatus = item.imageProcessingStatus || "not_started";
+  const imageUrl = item.thumbnailUrl || item.imageUrl;
 
   return (
     <article className="h-full rounded-xl3 border border-line bg-surface p-3 shadow-card transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -40,8 +39,6 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
         {item.taggedSize && item.taggedSize !== "unknown" ? <Badge tone="info">Size {item.taggedSize}</Badge> : null}
         {item.garmentFit && item.garmentFit !== "unknown" ? <Badge tone="neutral">{item.garmentFit} fit</Badge> : null}
         {item.measurementSource && item.measurementSource !== "unknown" ? <Badge tone={item.measurementSource === "ai_estimated" ? "warning" : "success"}>{measurementLabel(item.measurementSource)}</Badge> : null}
-        {processingStatus === "processing" ? <Badge tone="info">Creating clean photo</Badge> : null}
-        {processingStatus === "unavailable" ? <Badge tone="warning">Original photo</Badge> : null}
       </div>
     </article>
   );

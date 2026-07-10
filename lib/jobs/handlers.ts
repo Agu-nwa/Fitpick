@@ -1,7 +1,6 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { runAvatarPreviewGenerationJob, serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
-import { processWardrobeImageVariant, serializeProcessedImageVariants } from "@/lib/image-processing/background-removal";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
 import { getTryOnProvider } from "@/lib/tryon/tryon-provider";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
@@ -93,21 +92,6 @@ export async function runBackgroundJobByType(job: any) {
       userId,
       uploadId: String(payload.uploadId || "")
     });
-  }
-
-  if (job.type === "garment_background_processing") {
-    const result = await processWardrobeImageVariant(
-      userId,
-      String(payload.wardrobeItemId || payload.uploadId || ""),
-      String(payload.imageSlot || "front") as any,
-      undefined,
-      {
-        targetType: payload.wardrobeItemId ? "item" : "upload",
-        studioBackgroundPreset: String(payload.studioBackgroundPreset || "")
-      }
-    );
-
-    return serializeProcessedImageVariants(result);
   }
 
   if (job.type === "garment_asset_generation") {

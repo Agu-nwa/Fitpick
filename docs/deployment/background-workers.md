@@ -17,7 +17,6 @@ Supported v1 jobs:
 - `wardrobe_analysis`
 - `label_ocr`
 - `avatar_preview_generation`
-- `garment_background_processing`
 - `garment_asset_generation`
 - `fit_locked_preview_generation`
 - `true_3d_tryon_generation`
@@ -94,14 +93,6 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 S3_PUBLIC_BASE_URL=
 NEXT_PUBLIC_APP_URL=
-```
-
-Optional, depending on enabled job types:
-
-```env
-BACKGROUND_REMOVAL_PROVIDER=removebg
-BACKGROUND_REMOVAL_API_KEY=
-FITPICK_STUDIO_BACKGROUND_PRESET=ivory
 ```
 
 The worker startup log may list missing variable names, but it must never print variable values.

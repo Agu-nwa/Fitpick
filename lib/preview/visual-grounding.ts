@@ -24,7 +24,7 @@ function itemId(item: any) {
   return String(item?._id || item?.id || "");
 }
 
-function variantUrl(image: any, key: "studio" | "cutout" | "thumbnail" | "original") {
+function variantUrl(image: any, key: "thumbnail" | "original") {
   const variant = image?.variants?.[key];
   return variant?.status === "ready" && variant?.url ? variant.url : "";
 }
@@ -33,14 +33,12 @@ export function preferredVisualReferenceUrl(item: any) {
   const front = item?.images?.front || {};
   const back = item?.images?.back || {};
   return (
-    item?.studioImageUrl ||
-    variantUrl(front, "studio") ||
-    variantUrl(back, "studio") ||
-    variantUrl(front, "cutout") ||
-    variantUrl(back, "cutout") ||
     item?.thumbnailUrl ||
     variantUrl(front, "thumbnail") ||
+    variantUrl(back, "thumbnail") ||
     item?.imageUrl ||
+    variantUrl(front, "original") ||
+    variantUrl(back, "original") ||
     front?.url ||
     back?.url ||
     ""

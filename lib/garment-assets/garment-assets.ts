@@ -3,24 +3,18 @@ import { GarmentAsset } from "@/models/GarmentAsset";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
 type GarmentAssetCandidate = {
-  assetType: "image_cutout" | "texture_reference" | "flat_lay";
-  sourceImageVariant: "original" | "cutout" | "studio" | "fabric" | "label";
+  assetType: "texture_reference" | "flat_lay";
+  sourceImageVariant: "original" | "fabric" | "label";
   storageKey: string;
   imageUrl: string;
   textureStorageKey?: string;
   accuracyLevel: "garment_referenced" | "fit_locked";
 };
 
-function variant(image: any, name: "original" | "cutout" | "studio" | "thumbnail") {
-  if (name === "original") {
-    return {
-      storageKey: image?.variants?.original?.storageKey || image?.storageKey || "",
-      url: image?.variants?.original?.url || image?.url || ""
-    };
-  }
+function variant(image: any) {
   return {
-    storageKey: image?.variants?.[name]?.storageKey || "",
-    url: image?.variants?.[name]?.url || ""
+    storageKey: image?.variants?.original?.storageKey || image?.storageKey || "",
+    url: image?.variants?.original?.url || image?.url || ""
   };
 }
 
@@ -35,24 +29,17 @@ function buildAssetCandidates(item: any): GarmentAssetCandidate[] {
   const fabric = images.fabricCloseUp || {};
   const fitLocked = item?.garmentFit && item.garmentFit !== "unknown" && item?.taggedSize && item.taggedSize !== "unknown";
 
-  const cutout = firstUsable([
-    { sourceImageVariant: "cutout", storageKey: variant(front, "cutout").storageKey, imageUrl: variant(front, "cutout").url },
-    { sourceImageVariant: "cutout", storageKey: variant(back, "cutout").storageKey, imageUrl: variant(back, "cutout").url },
-    { sourceImageVariant: "studio", storageKey: variant(front, "studio").storageKey, imageUrl: variant(front, "studio").url },
-    { sourceImageVariant: "original", storageKey: variant(front, "original").storageKey, imageUrl: variant(front, "original").url }
-  ]);
-  const studio = firstUsable([
-    { sourceImageVariant: "studio", storageKey: variant(front, "studio").storageKey, imageUrl: variant(front, "studio").url },
-    { sourceImageVariant: "studio", storageKey: variant(back, "studio").storageKey, imageUrl: variant(back, "studio").url }
+  const flatLay = firstUsable([
+    { sourceImageVariant: "original", storageKey: variant(front).storageKey, imageUrl: variant(front).url },
+    { sourceImageVariant: "original", storageKey: variant(back).storageKey, imageUrl: variant(back).url }
   ]);
   const texture = firstUsable([
-    { sourceImageVariant: "fabric", storageKey: variant(fabric, "original").storageKey, imageUrl: variant(fabric, "original").url },
-    { sourceImageVariant: "original", storageKey: variant(front, "original").storageKey, imageUrl: variant(front, "original").url }
+    { sourceImageVariant: "fabric", storageKey: variant(fabric).storageKey, imageUrl: variant(fabric).url },
+    { sourceImageVariant: "original", storageKey: variant(front).storageKey, imageUrl: variant(front).url }
   ]);
 
   return [
-    cutout ? { assetType: "image_cutout", ...cutout, accuracyLevel: fitLocked ? "fit_locked" : "garment_referenced" } : null,
-    studio ? { assetType: "flat_lay", ...studio, accuracyLevel: "garment_referenced" } : null,
+    flatLay ? { assetType: "flat_lay", ...flatLay, accuracyLevel: fitLocked ? "fit_locked" : "garment_referenced" } : null,
     texture ? { assetType: "texture_reference", ...texture, textureStorageKey: texture.storageKey, accuracyLevel: "garment_referenced" } : null
   ].filter(Boolean) as GarmentAssetCandidate[];
 }
@@ -133,7 +120,7 @@ export function serializeGarmentAsset(asset: any) {
     id: asset?._id ? String(asset._id) : "",
     userId: asset?.userId ? String(asset.userId) : "",
     wardrobeItemId: asset?.wardrobeItemId ? String(asset.wardrobeItemId) : "",
-    assetType: asset?.assetType || "image_cutout",
+    assetType: asset?.assetType || "flat_lay",
     sourceImageVariant: asset?.sourceImageVariant || "original",
     storageKey: asset?.storageKey || "",
     imageUrl: asset?.imageUrl || "",

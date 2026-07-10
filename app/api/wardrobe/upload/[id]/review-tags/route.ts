@@ -144,28 +144,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await upload.save();
 
     if (backgroundJobsEnabled()) {
-      await Promise.all(
-        [
-          enqueueJob(
-            "garment_asset_generation",
-            { wardrobeItemId: String(item._id) },
-            { userId: auth.user._id, maxAttempts: 2 }
-          ),
-          ...(["front", "back"] as const)
-          .filter((slot) => (item.images as any)?.[slot]?.storageKey)
-          .map((slot) =>
-            enqueueJob(
-              "garment_background_processing",
-              {
-                wardrobeItemId: String(item._id),
-                imageSlot: slot,
-                originalStorageKey: (item.images as any)?.[slot]?.storageKey,
-                studioBackgroundPreset: process.env.FITPICK_STUDIO_BACKGROUND_PRESET || "ivory"
-              },
-              { userId: auth.user._id, maxAttempts: 2 }
-            )
-          )
-        ]
+      await enqueueJob(
+        "garment_asset_generation",
+        { wardrobeItemId: String(item._id) },
+        { userId: auth.user._id, maxAttempts: 2 }
       );
     }
 

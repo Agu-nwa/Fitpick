@@ -27,7 +27,7 @@ function isFootwear(item: WardrobeItem) {
 }
 
 function itemImage(item: WardrobeItem) {
-  return item.studioImageUrl || item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
+  return item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
 }
 
 export function LookPreviewClient({ outfitId }: { outfitId: string }) {
