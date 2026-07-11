@@ -30,7 +30,7 @@ Some development secrets were previously exposed during local setup. Do not reus
 ## AWS S3
 
 1. Create a new least-privilege IAM access key.
-2. Update `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`.
+2. If static keys are used, update `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. If EC2 IAM role credentials are used, rotate the IAM role policy or attached role credentials through AWS instead.
 3. Restart app and worker.
 4. Test signed wardrobe upload and generated preview upload.
 5. Disable and delete the old key.

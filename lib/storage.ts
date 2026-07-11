@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { assertEnvReady } from "@/lib/config/env";
+import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
 import { deleteGeneratedImage, getGeneratedImageUrl } from "@/lib/storage/generated-images";
 import { normalizeStorageKey } from "@/lib/storage/url";
 
@@ -25,15 +26,14 @@ function s3Config() {
   return {
     bucket: process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || "",
     region: process.env.S3_REGION || process.env.AWS_REGION || "",
-    accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || ""
   };
 }
 
 function isS3Ready() {
   assertEnvReady({ strict: process.env.NODE_ENV === "production" });
+  validateS3CredentialPair();
   const config = s3Config();
-  return Boolean(config.bucket && config.region && config.accessKeyId && config.secretAccessKey);
+  return Boolean(config.bucket && config.region);
 }
 
 function hmac(key: Buffer | string, value: string) {
@@ -126,14 +126,15 @@ export function createWardrobeStorageKey(input: { userId: string; filename: stri
   return createStorageKey({ ...input, purpose: "wardrobe" });
 }
 
-function createPresignedPutUrl(input: { storageKey: string; mimeType: string; expiresSeconds?: number }) {
+async function createPresignedPutUrl(input: { storageKey: string; mimeType: string; expiresSeconds?: number }) {
   const config = s3Config();
+  const credentials = await resolveAwsCredentials();
   const now = amzDate();
   const stamp = now.slice(0, 8);
   const scope = `${stamp}/${config.region}/${service}/aws4_request`;
   const host = objectHost(config.bucket, config.region);
   const signedHeaders = "host";
-  const credential = `${config.accessKeyId}/${scope}`;
+  const credential = `${credentials.accessKeyId}/${scope}`;
   const params: Record<string, string> = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
     "X-Amz-Credential": credential,
@@ -141,10 +142,11 @@ function createPresignedPutUrl(input: { storageKey: string; mimeType: string; ex
     "X-Amz-Expires": String(input.expiresSeconds || 900),
     "X-Amz-SignedHeaders": signedHeaders
   };
+  if (credentials.sessionToken) params["X-Amz-Security-Token"] = credentials.sessionToken;
   const canonicalUri = `/${normalizeStorageKey(input.storageKey).split("/").map(encodePathPart).join("/")}`;
   const canonicalRequest = ["PUT", canonicalUri, canonicalQuery(params), `host:${host}\n`, signedHeaders, "UNSIGNED-PAYLOAD"].join("\n");
   const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
-  const signature = crypto.createHmac("sha256", signingKey(config.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
   return `https://${host}${canonicalUri}?${canonicalQuery({ ...params, "X-Amz-Signature": signature })}`;
 }
 
@@ -189,7 +191,7 @@ export async function createSignedUploadUrl(input: {
     ready: true,
     provider: "s3",
     storageKey,
-    uploadUrl: createPresignedPutUrl({ storageKey, mimeType: input.mimeType }),
+    uploadUrl: await createPresignedPutUrl({ storageKey, mimeType: input.mimeType }),
     method: "PUT",
     headers: {
       "content-type": input.mimeType

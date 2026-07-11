@@ -9,8 +9,6 @@ const productionRequired = [
   "JWT_SECRET",
   "OPENAI_API_KEY",
   "S3_REGION",
-  "S3_ACCESS_KEY_ID",
-  "S3_SECRET_ACCESS_KEY",
   "NEXT_PUBLIC_APP_URL"
 ] as const;
 
@@ -29,6 +27,8 @@ export function validateEnv(options: { strict?: boolean } = {}): EnvCheck {
   const strict = options.strict ?? mode === "production";
   const missing: string[] = productionRequired.filter((key) => !process.env[key]);
   const hasS3Bucket = Boolean(process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET);
+  const hasS3AccessKey = Boolean(process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID);
+  const hasS3SecretKey = Boolean(process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY);
   const hasCloudFront = Boolean(
     process.env.CLOUDFRONT_PUBLIC_URL ||
     process.env.CLOUDFRONT_URL ||
@@ -37,6 +37,9 @@ export function validateEnv(options: { strict?: boolean } = {}): EnvCheck {
   );
 
   if (!hasS3Bucket && strict) missing.push("S3_BUCKET_OR_S3_BUCKET_NAME");
+  if (strict && hasS3AccessKey !== hasS3SecretKey) {
+    missing.push("Provide both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or leave both empty to use IAM role credentials.");
+  }
   if (!hasCloudFront && strict) missing.push("CLOUDFRONT_URL_OR_NEXT_PUBLIC_CLOUDFRONT_URL");
 
   return {

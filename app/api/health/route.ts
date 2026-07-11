@@ -10,8 +10,12 @@ function hasStorageConfig() {
   return Boolean(
     (process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET) &&
     (process.env.S3_REGION || process.env.AWS_REGION) &&
-    (process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID) &&
-    (process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY)
+    (
+      process.env.S3_PUBLIC_BASE_URL ||
+      process.env.CLOUDFRONT_PUBLIC_URL ||
+      process.env.CLOUDFRONT_URL ||
+      process.env.NEXT_PUBLIC_CLOUDFRONT_URL
+    )
   );
 }
 

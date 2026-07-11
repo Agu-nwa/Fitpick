@@ -57,14 +57,17 @@ Notes:
 STORAGE_PROVIDER=s3
 S3_BUCKET=
 S3_REGION=
+S3_PUBLIC_BASE_URL=
+# Optional for local/static-key deployments. Leave both empty on EC2 when using an IAM role.
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
-S3_PUBLIC_BASE_URL=
 ```
 
 Notes:
 
-- `S3_SECRET_ACCESS_KEY` must remain server-only.
+- Production EC2 should prefer IAM role credentials. Leave `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` empty when using the EC2 role.
+- If static S3 keys are used for local development or a non-EC2 deployment, provide both keys. Providing only one key fails validation.
+- `S3_SECRET_ACCESS_KEY` must remain server-only when configured.
 - Test signed S3 upload before public launch.
 - Customer UI should never show raw S3 errors, signed URLs, access keys, or provider internals.
 - Prefer CloudFront Origin Access Control and avoid direct public S3 access for production.

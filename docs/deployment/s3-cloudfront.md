@@ -10,13 +10,16 @@ Do not commit real credentials.
 STORAGE_PROVIDER=s3
 S3_BUCKET=your-fitpick-production-bucket
 S3_REGION=your-aws-region
-S3_ACCESS_KEY_ID=
-S3_SECRET_ACCESS_KEY=
 S3_PUBLIC_BASE_URL=https://your-cloudfront-distribution-domain
 NEXT_PUBLIC_APP_URL=https://your-app-domain
+# Optional for local/static-key deployments. Leave both empty on EC2 when using an IAM role.
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
 ```
 
 `S3_PUBLIC_BASE_URL`, `CLOUDFRONT_URL`, or `NEXT_PUBLIC_CLOUDFRONT_URL` can be used for public image URL generation.
+
+On EC2, prefer an attached IAM role and leave `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` empty. If static credentials are provided, both values must be present.
 
 ## S3 CORS
 

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { assertEnvReady } from "@/lib/config/env";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
+import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
 import { getPublicStorageUrl, normalizeStorageKey, s3PublicObjectUrl } from "@/lib/storage/url";
 
 type UploadOptions = {
@@ -32,8 +33,6 @@ function s3Config() {
   return {
     bucket: process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || "",
     region: process.env.S3_REGION || process.env.AWS_REGION || "",
-    accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "",
     publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || process.env.CLOUDFRONT_PUBLIC_URL || process.env.CLOUDFRONT_GENERATED_IMAGES_URL || process.env.CLOUDFRONT_URL || process.env.NEXT_PUBLIC_CLOUDFRONT_URL || ""
   };
 }
@@ -85,8 +84,9 @@ function makeStorageKey(options: UploadOptions) {
 
 function assertReady() {
   assertEnvReady({ strict: process.env.NODE_ENV === "production" });
+  validateS3CredentialPair();
   const config = s3Config();
-  if (!config.bucket || !config.region || !config.accessKeyId || !config.secretAccessKey) {
+  if (!config.bucket || !config.region) {
     throw new Error("S3 generated image storage is not configured.");
   }
   return config;
@@ -95,6 +95,7 @@ function assertReady() {
 export async function uploadGeneratedImage(bufferOrBase64: Buffer | string, options: UploadOptions): Promise<UploadedGeneratedImage> {
   const startedAt = Date.now();
   const config = assertReady();
+  const credentials = await resolveAwsCredentials();
   const body = bufferFromImage(bufferOrBase64);
   const contentType = options.contentType || `image/${options.format || "png"}`;
   if (!allowedGeneratedContentTypes.has(contentType)) throw new Error("Unsupported generated image content type.");
@@ -105,24 +106,29 @@ export async function uploadGeneratedImage(bufferOrBase64: Buffer | string, opti
   const stamp = dateStamp(now);
   const payloadHash = hash(body);
   const canonicalUri = `/${storageKey.split("/").map(encodePathPart).join("/")}`;
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n`;
-  const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+  const tokenHeader = credentials.sessionToken ? `x-amz-security-token:${credentials.sessionToken}\n` : "";
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n${tokenHeader}`;
+  const signedHeaders = credentials.sessionToken
+    ? "content-type;host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+    : "content-type;host;x-amz-content-sha256;x-amz-date";
   const canonicalRequest = ["PUT", canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
   const scope = `${stamp}/${config.region}/${service}/aws4_request`;
   const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
-  const signature = crypto.createHmac("sha256", signingKey(config.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
-  const authorization = `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  const authorization = `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
   const url = objectUrl(config.bucket, config.region, storageKey);
+  const headers: Record<string, string> = {
+    authorization,
+    "content-type": contentType,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": now
+  };
+  if (credentials.sessionToken) headers["x-amz-security-token"] = credentials.sessionToken;
 
   try {
     const response = await fetch(url, {
       method: "PUT",
-      headers: {
-        authorization,
-        "content-type": contentType,
-        "x-amz-content-sha256": payloadHash,
-        "x-amz-date": now
-      },
+      headers,
       body: body as unknown as BodyInit
     });
 
@@ -168,26 +174,32 @@ export async function getGeneratedImageUrl(storageKey: string) {
 
 export async function deleteGeneratedImage(storageKey: string) {
   const config = assertReady();
+  const credentials = await resolveAwsCredentials();
   const host = config.region === "us-east-1" ? `${config.bucket}.s3.amazonaws.com` : `${config.bucket}.s3.${config.region}.amazonaws.com`;
   const now = amzDate();
   const stamp = dateStamp(now);
   const payloadHash = hash("");
   const canonicalUri = `/${normalizeStorageKey(storageKey).split("/").map(encodePathPart).join("/")}`;
-  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n`;
-  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+  const tokenHeader = credentials.sessionToken ? `x-amz-security-token:${credentials.sessionToken}\n` : "";
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n${tokenHeader}`;
+  const signedHeaders = credentials.sessionToken
+    ? "host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+    : "host;x-amz-content-sha256;x-amz-date";
   const canonicalRequest = ["DELETE", canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
   const scope = `${stamp}/${config.region}/${service}/aws4_request`;
   const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
-  const signature = crypto.createHmac("sha256", signingKey(config.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
-  const authorization = `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  const authorization = `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const headers: Record<string, string> = {
+    authorization,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": now
+  };
+  if (credentials.sessionToken) headers["x-amz-security-token"] = credentials.sessionToken;
 
   const response = await fetch(objectUrl(config.bucket, config.region, storageKey), {
     method: "DELETE",
-    headers: {
-      authorization,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": now
-    }
+    headers
   });
 
   return response.ok || response.status === 404;

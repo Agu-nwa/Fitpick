@@ -89,12 +89,13 @@ JWT_SECRET=
 OPENAI_API_KEY=
 S3_BUCKET=
 S3_REGION=
-S3_ACCESS_KEY_ID=
-S3_SECRET_ACCESS_KEY=
 S3_PUBLIC_BASE_URL=
 NEXT_PUBLIC_APP_URL=
+# Optional: provide both only when not using EC2 IAM role credentials.
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
 ```
 
-The worker startup log may list missing variable names, but it must never print variable values.
+The worker startup log may list missing variable names, but it must never print variable values. On EC2, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` may be empty when the instance has an IAM role with S3 access.
 
 Redis and SQS are not required for this phase. Future adapters should keep the same queue/cache interfaces.

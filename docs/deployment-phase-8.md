@@ -40,7 +40,7 @@ Required production groups:
 
 - App/session: `NODE_ENV`, `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SESSION_COOKIE_NAME`, `JWT_SECRET`
 - Database: `MONGODB_URI`
-- S3/CloudFront: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
+- S3/CloudFront: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`; optional `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` when not using EC2 IAM role credentials
 - AI tagging: `AI_TAGGING_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
 - Payments: `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FITPICK_PLUS_STRIPE_PRICE_ID`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `FITPICK_PLUS_PAYSTACK_PLAN_CODE`, `PAYSTACK_CALLBACK_URL`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
 - Optional rate limiting: `RATE_LIMIT_REDIS_URL`
@@ -181,7 +181,7 @@ Configure webhook secrets in `.env.local`. Test webhooks in sandbox mode before 
 ## S3 + CloudFront Production Notes
 
 - Set `STORAGE_PROVIDER=s3`.
-- Keep `S3_SECRET_ACCESS_KEY` server-only.
+- On EC2, prefer IAM role credentials and leave `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` empty. If static keys are configured, keep `S3_SECRET_ACCESS_KEY` server-only.
 - Test signed upload from `/wardrobe/add`.
 - Test image preview on `/wardrobe` and `/wardrobe/[id]`.
 - Confirm CloudFront can read uploaded S3 objects.
