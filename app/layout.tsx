@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FitPick",
-  description: "Occasion-first wardrobe and outfit decision assistant.",
+  title: "FitPick - Know What to Wear",
+  description: "Build a wardrobe you use more. FitPick gives you outfit ideas based on your clothes, your plans, and the weather.",
   appleWebApp: {
     capable: true,
     title: "FitPick",

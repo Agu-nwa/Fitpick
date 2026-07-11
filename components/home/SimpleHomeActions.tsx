@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 const actions = [
-  { title: "Pick an outfit for me", body: "FitPick will choose what to wear.", href: "/outfit", primary: true },
-  { title: "Add my clothes", body: "Upload shirts, shoes, trousers, dresses, or native wear.", href: "/wardrobe/add" },
-  { title: "See my wardrobe", body: "See all your saved clothes.", href: "/wardrobe" },
-  { title: "Try clothes on my avatar", body: "See how an outfit may look on you.", href: "/avatar" }
+  { title: "Choose an outfit", body: "Get a look for today from clothes you own.", href: "/outfit", primary: true },
+  { title: "Add pieces", body: "Save clothes, shoes, bags, and native wear.", href: "/wardrobe/add" },
+  { title: "Open wardrobe", body: "Review your saved pieces.", href: "/wardrobe" },
+  { title: "See it on you", body: "Preview how a look may come together.", href: "/avatar" }
 ];
 
 export function SimpleHomeActions() {

@@ -34,7 +34,7 @@ OTP_MAX_ATTEMPTS=5
 Notes:
 
 - `RESEND_API_KEY` must remain server-only.
-- The Resend sender for production beta is `FitPick <auth@myfitpick.com>`.
+- The Resend sender for production launch is `FitPick <auth@myfitpick.com>`.
 - OTP codes are 6 digits, expire after 10 minutes by default, and allow 5 attempts by default.
 - FitPick stores only hashed OTP codes in MongoDB.
 - Sign in never creates users automatically; users must complete sign up first.

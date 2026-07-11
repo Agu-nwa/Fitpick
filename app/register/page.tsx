@@ -7,7 +7,7 @@ export default function RegisterPage() {
       <section className="mx-auto grid min-h-[calc(100svh-3rem-var(--safe-top))] w-full max-w-5xl gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:items-center">
         <div className="max-w-xl pt-4">
           <Link href="/" className="text-lg font-semibold tracking-tight text-ink">FitPick</Link>
-          <p className="mt-14 text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">Private beta</p>
+          <p className="mt-14 text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">My FitPicK</p>
           <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">
             Your wardrobe, made easier.
           </h1>

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!usageGate.allowed) {
       return apiError(
         "PLUS_REQUIRED",
-        "You have used today’s free outfit picks. FitPick Plus unlocks more outfit options.",
+        "You have used today’s free outfit picks. FitPick Plus gives you more options when you need them.",
         {
           details: {
             feature:

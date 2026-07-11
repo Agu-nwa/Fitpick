@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 export default function HomePage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="Today" title="What do you want to do today?" subtitle="Choose one simple next step." />
+      <PageHeader eyebrow="Today" title="Know what to wear." subtitle="Choose from your wardrobe with the day in mind." />
       <div className="mt-7 space-y-7">
         <SimpleHomeActions />
         <SimpleStartGuide />

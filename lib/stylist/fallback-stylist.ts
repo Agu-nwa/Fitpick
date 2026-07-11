@@ -53,7 +53,7 @@ export function generateFallbackOutfits(items: WardrobeItem[]) {
   }
 
   return {
-    message: "AI unavailable — showing smart fallback outfits",
+    message: "Stylist is limited right now, so here are a few wardrobe options.",
     outfits
   };
 }

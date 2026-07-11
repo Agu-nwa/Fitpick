@@ -98,12 +98,12 @@ export function PreferencesClient() {
           <label className="block text-xs font-semibold text-ink">Comfort priority<select className={inputClass} value={comfortPriority} onChange={(event) => setComfortPriority(event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
         </Card>
         <Card className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Recommendations</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Outfit ideas</p>
           <label className="block text-xs font-semibold text-ink">Native wear frequency<select className={inputClass} value={nativeWearFrequency} onChange={(event) => setNativeWearFrequency(event.target.value)}><option value="rarely">Rarely</option><option value="sometimes">Sometimes</option><option value="often">Often</option><option value="weekly">Weekly</option></select></label>
           <label className="block text-xs font-semibold text-ink">Repeat sensitivity<select className={inputClass} value={repeatSensitivity} onChange={(event) => setRepeatSensitivity(event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
           {[
             ["Weather tips", weatherEnabled, setWeatherEnabled],
-            ["Personalized recommendations", personalizedRecommendations, setPersonalizedRecommendations],
+            ["Use my preferences", personalizedRecommendations, setPersonalizedRecommendations],
             ["Outfit history", outfitHistoryEnabled, setOutfitHistoryEnabled],
             ["Product updates", marketingNotifications, setMarketingNotifications]
           ].map(([label, value, setter]) => (

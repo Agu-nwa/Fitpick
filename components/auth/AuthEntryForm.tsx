@@ -71,7 +71,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
     <div className={compact ? "w-full" : "w-full rounded-[1.75rem] border border-line bg-surface p-5 shadow-card sm:p-6"}>
       <div className="mb-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">
-          {step === "email" ? (mode === "signin" ? "Welcome back" : "Private beta") : "Check your email"}
+          {step === "email" ? (mode === "signin" ? "Welcome back" : "My FitPicK") : "Check your email"}
         </p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
           {step === "email" ? (mode === "signin" ? "Sign in to FitPick" : "Create your account") : "Enter your code"}

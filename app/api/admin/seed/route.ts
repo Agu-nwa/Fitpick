@@ -139,7 +139,7 @@ const contentRules = [
   {
     type: "premium_prompt",
     entries: [
-      ["daily_pick_limit", "You have used today’s free outfit picks. FitPick Plus unlocks more outfit options."],
+      ["daily_pick_limit", "You have used today’s free outfit picks. FitPick Plus gives you more options when you need them."],
       ["advanced_swap_locked", "FitPick Plus adds more swap options when you want extra styling range."],
       ["travel_feature_locked", "Travel planning is available with FitPick Plus."],
       ["event_planning_locked", "Event planning is available with FitPick Plus."],

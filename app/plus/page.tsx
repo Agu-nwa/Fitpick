@@ -10,7 +10,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 export default function PlusPage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="FitPick Plus" title="More looks, smarter memory" subtitle="Premium appears after value. It gives deeper styling tools without shaming free users." />
+      <PageHeader eyebrow="FitPick Plus" title="More room to plan" subtitle="For days when you want more outfit options, saved looks, and planning support." />
       <PlusStatusClient />
 
       <section className="mt-7">
@@ -19,11 +19,11 @@ export default function PlusPage() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <Chip>Free</Chip>
-              <p className="mt-3 leading-6 text-muted">Basic wardrobe, limited daily outfit picks, saved looks limit.</p>
+              <p className="mt-3 leading-6 text-muted">Your wardrobe, daily outfit picks, and a small saved-look library.</p>
             </div>
             <div>
               <Chip active>Plus</Chip>
-              <p className="mt-3 leading-6 text-muted">Unlimited picks, travel packing, event planning, advanced outfit memory.</p>
+              <p className="mt-3 leading-6 text-muted">More picks, more saved looks, travel planning, and deeper outfit history.</p>
             </div>
           </div>
         </Card>

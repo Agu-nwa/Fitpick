@@ -12,7 +12,7 @@ export default async function Page() {
         <div className="pt-4">
           <p className="text-lg font-semibold tracking-tight text-ink">FitPick</p>
           <div className="mt-14">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">Private beta</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">My FitPicK</p>
             <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight text-ink">Know what to wear.</h1>
             <p className="mt-4 text-base leading-7 text-muted">
               Outfit ideas shaped around your clothes, your plans, and the weather.

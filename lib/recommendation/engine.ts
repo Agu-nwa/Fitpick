@@ -221,7 +221,7 @@ export function buildRecommendation(input: EngineInput) {
       whyItWorks: "FitPick could not assemble a complete look from the currently available owned items.",
       materialNote: "",
       silhouetteNote: "",
-      improvementNote: missing.length ? `Add or verify ${missing.join(", ")} items to unlock stronger recommendations.` : "Add more verified wardrobe metadata.",
+      improvementNote: missing.length ? `Add or verify ${missing.join(", ")} items for better outfit ideas.` : "Add more verified wardrobe details.",
       addLater: missing.length ? `Optional add later: ${missing[0]}.` : "",
       confidenceScore: 0,
       completenessStatus: completeness.completenessStatus,

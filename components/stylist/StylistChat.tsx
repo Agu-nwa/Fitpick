@@ -33,15 +33,15 @@ type ChatMessage = {
 
 const promptSuggestions = [
   "Style me for church this Sunday",
-  "Build a polished date night outfit",
+  "Find a polished dinner look",
   "What should I wear to a Nigerian wedding?",
-  "Give me a business casual look for a hot day"
+  "Dress me for a warm workday"
 ];
 
 const loadingSteps = [
-  "Choosing clothes from your wardrobe...",
-  "Checking what matches...",
-  "Showing it on your avatar..."
+  "Reading your wardrobe...",
+  "Finding a few options...",
+  "Preparing your preview..."
 ];
 
 function messageId() {
@@ -196,7 +196,7 @@ export function StylistChat() {
     const assistantEntry: ChatMessage = {
       id: assistantId,
       role: "assistant",
-      content: "Choosing clothes from your wardrobe..."
+      content: "Reading your wardrobe..."
     };
     const sessionMessages = [...messages, userEntry, assistantEntry];
 
@@ -381,8 +381,8 @@ export function StylistChat() {
               </Link>
               {outfit ? (
                 <>
-                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} smarter`, { includeVisualization: true })}>
-                    Make it smarter
+                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} more polished`, { includeVisualization: true })}>
+                    Make it more polished
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} simpler`, { includeVisualization: true })}>
                     Make it simpler
@@ -407,8 +407,8 @@ export function StylistChat() {
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-ink">Your personal stylist</p>
-            <p className="mt-1 text-xs leading-5 text-muted">FitPick answers using your saved clothes and style preferences.</p>
+            <p className="text-sm font-semibold text-ink">FitPick Stylist</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Ask about an outfit, occasion, or item in your wardrobe.</p>
           </div>
           <Badge tone="premium">Wardrobe-only</Badge>
         </div>
@@ -448,8 +448,8 @@ export function StylistChat() {
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-line bg-white px-4 py-5 text-center">
-              <p className="text-sm font-semibold text-ink">Ask what to wear</p>
-              <p className="mt-2 text-xs leading-5 text-muted">Tell FitPick the occasion, weather, or mood. It will choose from clothes you own.</p>
+              <p className="text-sm font-semibold text-ink">What are you dressing for?</p>
+              <p className="mt-2 text-xs leading-5 text-muted">Share the occasion, weather, or mood. FitPick will work with what you own.</p>
             </div>
           )}
 
@@ -475,7 +475,7 @@ export function StylistChat() {
           <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Ask FitPick what to wear..."
+            placeholder="What are you dressing for?"
             className="focus-ring min-h-28 w-full resize-none rounded-2xl border border-line bg-white px-3 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
           />
 
@@ -495,7 +495,7 @@ export function StylistChat() {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading || !message.trim()}>
-            {loading ? "Styling..." : "Ask FitPick"}
+            {loading ? "Finding options..." : "Ask FitPick"}
           </Button>
         </form>
       </Card>

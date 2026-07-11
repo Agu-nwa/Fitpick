@@ -34,13 +34,13 @@ export const wardrobeItems: WardrobeItem[] = [
 ];
 
 export const reasonChips = [
-  "Occasion-ready",
+  "Fits the occasion",
   "Color-balanced",
-  "Weather-aware",
+  "Works with the weather",
   "Not worn recently",
   "Comfort-first",
   "Polished finish",
-  "Event-aware"
+  "Event-appropriate"
 ];
 
 export const outfitRecommendations: OutfitRecommendation[] = [
@@ -50,7 +50,7 @@ export const outfitRecommendations: OutfitRecommendation[] = [
     occasion: "Work",
     confidence: "Strong match",
     items: wardrobeItems.slice(0, 4),
-    reasonChips: ["Occasion-ready", "Color-balanced", "Weather-aware", "Not worn recently"],
+    reasonChips: ["Fits the occasion", "Color-balanced", "Works with the weather", "Not worn recently"],
     summary: "White shirt, navy trousers, black loafers, and a simple watch.",
     weatherFit: "Light enough for a hot day. Add a blazer if the room is cold.",
     colorNote: "White, navy, and black keep the outfit clean and easy to pair.",
@@ -63,7 +63,7 @@ export const outfitRecommendations: OutfitRecommendation[] = [
     occasion: "Native Friday",
     confidence: "Good match",
     items: [wardrobeItems[4], wardrobeItems[5], wardrobeItems[2], wardrobeItems[3]],
-    reasonChips: ["Event-aware", "Polished finish", "Weather-aware"],
+    reasonChips: ["Event-appropriate", "Polished finish", "Works with the weather"],
     summary: "Ankara native top, cream senator trousers, loafers, and a simple watch.",
     weatherFit: "Breathable enough for heat, polished enough for office movement.",
     colorNote: "The cream base softens the Ankara pattern.",
@@ -76,7 +76,7 @@ export const outfitRecommendations: OutfitRecommendation[] = [
     occasion: "Rainy day",
     confidence: "Good match",
     items: [wardrobeItems[7], wardrobeItems[1], wardrobeItems[8], wardrobeItems[9]],
-    reasonChips: ["Weather-aware", "Comfort-first", "Color-balanced"],
+    reasonChips: ["Works with the weather", "Comfort-first", "Color-balanced"],
     summary: "Olive linen shirt, navy trousers, rain jacket, and brown tote.",
     weatherFit: "Closed layers and darker pieces make this safer for light rain.",
     colorNote: "Olive, navy, charcoal, and brown keep the palette grounded.",
@@ -100,8 +100,8 @@ export const stylePreferences: StylePreference[] = [
 ];
 
 export const plusFeatures: PlusFeature[] = [
-  { id: "unlimited", title: "Unlimited outfit picks", description: "Create more outfit options for the same occasion." },
-  { id: "memory", title: "Advanced outfit memory", description: "Track combinations and avoid repeats smarter." },
+  { id: "unlimited", title: "More outfit picks", description: "Create more options for the same occasion." },
+  { id: "memory", title: "Deeper outfit history", description: "Keep track of combinations and avoid repeats." },
   { id: "events", title: "Event planning", description: "Plan wedding, interview, church, and travel looks early." },
   { id: "travel", title: "Travel packing", description: "Pack by outfit for each day of your trip." },
   { id: "tagging", title: "Priority wardrobe tagging", description: "Get stronger tag suggestions for new wardrobe items." }
@@ -110,11 +110,11 @@ export const plusFeatures: PlusFeature[] = [
 export const uploadPreviewItems = [
   { id: "preview-shirt", name: "Shirt photo", status: "Ready for tags", imageTone: "from-stone-100 to-stone-300" },
   { id: "preview-shoes", name: "Shoe photo", status: "Needs review", imageTone: "from-neutral-600 to-black" },
-  { id: "preview-native", name: "Native top", status: "AI tags suggested", imageTone: "from-orange-400 to-purple-800" }
+  { id: "preview-native", name: "Native top", status: "Tags suggested", imageTone: "from-orange-400 to-purple-800" }
 ];
 
 export const emptyStates = {
-  wardrobe: { title: "Your wardrobe is empty.", body: "Add your first clothing item.", cta: "Add clothes" },
+  wardrobe: { title: "Your wardrobe starts here.", body: "Add a few pieces you wear often. FitPick will begin learning what works together.", cta: "Add your first item" },
   shoes: { title: "No shoes added", body: "Shoes help FitPick finish your look and match the occasion.", cta: "Add shoes" },
   looks: { title: "No saved looks yet", body: "Save outfits you like so you can wear them again later.", cta: "Pick outfit" }
 };
@@ -136,5 +136,5 @@ export const stateSamples = {
   offline: { title: "You are offline", body: "Saved wardrobe items still show. New outfit picks may wait until connection returns.", cta: "Try again" },
   permission: { title: "Weather tips are off", body: "You can still get outfit picks. Weather access only helps FitPick avoid pieces that feel too hot, cold, or rainy." },
   notEnoughItems: { title: "Not enough items", body: "We need at least one top, one bottom, and one pair of shoes for this outfit.", cta: "Add items" },
-  premiumLocked: { title: "Advanced swaps are a Plus feature", body: "Unlock deeper swap options by color, formality, travel, and event planning." }
+  premiumLocked: { title: "More swaps are included with Plus", body: "Compare more options by color, formality, travel, and event planning." }
 };

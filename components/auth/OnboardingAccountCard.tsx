@@ -13,14 +13,14 @@ export function OnboardingAccountCard() {
 
   return (
     <Card className="p-4">
-      <p className="text-sm font-semibold text-ink">Save your wardrobe when ready</p>
+      <p className="text-sm font-semibold text-ink">Keep your wardrobe with you</p>
       <p className="mt-2 text-xs leading-5 text-muted">
-        Create an account to keep outfit picks, wardrobe tags, and worn history. You can still explore the demo app first.
+        Create an account to save your pieces, looks, and preferences.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button type="button" onClick={() => setShowForm(true)} className="w-full">Create account</Button>
         <Link href="/home">
-          <Button variant="secondary" className="w-full">Explore demo</Button>
+          <Button variant="secondary" className="w-full">Go to app</Button>
         </Link>
       </div>
     </Card>
