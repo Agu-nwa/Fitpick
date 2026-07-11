@@ -21,7 +21,7 @@ export function BottomNav() {
     >
       <div className="flex w-full items-stretch gap-1">
         {nav.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`) || (item.href === "/home" && pathname === "/");
           return (
             <Link
               key={item.href}
