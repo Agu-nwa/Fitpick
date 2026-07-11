@@ -11,12 +11,12 @@ export default function LoginPage() {
         <PageHeader
           eyebrow="Account access"
           title="Welcome back to FitPick."
-          subtitle="Sign in with your email to continue building your smarter wardrobe."
+          subtitle="Sign in to see your wardrobe and choose what to wear next."
         />
         <LoginForm />
       </section>
-      <Link href="/home">
-        <Button variant="secondary" className="mt-6 w-full">Continue with demo app</Button>
+      <Link href="/">
+        <Button variant="secondary" className="mt-6 w-full">Back to entry</Button>
       </Link>
     </AppShell>
   );
