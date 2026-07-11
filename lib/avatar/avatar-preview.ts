@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { toFile, type Uploadable } from "openai";
 import { createCacheKey } from "@/lib/ai/cache/ai-cache";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
@@ -22,6 +23,14 @@ type AvatarPreviewOptions = {
   posePreset?: PosePreset;
   regenerate?: boolean;
   cacheKey?: string;
+};
+
+type GarmentReferenceInput = {
+  itemId: string;
+  name: string;
+  category: string;
+  url: string;
+  upload: Uploadable;
 };
 
 function safeList(value: unknown) {
@@ -82,6 +91,71 @@ function avatarFingerprint(profile: any, options: AvatarPreviewOptions = {}) {
     bodyMeasurementConfidence: profile.bodyMeasurementConfidence || 0,
     bodyFitPreference: profile.bodyFitPreference || "regular"
   };
+}
+
+function imageEditSupportsReferences(model: string) {
+  return /^gpt-image-|^chatgpt-image-/i.test(model);
+}
+
+function imageEditSupportsInputFidelity(model: string) {
+  return /^gpt-image-(1|1\.5|2)/i.test(model) || /^chatgpt-image-/i.test(model);
+}
+
+function extensionForContentType(contentType: string) {
+  if (/webp/i.test(contentType)) return "webp";
+  if (/jpe?g/i.test(contentType)) return "jpg";
+  return "png";
+}
+
+function safeImageReferenceUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+async function imageUrlToUploadable(url: string, filename: string) {
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error("garment_reference_fetch_failed");
+
+  const contentType = response.headers.get("content-type") || "image/png";
+  if (!/^image\/(png|jpe?g|webp)$/i.test(contentType)) {
+    throw new Error("garment_reference_unsupported_type");
+  }
+
+  return toFile(response, `${filename}.${extensionForContentType(contentType)}`, { type: contentType });
+}
+
+async function buildGarmentReferenceInputs(items: any[]) {
+  const refs = items
+    .map((item) => ({
+      item,
+      url: safeImageReferenceUrl(preferredVisualReferenceUrl(item))
+    }))
+    .filter((entry) => entry.url)
+    .slice(0, 16);
+
+  const uploads = await Promise.allSettled(
+    refs.map(async ({ item, url }, index): Promise<GarmentReferenceInput> => {
+      const itemId = String(item._id || item.id || `item-${index}`);
+      const category = item.category || "item";
+      const upload = await imageUrlToUploadable(url, `${category}-${itemId.slice(-8)}`);
+      return {
+        itemId,
+        name: item.name || "Wardrobe item",
+        category,
+        url,
+        upload
+      };
+    })
+  );
+
+  return uploads.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
 }
 
 function selectedItemDetails(items: any[]) {
@@ -224,6 +298,8 @@ export async function generateAvatarOutfitPreview(
   const fitEvaluation = evaluateOutfitFitOnAvatar(avatarProfile, items);
   const outfitDescription = selectedItemDetails(items);
   const visualGrounding = summarizeVisualizationRisks(items, { outfitDescription });
+  const garmentReferences = await buildGarmentReferenceInputs(items);
+  const canUseImageInputs = imageEditSupportsReferences(model) && garmentReferences.length > 0;
   const fitLockConstraints = buildFitLockPromptConstraints({
     avatarProfile,
     outfitItems: items,
@@ -240,13 +316,31 @@ export async function generateAvatarOutfitPreview(
     visualizationWarnings: visualGrounding.visualizationWarnings,
     visualizationStyle
   });
+  const tryOnPrompt = canUseImageInputs
+    ? `${prompt}
+
+Image-grounded try-on requirement:
+- Use the attached wardrobe item images as the source of truth for the selected garments, shoes, bags, and accessories.
+- Render the avatar wearing those actual referenced items, not visually similar replacements.
+- Keep every referenced item represented unless impossible; if simplified, keep the item in the outfit and preserve its role.
+- Attached garment references:
+${garmentReferences.map((ref, index) => `${index + 1}. Item ID ${ref.itemId} | ${ref.name} | ${ref.category}`).join("\n")}`
+    : prompt;
 
   try {
-    const image = await openai.images.generate({
-      model,
-      prompt,
-      size: "1024x1024"
-    });
+    const image = canUseImageInputs
+      ? await openai.images.edit({
+          model,
+          image: garmentReferences.map((ref) => ref.upload),
+          prompt: tryOnPrompt,
+          size: "1024x1024",
+          ...(imageEditSupportsInputFidelity(model) ? { input_fidelity: "high" as const } : {})
+        })
+      : await openai.images.generate({
+          model,
+          prompt,
+          size: "1024x1024"
+        });
 
     const b64 = image.data?.[0]?.b64_json;
     if (!b64) throw new Error("avatar_image_generation_empty");
@@ -270,14 +364,19 @@ export async function generateAvatarOutfitPreview(
       promptVersion: avatarPreviewPromptVersion,
       visualizationStyle,
       posePreset,
-      accuracyLevel: fitEvaluation.accuracyLevel.id,
+      accuracyLevel: canUseImageInputs ? "garment_referenced" : fitEvaluation.accuracyLevel.id,
       fitStatus: fitEvaluation.fitStatus,
       fitConfidence: fitEvaluation.fitConfidence,
       fitWarnings: fitEvaluation.warnings,
       fitLockInstructions: fitEvaluation.lockedFitInstructions,
       groundedItemIds: visualGrounding.groundedItemIds,
       missingVisualItemIds: visualGrounding.missingVisualItemIds,
-      visualizationWarnings: visualGrounding.visualizationWarnings,
+      visualizationWarnings: [
+        ...visualGrounding.visualizationWarnings,
+        ...(canUseImageInputs
+          ? []
+          : ["This avatar preview was generated without direct garment image inputs because no supported garment references were available."])
+      ],
       footwearIncluded: visualGrounding.footwearIncluded,
       visualGroundingStatus: visualGrounding.visualGroundingStatus,
       cacheKey: options.cacheKey || buildAvatarPreviewCacheKey(userId, String(outfit._id), items.map((item) => JSON.stringify(itemFingerprint(item))), avatarProfile, options)

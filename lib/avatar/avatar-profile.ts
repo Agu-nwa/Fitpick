@@ -160,9 +160,15 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   );
 }
 
+function avatarBaseLabel(value?: string | null) {
+  if (value === "masculine") return "male";
+  if (value === "feminine") return "female";
+  return "not specified";
+}
+
 export function buildAvatarPromptContext(profile: any) {
   return [
-    `Gender presentation: ${profile.genderPresentation || "neutral"}`,
+    `Avatar base: ${avatarBaseLabel(profile.genderPresentation)}`,
     `Body preset: ${profile.bodyPreset || "average"} styling visualization preset only`,
     `Height preset: ${profile.heightPreset || "unspecified"}`,
     `Pose: ${profile.posePreset || "standing"}`,

@@ -1,6 +1,6 @@
 # FitPick Privacy Readiness
 
-FitPick is planned for Canada/global availability, so privacy controls should be transparent, user-controlled, and conservative.
+FitPick is planned for broad launch availability, so privacy controls should be transparent, user-controlled, and conservative.
 
 ## Data Inventory
 
@@ -58,6 +58,6 @@ Do not store those as identity claims.
 - If a provider is unavailable, FitPick keeps the original image and stores a safe `unavailable` status.
 - MongoDB stores image variant metadata only, not long-term Base64.
 
-## Canada/Global Launch Notes
+## Launch Notes
 
 Before launch, prepare a public privacy policy, terms of service, contact channel for data requests, data export workflow, deletion completion workflow, retention schedule, and incident response plan.

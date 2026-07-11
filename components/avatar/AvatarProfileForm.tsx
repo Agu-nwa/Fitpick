@@ -133,11 +133,11 @@ export function AvatarProfileForm({
       {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
 
       <section className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-2">
-        <FieldGroup label="Avatar look" htmlFor="avatar-gender">
+        <FieldGroup label="Avatar base" htmlFor="avatar-gender" help="Choose the avatar base FitPick should use for previews.">
           <select id="avatar-gender" className={inputClass} value={genderPresentation} onChange={(event) => setGenderPresentation(event.target.value as AvatarProfile["genderPresentation"])}>
-            <option value="neutral">Neutral</option>
-            <option value="masculine">Masculine</option>
-            <option value="feminine">Feminine</option>
+            <option value="masculine">Male</option>
+            <option value="feminine">Female</option>
+            <option value="neutral">Not specified</option>
           </select>
         </FieldGroup>
         <FieldGroup label="Body shape" htmlFor="avatar-body" help="A simple avatar shape, not exact body measuring.">

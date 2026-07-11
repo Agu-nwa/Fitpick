@@ -55,9 +55,9 @@ Hard rules:
 - Do not replace selected jeans with trousers or selected trousers with jeans.
 - Do not replace selected shoes with a different shoe type.
 - Preserve garment colors, visible patterns, fabrics, textures, and silhouettes from verified wardrobe metadata.
-- Use actual wardrobe item image references and exact selected item names when available.
+- Use wardrobe item reference images and exact selected item names when the active visual provider supports image references.
 - Preserve garment tagged size, garment fit style, fabric drape, and intended silhouette from metadata.
-- Respect Nigerian/native wear, ankara, agbada, kaftan, isiagu, aso-ebi, lace, or senator styling only when the selected wardrobe metadata supports it.
+- Respect seasonal and global occasion context, including winter layering, rain, warm weather, work, dinner, weddings, travel, formal events, and cultural/traditional garments only when the selected wardrobe metadata supports it.
 - Do not idealize fit or resize garments into a better-fitting substitute.
 - Do not convert loose, oversized, flowing, native, or traditional garments into slim fit.
 - Do not change garment length, sleeve length, neckline, shoe proportions, or bag shape randomly.

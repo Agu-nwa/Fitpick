@@ -21,7 +21,7 @@ export const previewAccuracyLevels: Record<PreviewAccuracyLevelId, PreviewAccura
   garment_referenced: {
     id: "garment_referenced",
     label: "Garment-Referenced Preview",
-    meaning: "Uses actual wardrobe item images as visual references but not guaranteed exact fit.",
+    meaning: "Uses wardrobe item photos and metadata as references, but is not guaranteed exact fit.",
     rank: 2
   },
   fit_locked: {

@@ -32,10 +32,10 @@ type ChatMessage = {
 };
 
 const promptSuggestions = [
-  "Style me for church this Sunday",
+  "Style me for work in cold weather",
   "Find a polished dinner look",
-  "What should I wear to a Nigerian wedding?",
-  "Dress me for a warm workday"
+  "What should I wear to a wedding?",
+  "Dress me for a rainy day"
 ];
 
 const loadingSteps = [
