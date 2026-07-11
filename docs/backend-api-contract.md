@@ -16,10 +16,14 @@ Protected routes return `401` when logged out. User-owned data is scoped by `use
 
 ## Auth
 
+- `POST /api/auth/request-otp`
+- `POST /api/auth/verify-otp`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+
+`/api/auth/request-otp` and `/api/auth/verify-otp` are the production passwordless auth flow. `/api/auth/register` and `/api/auth/login` are legacy password endpoints and return a safe message directing clients to email-code auth.
 
 ## Preferences And Profile
 
@@ -88,6 +92,11 @@ Required for real backend use:
 - `JWT_SECRET`
 - `SESSION_COOKIE_NAME`
 - `SESSION_COOKIE_SECURE`
+- `EMAIL_PROVIDER`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `OTP_CODE_TTL_MINUTES`
+- `OTP_MAX_ATTEMPTS`
 - `APP_URL`
 - `NEXT_PUBLIC_APP_URL`
 

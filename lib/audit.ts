@@ -5,6 +5,10 @@ import { AuditEvent } from "@/models/AuditEvent";
 export type AuditAction =
   | "auth.register"
   | "auth.login"
+  | "auth.otp.signup.request"
+  | "auth.otp.signup.verify"
+  | "auth.otp.signin.request"
+  | "auth.otp.signin.verify"
   | "auth.logout"
   | "user.update"
   | "preferences.update"

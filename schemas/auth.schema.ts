@@ -16,3 +16,16 @@ export const loginSchema = z.object({
   email: z.string().trim().email().max(160),
   password: z.string().min(1).max(128)
 });
+
+export const otpPurposeSchema = z.enum(["signup", "signin"]);
+
+export const requestOtpSchema = z.object({
+  email: z.string().trim().email().max(160),
+  purpose: otpPurposeSchema
+});
+
+export const verifyOtpSchema = z.object({
+  email: z.string().trim().email().max(160),
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code."),
+  purpose: otpPurposeSchema
+});

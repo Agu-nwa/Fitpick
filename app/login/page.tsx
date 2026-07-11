@@ -10,8 +10,8 @@ export default function LoginPage() {
       <section>
         <PageHeader
           eyebrow="Account access"
-          title="Sign in to FitPick"
-          subtitle="Save wardrobe items, outfit history, and preferences across your daily outfit decisions."
+          title="Welcome back to FitPick."
+          subtitle="Sign in with your email to continue building your smarter wardrobe."
         />
         <LoginForm />
       </section>

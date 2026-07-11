@@ -21,6 +21,24 @@ Notes:
 - Keep session cookies HTTP-only through the backend session implementation.
 - In production, session cookies must be `httpOnly`, `secure`, `sameSite=lax`, and scoped to `/`.
 
+## Email OTP Auth
+
+```bash
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=
+EMAIL_FROM="FitPick <auth@myfitpick.com>"
+OTP_CODE_TTL_MINUTES=10
+OTP_MAX_ATTEMPTS=5
+```
+
+Notes:
+
+- `RESEND_API_KEY` must remain server-only.
+- The Resend sender for production beta is `FitPick <auth@myfitpick.com>`.
+- OTP codes are 6 digits, expire after 10 minutes by default, and allow 5 attempts by default.
+- FitPick stores only hashed OTP codes in MongoDB.
+- Sign in never creates users automatically; users must complete sign up first.
+
 ## Database
 
 ```bash

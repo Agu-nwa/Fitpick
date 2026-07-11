@@ -75,6 +75,19 @@ export type CurrentUserSummary = {
   };
 };
 
+export type AuthOtpPurpose = "signup" | "signin";
+
+export type RequestOtpData = {
+  email: string;
+  purpose: AuthOtpPurpose;
+  expiresAt: string;
+  expiresInMinutes: number;
+};
+
+export type VerifyOtpData = {
+  user: CurrentUserSummary["user"];
+};
+
 export type WardrobeListData = {
   items: WardrobeItem[];
   summary: WardrobeSummary;
@@ -494,6 +507,10 @@ export const getCurrentUser = () => apiRequest<CurrentUserSummary>("/api/auth/me
 export const getAdminAudit = () => apiRequest<AdminAuditData>("/api/admin/audit", { cache: "no-store" });
 export const getAdminContent = () => apiRequest<AdminContentData>("/api/admin/content", { cache: "no-store" });
 export const runAdminSeed = () => apiRequest<AdminSeedData>("/api/admin/seed", { method: "POST" });
+export const requestAuthOtp = (body: { email: string; purpose: AuthOtpPurpose }) =>
+  apiRequest<RequestOtpData>("/api/auth/request-otp", { method: "POST", body });
+export const verifyAuthOtp = (body: { email: string; code: string; purpose: AuthOtpPurpose }) =>
+  apiRequest<VerifyOtpData>("/api/auth/verify-otp", { method: "POST", body });
 export const register = (body: unknown) => apiRequest("/api/auth/register", { method: "POST", body });
 export const login = (body: unknown) => apiRequest("/api/auth/login", { method: "POST", body });
 export const logout = () => apiRequest("/api/auth/logout", { method: "POST" });
