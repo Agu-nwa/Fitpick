@@ -1,25 +1,75 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/utils";
 import type { AvatarProfileData } from "@/lib/api-client";
 
 type ViewerPosePreset = AvatarProfileData["profile"]["posePreset"];
 
-const DynamicAvatarCanvas = dynamic(
-  () => import("@/components/avatar/AvatarCanvas").then((module) => module.AvatarCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex aspect-square items-center justify-center rounded-2xl border border-line bg-canvas">
-        <div className="h-16 w-16 animate-pulse rounded-full bg-line" />
+function toneForStyle(style?: string) {
+  if (style === "streetwear") return "bg-[#3b3f32]";
+  if (style === "editorial") return "bg-[#5a3840]";
+  if (style === "minimal") return "bg-[#8b806f]";
+  return "bg-[#5a3828]";
+}
+
+function scaleForBody(bodyPreset?: string) {
+  if (bodyPreset === "slim") return "scale-x-[0.88]";
+  if (bodyPreset === "athletic") return "scale-x-[1.08]";
+  if (bodyPreset === "curvy") return "scale-x-[1.12]";
+  if (bodyPreset === "plus") return "scale-x-[1.18]";
+  return "scale-x-100";
+}
+
+function poseClass(posePreset?: string) {
+  if (posePreset === "side") return "rotate-3";
+  if (posePreset === "back") return "rotate-180";
+  if (posePreset === "walking" || posePreset === "runway") return "translate-y-1";
+  return "";
+}
+
+function AvatarSilhouette({
+  profile,
+  posePreset,
+  autoRotate,
+  animatedPreview
+}: {
+  profile?: AvatarProfileData["profile"] | null;
+  posePreset: ViewerPosePreset;
+  autoRotate: boolean;
+  animatedPreview: boolean;
+}) {
+  const styleTone = toneForStyle(profile?.visualizationStyle);
+
+  return (
+    <div className="relative flex aspect-square items-end justify-center overflow-hidden rounded-2xl border border-line bg-[#f7f2ea] px-8 pb-9 pt-8">
+      <div className="absolute inset-x-8 bottom-8 h-6 rounded-full bg-cocoa/10 blur-sm" />
+      <div
+        className={cn(
+          "relative flex origin-bottom transition duration-500",
+          scaleForBody(profile?.bodyPreset),
+          poseClass(posePreset)
+        )}
+      >
+        <div className={cn("relative flex flex-col items-center", autoRotate ? "avatar-turn" : "", animatedPreview ? "avatar-walk" : "")}>
+          <div className="h-16 w-16 rounded-full bg-[#b99f87] shadow-card" />
+          <div className={cn("mt-2 h-32 w-24 rounded-[2rem] shadow-card", styleTone)} />
+          <div className="absolute top-20 flex w-48 justify-between">
+            <div className={cn("h-24 w-6 rounded-full", styleTone, posePreset === "walking" || posePreset === "runway" ? "rotate-12" : "rotate-[18deg]")} />
+            <div className={cn("h-24 w-6 rounded-full", styleTone, posePreset === "walking" || posePreset === "runway" ? "-rotate-12" : "-rotate-[18deg]")} />
+          </div>
+          <div className="mt-1 flex w-20 justify-between">
+            <div className={cn("h-28 w-7 rounded-full bg-[#2a2824]", posePreset === "walking" || posePreset === "runway" ? "rotate-6" : "")} />
+            <div className={cn("h-28 w-7 rounded-full bg-[#2a2824]", posePreset === "walking" || posePreset === "runway" ? "-rotate-6" : "")} />
+          </div>
+        </div>
       </div>
-    )
-  }
-);
+    </div>
+  );
+}
 
 export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile"] | null }) {
   const [autoRotate, setAutoRotate] = useState(true);
@@ -61,16 +111,7 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
         </Button>
       </div>
 
-      <div className="aspect-square overflow-hidden rounded-2xl border border-line bg-canvas">
-        <DynamicAvatarCanvas
-          avatarUrl={profile?.avatarUrl || null}
-          bodyPreset={profile?.bodyPreset || "average"}
-          visualizationStyle={profile?.visualizationStyle || "luxury"}
-          posePreset={posePreset}
-          autoRotate={autoRotate}
-          animatedPreview={animatedPreview}
-        />
-      </div>
+      <AvatarSilhouette profile={profile} posePreset={posePreset} autoRotate={autoRotate} animatedPreview={animatedPreview} />
 
       <details className="rounded-2xl border border-line bg-white p-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
@@ -81,7 +122,7 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
           {autoRotate ? <Badge tone="info">360 view</Badge> : null}
           {animatedPreview ? <Badge tone="warning">Walk preview mode</Badge> : null}
         </div>
-        <p className="mt-3 text-xs leading-5 text-muted">Manual turn controls are enabled. Walk preview uses available avatar animations when present, otherwise simple viewer movement only.</p>
+        <p className="mt-3 text-xs leading-5 text-muted">This lightweight preview is used for production stability. Generated outfit previews still use your saved avatar details.</p>
       </details>
     </Card>
   );

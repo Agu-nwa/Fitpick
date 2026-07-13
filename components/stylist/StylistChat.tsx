@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
 import {
   generateAvatarPreview,
   getJobStatus,
@@ -32,10 +31,10 @@ type ChatMessage = {
 };
 
 const promptSuggestions = [
-  "Style me for work in cold weather",
-  "Find a polished dinner look",
-  "What should I wear to a wedding?",
-  "Dress me for a rainy day"
+  { label: "Work", prompt: "Style me for work in cold weather" },
+  { label: "Dinner", prompt: "Find a polished dinner look" },
+  { label: "Wedding", prompt: "What should I wear to a wedding?" },
+  { label: "Rain", prompt: "Dress me for a rainy day" }
 ];
 
 const loadingSteps = [
@@ -120,6 +119,18 @@ export function StylistChat() {
   const [toast, setToast] = useState("");
   const [includeVisualization, setIncludeVisualization] = useState(true);
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
+  const latestAssistant = useMemo(
+    () => [...messages].reverse().find((entry) => entry.role === "assistant"),
+    [messages]
+  );
+  const latestLook = useMemo(
+    () => [...messages].reverse().find((entry) => entry.role === "assistant" && (entry.outfit || entry.outfitRecommendationId)),
+    [messages]
+  );
+  const requestHistory = useMemo(
+    () => messages.filter((entry) => entry.role === "user").slice(-3).reverse(),
+    [messages]
+  );
 
   function patchMessage(id: string, patch: Partial<ChatMessage>) {
     setMessages((current) => current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)));
@@ -292,7 +303,7 @@ export function StylistChat() {
     }
   }
 
-  function renderAssistantAddOns(entry: ChatMessage) {
+  function renderLookStudio(entry: ChatMessage) {
     const outfit = entry.outfit;
     const preview = entry.avatarPreview;
     const status = preview?.status || "not_started";
@@ -303,7 +314,7 @@ export function StylistChat() {
         {outfit ? <ItemStrip outfit={outfit} /> : null}
 
         {hasVisualization ? (
-          <div className="mt-3 rounded-xl border border-line bg-canvas p-3">
+          <div className="rounded-2xl border border-line bg-canvas p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
               {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
@@ -326,7 +337,7 @@ export function StylistChat() {
               </div>
             )}
 
-            <p className="mt-3 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
+            <p className="mt-3 text-xs leading-5 text-muted">Preview accuracy depends on the saved item photos and avatar details.</p>
             {(entry.fitLock?.warnings?.length || preview?.fitWarnings?.length) ? (
               <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
                 {(entry.fitLock?.warnings || preview?.fitWarnings || []).slice(0, 3).map((warning) => (
@@ -405,65 +416,27 @@ export function StylistChat() {
   return (
     <section className="space-y-4 pb-4">
       <Card className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-ink">FitPick Stylist</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Ask about an outfit, occasion, or item in your wardrobe.</p>
+            <p className="text-xs font-semibold uppercase text-cocoa">Styling appointment</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">What are we dressing for?</h2>
           </div>
-          <Badge tone="premium">Wardrobe-only</Badge>
+          <Badge tone="premium">Closet-led</Badge>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {promptSuggestions.map((prompt) => (
+        <div className="grid grid-cols-4 gap-2">
+          {promptSuggestions.map((suggestion) => (
             <button
-              key={prompt}
+              key={suggestion.label}
               type="button"
-              className="focus-ring rounded-full"
-              onClick={() => setMessage(prompt)}
+              className="focus-ring min-h-16 rounded-2xl border border-line bg-white px-2 py-3 text-center text-xs font-semibold text-ink transition hover:border-cocoa/30 hover:bg-canvas disabled:opacity-50"
+              onClick={() => setMessage(suggestion.prompt)}
               disabled={loading}
             >
-              <Chip>{prompt}</Chip>
+              {suggestion.label}
             </button>
           ))}
         </div>
-      </Card>
-
-      <Card className="space-y-3">
-        <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
-          {messages.length ? (
-            messages.map((entry) => (
-              <div
-                key={entry.id}
-                className={cn(
-                  "rounded-2xl px-3 py-2 text-sm leading-6",
-                  entry.role === "user" ? "ml-8 bg-cocoa text-white" : "mr-2 border border-line bg-white text-ink sm:mr-8"
-                )}
-              >
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] opacity-80">
-                  {entry.role === "user" ? "You" : "FitPick Stylist"}
-                </p>
-                <p className="whitespace-pre-wrap">{entry.content}</p>
-                {entry.role === "assistant" ? renderAssistantAddOns(entry) : null}
-              </div>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-dashed border-line bg-white px-4 py-5 text-center">
-              <p className="text-sm font-semibold text-ink">What are you dressing for?</p>
-              <p className="mt-2 text-xs leading-5 text-muted">Share the occasion, weather, or mood. FitPick will work with what you own.</p>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="mr-8 rounded-2xl border border-line bg-white px-3 py-2 text-sm leading-6 text-muted">
-              <div className="space-y-1">
-                {loadingSteps.map((step) => <p key={step}>{step}</p>)}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-        {toast ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
 
         <form
           className="space-y-3"
@@ -475,8 +448,8 @@ export function StylistChat() {
           <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="What are you dressing for?"
-            className="focus-ring min-h-28 w-full resize-none rounded-2xl border border-line bg-white px-3 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
+            placeholder="Occasion, mood, weather, dress code..."
+            className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-white px-3 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -487,18 +460,114 @@ export function StylistChat() {
                 onChange={(event) => setIncludeVisualization(event.target.checked)}
                 className="h-4 w-4 rounded border-line text-cocoa"
               />
-              See it on my avatar
+              Avatar preview
             </label>
-            <Badge tone={includeVisualization ? "premium" : "neutral"}>
-              {includeVisualization ? "Avatar preview on" : "Text only"}
-            </Badge>
+            <Button type="submit" disabled={loading || !message.trim()}>
+              {loading ? "Styling..." : "Style me"}
+            </Button>
           </div>
-
-          <Button type="submit" className="w-full" disabled={loading || !message.trim()}>
-            {loading ? "Finding options..." : "Ask FitPick"}
-          </Button>
         </form>
       </Card>
+
+      {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+      {toast ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+        <Card className="min-h-[28rem] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase text-cocoa">Selected look</p>
+              <h3 className="mt-1 text-lg font-semibold text-ink">
+                {latestLook?.outfit?.title || (loading ? "Curating your look" : "No look selected yet")}
+              </h3>
+            </div>
+            {latestLook?.outfit?.completenessStatus ? (
+              <Badge tone={latestLook.outfit.completenessStatus === "complete" ? "success" : "warning"}>
+                {completenessLabel(latestLook.outfit.completenessStatus)}
+              </Badge>
+            ) : null}
+          </div>
+
+          {latestLook ? (
+            <>
+              {renderLookStudio(latestLook)}
+              <div className="rounded-2xl border border-line bg-white p-4">
+                <p className="text-xs font-semibold uppercase text-cocoa">Stylist notes</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestLook.content}</p>
+              </div>
+            </>
+          ) : loading ? (
+            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-white px-5 text-center">
+              <div className="space-y-2">
+                {loadingSteps.map((step) => (
+                  <p key={step} className="text-sm font-semibold text-muted">{step}</p>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-white px-5 text-center">
+              <div>
+                <p className="text-sm font-semibold text-ink">Your styled look will appear here.</p>
+                <p className="mt-2 text-xs leading-5 text-muted">Start with an occasion and FitPick will pull from your saved wardrobe.</p>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <aside className="space-y-4">
+          <Card className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">Brief</p>
+              <Badge tone={includeVisualization ? "premium" : "neutral"}>
+                {includeVisualization ? "Avatar on" : "Avatar off"}
+              </Badge>
+            </div>
+            {requestHistory.length ? (
+              <div className="space-y-2">
+                {requestHistory.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className="focus-ring w-full rounded-2xl border border-line bg-white px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
+                    onClick={() => setMessage(entry.content)}
+                  >
+                    {entry.content}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-line bg-white px-3 py-3 text-xs leading-5 text-muted">
+                Tell FitPick the occasion, weather, dress code, and how dressed-up you want to feel.
+              </p>
+            )}
+          </Card>
+
+          <Card className="space-y-3">
+            <p className="text-sm font-semibold text-ink">Refine</p>
+            <div className="grid grid-cols-2 gap-2">
+              {["More polished", "Simpler", "More formal", "More casual"].map((label) => (
+                <Button
+                  key={label}
+                  type="button"
+                  variant="secondary"
+                  className="px-3 text-xs"
+                  disabled={!latestLook?.outfit || loading}
+                  onClick={() => void submitStylistMessage(`${label} for this ${latestLook?.outfit?.occasion || "look"}`, { includeVisualization: true })}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </Card>
+
+          {latestAssistant && !latestLook ? (
+            <Card className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Stylist notes</p>
+              <p className="whitespace-pre-wrap text-xs leading-5 text-muted">{latestAssistant.content}</p>
+            </Card>
+          ) : null}
+        </aside>
+      </div>
     </section>
   );
 }
