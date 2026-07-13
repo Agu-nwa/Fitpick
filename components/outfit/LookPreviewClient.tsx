@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AvatarViewer } from "@/components/avatar/AvatarViewer";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -13,7 +12,7 @@ import { CTABar } from "@/components/ui/CTABar";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { Toast } from "@/components/ui/Toast";
 import { useSession } from "@/hooks/use-session";
-import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData, type AvatarProfileData } from "@/lib/api-client";
+import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import type { OutfitRecommendation } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
@@ -34,7 +33,6 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const session = useSession();
   const [outfit, setOutfit] = useState<OutfitRecommendation | null>(null);
   const [preview, setPreview] = useState<AvatarPreviewData["preview"] | null>(null);
-  const [avatarProfile, setAvatarProfile] = useState<AvatarProfileData["profile"] | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "not-found" | "unavailable" | "error">("idle");
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
@@ -66,7 +64,6 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     setOutfit(outfitResult.data.outfit);
     if (previewResult.ok) {
       setPreview(previewResult.data.preview);
-      setAvatarProfile(previewResult.data.avatarProfile || null);
     }
     setStatus("ready");
   }, [outfitId]);
@@ -90,7 +87,6 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         const refreshed = await getAvatarPreview(outfitId);
         if (refreshed.ok) {
           setPreview(refreshed.data.preview);
-          setAvatarProfile(refreshed.data.avatarProfile || null);
         }
         showToast("Avatar preview ready.");
         return;
@@ -116,7 +112,6 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     }
 
     setPreview(result.data.preview);
-    setAvatarProfile(result.data.avatarProfile || null);
     const jobId = result.data.job?.id;
     if (jobId && result.data.preview.status !== "ready") {
       showToast("Avatar preview is being prepared.");
@@ -171,14 +166,14 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
               <img src={imageUrl} alt={`${outfit.title} avatar preview`} className="min-h-[420px] w-full bg-canvas object-cover sm:min-h-[560px]" />
             ) : (
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas px-6 text-center sm:min-h-[560px]">
-                <p className="text-lg font-semibold text-ink">No avatar preview yet.</p>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-muted">Show this exact outfit on your avatar to inspect it bigger.</p>
-                <Button className="mt-5" onClick={() => void handleGenerate(false)} disabled={generating}>{generating ? "Preparing..." : "Show outfit on avatar"}</Button>
+                <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
+                  Generate a photorealistic model wearing the exact selected closet items.
+                </p>
+                <Button className="mt-5" onClick={() => void handleGenerate(false)} disabled={generating}>{generating ? "Preparing..." : "Generate virtual try-on"}</Button>
               </div>
             )}
           </Card>
-
-          {avatarProfile ? <AvatarViewer profile={avatarProfile} /> : null}
         </section>
 
         <aside className="space-y-4">
@@ -187,7 +182,9 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
               <Badge tone={preview?.visualGroundingStatus === "grounded" ? "success" : "warning"}>{preview?.visualGroundingStatus === "grounded" ? "Grounded preview" : "Preview needs review"}</Badge>
             </div>
-            <p className="text-sm leading-6 text-muted">This look uses the exact selected closet item IDs. The avatar image is still a preview, not a perfect fitting.</p>
+            <p className="text-sm leading-6 text-muted">
+              This look uses the selected closet item IDs. The generated image is an on-model virtual try-on, not a perfect fitting.
+            </p>
           </Card>
 
           {warnings.length ? (
@@ -235,7 +232,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           <CTABar className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
             <Button onClick={() => void handleSave()}>Save look</Button>
             <Link href="/outfit"><Button variant="secondary" className="w-full">Try another look</Button></Link>
-            <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={generating}>{generating ? "Preparing..." : "Regenerate preview"}</Button>
+            <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={generating}>{generating ? "Preparing..." : "Regenerate try-on"}</Button>
             <Link href="/avatar"><Button variant="ghost" className="w-full">Edit avatar</Button></Link>
           </CTABar>
         </aside>

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { AvatarViewer } from "@/components/avatar/AvatarViewer";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,13 +52,13 @@ export function DigitalHumanTryOnPanel({
 }: DigitalHumanTryOnPanelProps) {
   return (
     <div className="space-y-4">
-      <AvatarViewer profile={avatarProfile} />
-
       <Card className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-ink">See it on your avatar</p>
-            <p className="mt-1 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
+            <p className="text-sm font-semibold text-ink">Virtual try-on</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Generate a photorealistic model wearing the exact selected closet items.
+            </p>
           </div>
           <Badge tone={accuracyLevel?.id === "fit_locked" ? "success" : "premium"}>
             {simplePreviewType(accuracyLevel)}
@@ -76,7 +75,12 @@ export function DigitalHumanTryOnPanel({
           </button>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
-            <p className="text-sm leading-6 text-muted">Show this outfit on your avatar.</p>
+            <div>
+              <p className="text-base font-semibold text-ink">Create on-model preview</p>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
+                FitPick will use the saved clothing photos to generate a digital human wearing this outfit.
+              </p>
+            </div>
           </div>
         )}
 
@@ -123,7 +127,7 @@ export function DigitalHumanTryOnPanel({
         ) : null}
 
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
-          <p className="text-sm font-semibold text-cocoa">Showing it on your avatar. This may take a moment.</p>
+          <p className="text-sm font-semibold text-cocoa">Creating the on-model try-on. This may take a moment.</p>
         ) : null}
         {previewError ? <p className="text-sm font-semibold text-red-600">{previewError}</p> : null}
 
@@ -139,20 +143,14 @@ export function DigitalHumanTryOnPanel({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
-            {isGenerating ? "Showing outfit..." : previewUrl ? "Show better fit" : "Show outfit on avatar"}
+            {isGenerating ? "Creating try-on..." : previewUrl ? "Regenerate try-on" : "Generate virtual try-on"}
           </Button>
           <Link href={`/outfit/${outfit.id}/preview`}>
             <Button type="button" variant="secondary" className="w-full">View full look</Button>
           </Link>
           <Link href="/avatar">
-            <Button type="button" variant="secondary" className="w-full">Add my size</Button>
-          </Link>
-          <Link href="/avatar">
             <Button type="button" variant="secondary" className="w-full">Improve size details</Button>
           </Link>
-          <Button type="button" variant="secondary" disabled title="Advanced try-on needs a real 3D clothing simulation provider first.">
-            Request advanced try-on
-          </Button>
           {previewUrl ? (
             <Button type="button" variant="ghost" onClick={onRegenerate} disabled={isGenerating}>
               Try again

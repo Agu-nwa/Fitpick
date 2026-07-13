@@ -16,7 +16,7 @@ import { AvatarProfile } from "@/models/AvatarProfile";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
-export const avatarPreviewPromptVersion = "fitpick-avatar-preview-v2";
+export const avatarPreviewPromptVersion = "fitpick-virtual-tryon-v3";
 
 type AvatarPreviewOptions = {
   visualizationStyle?: VisualizationStyle;
@@ -320,9 +320,12 @@ export async function generateAvatarOutfitPreview(
     ? `${prompt}
 
 Image-grounded try-on requirement:
-- Use the attached wardrobe item images as the source of truth for the selected garments, shoes, bags, and accessories.
-- Render the avatar wearing those actual referenced items, not visually similar replacements.
-- Keep every referenced item represented unless impossible; if simplified, keep the item in the outfit and preserve its role.
+- Generate a high-quality photorealistic digital human/model first, guided by the avatar profile, pose, and style context.
+- Project the attached wardrobe item images onto that generated human/model as the source of truth for garments, shoes, bags, and accessories.
+- Preserve visible garment texture, color, silhouette, proportions, shoe/accessory type, and placement from the reference images.
+- Render the model wearing those actual referenced items, not visually similar replacements.
+- Keep every referenced item represented unless technically impossible; if simplified, keep the item in the outfit and preserve its role.
+- Use natural perspective, realistic drape, and premium fashion-product-page lighting without inventing new items.
 - Attached garment references:
 ${garmentReferences.map((ref, index) => `${index + 1}. Item ID ${ref.itemId} | ${ref.name} | ${ref.category}`).join("\n")}`
     : prompt;

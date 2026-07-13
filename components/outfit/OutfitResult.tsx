@@ -328,7 +328,7 @@ export function OutfitResult({
       setAvatarPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setAvatarPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
-        setToast("Showing it on your avatar.");
+      setToast("Creating virtual try-on.");
         void pollAvatarPreviewJob(result.data.job.id);
         return;
       }
@@ -338,7 +338,7 @@ export function OutfitResult({
     }
 
     setAvatarPreviewStatus("failed");
-    setAvatarPreviewError(result.error.message || "Unable to show it on your avatar right now.");
+    setAvatarPreviewError(result.error.message || "Unable to create virtual try-on right now.");
   }
 
   async function pollAvatarPreviewJob(jobId: string) {
@@ -365,7 +365,7 @@ export function OutfitResult({
       }
 
       if (job.status === "failed" || job.status === "cancelled") {
-        setAvatarPreviewError(job.errorMessage || "Unable to show it on your avatar right now.");
+        setAvatarPreviewError(job.errorMessage || "Unable to create virtual try-on right now.");
         setAvatarPreviewJobId("");
         return;
       }
@@ -453,7 +453,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="See it on your avatar" />
+        <SectionHeader title="Virtual try-on" />
 
         <div className="mt-4">
           <DigitalHumanTryOnPanel

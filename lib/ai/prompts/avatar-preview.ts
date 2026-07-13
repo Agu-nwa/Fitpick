@@ -18,7 +18,7 @@ function styleInstruction(style: AvatarPreviewPromptInput["visualizationStyle"])
 }
 
 export function buildAvatarPreviewPrompt(input: AvatarPreviewPromptInput) {
-  return `Create a premium avatar preview for FitPick using only the selected owned wardrobe item details.
+  return `Create a photorealistic virtual try-on image for FitPick using only the selected owned wardrobe item details.
 
 Selected owned outfit:
 ${input.outfitDescription}
@@ -47,6 +47,12 @@ ${input.visualizationWarnings?.length ? input.visualizationWarnings.join("\n") :
 Visualization style:
 ${styleInstruction(input.visualizationStyle)}
 
+Virtual try-on composition:
+- Generate a clean, high-quality digital human/model that follows the avatar profile, pose, and styling context.
+- Dress that generated human/model in the selected owned wardrobe items.
+- The final image should look like a premium fashion product-page model wearing the selected outfit.
+- The output must be a single photorealistic on-model image, not a flat lay, collage, mannequin, sketch, or cartoon.
+
 Hard rules:
 - Use only the owned wardrobe items described above.
 - Every selected wardrobe item ID must be represented in the visualization.
@@ -58,6 +64,7 @@ Hard rules:
 - Use wardrobe item reference images and exact selected item names when the active visual provider supports image references.
 - Preserve garment tagged size, garment fit style, fabric drape, and intended silhouette from metadata.
 - Respect seasonal and global occasion context, including winter layering, rain, warm weather, work, dinner, weddings, travel, formal events, and cultural/traditional garments only when the selected wardrobe metadata supports it.
+- Shoes and accessories are first-class outfit pieces. If selected, they must appear on the generated human/model in the correct body position.
 - Do not idealize fit or resize garments into a better-fitting substitute.
 - Do not convert loose, oversized, flowing, native, or traditional garments into slim fit.
 - Do not change garment length, sleeve length, neckline, shoe proportions, or bag shape randomly.
