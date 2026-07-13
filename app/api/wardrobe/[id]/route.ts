@@ -12,18 +12,19 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { updateWardrobeItemSchema } from "@/schemas/wardrobe.schema";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
-    const item = await WardrobeItem.findOne({ _id: context.params.id, userId: auth.user._id }).lean();
+    const item = await WardrobeItem.findOne({ _id: id, userId: auth.user._id }).lean();
     if (!item) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     return apiSuccess({ item: serializeWardrobeItem(item) });
@@ -39,14 +40,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     const parsed = validateBody(updateWardrobeItemSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const existing = await WardrobeItem.findOne({ _id: context.params.id, userId: auth.user._id });
+    const existing = await WardrobeItem.findOne({ _id: id, userId: auth.user._id });
     if (!existing) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     Object.assign(existing, parsed.data);
@@ -79,12 +81,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     const hardDelete = request.nextUrl.searchParams.get("hard") === "true";
-    const item = await WardrobeItem.findOne({ _id: context.params.id, userId: auth.user._id });
+    const item = await WardrobeItem.findOne({ _id: id, userId: auth.user._id });
     if (!item) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     if (hardDelete) {
@@ -94,7 +97,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         userId: String(auth.user._id),
         action: "wardrobe.delete",
         entityType: "WardrobeItem",
-        entityId: context.params.id
+        entityId: id
       });
 
       return apiSuccess({ deleted: true, archived: false }, { message: "Wardrobe item deleted." });

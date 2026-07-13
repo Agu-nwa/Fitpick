@@ -14,9 +14,9 @@ import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadTagReviewSchema } from "@/schemas/wardrobe.schema";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 function normalizeList(values?: string[]) {
@@ -83,14 +83,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
 
     const parsed = validateBody(uploadTagReviewSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const upload = await WardrobeUpload.findOne({ _id: context.params.id, userId: auth.user._id });
+    const upload = await WardrobeUpload.findOne({ _id: id, userId: auth.user._id });
     if (!upload) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
     if (upload.createdItemId) {
       return apiError("CONFLICT", "This upload has already been added to your wardrobe.");

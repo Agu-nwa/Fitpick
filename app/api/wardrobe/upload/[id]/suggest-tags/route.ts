@@ -11,7 +11,7 @@ import { isObjectId } from "@/lib/wardrobe";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const meta = requestMeta(request);
 
   const limited = rateLimitPlaceholder({
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, context: { params: { id: string
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
 
-    const id = context.params.id;
+    const { id } = await context.params;
 
     if (!isObjectId(id)) {
       return apiError("NOT_FOUND", "Invalid wardrobe upload ID.");

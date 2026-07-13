@@ -28,9 +28,9 @@ import { isObjectId } from "@/lib/wardrobe";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const avatarPreviewRequestSchema = z.object({
@@ -61,20 +61,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Outfit was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Outfit was not found.");
 
-    const loaded = await loadOwnedAvatarPreviewSubject(String(auth.user._id), context.params.id);
+    const loaded = await loadOwnedAvatarPreviewSubject(String(auth.user._id), id);
     if (!loaded) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const options = {
       visualizationStyle: loaded.avatarProfile.visualizationStyle,
       posePreset: loaded.avatarProfile.posePreset
     };
-    const cacheKey = buildAvatarCacheKeyFromItems(String(auth.user._id), context.params.id, loaded.items, loaded.avatarProfile, options);
-    const cached = await getCachedAvatarPreview(String(auth.user._id), context.params.id, cacheKey);
-    const latest = cached || await AvatarOutfitPreview.findOne({ userId: auth.user._id, outfitId: context.params.id }).sort({ updatedAt: -1 }).lean();
+    const cacheKey = buildAvatarCacheKeyFromItems(String(auth.user._id), id, loaded.items, loaded.avatarProfile, options);
+    const cached = await getCachedAvatarPreview(String(auth.user._id), id, cacheKey);
+    const latest = cached || await AvatarOutfitPreview.findOne({ userId: auth.user._id, outfitId: id }).sort({ updatedAt: -1 }).lean();
 
     return apiSuccess({
       preview: serializeAvatarPreview(latest ? { ...latest, ...groundingPatch(loaded.items, latest) } : groundingPatch(loaded.items)),
@@ -94,11 +95,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
   let activeCacheKey = "";
   let activeUserId = "";
   let activeAvatarProfileId = "";
+  let activeOutfitId = "";
 
   try {
+    const { id } = await context.params;
+    activeOutfitId = id;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Outfit was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Outfit was not found.");
     activeUserId = String(auth.user._id);
 
     const parsed = validateBody(avatarPreviewRequestSchema, await readJson(request));
@@ -108,7 +112,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("INTERNAL_ERROR", "Avatar preview is not configured yet.");
     }
 
-    const loaded = await loadOwnedAvatarPreviewSubject(activeUserId, context.params.id);
+    const loaded = await loadOwnedAvatarPreviewSubject(activeUserId, id);
     if (!loaded) return apiError("NOT_FOUND", "Outfit was not found.");
     if (loaded.missingItems || !loaded.items.length) {
       return apiError("BAD_REQUEST", "This avatar preview needs all selected saved clothes available.");
@@ -125,10 +129,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     };
     const fitEvaluation = evaluateOutfitFitOnAvatar(loaded.avatarProfile, loaded.items);
     const visualGrounding = groundingPatch(loaded.items);
-    const cacheKey = buildAvatarCacheKeyFromItems(activeUserId, context.params.id, loaded.items, loaded.avatarProfile, options);
+    const cacheKey = buildAvatarCacheKeyFromItems(activeUserId, id, loaded.items, loaded.avatarProfile, options);
     activeCacheKey = cacheKey;
 
-    const cached = parsed.data.regenerate ? null : await getCachedAvatarPreview(activeUserId, context.params.id, cacheKey) as any;
+    const cached = parsed.data.regenerate ? null : await getCachedAvatarPreview(activeUserId, id, cacheKey) as any;
     if (cached?.imageUrl) {
       logAiEvent({
         operation: "avatar-preview",
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const inFlight = await AvatarOutfitPreview.findOne({
       userId: auth.user._id,
-      outfitId: context.params.id,
+      outfitId: id,
       cacheKey,
       status: "generating",
       lastAttemptAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) }
@@ -161,7 +165,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const latestAttempt = await AvatarOutfitPreview.findOne({
       userId: auth.user._id,
-      outfitId: context.params.id,
+      outfitId: id,
       cacheKey
     }).lean() as any;
 
@@ -171,7 +175,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     await markAvatarPreviewStatus(
       activeUserId,
-      context.params.id,
+      id,
       activeAvatarProfileId,
       cacheKey,
       {
@@ -206,7 +210,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const job = await enqueueJob(
         "avatar_preview_generation",
         {
-          outfitId: context.params.id,
+          outfitId: id,
           avatarProfileId: activeAvatarProfileId,
           visualizationStyle: options.visualizationStyle,
           posePreset: options.posePreset,
@@ -243,7 +247,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const generated = await generateAvatarOutfitPreview(activeUserId, loaded.outfit, loaded.items, loaded.avatarProfile, { ...options, cacheKey });
-    const saved = await saveAvatarPreview(activeUserId, context.params.id, activeAvatarProfileId, generated, loaded.itemIds, cacheKey);
+    const saved = await saveAvatarPreview(activeUserId, id, activeAvatarProfileId, generated, loaded.itemIds, cacheKey);
 
     return apiSuccess({
       preview: serializeAvatarPreview(saved),
@@ -251,14 +255,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }, { message: "Avatar preview ready.", status: 201 });
   } catch (error) {
     try {
-      if (activeUserId && activeAvatarProfileId && isObjectId(context.params.id)) {
+      if (activeUserId && activeAvatarProfileId && isObjectId(activeOutfitId)) {
         await markAvatarPreviewStatus(
           activeUserId,
-          context.params.id,
+          activeOutfitId,
           activeAvatarProfileId,
-          activeCacheKey || `failed:${context.params.id}`,
+          activeCacheKey || `failed:${activeOutfitId}`,
           {
-            cacheKey: activeCacheKey || `failed:${context.params.id}`,
+            cacheKey: activeCacheKey || `failed:${activeOutfitId}`,
             status: "failed",
             errorMessage: "Unable to show it on your avatar right now.",
             lastAttemptAt: new Date()

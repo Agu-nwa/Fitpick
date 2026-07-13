@@ -9,15 +9,16 @@ import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Outfit was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Outfit was not found.");
 
-    const outfit = await OutfitRecommendation.findOne({ _id: context.params.id, userId: auth.user._id }).lean();
+    const outfit = await OutfitRecommendation.findOne({ _id: id, userId: auth.user._id }).lean();
     if (!outfit) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const itemIds = (outfit.itemIds || []).map(String);

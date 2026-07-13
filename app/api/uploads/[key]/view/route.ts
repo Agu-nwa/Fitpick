@@ -12,17 +12,18 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     key: string;
-  };
+  }>;
 };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    const { key } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
 
-    const storageKey = normalizeStorageKey(decodeURIComponent(context.params.key));
+    const storageKey = normalizeStorageKey(decodeURIComponent(key));
     const userId = String(auth.user._id);
     if (
       !storageKeyBelongsToUser({ userId, storageKey, prefix: "wardrobe" }) &&

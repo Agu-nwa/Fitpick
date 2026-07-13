@@ -20,9 +20,9 @@ const schema = z.object({
 });
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function POST(
@@ -34,6 +34,7 @@ export async function POST(
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
 
     if (!auth.ok) {
@@ -49,13 +50,13 @@ export async function POST(
       return parsed.response;
     }
 
-    if (!isObjectId(context.params.id)) {
+    if (!isObjectId(id)) {
       return apiError("NOT_FOUND", "Outfit not found.");
     }
 
     const outfit =
       await OutfitRecommendation.findOne({
-        _id: context.params.id,
+        _id: id,
         userId: auth.user._id
       });
 

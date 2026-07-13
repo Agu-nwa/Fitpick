@@ -13,7 +13,7 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
 import { wearOutfitSchema } from "@/schemas/outfit.schema";
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 function serializeWornLook(look: any) {
   return {
@@ -32,14 +32,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Outfit was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const parsed = validateBody(wearOutfitSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const outfit = await OutfitRecommendation.findOne({ _id: context.params.id, userId: auth.user._id }).lean();
+    const outfit = await OutfitRecommendation.findOne({ _id: id, userId: auth.user._id }).lean();
     if (!outfit) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const wornAt = parsed.data.wornAt ? new Date(parsed.data.wornAt) : new Date();

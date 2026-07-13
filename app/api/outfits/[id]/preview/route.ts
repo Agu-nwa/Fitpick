@@ -24,9 +24,9 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const previewRequestSchema = z.object({
@@ -73,15 +73,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
 
-    const loaded = await loadOwnedOutfitAndItems(auth.user._id, context.params.id);
+    const loaded = await loadOwnedOutfitAndItems(auth.user._id, id);
     if (!loaded) return apiError("NOT_FOUND", "Outfit was not found.");
 
-    const cacheKey = buildPreviewCacheKeyFromItems(String(auth.user._id), context.params.id, loaded.items, { style: "flat_lay" });
-    const cached = await getCachedOutfitPreview(String(auth.user._id), context.params.id, cacheKey);
-    const latest = cached || await OutfitPreview.findOne({ userId: auth.user._id, outfitId: context.params.id }).sort({ updatedAt: -1 }).lean();
+    const cacheKey = buildPreviewCacheKeyFromItems(String(auth.user._id), id, loaded.items, { style: "flat_lay" });
+    const cached = await getCachedOutfitPreview(String(auth.user._id), id, cacheKey);
+    const latest = cached || await OutfitPreview.findOne({ userId: auth.user._id, outfitId: id }).sort({ updatedAt: -1 }).lean();
 
     return apiSuccess({ preview: serializeOutfitPreview(latest || loaded.outfit.preview) });
   } catch {
@@ -95,8 +96,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
   let activeCacheKey = "";
   let activeUserId: any = null;
+  let activeOutfitId = "";
 
   try {
+    const { id } = await context.params;
+    activeOutfitId = id;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
     activeUserId = auth.user._id;
@@ -108,15 +112,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("INTERNAL_ERROR", "Image generation is not configured yet.");
     }
 
-    const loaded = await loadOwnedOutfitAndItems(auth.user._id, context.params.id);
+    const loaded = await loadOwnedOutfitAndItems(auth.user._id, id);
     if (!loaded) return apiError("NOT_FOUND", "Outfit was not found.");
     if (loaded.missingItems || !loaded.items.length) {
       return apiError("BAD_REQUEST", "This outfit needs all owned wardrobe items available before generating a preview.");
     }
 
-    const cacheKey = buildPreviewCacheKeyFromItems(String(auth.user._id), context.params.id, loaded.items, parsed.data);
+    const cacheKey = buildPreviewCacheKeyFromItems(String(auth.user._id), id, loaded.items, parsed.data);
     activeCacheKey = cacheKey;
-    const cached = (parsed.data.regenerate ? null : await getCachedOutfitPreview(String(auth.user._id), context.params.id, cacheKey)) as any;
+    const cached = (parsed.data.regenerate ? null : await getCachedOutfitPreview(String(auth.user._id), id, cacheKey)) as any;
 
     if (cached?.imageUrl) {
       logAiEvent({
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const inFlight = await OutfitPreview.findOne({
       userId: auth.user._id,
-      outfitId: context.params.id,
+      outfitId: id,
       cacheKey,
       status: "generating",
       lastAttemptAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) }
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const latestAttempt = await OutfitPreview.findOne({
       userId: auth.user._id,
-      outfitId: context.params.id,
+      outfitId: id,
       cacheKey
     }).lean() as any;
 
@@ -156,7 +160,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     await markPreview(
       auth.user._id,
-      context.params.id,
+      id,
       cacheKey,
       {
         userId: auth.user._id,
@@ -177,7 +181,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const job = await enqueueJob(
         "outfit_preview_generation",
         {
-          outfitId: context.params.id,
+          outfitId: id,
           style: parsed.data.style,
           cacheKey
         },
@@ -204,18 +208,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const generated = await generateOutfitPreview(String(auth.user._id), loaded.outfit, loaded.items, parsed.data);
-    const saved = await saveGeneratedPreview(String(auth.user._id), context.params.id, generated, cacheKey);
+    const saved = await saveGeneratedPreview(String(auth.user._id), id, generated, cacheKey);
 
     return apiSuccess({ preview: serializeOutfitPreview(saved) }, { message: "Premium outfit preview generated.", status: 201 });
   } catch (error) {
     try {
-      if (activeUserId && isObjectId(context.params.id)) {
+      if (activeUserId && isObjectId(activeOutfitId)) {
         await markPreview(
           activeUserId,
-          context.params.id,
-          activeCacheKey || `failed:${context.params.id}`,
+          activeOutfitId,
+          activeCacheKey || `failed:${activeOutfitId}`,
           {
-            cacheKey: activeCacheKey || `failed:${context.params.id}`,
+            cacheKey: activeCacheKey || `failed:${activeOutfitId}`,
             status: "failed",
             errorMessage: "Unable to generate preview right now.",
             lastAttemptAt: new Date()

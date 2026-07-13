@@ -13,7 +13,7 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { swapOutfitSchema } from "@/schemas/outfit.schema";
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
@@ -21,14 +21,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Outfit was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const parsed = validateBody(swapOutfitSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const outfit = await OutfitRecommendation.findOne({ _id: context.params.id, userId: auth.user._id });
+    const outfit = await OutfitRecommendation.findOne({ _id: id, userId: auth.user._id });
     if (!outfit) return apiError("NOT_FOUND", "Outfit was not found.");
 
     const currentItems = await WardrobeItem.find({ _id: { $in: outfit.itemIds }, userId: auth.user._id });

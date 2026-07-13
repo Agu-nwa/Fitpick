@@ -7,18 +7,19 @@ import { getJob, serializeJob } from "@/lib/jobs/queue";
 import { isObjectId } from "@/lib/wardrobe";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Job was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Job was not found.");
 
-    const job = await getJob(context.params.id, auth.user._id);
+    const job = await getJob(id, auth.user._id);
     if (!job) return apiError("NOT_FOUND", "Job was not found.");
 
     return apiSuccess({ job: serializeJob(job) });

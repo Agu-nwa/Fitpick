@@ -12,9 +12,9 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { wardrobeTagReviewSchema } from "@/schemas/wardrobe.schema";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -23,14 +23,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (limited) return limited;
 
   try {
+    const { id } = await context.params;
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
-    if (!isObjectId(context.params.id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+    if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     const parsed = validateBody(wardrobeTagReviewSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const item = await WardrobeItem.findOne({ _id: context.params.id, userId: auth.user._id });
+    const item = await WardrobeItem.findOne({ _id: id, userId: auth.user._id });
     if (!item) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     Object.assign(item, parsed.data);
