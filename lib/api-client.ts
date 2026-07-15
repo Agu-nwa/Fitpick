@@ -326,6 +326,13 @@ export type AvatarProfileData = {
     avatarProvider: "ready_player_me" | "fitpick_preset" | "custom_glb";
     avatarUrl: string | null;
     glbStorageKey: string | null;
+    tryOnModelSource: "none" | "uploaded" | "generated";
+    uploadedModelImageUrl: string | null;
+    uploadedModelImageStorageKey: string | null;
+    generatedModelImageUrl: string | null;
+    generatedModelImageStorageKey: string | null;
+    generatedModelPromptVersion: string;
+    generatedModelAt: string | null;
     heightCm: number | null;
     weightKg: number | null;
     chestCm: number | null;
@@ -563,6 +570,7 @@ export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-pr
 export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });
 export const getAvatarProfile = () => apiRequest<AvatarProfileData>("/api/avatar-profile", { cache: "no-store" });
 export const updateAvatarProfile = (body: unknown) => apiRequest<AvatarProfileData>("/api/avatar-profile", { method: "PATCH", body });
+export const generateAvatarModelImage = () => apiRequest<AvatarProfileData>("/api/avatar-profile/model-image/generate", { method: "POST" });
 export const getAvatarPreview = (id: string) => apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { cache: "no-store" });
 export const generateAvatarPreview = (id: string, options: unknown = {}) =>
   apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { method: "POST", body: options });

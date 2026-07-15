@@ -1,8 +1,8 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
-import { runAvatarPreviewGenerationJob, serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
+import { serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
-import { getTryOnProvider } from "@/lib/tryon/tryon-provider";
+import { getTryOnProvider, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: string }) {
@@ -59,10 +59,12 @@ export async function runBackgroundJobByType(job: any) {
   }
 
   if (job.type === "avatar_preview_generation") {
-    const result = await runAvatarPreviewGenerationJob({
+    const result = await runConfiguredVirtualTryOnJob({
       userId,
       outfitId: String(payload.outfitId || ""),
       avatarProfileId: String(payload.avatarProfileId || ""),
+      wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
+      desiredView: payload.posePreset === "walking" ? "walking" : undefined,
       visualizationStyle: payload.visualizationStyle || undefined,
       posePreset: payload.posePreset || undefined,
       cacheKey: payload.cacheKey
@@ -103,15 +105,20 @@ export async function runBackgroundJobByType(job: any) {
   }
 
   if (job.type === "true_3d_tryon_generation") {
-    const provider = getTryOnProvider();
-    return provider.generateAnimatedAvatarTryOn({
+    const result = await runConfiguredVirtualTryOnJob({
       userId,
-      outfitRecommendationId: String(payload.outfitId || ""),
+      outfitId: String(payload.outfitId || ""),
       avatarProfileId: String(payload.avatarProfileId || ""),
       wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
       desiredView: "360",
-      accuracyLevelRequested: "true_3d_simulation"
+      cacheKey: payload.cacheKey ? String(payload.cacheKey) : undefined
     });
+    const preview = (result.preview as any)?.toObject?.() ?? result.preview;
+
+    return {
+      preview: preview ? serializeAvatarPreview({ ...preview, cached: result.cached }) : null,
+      providerOutput: (result as any).providerOutput
+    };
   }
 
   return {

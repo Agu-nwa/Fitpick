@@ -25,7 +25,9 @@ Supported v1 jobs:
 
 The current queue is MongoDB-backed and shaped so AWS SQS can replace it later.
 
-`true_3d_tryon_generation` is integration-ready only. It returns provider unavailable until a real garment simulation provider or internal mesh pipeline is configured.
+`avatar_preview_generation` uses FitPick's internal image preview by default. To route previews to a real virtual try-on engine, set `TRYON_PROVIDER=custom` and configure the custom endpoint variables below.
+
+`true_3d_tryon_generation` uses the same provider adapter. Without a configured external provider, it falls back to the internal still-image preview path or returns provider unavailable for unsupported provider modes.
 
 ## Local Development
 
@@ -97,5 +99,49 @@ S3_SECRET_ACCESS_KEY=
 ```
 
 The worker startup log may list missing variable names, but it must never print variable values. On EC2, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` may be empty when the instance has an IAM role with S3 access.
+
+Optional virtual try-on provider variables:
+
+```env
+TRYON_PROVIDER=internal_preview
+# Use custom to call an external virtual try-on engine.
+# TRYON_PROVIDER=custom
+TRYON_CUSTOM_ENDPOINT=
+TRYON_CUSTOM_API_KEY=
+TRYON_CUSTOM_STATUS_ENDPOINT=
+TRYON_TIMEOUT_MS=90000
+
+# Use FASHN Try-On Max as a dedicated provider.
+# TRYON_PROVIDER=fashn
+FASHN_API_KEY=
+FASHN_BASE_URL=https://api.fashn.ai/v1
+FASHN_MODEL_NAME=tryon-max
+FASHN_RESOLUTION=1k
+FASHN_GENERATION_MODE=balanced
+FASHN_OUTPUT_FORMAT=png
+FASHN_RETURN_BASE64=true
+FASHN_TIMEOUT_MS=90000
+FASHN_POLL_MS=3000
+```
+
+The custom endpoint receives a JSON payload with:
+
+- `avatar`: saved avatar profile and body preferences
+- `garments`: selected wardrobe items with `referenceImageUrl`, category, color, fabric, fit, measurements, and image metadata
+- `desiredView`: `front`, `back`, `side`, `walking`, or `360`
+- `instructions`: FitPick's virtual try-on constraints, including preserving exact garment identity and keeping shoes/accessories
+
+The provider may return a completed image immediately:
+
+```json
+{
+  "status": "ready",
+  "previewUrl": "https://provider.example/output.png",
+  "accuracyLevel": "true_3d_simulation",
+  "warnings": []
+}
+```
+
+It may also return `previewBase64`/`base64`, which FitPick uploads to S3, or return `status: "queued"` with `jobId` for asynchronous providers. Do not include provider secrets in job payloads or logs.
 
 Redis and SQS are not required for this phase. Future adapters should keep the same queue/cache interfaces.

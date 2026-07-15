@@ -7,6 +7,7 @@ export type HeightPreset = "short" | "average" | "tall" | null;
 export type PosePreset = "standing" | "walking" | "editorial" | "runway" | "casual" | "side" | "back";
 export type VisualizationStyle = "minimal" | "luxury" | "streetwear" | "editorial";
 export type AvatarProvider = "ready_player_me" | "fitpick_preset" | "custom_glb";
+export type TryOnModelSource = "none" | "uploaded" | "generated";
 export type BodyMeasurementSource = "manual" | "estimated" | "body_scan" | "unknown";
 export type BodyFitPreference = "true_to_size" | "slim" | "regular" | "relaxed" | "oversized";
 
@@ -20,6 +21,11 @@ export type AvatarProfilePatch = Partial<{
   visualizationStyle: VisualizationStyle;
   avatarProvider: AvatarProvider;
   avatarUrl: string | null;
+  tryOnModelSource: TryOnModelSource;
+  uploadedModelImageUrl: string | null;
+  uploadedModelImageStorageKey: string | null;
+  generatedModelImageUrl: string | null;
+  generatedModelImageStorageKey: string | null;
   consentAccepted: boolean;
   heightCm: number | null;
   weightKg: number | null;
@@ -44,6 +50,7 @@ const heightPresets = new Set(["short", "average", "tall"]);
 const posePresets = new Set(["standing", "walking", "editorial", "runway", "casual", "side", "back"]);
 const visualizationStyles = new Set(["minimal", "luxury", "streetwear", "editorial"]);
 const avatarProviders = new Set(["ready_player_me", "fitpick_preset", "custom_glb"]);
+const tryOnModelSources = new Set(["none", "uploaded", "generated"]);
 const bodyMeasurementSources = new Set(["manual", "estimated", "body_scan", "unknown"]);
 const bodyFitPreferences = new Set(["true_to_size", "slim", "regular", "relaxed", "oversized"]);
 
@@ -113,6 +120,31 @@ export function validateAvatarUrl(value?: string | null, provider: AvatarProvide
   return parsed.toString();
 }
 
+export function validateModelImageUrl(value?: string | null) {
+  const cleaned = cleanString(value, 2048);
+  if (!cleaned) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(cleaned);
+  } catch {
+    throw new Error("invalid_model_image_url");
+  }
+
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
+    throw new Error("invalid_model_image_url");
+  }
+
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+export function preferredTryOnModelImageUrl(profile: any) {
+  if (profile?.tryOnModelSource === "uploaded") return profile.uploadedModelImageUrl || null;
+  if (profile?.tryOnModelSource === "generated") return profile.generatedModelImageUrl || null;
+  return profile?.uploadedModelImageUrl || profile?.generatedModelImageUrl || null;
+}
+
 export async function getOrCreateAvatarProfile(userId: string | Types.ObjectId) {
   return (
     (await AvatarProfile.findOne({ userId })) ||
@@ -133,6 +165,7 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   if (patch.posePreset && posePresets.has(patch.posePreset)) cleaned.posePreset = patch.posePreset;
   if (patch.visualizationStyle && visualizationStyles.has(patch.visualizationStyle)) cleaned.visualizationStyle = patch.visualizationStyle;
   if (provider) cleaned.avatarProvider = provider;
+  if (patch.tryOnModelSource && tryOnModelSources.has(patch.tryOnModelSource)) cleaned.tryOnModelSource = patch.tryOnModelSource;
   if (patch.bodyMeasurementSource && bodyMeasurementSources.has(patch.bodyMeasurementSource)) cleaned.bodyMeasurementSource = patch.bodyMeasurementSource;
   if (patch.bodyFitPreference && bodyFitPreferences.has(patch.bodyFitPreference)) cleaned.bodyFitPreference = patch.bodyFitPreference;
   if ("bodyMeasurementConfidence" in patch) cleaned.bodyMeasurementConfidence = clampConfidence(patch.bodyMeasurementConfidence);
@@ -152,6 +185,11 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
     const activeProvider = provider || "custom_glb";
     cleaned.avatarUrl = activeProvider === "fitpick_preset" ? null : validateAvatarUrl(patch.avatarUrl, activeProvider);
   }
+
+  if ("uploadedModelImageUrl" in patch) cleaned.uploadedModelImageUrl = validateModelImageUrl(patch.uploadedModelImageUrl);
+  if ("uploadedModelImageStorageKey" in patch) cleaned.uploadedModelImageStorageKey = cleanString(patch.uploadedModelImageStorageKey, 512);
+  if ("generatedModelImageUrl" in patch) cleaned.generatedModelImageUrl = validateModelImageUrl(patch.generatedModelImageUrl);
+  if ("generatedModelImageStorageKey" in patch) cleaned.generatedModelImageStorageKey = cleanString(patch.generatedModelImageStorageKey, 512);
 
   return AvatarProfile.findOneAndUpdate(
     { userId },
@@ -204,6 +242,13 @@ export function serializeAvatarProfile(profile: any) {
     avatarProvider: profile.avatarProvider || "fitpick_preset",
     avatarUrl: profile.avatarUrl || null,
     glbStorageKey: profile.glbStorageKey || null,
+    tryOnModelSource: profile.tryOnModelSource || "none",
+    uploadedModelImageUrl: profile.uploadedModelImageUrl || null,
+    uploadedModelImageStorageKey: profile.uploadedModelImageStorageKey || null,
+    generatedModelImageUrl: profile.generatedModelImageUrl || null,
+    generatedModelImageStorageKey: profile.generatedModelImageStorageKey || null,
+    generatedModelPromptVersion: profile.generatedModelPromptVersion || "",
+    generatedModelAt: profile.generatedModelAt ? new Date(profile.generatedModelAt).toISOString() : null,
     heightCm: profile.heightCm ?? null,
     weightKg: profile.weightKg ?? null,
     chestCm: profile.chestCm ?? null,

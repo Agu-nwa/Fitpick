@@ -8,11 +8,9 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import {
   avatarPreviewPromptVersion,
   buildAvatarCacheKeyFromItems,
-  generateAvatarOutfitPreview,
   getCachedAvatarPreview,
   loadOwnedAvatarPreviewSubject,
   markAvatarPreviewStatus,
-  saveAvatarPreview,
   serializeAvatarPreview
 } from "@/lib/avatar/avatar-preview";
 import { serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
@@ -23,6 +21,7 @@ import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queu
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { rateLimitPlaceholder } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
+import { getConfiguredTryOnProviderType, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
@@ -108,7 +107,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const parsed = validateBody(avatarPreviewRequestSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (getConfiguredTryOnProviderType() === "internal_preview" && !process.env.OPENAI_API_KEY) {
       return apiError("INTERNAL_ERROR", "Avatar preview is not configured yet.");
     }
 
@@ -214,6 +213,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           avatarProfileId: activeAvatarProfileId,
           visualizationStyle: options.visualizationStyle,
           posePreset: options.posePreset,
+          wardrobeItemIds: loaded.itemIds,
           cacheKey
         },
         {
@@ -246,8 +246,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const generated = await generateAvatarOutfitPreview(activeUserId, loaded.outfit, loaded.items, loaded.avatarProfile, { ...options, cacheKey });
-    const saved = await saveAvatarPreview(activeUserId, id, activeAvatarProfileId, generated, loaded.itemIds, cacheKey);
+    const result = await runConfiguredVirtualTryOnJob({
+      userId: activeUserId,
+      outfitId: id,
+      avatarProfileId: activeAvatarProfileId,
+      wardrobeItemIds: loaded.itemIds,
+      desiredView: options.posePreset === "walking" ? "walking" : undefined,
+      visualizationStyle: options.visualizationStyle,
+      posePreset: options.posePreset,
+      cacheKey
+    });
+    const saved = (result.preview as any)?.toObject?.() ?? result.preview;
+    if (!saved) return apiError("INTERNAL_ERROR", "Virtual try-on is not ready yet.");
 
     return apiSuccess({
       preview: serializeAvatarPreview(saved),

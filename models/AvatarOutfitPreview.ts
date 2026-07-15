@@ -12,7 +12,7 @@ const AvatarOutfitPreviewSchema = new Schema(
       default: "not_started",
       index: true
     },
-    provider: { type: String, enum: ["s3"], default: "s3" },
+    provider: { type: String, enum: ["s3", "custom_tryon", "fashn"], default: "s3" },
     storageKey: { type: String, default: "" },
     imageUrl: { type: String, default: "" },
     cacheKey: { type: String, required: true, index: true },

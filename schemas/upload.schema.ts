@@ -21,7 +21,8 @@ export const signedUploadSchema = z.object({
       "wardrobe_back",
       "wardrobe_fabricCloseUp",
       "wardrobe_label",
-      "avatar"
+      "avatar",
+      "avatar_model"
     ])
     .default("wardrobe_original")
 });

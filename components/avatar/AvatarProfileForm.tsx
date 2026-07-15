@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldGroup } from "@/components/ui/FieldGroup";
-import { updateAvatarProfile, type AvatarProfileData } from "@/lib/api-client";
+import { generateAvatarModelImage, requestSignedUploadUrl, updateAvatarProfile, type AvatarProfileData } from "@/lib/api-client";
 
 type AvatarProfile = AvatarProfileData["profile"];
 
@@ -54,6 +54,11 @@ export function AvatarProfileForm({
   const [visualizationStyle, setVisualizationStyle] = useState<AvatarProfile["visualizationStyle"]>(profile.visualizationStyle);
   const [avatarProvider, setAvatarProvider] = useState<AvatarProfile["avatarProvider"]>(profile.avatarProvider);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || "");
+  const [tryOnModelSource, setTryOnModelSource] = useState<AvatarProfile["tryOnModelSource"]>(profile.tryOnModelSource || "none");
+  const [uploadedModelImageUrl, setUploadedModelImageUrl] = useState(profile.uploadedModelImageUrl || "");
+  const [uploadedModelImageStorageKey, setUploadedModelImageStorageKey] = useState(profile.uploadedModelImageStorageKey || "");
+  const [generatedModelImageUrl, setGeneratedModelImageUrl] = useState(profile.generatedModelImageUrl || "");
+  const [generatedModelImageStorageKey, setGeneratedModelImageStorageKey] = useState(profile.generatedModelImageStorageKey || "");
   const [skinTonePreset, setSkinTonePreset] = useState(profile.skinTonePreset || "");
   const [hairStylePreset, setHairStylePreset] = useState(profile.hairStylePreset || "");
   const [measurements, setMeasurements] = useState<Record<MeasurementKey, string>>(measurementStateFromProfile(profile));
@@ -63,8 +68,11 @@ export function AvatarProfileForm({
   const [bodyFitPreference, setBodyFitPreference] = useState(profile.bodyFitPreference || "regular");
   const [consentAccepted, setConsentAccepted] = useState(profile.consentAccepted);
   const [saving, setSaving] = useState(false);
+  const [uploadingModel, setUploadingModel] = useState(false);
+  const [generatingModel, setGeneratingModel] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const modelFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setGenderPresentation(profile.genderPresentation);
@@ -74,6 +82,11 @@ export function AvatarProfileForm({
     setVisualizationStyle(profile.visualizationStyle);
     setAvatarProvider(profile.avatarProvider);
     setAvatarUrl(profile.avatarUrl || "");
+    setTryOnModelSource(profile.tryOnModelSource || "none");
+    setUploadedModelImageUrl(profile.uploadedModelImageUrl || "");
+    setUploadedModelImageStorageKey(profile.uploadedModelImageStorageKey || "");
+    setGeneratedModelImageUrl(profile.generatedModelImageUrl || "");
+    setGeneratedModelImageStorageKey(profile.generatedModelImageStorageKey || "");
     setSkinTonePreset(profile.skinTonePreset || "");
     setHairStylePreset(profile.hairStylePreset || "");
     setMeasurements(measurementStateFromProfile(profile));
@@ -97,6 +110,11 @@ export function AvatarProfileForm({
       visualizationStyle,
       avatarProvider,
       avatarUrl: avatarProvider === "fitpick_preset" ? null : avatarUrl || null,
+      tryOnModelSource,
+      uploadedModelImageUrl: uploadedModelImageUrl || null,
+      uploadedModelImageStorageKey: uploadedModelImageStorageKey || null,
+      generatedModelImageUrl: generatedModelImageUrl || null,
+      generatedModelImageStorageKey: generatedModelImageStorageKey || null,
       skinTonePreset: skinTonePreset || null,
       hairStylePreset: hairStylePreset || null,
       ...Object.fromEntries(measurementFields.map((field) => [field.key, numberOrNull(measurements[field.key] || "")])),
@@ -115,6 +133,82 @@ export function AvatarProfileForm({
 
     onSaved(result.data.profile);
     setNotice("Avatar saved.");
+  }
+
+  async function saveModelImagePatch(patch: Record<string, unknown>, successMessage: string) {
+    const result = await updateAvatarProfile({
+      ...patch,
+      consentAccepted
+    });
+    if (!result.ok) {
+      setError(result.error.message || "Unable to save your model image.");
+      return null;
+    }
+    onSaved(result.data.profile);
+    setNotice(successMessage);
+    return result.data.profile;
+  }
+
+  async function handleModelPhoto(file: File) {
+    setUploadingModel(true);
+    setNotice("");
+    setError("");
+
+    try {
+      const signed = await requestSignedUploadUrl({
+        filename: file.name,
+        mimeType: file.type || "image/jpeg",
+        sizeBytes: file.size,
+        purpose: "avatar_model"
+      });
+      if (!signed.ok) throw new Error(signed.error.message);
+      const uploadAccess = signed.data.upload;
+      if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
+        throw new Error(uploadAccess.message || "Image upload is not configured yet.");
+      }
+
+      const uploadResponse = await fetch(uploadAccess.uploadUrl, {
+        method: uploadAccess.method || "PUT",
+        headers: uploadAccess.headers || { "content-type": file.type || "image/jpeg" },
+        body: file
+      });
+      if (!uploadResponse.ok) throw new Error("We could not upload your model photo.");
+
+      const imageUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl.split("?")[0] || "";
+      const saved = await saveModelImagePatch({
+        tryOnModelSource: "uploaded",
+        uploadedModelImageUrl: imageUrl,
+        uploadedModelImageStorageKey: uploadAccess.storageKey
+      }, "Model photo saved.");
+      if (saved) {
+        setTryOnModelSource("uploaded");
+        setUploadedModelImageUrl(saved.uploadedModelImageUrl || imageUrl);
+        setUploadedModelImageStorageKey(saved.uploadedModelImageStorageKey || uploadAccess.storageKey);
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo.");
+    } finally {
+      setUploadingModel(false);
+    }
+  }
+
+  async function handleGenerateModelImage() {
+    setGeneratingModel(true);
+    setNotice("");
+    setError("");
+
+    const result = await generateAvatarModelImage();
+    setGeneratingModel(false);
+    if (!result.ok) {
+      setError(result.error.message || "Unable to create your model image.");
+      return;
+    }
+
+    onSaved(result.data.profile);
+    setTryOnModelSource("generated");
+    setGeneratedModelImageUrl(result.data.profile.generatedModelImageUrl || "");
+    setGeneratedModelImageStorageKey(result.data.profile.generatedModelImageStorageKey || "");
+    setNotice("Generated model image saved.");
   }
 
   const hasSizeDetails = Object.values(measurements).some((value) => value.trim()) || Boolean(shoeSize.trim());
@@ -203,6 +297,47 @@ export function AvatarProfileForm({
           <FieldGroup label="Hair style preset" htmlFor="avatar-hair">
             <input id="avatar-hair" className={inputClass} value={hairStylePreset} onChange={(event) => setHairStylePreset(event.target.value)} placeholder="short curls" />
           </FieldGroup>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Virtual try-on model image</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Use a full-body photo for the most grounded try-on, or generate a stable FitPick model image and reuse it.</p>
+        </div>
+        <FieldGroup label="Model image source" htmlFor="tryon-model-source">
+          <select id="tryon-model-source" className={inputClass} value={tryOnModelSource} onChange={(event) => setTryOnModelSource(event.target.value as AvatarProfile["tryOnModelSource"])}>
+            <option value="none">No model image</option>
+            <option value="uploaded">Uploaded full-body photo</option>
+            <option value="generated">Generated FitPick model</option>
+          </select>
+        </FieldGroup>
+        <input
+          ref={modelFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.currentTarget.value = "";
+            if (file) void handleModelPhoto(file);
+          }}
+        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-line p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Uploaded</p>
+            {uploadedModelImageUrl ? <img src={uploadedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl bg-stone text-xs font-semibold text-muted">No photo</div>}
+            <Button type="button" variant="secondary" className="mt-3 w-full" disabled={uploadingModel || saving} onClick={() => modelFileInputRef.current?.click()}>
+              {uploadingModel ? "Uploading..." : "Upload full-body photo"}
+            </Button>
+          </div>
+          <div className="rounded-2xl border border-line p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Generated</p>
+            {generatedModelImageUrl ? <img src={generatedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl bg-stone text-xs font-semibold text-muted">No model</div>}
+            <Button type="button" variant="secondary" className="mt-3 w-full" disabled={generatingModel || saving || !consentAccepted} onClick={() => void handleGenerateModelImage()}>
+              {generatingModel ? "Creating..." : "Generate model image"}
+            </Button>
+          </div>
         </div>
       </section>
 

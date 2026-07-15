@@ -4,17 +4,16 @@ import type { StylistIntent, StylistVisualMode } from "@/lib/ai/schemas/stylist.
 import {
   avatarPreviewPromptVersion,
   buildAvatarCacheKeyFromItems,
-  generateAvatarOutfitPreview,
   getCachedAvatarPreview,
   loadOwnedAvatarPreviewSubject,
   markAvatarPreviewStatus,
-  saveAvatarPreview,
   serializeAvatarPreview
 } from "@/lib/avatar/avatar-preview";
 import type { PosePreset, VisualizationStyle } from "@/lib/avatar/avatar-profile";
 import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
+import { runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import {
   buildPreviewCacheKeyFromItems,
   generateOutfitPreview as generatePremiumOutfitPreview,
@@ -577,6 +576,7 @@ export async function triggerDigitalHumanPreviewForStylist(
         avatarProfileId: String(loaded.avatarProfile._id),
         visualizationStyle: previewOptions.visualizationStyle,
         posePreset: previewOptions.posePreset,
+        wardrobeItemIds: loaded.itemIds,
         cacheKey,
         source: "stylist_chat",
         visualMode
@@ -604,8 +604,18 @@ export async function triggerDigitalHumanPreviewForStylist(
   }
 
   try {
-    const generated = await generateAvatarOutfitPreview(userId, loaded.outfit, loaded.items, loaded.avatarProfile, { ...previewOptions, cacheKey });
-    const saved = await saveAvatarPreview(userId, outfitRecommendationId, String(loaded.avatarProfile._id), generated, loaded.itemIds, cacheKey);
+    const result = await runConfiguredVirtualTryOnJob({
+      userId,
+      outfitId: outfitRecommendationId,
+      avatarProfileId: String(loaded.avatarProfile._id),
+      wardrobeItemIds: loaded.itemIds,
+      desiredView: previewOptions.posePreset === "walking" ? "walking" : undefined,
+      visualizationStyle: previewOptions.visualizationStyle,
+      posePreset: previewOptions.posePreset,
+      cacheKey
+    });
+    const saved = (result.preview as any)?.toObject?.() ?? result.preview;
+    if (!saved) throw new Error("Virtual try-on is not ready yet.");
     const preview = serializeAvatarPreview(saved);
 
     return serializeStylistVisualization({
