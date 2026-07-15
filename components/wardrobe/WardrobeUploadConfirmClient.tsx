@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -194,14 +195,27 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   return (
     <div className="mt-7 space-y-7">
       <section>
-        <SectionHeader title="Uploaded photos" eyebrow="Clothing check" />
-        <Card className="space-y-4">
+        <SectionHeader title="Clothing check" eyebrow="Uploaded photos" />
+        <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                <Sparkles size={14} aria-hidden="true" />
+                AI tag review
+              </p>
+              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what FitPick found.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">Check the suggested category, color, fabric, fit, and size details before saving the item to your closet.</p>
+            </div>
+            {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
+          </div>
           <ProgressSteps steps={reviewSteps} />
           <WardrobeImageSlots images={upload.images as any} disabled />
           <div className="rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs leading-5 text-ink">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold">{isAnalyzing ? "Checking photos..." : upload.aiAnalysis ? "Check the clothing details" : "Waiting for clothing check"}</p>
-              {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
+              <p className="inline-flex items-center gap-2 font-semibold">
+                {upload.aiAnalysis ? <CheckCircle2 size={14} className="text-success" aria-hidden="true" /> : <Sparkles size={14} className="text-cocoa" aria-hidden="true" />}
+                {isAnalyzing ? "Checking photos..." : upload.aiAnalysis ? "Check the clothing details" : "Waiting for clothing check"}
+              </p>
             </div>
             {message ? <p className="mt-1 text-muted">{message}</p> : null}
           </div>
@@ -216,13 +230,14 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
             </div>
           ) : null}
           <Button type="button" variant="secondary" className="w-full" onClick={() => void analyzeUpload()} disabled={isAnalyzing || isSaving}>
+            <RotateCcw size={16} aria-hidden="true" />
             {isAnalyzing ? "Checking..." : "Check photos again"}
           </Button>
         </Card>
       </section>
 
       <section>
-        <SectionHeader title="Check details" eyebrow="Save item" />
+        <SectionHeader title="Save item" eyebrow="Check details" />
         <Card>
           <AITagConfirmationForm
             aiAnalysis={upload.aiAnalysis}

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiErrorState } from "@/components/integration/ApiErrorState";
+import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import {
   getAdminAudit,
@@ -148,14 +148,25 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
   const ruleCount = useMemo(() => content?.contentRuleSummary.reduce((sum, row) => sum + row.count, 0) || 0, [content]);
 
   return (
-    <main id="main-content" className="min-h-[100svh] bg-canvas">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <main id="main-content" className="relative min-h-[100svh] overflow-hidden bg-canvas text-ink">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(166,124,82,0.12),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(68,74,58,0.12),transparent_26%)]" />
+      <div className="mx-auto w-full max-w-[1480px] px-5 py-6 sm:px-8 lg:px-12 xl:px-16">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <PageHeader
-            eyebrow="Admin"
-            title="Operations console"
-            subtitle="Monitor health, audit activity, content readiness, and controlled production support actions."
-          />
+          <header className="relative flex-1 overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
+            <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
+            <div className="relative max-w-4xl">
+              <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
+                <ShieldCheck size={14} aria-hidden="true" />
+                Admin
+              </p>
+              <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+                Operations console.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+                Monitor health, audit activity, content readiness, and controlled production support actions.
+              </p>
+            </div>
+          </header>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="premium">{user.role}</Badge>
             <Badge tone={user.plan === "plus" ? "success" : "neutral"}>{user.plan}</Badge>
@@ -165,7 +176,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           </div>
         </div>
 
-        <Card className="mb-5 p-2">
+        <Card className="mb-5 mt-5 p-2">
           <div className="grid grid-cols-3 gap-1">
             {tabs.map((tab) => (
               <button
@@ -173,7 +184,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`min-h-11 rounded-2xl px-3 text-sm font-semibold transition ${
-                  activeTab === tab.id ? "bg-cocoa text-white shadow-card" : "text-muted hover:bg-cocoa/10 hover:text-cocoa"
+                  activeTab === tab.id ? "bg-cocoa text-canvas shadow-card" : "text-muted hover:bg-cocoa/10 hover:text-cocoa"
                 }`}
               >
                 {tab.label}
@@ -238,7 +249,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 {audit?.recent.length ? (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[680px] text-left text-sm">
-                      <thead className="border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted">
+                      <thead className="border-b border-line bg-canvas/70 text-xs uppercase tracking-[0.16em] text-muted">
                         <tr>
                           <th className="px-4 py-3 font-semibold">Action</th>
                           <th className="px-4 py-3 font-semibold">Entity</th>
@@ -248,7 +259,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                       </thead>
                       <tbody className="divide-y divide-line">
                         {audit.recent.map((event) => (
-                          <tr key={event.id} className="bg-surface">
+                          <tr key={event.id} className="bg-surface/70">
                             <td className="px-4 py-3 font-semibold text-ink">{event.action}</td>
                             <td className="px-4 py-3 text-muted">{event.entityType}</td>
                             <td className="px-4 py-3 font-mono text-xs text-muted">{event.entityId || "n/a"}</td>
@@ -267,7 +278,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 <p className="text-sm font-semibold text-ink">Action summary</p>
                 <div className="mt-4 space-y-2">
                   {audit?.summary.length ? audit.summary.map((row) => (
-                    <div key={row.action} className="flex items-center justify-between gap-3 rounded-2xl bg-canvas px-3 py-2">
+                    <div key={row.action} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-canvas/60 px-3 py-2">
                       <span className="truncate text-xs font-semibold text-ink">{row.action}</span>
                       <Badge tone="info">{row.count}</Badge>
                     </div>
@@ -286,7 +297,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 <p className="text-sm font-semibold text-ink">Active content rules</p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {content?.contentRuleSummary.length ? content.contentRuleSummary.map((rule) => (
-                    <div key={rule.type} className="rounded-2xl bg-canvas px-3 py-3">
+                    <div key={rule.type} className="rounded-2xl border border-line bg-canvas/60 px-3 py-3">
                       <p className="truncate text-xs font-semibold text-ink">{rule.type}</p>
                       <p className="mt-2 text-lg font-semibold text-cocoa">{rule.count}</p>
                     </div>
@@ -301,7 +312,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 {content?.occasions.length ? (
                   <div className="max-h-[32rem] overflow-auto">
                     <table className="w-full text-left text-sm">
-                      <thead className="sticky top-0 border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted">
+                      <thead className="sticky top-0 border-b border-line bg-canvas/70 text-xs uppercase tracking-[0.16em] text-muted">
                         <tr>
                           <th className="px-4 py-3 font-semibold">Name</th>
                           <th className="px-4 py-3 font-semibold">Group</th>

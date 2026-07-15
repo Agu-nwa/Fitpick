@@ -153,10 +153,13 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="relative overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
+        <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
+        <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Full look</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{outfit.title}</h1>
+        <h1 className="mt-2 font-editorial text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">{outfit.title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{outfit.occasionFit || outfit.summary}</p>
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
@@ -165,7 +168,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             {imageUrl ? (
               <img src={imageUrl} alt={`${outfit.title} avatar preview`} className="min-h-[420px] w-full bg-canvas object-cover sm:min-h-[560px]" />
             ) : (
-              <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas px-6 text-center sm:min-h-[560px]">
+              <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
                 <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
                   Generate a photorealistic model wearing the exact selected closet items.
@@ -198,7 +201,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             <p className="text-sm font-semibold text-ink">Closet items in this look</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
               {outfit.items.map((item) => (
-                <article key={item.id} className="rounded-2xl border border-line bg-white p-2">
+                <article key={item.id} className="rounded-2xl border border-line bg-canvas/60 p-2">
                   <ImageFrame src={itemImage(item)} alt={item.name} aspect="square" placeholder={item.category} className="mb-2" />
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
                   <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>

@@ -1,32 +1,41 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { ArrowUpRight, Images, ScanFace, Shirt, Sparkles } from "lucide-react";
 
 const actions = [
-  { title: "Choose an outfit", body: "Get a look for today from clothes you own.", href: "/outfit", primary: true },
-  { title: "Add pieces", body: "Save clothes, shoes, bags, and native wear.", href: "/wardrobe/add" },
-  { title: "Open wardrobe", body: "Review your saved pieces.", href: "/wardrobe" },
-  { title: "See it on you", body: "Preview how a look may come together.", href: "/avatar" }
+  { title: "Build today's look", body: "A considered outfit from pieces you already own.", href: "/outfit", icon: Sparkles, primary: true, number: "01" },
+  { title: "Add new pieces", body: "Photograph clothing and let AI organize the details.", href: "/wardrobe/add", icon: Shirt, number: "02" },
+  { title: "Browse your closet", body: "See every piece, category, and recent addition.", href: "/wardrobe", icon: Images, number: "03" },
+  { title: "Enter fitting studio", body: "Preview complete looks on your digital model.", href: "/avatar", icon: ScanFace, number: "04" }
 ];
 
 export function SimpleHomeActions() {
   return (
-    <section className="space-y-3">
-      {actions.map((action) => (
-        <Card key={action.title} className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-ink">{action.title}</h2>
-              <p className="mt-1 text-sm leading-5 text-muted">{action.body}</p>
+    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.title}
+            href={action.href}
+            className={`focus-ring group flex min-h-64 flex-col rounded-xl3 border p-5 transition duration-500 hover:-translate-y-1 ${
+              action.primary ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-surface text-ink hover:border-olive/50"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-bold tracking-[0.22em] ${action.primary ? "text-canvas/60" : "text-muted"}`}>{action.number}</span>
+              <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
             </div>
-            <Link href={action.href} className="shrink-0">
-              <Button className="w-full sm:w-auto" variant={action.primary ? "primary" : "secondary"}>
-                Open
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      ))}
+            <div className="mt-auto">
+              <h2 className="font-editorial text-3xl font-semibold leading-[0.95] tracking-tight">{action.title}</h2>
+              <p className={`mt-3 text-sm leading-6 ${action.primary ? "text-canvas/70" : "text-muted"}`}>{action.body}</p>
+              <span className="mt-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em]">
+                Explore
+                <ArrowUpRight size={15} className="transition group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
+              </span>
+            </div>
+          </Link>
+        );
+      })}
     </section>
   );
 }

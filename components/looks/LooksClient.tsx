@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowUpRight, CalendarCheck, Heart, Shirt, Sparkles } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -26,29 +27,46 @@ function BackendLooks({ data, tab }: { data: LooksData; tab: (typeof tabs)[numbe
   if (showWorn && !data.worn.length) return <EmptyState title="No worn looks yet" body="Mark an outfit as worn and it will appear here." cta="Pick outfit" />;
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 lg:grid-cols-2">
       {showSaved ? saved.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="block rounded-xl3">
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <span>
-                <span className="block text-sm font-semibold text-ink">{look.title}</span>
-                <span className="mt-1 block text-xs text-muted">{look.occasion} · {look.favorite ? "Favorite" : "Saved"}</span>
-              </span>
-              <Button variant="secondary">View full look</Button>
+        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="focus-ring group block rounded-xl3">
+          <Card className="min-h-44 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10 p-5">
+            <div className="flex h-full flex-col">
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex size-10 items-center justify-center rounded-full bg-cocoa text-canvas">
+                  {look.favorite ? <Heart size={18} aria-hidden="true" /> : <Shirt size={18} aria-hidden="true" />}
+                </span>
+                <span className="rounded-full border border-line bg-canvas/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                  {look.favorite ? "Favorite" : "Saved"}
+                </span>
+              </div>
+              <div className="mt-auto pt-8">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">{look.occasion}</p>
+                <h3 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">{look.title}</h3>
+                <span className="mt-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted transition group-hover:text-cocoa">
+                  View full look
+                  <ArrowUpRight size={15} className="transition group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
+                </span>
+              </div>
             </div>
           </Card>
         </Link>
       )) : null}
       {showWorn ? data.worn.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="block rounded-xl3">
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <span>
-                <span className="block text-sm font-semibold text-ink">{look.occasion} outfit</span>
-                <span className="mt-1 block text-xs text-muted">{look.wornAt ? new Date(look.wornAt).toLocaleDateString() : "Worn"} {look.rating ? `· ${look.rating}` : ""}</span>
-              </span>
-              {look.repeatWarning ? <Chip>{look.repeatWarning}</Chip> : <Button variant="secondary">View full look</Button>}
+        <Link key={look.id} href={`/outfit/${look.outfitId}/preview`} className="focus-ring group block rounded-xl3">
+          <Card className="min-h-44 overflow-hidden p-5">
+            <div className="flex h-full flex-col">
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex size-10 items-center justify-center rounded-full bg-olive/20 text-olive">
+                  <CalendarCheck size={18} aria-hidden="true" />
+                </span>
+                {look.repeatWarning ? <Chip>{look.repeatWarning}</Chip> : <Chip active>Worn</Chip>}
+              </div>
+              <div className="mt-auto pt-8">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">{look.wornAt ? new Date(look.wornAt).toLocaleDateString() : "Worn"}</p>
+                <h3 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">{look.occasion} outfit</h3>
+                <p className="mt-2 text-sm text-muted">{look.rating || "Style memory"}</p>
+              </div>
             </div>
           </Card>
         </Link>
@@ -59,16 +77,17 @@ function BackendLooks({ data, tab }: { data: LooksData; tab: (typeof tabs)[numbe
 
 function MockLooks() {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 lg:grid-cols-2">
       {savedLooks.map((look) => (
-        <Link key={look.id} href={`/outfit/${look.id}/preview`} className="block rounded-xl3">
+        <Link key={look.id} href={`/outfit/${look.id}/preview`} className="focus-ring block rounded-xl3">
           <OutfitCard outfit={look} />
         </Link>
       ))}
       {wornLooks.slice(0, 1).map((look) => (
-        <Card key={`${look.id}-${look.wornOn}`} className="p-4">
-          <h3 className="text-sm font-semibold text-ink">{look.title}</h3>
-          <p className="mt-1 text-xs text-muted">Worn on {look.wornOn}</p>
+        <Card key={`${look.id}-${look.wornOn}`} className="min-h-44 p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Worn on {look.wornOn}</p>
+          <h3 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">{look.title}</h3>
+          <p className="mt-3 text-sm leading-6 text-muted">A saved style memory from your closet.</p>
         </Card>
       ))}
     </div>
@@ -102,11 +121,11 @@ export function LooksClient() {
     <>
       {session.status === "logged-out" ? <AuthRequiredState /> : null}
       {session.status === "backend-unavailable" || status === "unavailable" ? <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadLooks} /> : null}
-      <div className="mb-6 mt-5 flex gap-2">
+      <div className="mobile-scrollbar mb-6 mt-6 flex gap-2 overflow-x-auto pb-1">
         {tabs.map((item) => <button key={item} type="button" onClick={() => setTab(item)}><Chip active={tab === item}>{item}{data ? ` ${data.counts[item.toLowerCase() as "saved" | "worn" | "favorites"]}` : ""}</Chip></button>)}
       </div>
       <section>
-        <SectionHeader title={tab} />
+        <SectionHeader title={tab === "Saved" ? "Saved edits" : tab === "Worn" ? "Style history" : "Favorite looks"} eyebrow="Lookbook" />
         {data && session.status === "authenticated" ? <BackendLooks data={data} tab={tab} /> : <MockLooks />}
       </section>
     </>

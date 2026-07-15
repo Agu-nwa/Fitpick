@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Eye, Sparkles, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -52,10 +53,13 @@ export function DigitalHumanTryOnPanel({
 }: DigitalHumanTryOnPanelProps) {
   return (
     <div className="space-y-4">
-      <Card className="space-y-4">
+      <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-ink">Virtual try-on</p>
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+              <WandSparkles size={14} aria-hidden="true" />
+              Virtual try-on
+            </p>
             <p className="mt-1 text-xs leading-5 text-muted">
               Generate a photorealistic model wearing the exact selected closet items.
             </p>
@@ -68,15 +72,16 @@ export function DigitalHumanTryOnPanel({
         {previewUrl ? (
           <button
             type="button"
-            className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
+            className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-canvas"
             onClick={onOpenPreview}
           >
             <img src={previewUrl} alt={`${outfit.title} avatar preview`} className="aspect-square w-full object-cover" />
           </button>
         ) : (
-          <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
+          <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/70 px-5 text-center">
             <div>
-              <p className="text-base font-semibold text-ink">Create on-model preview</p>
+              <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
+              <p className="font-editorial text-3xl font-semibold leading-none text-ink">Create on-model preview</p>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
                 FitPick will use the saved clothing photos to generate a digital human wearing this outfit.
               </p>
@@ -96,7 +101,7 @@ export function DigitalHumanTryOnPanel({
 
         <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
           {outfit.items.map((item) => (
-            <div key={item.id} className="w-28 shrink-0 overflow-hidden rounded-xl border border-line bg-white">
+            <div key={item.id} className="w-28 shrink-0 overflow-hidden rounded-xl border border-line bg-surface/80">
               {item.thumbnailUrl || item.imageUrl ? (
                 <img src={item.thumbnailUrl || item.imageUrl} alt={item.name} className="aspect-square w-full object-cover" />
               ) : (
@@ -131,7 +136,7 @@ export function DigitalHumanTryOnPanel({
         ) : null}
         {previewError ? <p className="text-sm font-semibold text-red-600">{previewError}</p> : null}
 
-        <details className="rounded-2xl border border-line bg-canvas p-3">
+        <details className="rounded-2xl border border-line bg-canvas/60 p-3">
           <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
           <div className="mt-3 flex flex-wrap gap-2">
             <Badge tone="neutral">Preview type: {simplePreviewType(accuracyLevel)}</Badge>
@@ -146,7 +151,10 @@ export function DigitalHumanTryOnPanel({
             {isGenerating ? "Creating try-on..." : previewUrl ? "Regenerate try-on" : "Generate virtual try-on"}
           </Button>
           <Link href={`/outfit/${outfit.id}/preview`}>
-            <Button type="button" variant="secondary" className="w-full">View full look</Button>
+            <Button type="button" variant="secondary" className="w-full">
+              <Eye size={16} aria-hidden="true" />
+              View full look
+            </Button>
           </Link>
           <Link href="/avatar">
             <Button type="button" variant="secondary" className="w-full">Improve size details</Button>

@@ -75,8 +75,8 @@ function Notes({ outfit }: { outfit: OutfitRecommendation }) {
       <p className="text-sm leading-6 text-muted">{outfit.summary}</p>
       <div className="mt-4 grid gap-3">
         {notes.map((note) => (
-          <div key={note.label} className="rounded-2xl border border-line bg-white px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{note.label}</p>
+          <div key={note.label} className="rounded-2xl border border-line bg-canvas/60 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cocoa">{note.label}</p>
             <p className="mt-1 text-sm leading-6 text-ink">{note.body}</p>
           </div>
         ))}
@@ -377,7 +377,7 @@ export function OutfitResult({
   return (
     <>
       <section>
-        <SectionHeader title="Your outfit" />
+        <SectionHeader title="Your outfit" eyebrow={outfit.occasion || "FitPick edit"} />
         <div className="mb-3 flex flex-wrap gap-2">
           <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>
             {completenessLabel(outfit.completenessStatus)}
@@ -395,17 +395,17 @@ export function OutfitResult({
       <section className="mt-7">
         <SectionHeader title="Your outfit preview" />
 
-        <Card className="mt-4">
+        <Card className="mt-4 overflow-hidden">
           {previewUrl ? (
             <button
               type="button"
-              className="focus-ring block w-full overflow-hidden rounded-2xl border border-line bg-canvas"
+              className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-canvas"
               onClick={() => setPreviewOpen(true)}
             >
               <img src={previewUrl} alt={`${outfit.title} outfit preview`} className="aspect-square w-full object-cover" />
             </button>
           ) : (
-            <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-line bg-canvas px-5 text-center">
+            <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/60 px-5 text-center">
               <p className="text-sm leading-6 text-muted">Show a preview from your saved clothes.</p>
             </div>
           )}
@@ -421,7 +421,7 @@ export function OutfitResult({
           ) : null}
           {previewError ? <p className="mt-3 text-sm font-semibold text-red-600">{previewError}</p> : null}
 
-          <details className="mt-3 rounded-2xl border border-line bg-white p-3">
+          <details className="mt-3 rounded-2xl border border-line bg-canvas/60 p-3">
             <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
             <div className="mt-3 flex flex-wrap gap-2">
               {previewAccuracyLevel ? <Badge tone="premium">Preview type: {simplePreviewType(previewAccuracyLevel)}</Badge> : null}
@@ -509,7 +509,7 @@ export function OutfitResult({
           <SectionHeader title="Swap preview" />
           <Card className="space-y-3">
             {outfit.swapGroups.slice(0, 3).map((group) => (
-              <div key={group.category} className="rounded-2xl bg-canvas p-3">
+              <div key={group.category} className="rounded-2xl border border-line bg-canvas/60 p-3">
                 <p className="text-xs font-semibold capitalize text-ink">{group.category}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(group.warningChips.length ? group.warningChips : ["Best match"]).map((warning) => <Chip key={warning}>{warning}</Chip>)}
@@ -538,7 +538,7 @@ export function OutfitResult({
           {swapFailed ? <OutfitApiErrorState /> : null}
           <label className="block text-xs font-semibold text-ink">
             Item to swap
-            <select className="focus-ring mt-1 min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink" value={selectedItemId} onChange={(event) => setSelectedItemId(event.target.value)}>
+            <select className="focus-ring mt-1 min-h-11 w-full rounded-2xl border border-line bg-canvas/70 px-3 py-2 text-sm text-ink" value={selectedItemId} onChange={(event) => setSelectedItemId(event.target.value)}>
               {outfit.items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
@@ -547,7 +547,7 @@ export function OutfitResult({
               <button
                 key={direction.value}
                 type="button"
-                className={`focus-ring min-h-11 rounded-2xl border px-3 py-2 text-sm font-semibold ${swapDirection === direction.value ? "border-cocoa bg-cocoa text-white" : "border-line bg-white text-ink"}`}
+                className={`focus-ring min-h-11 rounded-2xl border px-3 py-2 text-sm font-semibold ${swapDirection === direction.value ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-canvas/70 text-ink"}`}
                 onClick={() => setSwapDirection(direction.value)}
               >
                 {direction.label}

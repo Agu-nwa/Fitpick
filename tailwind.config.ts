@@ -9,26 +9,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: "#F5F0E8",
-        surface: "#FFFCF7",
-        ink: "#171310",
-        muted: "#7B7168",
-        line: "#E6DED2",
-        cocoa: "#5A3828",
-        olive: "#6B7048",
-        terracotta: "#A45E3B",
-        success: "#6E8A66",
-        warning: "#B88A42",
-        danger: "#B35345"
+        canvas: "#0A0A09",
+        surface: "#141412",
+        ink: "#F3F0E8",
+        muted: "#9B978E",
+        line: "#302F2B",
+        cocoa: "#CAFF33",
+        olive: "#D3B884",
+        terracotta: "#D3B884",
+        success: "#CAFF33",
+        warning: "#D3B884",
+        danger: "#EF6A5B"
       },
       boxShadow: {
-        soft: "0 18px 60px rgba(35, 24, 15, 0.08)",
-        card: "0 10px 30px rgba(35, 24, 15, 0.06)"
+        soft: "0 30px 90px rgba(0, 0, 0, 0.42)",
+        card: "0 18px 50px rgba(0, 0, 0, 0.28)",
+        glow: "0 0 0 1px rgba(202, 255, 51, 0.18), 0 18px 50px rgba(202, 255, 51, 0.08)"
       },
       borderRadius: {
         xl2: "1.25rem",
         xl3: "1.5rem",
         xl4: "2rem"
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "sans-serif"],
+        serif: ["var(--font-editorial)", "serif"]
+      },
+      letterSpacing: {
+        editorial: "-0.035em"
       }
     },
   },

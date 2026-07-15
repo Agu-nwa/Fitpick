@@ -1,4 +1,5 @@
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
+import { Camera, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ export function WardrobeImageSlots({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {slotLabels.map((slot) => {
         const image = images[slot.key];
         const displayUrl = image?.variants?.thumbnail?.status === "ready" && image.variants.thumbnail.url
@@ -39,18 +40,21 @@ export function WardrobeImageSlots({
             aria-label={`${slot.label} photo slot`}
           >
             <ImageFrame
+              aspect="portrait"
               src={displayUrl}
               alt={`${slot.label} photo`}
               placeholder={
                 <span>
-                  <span className="block text-sm text-ink">{slot.label}</span>
+                  <Camera size={20} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
+                  <span className="block font-editorial text-2xl font-semibold leading-none text-ink">{slot.label}</span>
                   <span className="mt-1 block text-[11px] font-medium text-muted">{slot.helper}</span>
                 </span>
               }
               overlay={
                 <div className="flex items-center justify-between gap-2">
                   <Badge tone={image?.url ? "success" : "neutral"}>{image?.url ? "Added" : "Needed"}</Badge>
-                  <span className="truncate rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-card">
+                  <span className="inline-flex items-center gap-1 truncate rounded-full bg-surface/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-card backdrop-blur">
+                    {image?.url ? <CheckCircle2 size={12} className="text-success" aria-hidden="true" /> : null}
                     {slot.label}
                   </span>
                 </div>

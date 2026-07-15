@@ -12,10 +12,10 @@ import { useSession } from "@/hooks/use-session";
 
 export function PlusStatusCard({ status }: { status?: PlusStatusData | null }) {
   return (
-    <Card className="bg-cocoa text-white">
-      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">{status?.plan === "plus" ? "Plus active" : "Free plan"}</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight">More ways to get dressed.</h2>
-      <p className="mt-3 text-sm leading-6 text-white/75">
+    <Card className="bg-ink text-canvas">
+      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-canvas/60">{status?.plan === "plus" ? "Plus active" : "Free plan"}</p>
+      <h2 className="mt-3 font-editorial text-4xl font-semibold leading-none tracking-editorial">More ways to get dressed.</h2>
+      <p className="mt-3 text-sm leading-6 text-canvas/75">
         {status ? `${status.remainingDailyPicks} free outfit pick${status.remainingDailyPicks === 1 ? "" : "s"} remaining today.` : "Get more outfit picks, planning tools, and saved-look space."}
       </p>
     </Card>

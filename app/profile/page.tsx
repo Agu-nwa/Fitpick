@@ -1,10 +1,9 @@
 import Link from "next/link";
+import { UserRound } from "lucide-react";
 import { ProfileSessionCard } from "@/components/auth/ProfileSessionCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProfileIntegrationClient } from "@/components/profile/ProfileIntegrationClient";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { stylePreferences } from "@/lib/mock-data";
 
@@ -18,7 +17,21 @@ const links = [
 export default function ProfilePage() {
   return (
     <AppShell>
-      <PageHeader eyebrow="Profile" title="Your style profile" subtitle="Personalization, privacy, notifications, and FitPick Plus." />
+      <header className="relative overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
+        <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
+        <div className="relative max-w-4xl">
+          <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
+            <UserRound size={14} aria-hidden="true" />
+            Profile
+          </p>
+          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+            Your style profile.
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+            Personalization, privacy, notifications, and FitPick Plus in one place.
+          </p>
+        </div>
+      </header>
 
       <ProfileSessionCard />
       <ProfileIntegrationClient />

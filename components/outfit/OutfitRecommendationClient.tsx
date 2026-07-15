@@ -96,7 +96,7 @@ export function OutfitRecommendationClient() {
           <FieldGroup label="Weather context" htmlFor="weather-context">
             <input
               id="weather-context"
-              className="focus-ring mt-1 min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink"
+              className="focus-ring mt-1 min-h-11 w-full rounded-2xl border border-line bg-canvas/70 px-3 py-2 text-sm text-ink shadow-inner"
               value={weatherContext}
               onChange={(event) => setWeatherContext(event.target.value)}
               placeholder="hot, rainy, indoor"

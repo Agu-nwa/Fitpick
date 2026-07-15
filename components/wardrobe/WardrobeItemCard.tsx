@@ -18,24 +18,29 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const imageUrl = item.thumbnailUrl || item.imageUrl;
 
   return (
-    <article className="h-full rounded-xl3 border border-line bg-surface p-3 shadow-card transition hover:-translate-y-0.5 hover:shadow-soft">
+    <article className="group h-full overflow-hidden rounded-xl3 border border-line bg-surface/90 p-3 shadow-card transition duration-500 hover:-translate-y-1 hover:border-olive/40 hover:shadow-soft">
       <ImageFrame
         src={imageUrl}
         alt={item.name}
         aspect="portrait"
         className={cn("mb-3 border-0", imageUrl ? "" : imageTone)}
+        imageClassName="transition duration-700 group-hover:scale-105"
         placeholder={item.category}
+        overlay={
+          <div className="flex justify-between gap-2">
+            <Badge tone={tone} className="bg-surface/85 backdrop-blur">{status}</Badge>
+            {item.category ? <Badge className="bg-surface/85 backdrop-blur">{item.category}</Badge> : null}
+          </div>
+        }
       />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-ink">{item.name}</h3>
-          <p className="mt-1 text-xs text-muted">{item.color}</p>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa">{item.color || "Wardrobe piece"}</p>
+          <h3 className="line-clamp-2 text-base font-semibold leading-5 text-ink">{item.name}</h3>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <Badge tone={tone}>{status}</Badge>
         {item.recognizedEntity ? <Badge tone="premium">{item.recognizedEntity}</Badge> : null}
-        {item.category ? <Badge>{item.category}</Badge> : null}
         {item.taggedSize && item.taggedSize !== "unknown" ? <Badge tone="info">Size {item.taggedSize}</Badge> : null}
         {item.garmentFit && item.garmentFit !== "unknown" ? <Badge tone="neutral">{item.garmentFit} fit</Badge> : null}
         {item.measurementSource && item.measurementSource !== "unknown" ? <Badge tone={item.measurementSource === "ai_estimated" ? "warning" : "success"}>{measurementLabel(item.measurementSource)}</Badge> : null}

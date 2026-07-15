@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ArrowUpRight, CalendarDays, CloudRain, HeartHandshake, MessageCircle, Sparkles, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -31,10 +32,10 @@ type ChatMessage = {
 };
 
 const promptSuggestions = [
-  { label: "Work", prompt: "Style me for work in cold weather" },
-  { label: "Dinner", prompt: "Find a polished dinner look" },
-  { label: "Wedding", prompt: "What should I wear to a wedding?" },
-  { label: "Rain", prompt: "Dress me for a rainy day" }
+  { label: "Work", prompt: "Style me for work in cold weather", icon: CalendarDays },
+  { label: "Dinner", prompt: "Find a polished dinner look", icon: Sparkles },
+  { label: "Wedding", prompt: "What should I wear to a wedding?", icon: HeartHandshake },
+  { label: "Rain", prompt: "Dress me for a rainy day", icon: CloudRain }
 ];
 
 const loadingSteps = [
@@ -89,10 +90,10 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
 function ItemStrip({ outfit }: { outfit: OutfitRecommendation }) {
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-xs font-semibold text-ink">Clothes from your closet</p>
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Clothes from your closet</p>
       <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
         {outfit.items.map((item) => (
-          <div key={item.id} className="w-32 shrink-0 overflow-hidden rounded-xl border border-line bg-white">
+          <div key={item.id} className="w-32 shrink-0 overflow-hidden rounded-xl border border-line bg-surface/80">
             {item.thumbnailUrl || item.imageUrl ? (
               <img src={item.thumbnailUrl || item.imageUrl} alt={item.name} className="aspect-square w-full object-cover" />
             ) : (
@@ -314,7 +315,7 @@ export function StylistChat() {
         {outfit ? <ItemStrip outfit={outfit} /> : null}
 
         {hasVisualization ? (
-          <div className="rounded-2xl border border-line bg-canvas p-3">
+          <div className="rounded-2xl border border-line bg-canvas/60 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
               {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
@@ -322,15 +323,15 @@ export function StylistChat() {
             </div>
 
             {preview?.imageUrl ? (
-              <div className="mt-3 overflow-hidden rounded-xl border border-line bg-white">
+              <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface/80">
                 <img src={preview.imageUrl} alt="FitPick avatar outfit preview" className="aspect-square w-full object-cover" />
               </div>
             ) : status === "queued" || status === "generating" || status === "processing" ? (
-              <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line bg-white px-4 text-center">
+              <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-4 text-center">
                 <p className="text-sm font-semibold text-cocoa">Showing it on your avatar...</p>
               </div>
             ) : (
-              <div className="mt-3 rounded-xl border border-dashed border-line bg-white px-4 py-5 text-center">
+              <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-5 text-center">
                 <p className="text-sm leading-6 text-muted">
                   {preview?.errorMessage || "Your avatar preview will appear here when available."}
                 </p>
@@ -352,7 +353,7 @@ export function StylistChat() {
                 ))}
               </div>
             ) : null}
-            <details className="mt-3 rounded-xl border border-line bg-white p-3">
+            <details className="mt-3 rounded-xl border border-line bg-surface/70 p-3">
               <summary className="cursor-pointer text-xs font-semibold text-ink">Preview details</summary>
               <div className="mt-3 flex flex-wrap gap-2">
                 {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>Preview type: {simplePreviewType(preview.accuracyLevel)}</Badge> : null}
@@ -414,28 +415,37 @@ export function StylistChat() {
   }
 
   return (
-    <section className="space-y-4 pb-4">
-      <Card className="space-y-4">
+    <section className="space-y-5 pb-4 pt-6">
+      <Card className="space-y-5 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase text-cocoa">Styling appointment</p>
-            <h2 className="mt-1 text-xl font-semibold text-ink">What are we dressing for?</h2>
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+              <WandSparkles size={14} aria-hidden="true" />
+              Styling appointment
+            </p>
+            <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">What are we dressing for?</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Give the stylist an occasion, mood, setting, or dress code. FitPick will work from your saved closet.</p>
           </div>
           <Badge tone="premium">Closet-led</Badge>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          {promptSuggestions.map((suggestion) => (
-            <button
-              key={suggestion.label}
-              type="button"
-              className="focus-ring min-h-16 rounded-2xl border border-line bg-white px-2 py-3 text-center text-xs font-semibold text-ink transition hover:border-cocoa/30 hover:bg-canvas disabled:opacity-50"
-              onClick={() => setMessage(suggestion.prompt)}
-              disabled={loading}
-            >
-              {suggestion.label}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {promptSuggestions.map((suggestion) => {
+            const Icon = suggestion.icon;
+            return (
+              <button
+                key={suggestion.label}
+                type="button"
+                className="focus-ring group min-h-24 rounded-2xl border border-line bg-canvas/60 px-3 py-4 text-left transition hover:-translate-y-0.5 hover:border-cocoa/40 disabled:opacity-50"
+                onClick={() => setMessage(suggestion.prompt)}
+                disabled={loading}
+              >
+                <Icon size={18} className="text-cocoa" aria-hidden="true" />
+                <span className="mt-4 block text-xs font-bold uppercase tracking-[0.16em] text-ink">{suggestion.label}</span>
+                <span className="mt-1 block text-[11px] leading-4 text-muted">{suggestion.prompt}</span>
+              </button>
+            );
+          })}
         </div>
 
         <form
@@ -449,35 +459,39 @@ export function StylistChat() {
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Occasion, mood, weather, dress code..."
-            className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-white px-3 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
+            className="focus-ring min-h-28 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-ink">
+            <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
               <input
                 type="checkbox"
                 checked={includeVisualization}
                 onChange={(event) => setIncludeVisualization(event.target.checked)}
-                className="h-4 w-4 rounded border-line text-cocoa"
+                className="h-4 w-4 rounded border-line accent-cocoa"
               />
               Avatar preview
             </label>
             <Button type="submit" disabled={loading || !message.trim()}>
+              <Sparkles size={16} aria-hidden="true" />
               {loading ? "Styling..." : "Style me"}
             </Button>
           </div>
         </form>
       </Card>
 
-      {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-      {toast ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
+      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+      {toast ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
-        <Card className="min-h-[28rem] space-y-4">
+        <Card className="min-h-[28rem] space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-canvas">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-semibold uppercase text-cocoa">Selected look</p>
-              <h3 className="mt-1 text-lg font-semibold text-ink">
+              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                <MessageCircle size={14} aria-hidden="true" />
+                Selected look
+              </p>
+              <h3 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">
                 {latestLook?.outfit?.title || (loading ? "Curating your look" : "No look selected yet")}
               </h3>
             </div>
@@ -491,13 +505,13 @@ export function StylistChat() {
           {latestLook ? (
             <>
               {renderLookStudio(latestLook)}
-              <div className="rounded-2xl border border-line bg-white p-4">
-                <p className="text-xs font-semibold uppercase text-cocoa">Stylist notes</p>
+              <div className="rounded-2xl border border-line bg-canvas/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist notes</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestLook.content}</p>
               </div>
             </>
           ) : loading ? (
-            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-white px-5 text-center">
+            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
               <div className="space-y-2">
                 {loadingSteps.map((step) => (
                   <p key={step} className="text-sm font-semibold text-muted">{step}</p>
@@ -505,9 +519,10 @@ export function StylistChat() {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-white px-5 text-center">
+            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
               <div>
-                <p className="text-sm font-semibold text-ink">Your styled look will appear here.</p>
+                <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
+                <p className="font-editorial text-3xl font-semibold leading-none text-ink">Your styled look will appear here.</p>
                 <p className="mt-2 text-xs leading-5 text-muted">Start with an occasion and FitPick will pull from your saved wardrobe.</p>
               </div>
             </div>
@@ -517,7 +532,7 @@ export function StylistChat() {
         <aside className="space-y-4">
           <Card className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-ink">Brief</p>
+              <p className="text-sm font-semibold text-ink">Style brief</p>
               <Badge tone={includeVisualization ? "premium" : "neutral"}>
                 {includeVisualization ? "Avatar on" : "Avatar off"}
               </Badge>
@@ -528,7 +543,7 @@ export function StylistChat() {
                   <button
                     key={entry.id}
                     type="button"
-                    className="focus-ring w-full rounded-2xl border border-line bg-white px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
+                    className="focus-ring w-full rounded-2xl border border-line bg-canvas/60 px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
                     onClick={() => setMessage(entry.content)}
                   >
                     {entry.content}
@@ -536,14 +551,17 @@ export function StylistChat() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-2xl border border-line bg-white px-3 py-3 text-xs leading-5 text-muted">
+              <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-3 text-xs leading-5 text-muted">
                 Tell FitPick the occasion, weather, dress code, and how dressed-up you want to feel.
               </p>
             )}
           </Card>
 
           <Card className="space-y-3">
-            <p className="text-sm font-semibold text-ink">Refine</p>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+              <ArrowUpRight size={16} className="text-cocoa" aria-hidden="true" />
+              Refine the edit
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {["More polished", "Simpler", "More formal", "More casual"].map((label) => (
                 <Button

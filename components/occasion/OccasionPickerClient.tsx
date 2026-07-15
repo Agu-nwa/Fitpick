@@ -31,7 +31,7 @@ const groupOptions: Array<{ value: OccasionGroup; label: string }> = [
   { value: "weather", label: "Weather" }
 ];
 
-const inputClass = "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none";
+const inputClass = "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/70 px-3 py-2 text-sm text-ink outline-none shadow-inner";
 
 function normalizeOccasion(raw: any): Occasion {
   return {
@@ -120,7 +120,7 @@ export function OccasionPickerClient() {
       <label className="mb-5 mt-5 block">
         <span className="sr-only">Search occasions</span>
         <input
-          className="focus-ring min-h-12 w-full rounded-2xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-muted"
+          className="focus-ring min-h-12 w-full rounded-2xl border border-line bg-surface/80 px-4 text-sm text-ink shadow-card placeholder:text-muted"
           placeholder="Search occasions"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -128,7 +128,7 @@ export function OccasionPickerClient() {
       </label>
 
       <section>
-        <SectionHeader title="Choose occasion" />
+        <SectionHeader title="Choose occasion" eyebrow="Today's context" />
         {filtered.length ? (
           <div className="grid grid-cols-2 gap-3">
             {filtered.map((occasion) => (
@@ -144,7 +144,7 @@ export function OccasionPickerClient() {
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Custom occasion" />
+        <SectionHeader title="Custom occasion" eyebrow="Create your own" />
         <Card className="space-y-3">
           <label className="block text-xs font-semibold text-ink">
             Occasion name
@@ -179,7 +179,7 @@ export function OccasionPickerClient() {
             <div className="flex flex-wrap gap-2">
               {formalityLevels.map((level) => <Chip key={level.value} active={level.value === selectedFormality}>{level.label}</Chip>)}
             </div>
-            <div className="mt-5 rounded-2xl bg-canvas p-4 text-sm text-muted">Use today&apos;s weather: <strong className="text-ink">On</strong></div>
+            <div className="mt-5 rounded-2xl border border-line bg-canvas/60 p-4 text-sm text-muted">Use today&apos;s weather: <strong className="text-ink">On</strong></div>
           </Card>
         </section>
       ) : null}

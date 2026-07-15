@@ -65,7 +65,7 @@ export function ProfileIntegrationClient() {
         <SectionHeader title="Profile details" />
         <Card className="space-y-3">
           <p className="text-sm text-muted">{session.user?.email}</p>
-          <label className="block text-xs font-semibold text-ink">Display name<input className="focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink" value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="block text-xs font-semibold text-ink">Display name<input className="focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/70 px-3 py-2 text-sm text-ink shadow-inner" value={name} onChange={(event) => setName(event.target.value)} /></label>
           <Button className="w-full" onClick={() => void saveName()}>Save profile</Button>
         </Card>
       </section>
@@ -74,7 +74,7 @@ export function ProfileIntegrationClient() {
         <SectionHeader title="Notifications" />
         <div className="space-y-3">
           {notificationRows.map(([key, label, description]) => (
-            <button key={key} type="button" onClick={() => void toggleNotification(key)} className="focus-ring flex min-h-[72px] w-full items-center justify-between gap-4 rounded-xl3 border border-line bg-surface p-4 text-left shadow-card">
+            <button key={key} type="button" onClick={() => void toggleNotification(key)} className="focus-ring flex min-h-[72px] w-full items-center justify-between gap-4 rounded-xl3 border border-line bg-surface/80 p-4 text-left shadow-card transition hover:border-cocoa/35">
               <span><span className="block text-sm font-semibold text-ink">{label}</span><span className="mt-1 block text-xs leading-5 text-muted">{description}</span></span>
               <Chip active={Boolean(notifications?.[key])}>{notifications?.[key] ? "On" : "Off"}</Chip>
             </button>

@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 
 export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="group overflow-hidden p-0">
       <div className="p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Today&apos;s pick</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{outfit.title}</h2>
-            <p className="mt-1 text-sm text-muted">{outfit.summary}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">Today&apos;s edit</p>
+            <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none tracking-tight text-ink">{outfit.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">{outfit.summary}</p>
           </div>
           <Badge tone={outfit.confidence === "Strong match" ? "success" : outfit.confidence === "Good match" ? "premium" : "warning"}>{outfit.confidence}</Badge>
         </div>
@@ -24,12 +24,13 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
               src={item.thumbnailUrl || item.imageUrl}
               alt={item.name}
               className={cn("border-0", item.thumbnailUrl || item.imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300")}
+              imageClassName="transition duration-700 group-hover:scale-105"
               placeholder={item.name}
             />
           ))}
         </div>
       </div>
-      <div className="border-t border-line bg-[#FBF6EE] p-4">
+      <div className="border-t border-line bg-canvas/60 p-4">
         <div className="flex flex-wrap gap-2">
           {outfit.reasonChips.map((chip) => <ReasonChip key={chip} label={chip} />)}
         </div>

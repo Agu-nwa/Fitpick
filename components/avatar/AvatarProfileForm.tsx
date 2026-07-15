@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Camera, ImagePlus, Ruler, ScanFace, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -11,7 +12,7 @@ import { generateAvatarModelImage, requestSignedUploadUrl, updateAvatarProfile, 
 type AvatarProfile = AvatarProfileData["profile"];
 
 const inputClass =
-  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
+  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted disabled:opacity-60";
 
 const measurementFields = [
   { key: "heightCm", label: "Height", placeholder: "178" },
@@ -206,16 +207,26 @@ export function AvatarProfileForm({
     <Card className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Choose how your avatar looks.</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Adding your size helps FitPick show outfits better. You can skip this and add it later.</p>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+            <ScanFace size={14} aria-hidden="true" />
+            Model controls
+          </p>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Set your fitting profile.</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">Adding your size helps FitPick show outfits better. You can skip this and add it later.</p>
         </div>
         <Badge tone="premium">User controlled</Badge>
       </div>
 
-      {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-      {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
+      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+      {notice ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
 
-      <section className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 rounded-xl3 border border-line bg-canvas/50 p-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
+            <Sparkles size={14} aria-hidden="true" />
+            Avatar direction
+          </p>
+        </div>
         <FieldGroup label="Avatar base" htmlFor="avatar-gender" help="Choose the avatar base FitPick should use for previews.">
           <select id="avatar-gender" className={inputClass} value={genderPresentation} onChange={(event) => setGenderPresentation(event.target.value as AvatarProfile["genderPresentation"])}>
             <option value="masculine">Male</option>
@@ -268,7 +279,11 @@ export function AvatarProfileForm({
         </FieldGroup>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
+      <section className="space-y-3 rounded-xl3 border border-line bg-canvas/50 p-4">
+        <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
+          <ShieldCheck size={14} aria-hidden="true" />
+          Advanced source
+        </p>
         <FieldGroup label="Custom avatar link" htmlFor="avatar-url" help="Optional. Use this only if you already have a secure avatar file link.">
           <input
             id="avatar-url"
@@ -289,9 +304,12 @@ export function AvatarProfileForm({
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
+      <section className="space-y-4 rounded-xl3 border border-line bg-gradient-to-br from-canvas/70 via-canvas/50 to-olive/10 p-4">
         <div>
-          <p className="text-sm font-semibold text-ink">Virtual try-on model image</p>
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
+            <Camera size={14} aria-hidden="true" />
+            Virtual try-on model image
+          </p>
           <p className="mt-1 text-xs leading-5 text-muted">Use a full-body photo for the most grounded try-on, or generate a stable FitPick model image and reuse it.</p>
         </div>
         <FieldGroup label="Model image source" htmlFor="tryon-model-source">
@@ -313,16 +331,22 @@ export function AvatarProfileForm({
           }}
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-line p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Uploaded</p>
-            {uploadedModelImageUrl ? <img src={uploadedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl bg-stone text-xs font-semibold text-muted">No photo</div>}
+          <div className="rounded-2xl border border-line bg-surface/70 p-3">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">
+              <ImagePlus size={14} aria-hidden="true" />
+              Uploaded
+            </p>
+            {uploadedModelImageUrl ? <img src={uploadedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl border border-dashed border-line bg-canvas/60 px-3 text-center text-xs font-semibold text-muted">No full-body photo yet</div>}
             <Button type="button" variant="secondary" className="mt-3 w-full" disabled={uploadingModel || saving} onClick={() => modelFileInputRef.current?.click()}>
               {uploadingModel ? "Uploading..." : "Upload full-body photo"}
             </Button>
           </div>
-          <div className="rounded-2xl border border-line p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Generated</p>
-            {generatedModelImageUrl ? <img src={generatedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl bg-stone text-xs font-semibold text-muted">No model</div>}
+          <div className="rounded-2xl border border-line bg-surface/70 p-3">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">
+              <Sparkles size={14} aria-hidden="true" />
+              Generated
+            </p>
+            {generatedModelImageUrl ? <img src={generatedModelImageUrl} alt="" className="mt-3 aspect-[3/4] w-full rounded-xl object-cover" /> : <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-xl border border-dashed border-line bg-canvas/60 px-3 text-center text-xs font-semibold text-muted">No generated model yet</div>}
             <Button type="button" variant="secondary" className="mt-3 w-full" disabled={generatingModel || saving || !consentAccepted} onClick={() => void handleGenerateModelImage()}>
               {generatingModel ? "Creating..." : "Generate model image"}
             </Button>
@@ -330,9 +354,12 @@ export function AvatarProfileForm({
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
+      <section className="space-y-3 rounded-xl3 border border-line bg-canvas/50 p-4">
         <div>
-          <p className="text-sm font-semibold text-ink">My size</p>
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
+            <Ruler size={14} aria-hidden="true" />
+            My size
+          </p>
           <p className="mt-1 text-xs leading-5 text-muted">Adding your size helps FitPick show outfits better. These details are not used to infer identity.</p>
           {!hasSizeDetails ? (
             <p className="mt-2 rounded-2xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">

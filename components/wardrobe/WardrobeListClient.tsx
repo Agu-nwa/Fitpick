@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AlertCircle, CheckCircle2, Layers3 } from "lucide-react";
 import { WardrobeItemCard } from "@/components/wardrobe/WardrobeItemCard";
 import {
   WardrobeApiErrorState,
@@ -33,7 +34,7 @@ const mockSummary: WardrobeSummary = {
 
 function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => (
         <Link key={item.id} href={`/wardrobe/${item.id}`} className="focus-ring rounded-xl3">
           <WardrobeItemCard item={item} />
@@ -50,21 +51,24 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
     : `${summary.readyCount} ready items. Your wardrobe is set up for stronger outfit picks.`;
 
   return (
-    <div className="space-y-3">
+    <div className="mt-7 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
       <ProgressCard title="Wardrobe strength" body={body} progress={progress} />
       <Card className="p-4">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-lg font-bold text-ink">{summary.totalCount}</p>
-            <p className="text-[11px] text-muted">Items</p>
+        <div className="grid h-full grid-cols-3 gap-2">
+          <div className="rounded-xl2 border border-line bg-canvas/60 p-3">
+            <Layers3 size={16} className="text-cocoa" aria-hidden="true" />
+            <p className="mt-4 text-2xl font-black text-ink">{summary.totalCount}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Pieces</p>
           </div>
-          <div>
-            <p className="text-lg font-bold text-success">{summary.readyCount}</p>
-            <p className="text-[11px] text-muted">Ready</p>
+          <div className="rounded-xl2 border border-success/20 bg-success/10 p-3">
+            <CheckCircle2 size={16} className="text-success" aria-hidden="true" />
+            <p className="mt-4 text-2xl font-black text-success">{summary.readyCount}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Ready</p>
           </div>
-          <div>
-            <p className="text-lg font-bold text-warning">{summary.missingTagsCount + summary.needsCareCount}</p>
-            <p className="text-[11px] text-muted">Review</p>
+          <div className="rounded-xl2 border border-warning/20 bg-warning/10 p-3">
+            <AlertCircle size={16} className="text-warning" aria-hidden="true" />
+            <p className="mt-4 text-2xl font-black text-warning">{summary.missingTagsCount + summary.needsCareCount}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Review</p>
           </div>
         </div>
       </Card>
@@ -74,7 +78,7 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
 
 function MockPreview({ title = "Wardrobe preview" }: { title?: string }) {
   return (
-    <section className="mt-7">
+    <section className="mt-10">
       <SectionHeader title={title} />
       <WardrobeGrid items={wardrobeItems.slice(0, 6)} />
     </section>
@@ -140,8 +144,8 @@ export function WardrobeListClient() {
     return (
       <>
         <SummaryCard summary={displaySummary} />
-        <section className="mt-7">
-          <SectionHeader title="All items" />
+        <section className="mt-10">
+          <SectionHeader title="Style archive" eyebrow="All pieces" />
           <WardrobeEmptyState />
         </section>
         <MockPreview title="Example wardrobe cards" />
@@ -152,8 +156,8 @@ export function WardrobeListClient() {
   return (
     <>
       <SummaryCard summary={displaySummary} />
-      <section className="mt-7">
-        <SectionHeader title="All items" />
+      <section className="mt-10">
+        <SectionHeader title="Style archive" eyebrow="All pieces" />
         <WardrobeGrid items={wardrobe?.items || wardrobeItems} />
       </section>
     </>

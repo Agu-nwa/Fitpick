@@ -104,7 +104,7 @@ const garmentMeasurementFields: Array<{ key: keyof GarmentMeasurements; label: s
   { key: "heelHeightCm", label: "Heel height", placeholder: "4" }
 ];
 const inputClass =
-  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
+  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
 
 const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
   {
@@ -324,7 +324,7 @@ export function AITagConfirmationForm({
   if (!aiAnalysis) {
     return (
       <div className="space-y-3">
-        <p className="rounded-2xl bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
+        <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
           Clothing suggestions are not available. Check the item again or add details manually.
         </p>
       </div>
@@ -339,7 +339,7 @@ export function AITagConfirmationForm({
         submit();
       }}
     >
-      <div className="rounded-2xl border border-line bg-white p-3">
+      <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-ink">FitPick found these details. Please check them.</p>
@@ -354,11 +354,11 @@ export function AITagConfirmationForm({
         </FieldGroup>
       </div>
 
-      {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
       <div className="space-y-4">
         {fieldGroups.map((group) => (
-          <section key={group.title} className="rounded-2xl border border-line bg-white p-3">
+          <section key={group.title} className="rounded-2xl border border-line bg-canvas/60 p-3">
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-ink">{group.title}</h3>
               <p className="mt-1 text-xs leading-5 text-muted">{group.body}</p>
@@ -413,12 +413,12 @@ export function AITagConfirmationForm({
         ))}
       </div>
 
-      <details className="rounded-2xl border border-line bg-white p-3">
+      <details className="rounded-2xl border border-line bg-canvas/60 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">Details</summary>
         <p className="mt-2 text-xs leading-5 text-muted">Extra clothing details FitPick noticed. You can leave these alone if you are not sure.</p>
         <div className="mt-4 space-y-4">
           {detailFieldGroups.map((group) => (
-            <section key={group.title} className="rounded-2xl border border-line bg-canvas p-3">
+            <section key={group.title} className="rounded-2xl border border-line bg-surface/70 p-3">
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-ink">{group.title}</h3>
                 <p className="mt-1 text-xs leading-5 text-muted">{group.body}</p>
@@ -468,7 +468,7 @@ export function AITagConfirmationForm({
         </div>
       </details>
 
-      <section className="rounded-2xl border border-line bg-white p-3">
+      <section className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-ink">Size and fit</h3>
           <p className="mt-1 text-xs leading-5 text-muted">Add measurements if you know them. You can leave this simple and update it later.</p>
@@ -500,7 +500,7 @@ export function AITagConfirmationForm({
             </select>
           </FieldGroup>
         </div>
-        <details className="mt-4 rounded-2xl border border-line bg-canvas p-3">
+        <details className="mt-4 rounded-2xl border border-line bg-surface/70 p-3">
           <summary className="cursor-pointer text-sm font-semibold text-ink">Fit details</summary>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FieldGroup label="How size was added" htmlFor="fit-source">

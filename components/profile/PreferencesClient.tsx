@@ -11,7 +11,7 @@ import { Chip } from "@/components/ui/Chip";
 import { useSession } from "@/hooks/use-session";
 import { getPreferences, updatePreferences } from "@/lib/api-client";
 
-const inputClass = "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink";
+const inputClass = "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/70 px-3 py-2 text-sm text-ink shadow-inner";
 
 function splitTags(value: string) {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
@@ -107,7 +107,7 @@ export function PreferencesClient() {
             ["Outfit history", outfitHistoryEnabled, setOutfitHistoryEnabled],
             ["Product updates", marketingNotifications, setMarketingNotifications]
           ].map(([label, value, setter]) => (
-            <button key={label as string} type="button" onClick={() => (setter as (next: boolean) => void)(!(value as boolean))} className="focus-ring flex min-h-12 w-full items-center justify-between rounded-2xl border border-line bg-white px-3 text-sm font-semibold text-ink">
+            <button key={label as string} type="button" onClick={() => (setter as (next: boolean) => void)(!(value as boolean))} className="focus-ring flex min-h-12 w-full items-center justify-between rounded-2xl border border-line bg-canvas/60 px-3 text-sm font-semibold text-ink">
               <span>{label as string}</span><Chip active={value as boolean}>{value ? "On" : "Off"}</Chip>
             </button>
           ))}

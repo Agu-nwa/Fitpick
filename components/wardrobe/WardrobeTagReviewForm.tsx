@@ -51,7 +51,7 @@ const measurementSourceOptions: MeasurementSource[] = ["unknown", "label_ocr", "
 const measurementKeys: Array<keyof GarmentMeasurements> = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm", "waistCm", "hipsCm", "inseamCm", "outseamCm"];
 
 const inputClass =
-  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
+  "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
 
 function splitTags(value: string) {
   return value
@@ -236,7 +236,7 @@ export function WardrobeTagReviewForm({
         <input className={inputClass} value={weather} onChange={(event) => setWeather(event.target.value)} placeholder="dry, indoor" />
       </label>
 
-      <div className="rounded-2xl border border-line bg-white p-3">
+      <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <p className="text-sm font-semibold text-ink">Fit accuracy</p>
         <p className="mt-1 text-xs leading-5 text-muted">Add measurements to improve try-on accuracy. Unknown values stay estimated.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">

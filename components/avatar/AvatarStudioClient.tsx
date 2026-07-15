@@ -56,7 +56,7 @@ export function AvatarStudioClient() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
       <AvatarViewer profile={profile} />
       <AvatarProfileForm profile={profile} onSaved={setProfile} />
     </div>

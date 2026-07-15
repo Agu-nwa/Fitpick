@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Camera, CheckCircle2, ImagePlus, PencilLine, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -288,14 +289,28 @@ export function WardrobeAddClient() {
       ) : null}
 
       <section>
-        <SectionHeader title="Add item photos" eyebrow="Front, back, fabric, label" />
-        <Card className="space-y-4">
-          <ProgressSteps steps={[...uploadSteps]} />
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-white px-3 py-2">
-            <p className="text-xs font-semibold text-ink">Clothing photos</p>
+        <SectionHeader title="Capture set" eyebrow="Front, back, fabric, label" />
+        <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                <ImagePlus size={14} aria-hidden="true" />
+                Wardrobe upload
+              </p>
+              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Photograph one piece.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">FitPick works best when each upload has one item with four supporting angles.</p>
+            </div>
             <Badge tone={missingRequired.length ? "warning" : "success"}>
               {selectedCount}/4 ready
             </Badge>
+          </div>
+          <ProgressSteps steps={[...uploadSteps]} />
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-canvas/60 px-3 py-2">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-ink">
+              <Camera size={14} className="text-cocoa" aria-hidden="true" />
+              Clothing photos
+            </p>
+            <span className="text-xs leading-5 text-muted">Tap a slot to add or replace its photo.</span>
           </div>
           <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} />
           <input
@@ -315,11 +330,12 @@ export function WardrobeAddClient() {
             {slotOrder.map((purpose) => {
               const slot = slotFiles[purpose];
               return (
-                <div key={purpose} className="rounded-2xl border border-line bg-white p-3 shadow-card">
-                  <p className="text-xs font-semibold text-ink">{slotCopy[purpose].title}</p>
+                <div key={purpose} className="rounded-2xl border border-line bg-canvas/60 p-3 shadow-card">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slotCopy[purpose].title}</p>
                   <p className="mt-1 min-h-8 break-words text-[11px] leading-4 text-muted">{slot ? slot.file.name : slotCopy[purpose].body}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(purpose)} disabled={isSaving || isAnalyzing}>
+                      {slot ? <PencilLine size={13} aria-hidden="true" /> : <ImagePlus size={13} aria-hidden="true" />}
                       {slot ? "Replace" : "Add"}
                     </Button>
                     <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(purpose)} disabled={!slot || isSaving || isAnalyzing}>
@@ -332,11 +348,12 @@ export function WardrobeAddClient() {
           </div>
 
           <Button type="button" className="w-full" onClick={() => void handleMultiPhotoUpload()} disabled={isSaving || isAnalyzing}>
+            {isSaving || isAnalyzing ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
             {isSaving ? "Uploading photos..." : isAnalyzing ? "Checking clothes..." : "Upload and check clothes"}
           </Button>
 
           {message ? (
-            <p className="rounded-2xl bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
+            <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
               {message}
             </p>
           ) : null}
@@ -344,7 +361,7 @@ export function WardrobeAddClient() {
       </section>
 
       <section>
-        <SectionHeader title="Add manually" />
+        <SectionHeader title="Add manually" eyebrow="Fallback" />
         <Card>
           <FieldGroup
             label="Manual fallback"

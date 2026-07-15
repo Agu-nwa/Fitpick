@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Footprints, RotateCcw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -45,7 +46,9 @@ function AvatarSilhouette({
   const styleTone = toneForStyle(profile?.visualizationStyle);
 
   return (
-    <div className="relative flex aspect-square items-end justify-center overflow-hidden rounded-2xl border border-line bg-[#f7f2ea] px-8 pb-9 pt-8">
+    <div className="relative flex aspect-square items-end justify-center overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-ink/10 via-surface to-olive/20 px-8 pb-9 pt-8">
+      <div className="absolute left-8 top-8 size-28 rounded-full bg-cocoa/10 blur-3xl" />
+      <div className="absolute bottom-8 right-8 size-32 rounded-full bg-olive/10 blur-3xl" />
       <div className="absolute inset-x-8 bottom-8 h-6 rounded-full bg-cocoa/10 blur-sm" />
       <div
         className={cn(
@@ -81,11 +84,15 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
   }, [profile?.posePreset]);
 
   return (
-    <Card className="space-y-4">
+    <Card className="sticky top-6 space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">My Avatar</p>
-          <p className="mt-1 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+            <Sparkles size={14} aria-hidden="true" />
+            Digital model
+          </p>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Studio preview</h2>
+          <p className="mt-2 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
         </div>
         <Badge tone={profile?.consentAccepted ? "premium" : "warning"}>
           {profile?.consentAccepted ? "Ready" : "Review"}
@@ -93,9 +100,9 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <label className="block text-xs font-semibold text-ink">
+        <label className="block text-xs font-bold uppercase tracking-[0.14em] text-muted">
           Pose
-          <select className="focus-ring mt-1 min-h-10 w-full rounded-2xl border border-line bg-white px-3 text-xs text-ink" value={posePreset} onChange={(event) => setPosePreset(event.target.value as ViewerPosePreset)}>
+          <select className="focus-ring mt-1 min-h-10 w-full rounded-2xl border border-line bg-canvas/80 px-3 text-xs text-ink" value={posePreset} onChange={(event) => setPosePreset(event.target.value as ViewerPosePreset)}>
             <option value="standing">Standing</option>
             <option value="runway">Runway</option>
             <option value="walking">Walking</option>
@@ -104,16 +111,18 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
           </select>
         </label>
         <Button type="button" variant={autoRotate ? "primary" : "secondary"} className="self-end" onClick={() => setAutoRotate((value) => !value)}>
+          <RotateCcw size={16} aria-hidden="true" />
           {autoRotate ? "Stand still" : "Turn around"}
         </Button>
         <Button type="button" variant={animatedPreview ? "primary" : "secondary"} className="self-end" onClick={() => setAnimatedPreview((value) => !value)}>
+          <Footprints size={16} aria-hidden="true" />
           {animatedPreview ? "Stand still" : "Walk preview"}
         </Button>
       </div>
 
       <AvatarSilhouette profile={profile} posePreset={posePreset} autoRotate={autoRotate} animatedPreview={animatedPreview} />
 
-      <details className="rounded-2xl border border-line bg-white p-3">
+      <details className="rounded-2xl border border-line bg-canvas/60 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge tone="neutral">{profile?.avatarProvider === "ready_player_me" ? "Ready Player Me" : profile?.avatarProvider === "custom_glb" ? "Custom GLB" : "FitPick preset"}</Badge>

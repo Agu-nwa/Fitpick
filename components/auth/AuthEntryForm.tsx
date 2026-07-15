@@ -68,7 +68,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
   }
 
   return (
-    <div className={compact ? "w-full" : "w-full rounded-[1.75rem] border border-line bg-surface p-5 shadow-card sm:p-6"}>
+    <div className={compact ? "mt-6 w-full rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-6" : "w-full rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-6"}>
       <div className="mb-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">
           {step === "email" ? (mode === "signin" ? "Welcome back" : "My FitPicK") : "Check your email"}
@@ -86,12 +86,12 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
       </div>
 
       {step === "email" ? (
-        <div className="mb-4 grid grid-cols-2 rounded-2xl border border-line bg-canvas p-1">
+        <div className="mb-4 grid grid-cols-2 rounded-2xl border border-line bg-canvas/70 p-1">
           {(["signin", "signup"] as const).map((item) => (
             <button
               key={item}
               type="button"
-              className={`focus-ring h-10 rounded-xl text-sm font-semibold transition ${mode === item ? "bg-surface text-ink shadow-card" : "text-muted"}`}
+              className={`focus-ring h-10 rounded-xl text-sm font-semibold transition ${mode === item ? "bg-cocoa text-canvas shadow-card" : "text-muted"}`}
               onClick={() => {
                 setMode(item);
                 setMessage("");
@@ -114,7 +114,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
             disabled={step === "code"}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-2 h-12 w-full rounded-2xl border border-line bg-white px-4 text-base text-ink outline-none transition focus:border-cocoa"
+            className="mt-2 h-12 w-full rounded-2xl border border-line bg-canvas/70 px-4 text-base text-ink outline-none shadow-inner transition focus:border-cocoa"
             placeholder="you@example.com"
           />
         </label>
@@ -131,7 +131,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
               maxLength={6}
               value={code}
               onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-2 h-12 w-full rounded-2xl border border-line bg-white px-4 text-center font-mono text-lg tracking-[0.24em] text-ink outline-none transition focus:border-cocoa"
+              className="mt-2 h-12 w-full rounded-2xl border border-line bg-canvas/70 px-4 text-center font-mono text-lg tracking-[0.24em] text-ink outline-none shadow-inner transition focus:border-cocoa"
               placeholder="123456"
             />
             <p className="mt-2 text-xs leading-5 text-muted">Code expires in {expiresInMinutes} minutes.</p>

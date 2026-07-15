@@ -37,7 +37,7 @@ export function ProfileSessionCard() {
   return (
     <Card>
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-cocoa text-xl font-semibold text-white" aria-hidden>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-cocoa text-xl font-semibold text-canvas" aria-hidden>
           {user?.name?.slice(0, 1).toUpperCase() || "F"}
         </div>
         <div className="min-w-0 flex-1">

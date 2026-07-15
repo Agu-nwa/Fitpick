@@ -29,7 +29,7 @@ export function ImageFrame({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-[#F7F4EE] via-surface to-[#EDE3D5]",
+        "relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-ink/10 via-surface to-olive/20",
         aspectClasses[aspect],
         className
       )}
