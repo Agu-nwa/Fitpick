@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowUpRight, CalendarDays, CloudRain, HeartHandshake, MessageCircle, Sparkles, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -113,6 +114,7 @@ function ItemStrip({ outfit }: { outfit: OutfitRecommendation }) {
 }
 
 export function StylistChat() {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -248,6 +250,11 @@ export function StylistChat() {
 
     if (jobId && avatarPreview.status !== "ready") {
       void pollAvatarJob(assistantId, jobId);
+    }
+
+    if (response.data.outfitRecommendationId) {
+      showToast("Opening your full look.");
+      router.push(`/outfit/${response.data.outfitRecommendationId}/preview`);
     }
   }
 
