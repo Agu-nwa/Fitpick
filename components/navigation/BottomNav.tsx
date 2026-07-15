@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const nav = [
+export const primaryNavItems = [
   { label: "Home", href: "/home", icon: "⌂" },
   { label: "Closet", href: "/wardrobe", icon: "▦" },
   { label: "Looks", href: "/looks", icon: "◌" },
@@ -16,11 +16,11 @@ export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] overflow-hidden rounded-t-[1.75rem] border-t border-line bg-surface/95 px-2 pb-[calc(0.625rem+var(--safe-bottom))] pt-2 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full overflow-hidden rounded-t-[1.75rem] border-t border-line bg-surface/95 px-2 pb-[calc(0.625rem+var(--safe-bottom))] pt-2 backdrop-blur sm:max-w-[640px] lg:hidden"
       aria-label="Primary navigation"
     >
       <div className="flex w-full items-stretch gap-1">
-        {nav.map((item) => {
+        {primaryNavItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`) || (item.href === "/home" && pathname === "/");
           return (
             <Link

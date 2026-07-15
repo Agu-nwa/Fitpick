@@ -21,7 +21,7 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {open ? (
-        <div className="fixed inset-0 z-50 mx-auto max-w-[430px] md:absolute" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="fixed inset-0 z-50 mx-auto sm:max-w-[640px] md:absolute lg:max-w-none" role="dialog" aria-modal="true" aria-label={title}>
           <motion.button
             aria-label="Close sheet"
             className="absolute inset-0 bg-ink/20"
@@ -35,7 +35,7 @@ export function BottomSheet({
             animate={reduceMotion ? undefined : { y: 0 }}
             exit={reduceMotion ? undefined : { y: "100%" }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className={cn("absolute inset-x-0 bottom-0 max-h-[86svh] rounded-t-[2rem] border border-line bg-surface p-5 pb-[calc(1.25rem+var(--safe-bottom))] shadow-soft", className)}
+            className={cn("absolute inset-x-0 bottom-0 max-h-[86svh] rounded-t-[2rem] border border-line bg-surface p-5 pb-[calc(1.25rem+var(--safe-bottom))] shadow-soft lg:left-1/2 lg:max-w-xl lg:-translate-x-1/2 lg:rounded-[2rem] lg:p-6", className)}
           >
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-line" />
             <div className="mb-4 flex items-center justify-between gap-4">
