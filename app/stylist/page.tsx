@@ -14,11 +14,11 @@ export default function StylistPage() {
               <MessageCircle size={14} aria-hidden="true" />
               Personal stylist
             </p>
-            <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
-              Ask for the look. FitPick styles the closet.
+            <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
+              Ask for the look. MyFitPick styles the closet.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-              Tell the stylist the occasion, mood, weather, and dress code. FitPick turns your wardrobe into a styled recommendation with try-on support.
+              Tell the stylist the occasion, mood, weather, and dress code. MyFitPick turns your wardrobe into a styled recommendation with try-on support.
             </p>
           </div>
           <div className="rounded-full border border-cocoa/25 bg-cocoa/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">

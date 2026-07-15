@@ -16,11 +16,11 @@ export default function LooksPage() {
               <Images size={14} aria-hidden="true" />
               Style archive
             </p>
-            <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+            <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
               Your looks, curated.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-              Saved outfits, worn combinations, and favorite edits live here so FitPick can keep learning what feels right.
+              Saved outfits, worn combinations, and favorite edits live here so MyFitPick can keep learning what feels right.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">

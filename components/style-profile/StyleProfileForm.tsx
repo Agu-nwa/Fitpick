@@ -96,7 +96,7 @@ export function StyleProfileForm() {
     <Card className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Teach FitPick how you like to dress</p>
+          <p className="text-sm font-semibold text-ink">Teach MyFitPick how you like to dress</p>
           <p className="mt-1 text-sm leading-6 text-muted">
             These preferences help your AI stylist refine every recommendation. You can change them anytime.
           </p>
@@ -124,7 +124,7 @@ export function StyleProfileForm() {
         <FieldGroup label="Preferred occasions" htmlFor="preferred-occasions">
           <input id="preferred-occasions" className={inputClass} value={preferredOccasions} onChange={(event) => setPreferredOccasions(event.target.value)} placeholder="church, business casual, date night" />
         </FieldGroup>
-        <FieldGroup label="Cultural style preferences" htmlFor="cultural-style-preferences" help="Use clothing context only, such as native wear or ankara. FitPick does not need identity attributes.">
+        <FieldGroup label="Cultural style preferences" htmlFor="cultural-style-preferences" help="Use clothing context only, such as native wear or ankara. MyFitPick does not need identity attributes.">
           <input id="cultural-style-preferences" className={inputClass} value={culturalStylePreferences} onChange={(event) => setCulturalStylePreferences(event.target.value)} placeholder="native wear, ankara, senator wear" />
         </FieldGroup>
       </section>
@@ -158,7 +158,7 @@ export function StyleProfileForm() {
       </FieldGroup>
 
       {profile?.inferredFrom?.length ? (
-        <p className="text-xs leading-5 text-muted">Inferred gently from: {profile.inferredFrom.join(", ")}. You stay in control of what FitPick remembers.</p>
+        <p className="text-xs leading-5 text-muted">Inferred gently from: {profile.inferredFrom.join(", ")}. You stay in control of what MyFitPick remembers.</p>
       ) : null}
 
       <Button type="button" className="w-full" onClick={() => void saveProfile()} disabled={saving}>

@@ -69,10 +69,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
             needsReview: true
           },
           aiAnalysis: null,
-          safeMessage: "FitPick is checking your clothing photos.",
+          safeMessage: "MyFitPick is checking your clothing photos.",
           job: serializeJob(job)
         },
-        { message: "FitPick is checking your clothing photos.", status: 202 }
+        { message: "MyFitPick is checking your clothing photos.", status: 202 }
       );
     }
 

@@ -12,11 +12,11 @@ export default function PreferencesPage() {
             <SlidersHorizontal size={14} aria-hidden="true" />
             Style profile
           </p>
-          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+          <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
             Style preferences.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Help FitPick understand what feels right, what to avoid, and how much context it should use.
+            Help MyFitPick understand what feels right, what to avoid, and how much context it should use.
           </p>
         </div>
       </header>

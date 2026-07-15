@@ -18,9 +18,9 @@ import { toSafeUser, User } from "@/models/User";
 import { verifyOtpSchema } from "@/schemas/auth.schema";
 
 function defaultNameFromEmail(email: string) {
-  const local = email.split("@")[0] || "FitPick";
+  const local = email.split("@")[0] || "MyFitPick";
   const cleaned = local.replace(/[._-]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim();
-  if (!cleaned) return "FitPick User";
+  if (!cleaned) return "MyFitPick User";
   return cleaned
     .split(/\s+/)
     .slice(0, 3)

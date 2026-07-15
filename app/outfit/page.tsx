@@ -15,11 +15,11 @@ export default function OutfitPage() {
             <Sparkles size={14} aria-hidden="true" />
             Outfit edit
           </p>
-          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+          <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
             Build today&apos;s look.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Tell FitPick what you need and it will choose from your saved clothes, complete the outfit, and prepare it for try-on.
+            Tell MyFitPick what you need and it will choose from your saved clothes, complete the outfit, and prepare it for try-on.
           </p>
         </div>
       </header>

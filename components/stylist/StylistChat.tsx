@@ -226,7 +226,7 @@ export function StylistChat() {
     setLoading(false);
 
     if (!response.ok) {
-      const safeMessage = response.error.message || "Unable to reach FitPick Stylist right now.";
+      const safeMessage = response.error.message || "Unable to reach MyFitPick Stylist right now.";
       setError(safeMessage);
       patchMessage(assistantId, { content: safeMessage });
       return;
@@ -324,7 +324,7 @@ export function StylistChat() {
 
             {preview?.imageUrl ? (
               <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface/80">
-                <img src={preview.imageUrl} alt="FitPick avatar outfit preview" className="aspect-square w-full object-cover" />
+                <img src={preview.imageUrl} alt="MyFitPick avatar outfit preview" className="aspect-square w-full object-cover" />
               </div>
             ) : status === "queued" || status === "generating" || status === "processing" ? (
               <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-4 text-center">
@@ -424,7 +424,7 @@ export function StylistChat() {
               Styling appointment
             </p>
             <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">What are we dressing for?</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Give the stylist an occasion, mood, setting, or dress code. FitPick will work from your saved closet.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Give the stylist an occasion, mood, setting, or dress code. MyFitPick will work from your saved closet.</p>
           </div>
           <Badge tone="premium">Closet-led</Badge>
         </div>
@@ -523,7 +523,7 @@ export function StylistChat() {
               <div>
                 <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
                 <p className="font-editorial text-3xl font-semibold leading-none text-ink">Your styled look will appear here.</p>
-                <p className="mt-2 text-xs leading-5 text-muted">Start with an occasion and FitPick will pull from your saved wardrobe.</p>
+                <p className="mt-2 text-xs leading-5 text-muted">Start with an occasion and MyFitPick will pull from your saved wardrobe.</p>
               </div>
             </div>
           )}
@@ -552,7 +552,7 @@ export function StylistChat() {
               </div>
             ) : (
               <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-3 text-xs leading-5 text-muted">
-                Tell FitPick the occasion, weather, dress code, and how dressed-up you want to feel.
+                Tell MyFitPick the occasion, weather, dress code, and how dressed-up you want to feel.
               </p>
             )}
           </Card>

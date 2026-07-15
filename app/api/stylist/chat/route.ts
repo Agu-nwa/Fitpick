@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
                   previewId: null,
                   imageUrl: null,
                   cacheKey: null,
-                  errorMessage: "FitPick could not assemble a complete owned outfit to visualize."
+                  errorMessage: "MyFitPick could not assemble a complete owned outfit to visualize."
                 }
               });
         } catch (error) {

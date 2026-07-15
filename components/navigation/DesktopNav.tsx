@@ -16,7 +16,7 @@ export function DesktopNav() {
           <span className="flex size-8 items-center justify-center rounded-full bg-cocoa text-canvas">
             <Sparkles size={16} aria-hidden="true" />
           </span>
-          FITPICK
+          MYFITPICK
         </span>
         <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Intelligent wardrobe</span>
       </Link>

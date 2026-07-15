@@ -8,7 +8,7 @@ export default function StyleProfilePage() {
       <PageHeader
         eyebrow="Personalization"
         title="Your style preferences"
-        subtitle="Teach FitPick how you like to dress so outfit ideas feel more like you."
+        subtitle="Teach MyFitPick how you like to dress so outfit ideas feel more like you."
       />
       <div className="mt-7">
         <StyleProfileForm />

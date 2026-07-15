@@ -107,10 +107,10 @@ function buildFashionExplanation(input: {
     whyItWorks: `${itemNames.join(", ")} create a wearable ${input.occasion.toLowerCase()} look from actual wardrobe items.${missingText}`,
     materialNote: fabrics.length
       ? `Material read: ${fabrics.slice(0, 3).join(", ")}. Compatibility score ${fabricCompatibilityScore(input.items)}.`
-      : "Fabric data is limited, so FitPick used category and occasion fallback logic.",
+      : "Fabric data is limited, so MyFitPick used category and occasion fallback logic.",
     silhouetteNote: silhouettes.length
       ? `Silhouette read: ${silhouettes.slice(0, 3).join(", ")}. Balance score ${silhouetteBalanceScore(input.items)}.`
-      : "Silhouette data is limited, so FitPick avoided overclaiming fit balance.",
+      : "Silhouette data is limited, so MyFitPick avoided overclaiming fit balance.",
     improvementNote: input.missing.length
       ? `This outfit would improve with owned ${input.missing.join(" and ")} options.`
       : "No major wardrobe gap detected for this recommendation.",
@@ -218,7 +218,7 @@ export function buildRecommendation(input: EngineInput) {
       colorNote: "",
       swapGroups: [],
       occasionFit: "No suitable owned wardrobe combination was found.",
-      whyItWorks: "FitPick could not assemble a complete look from the currently available owned items.",
+      whyItWorks: "MyFitPick could not assemble a complete look from the currently available owned items.",
       materialNote: "",
       silhouetteNote: "",
       improvementNote: missing.length ? `Add or verify ${missing.join(", ")} items for better outfit ideas.` : "Add more verified wardrobe details.",

@@ -71,10 +71,10 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
     <div className={compact ? "mt-6 w-full rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-6" : "w-full rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-6"}>
       <div className="mb-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-terracotta">
-          {step === "email" ? (mode === "signin" ? "Welcome back" : "My FitPicK") : "Check your email"}
+          {step === "email" ? (mode === "signin" ? "Welcome back" : "MyFitPick") : "Check your email"}
         </p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
-          {step === "email" ? (mode === "signin" ? "Sign in to FitPick" : "Create your account") : "Enter your code"}
+          {step === "email" ? (mode === "signin" ? "Sign in to MyFitPick" : "Create your account") : "Enter your code"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           {step === "email"
@@ -175,7 +175,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
         Only you can see the wardrobe you add.
       </p>
       <p className="mt-2 text-center text-xs leading-5 text-muted">
-        Need context first? <Link href="/onboarding" className="font-semibold text-cocoa">See how FitPick works</Link>
+        Need context first? <Link href="/onboarding" className="font-semibold text-cocoa">See how MyFitPick works</Link>
       </p>
     </div>
   );

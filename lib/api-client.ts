@@ -13,7 +13,7 @@ const backendUnavailable: ApiFailure = {
   ok: false,
   error: {
     code: "INTERNAL_ERROR",
-    message: "FitPick services are not reachable right now. Please try again shortly."
+    message: "MyFitPick services are not reachable right now. Please try again shortly."
   }
 };
 
@@ -21,7 +21,7 @@ const invalidResponse: ApiFailure = {
   ok: false,
   error: {
     code: "INTERNAL_ERROR",
-    message: "FitPick received an unexpected response. Please try again."
+    message: "MyFitPick received an unexpected response. Please try again."
   }
 };
 

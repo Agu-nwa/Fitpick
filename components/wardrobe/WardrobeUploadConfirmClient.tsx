@@ -89,7 +89,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
       if ((result.data as any).job?.id) {
         const jobId = (result.data as any).job.id;
         setAnalysisJobId(jobId);
-        setMessage("FitPick is checking your clothing photos. This may take a moment.");
+        setMessage("MyFitPick is checking your clothing photos. This may take a moment.");
 
         for (let attempt = 0; attempt < 30; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 2500));
@@ -113,7 +113,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
         }
 
         setIsAnalyzing(false);
-        setMessage("FitPick is still checking your clothing photos. Refresh shortly to continue.");
+        setMessage("MyFitPick is still checking your clothing photos. Refresh shortly to continue.");
         return await loadUpload();
       }
 
@@ -203,7 +203,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
                 <Sparkles size={14} aria-hidden="true" />
                 AI tag review
               </p>
-              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what FitPick found.</h2>
+              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what MyFitPick found.</h2>
               <p className="mt-2 text-sm leading-6 text-muted">Check the suggested category, color, fabric, fit, and size details before saving the item to your closet.</p>
             </div>
             {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
@@ -222,7 +222,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
           {warnings.length || lowConfidenceCount ? (
             <div className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold">Confirm what FitPick detected</p>
+                <p className="font-semibold">Confirm what MyFitPick detected</p>
                 <Badge tone="warning">Needs review</Badge>
               </div>
               {lowConfidenceCount ? <p className="mt-1 text-muted">{lowConfidenceCount} field{lowConfidenceCount === 1 ? "" : "s"} marked low confidence — please verify.</p> : null}

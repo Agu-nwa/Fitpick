@@ -22,9 +22,9 @@ export default function OnboardingPage() {
           <div className="flex h-full flex-col justify-end bg-[radial-gradient(circle_at_80%_10%,rgba(166,124,82,0.22),transparent_34%)]">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-cocoa">
               <CheckCircle2 size={14} aria-hidden="true" />
-              FitPick
+              MyFitPick
             </p>
-            <h1 className="mt-3 max-w-[420px] font-editorial text-5xl font-semibold leading-[0.92] tracking-editorial text-ink">Let&apos;s make your wardrobe easier to use.</h1>
+            <h1 className="mt-3 max-w-[420px] font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl">Let&apos;s make your wardrobe easier to use.</h1>
           </div>
         </div>
         <div className="space-y-3">
@@ -49,7 +49,7 @@ export default function OnboardingPage() {
       </section>
       <div className="mt-8 grid gap-3">
         <Link href="/wardrobe/add"><Button className="w-full">Add your first pieces</Button></Link>
-        <Link href="/home"><Button variant="secondary" className="w-full">Go to FitPick</Button></Link>
+        <Link href="/home"><Button variant="secondary" className="w-full">Go to MyFitPick</Button></Link>
       </div>
     </AppShell>
   );

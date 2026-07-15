@@ -83,7 +83,7 @@ export function DigitalHumanTryOnPanel({
               <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
               <p className="font-editorial text-3xl font-semibold leading-none text-ink">Create on-model preview</p>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                FitPick will use the saved clothing photos to generate a digital human wearing this outfit.
+                MyFitPick will use the saved clothing photos to generate a digital human wearing this outfit.
               </p>
             </div>
           </div>

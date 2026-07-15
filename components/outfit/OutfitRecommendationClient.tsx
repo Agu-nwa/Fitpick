@@ -112,7 +112,7 @@ export function OutfitRecommendationClient() {
       {!outfit ? (
         <Card className="mb-7 p-4">
           <p className="text-sm font-semibold text-ink">No outfit picked yet.</p>
-          <p className="mt-2 text-sm leading-6 text-muted">Tap Pick outfit and FitPick will choose from your saved clothes.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Tap Pick outfit and MyFitPick will choose from your saved clothes.</p>
         </Card>
       ) : null}
 

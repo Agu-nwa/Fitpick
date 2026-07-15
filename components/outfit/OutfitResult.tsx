@@ -377,7 +377,7 @@ export function OutfitResult({
   return (
     <>
       <section>
-        <SectionHeader title="Your outfit" eyebrow={outfit.occasion || "FitPick edit"} />
+        <SectionHeader title="Your outfit" eyebrow={outfit.occasion || "MyFitPick edit"} />
         <div className="mb-3 flex flex-wrap gap-2">
           <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>
             {completenessLabel(outfit.completenessStatus)}
@@ -561,7 +561,7 @@ export function OutfitResult({
       </BottomSheet>
 
       <BottomSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} title="Rate outfit">
-        <p className="text-sm leading-6 text-muted">Your rating helps FitPick improve clothing, color, occasion, and weather matches.</p>
+        <p className="text-sm leading-6 text-muted">Your rating helps MyFitPick improve clothing, color, occasion, and weather matches.</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           {feedbackRatings.map((item) => (
             <Button key={item.label} variant={rating === item.value ? "primary" : "secondary"} onClick={() => setRating(item.value)}>

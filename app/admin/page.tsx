@@ -7,7 +7,7 @@ import { toSafeUser } from "@/models/User";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin | FitPick",
+  title: "Admin | MyFitPick",
   robots: {
     index: false,
     follow: false,

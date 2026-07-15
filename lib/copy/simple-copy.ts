@@ -49,7 +49,7 @@ export function simpleSourceLabel(source?: string | null) {
   if (source === "vision") return "Photo check";
   if (source === "logo_detection") return "Logo check";
   if (source === "entity_resolver") return "Item check";
-  if (source === "system_inferred") return "FitPick guess";
+  if (source === "system_inferred") return "MyFitPick guess";
   if (source === "user_confirmed") return "Checked by you";
   return "Not sure";
 }

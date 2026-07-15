@@ -37,7 +37,7 @@ export function WardrobeApiErrorState({ onRetry }: { onRetry?: () => void | Prom
   return (
     <ApiErrorState
       title="Wardrobe unavailable"
-      message="FitPick could not load wardrobe details right now. You can try again in a moment."
+      message="MyFitPick could not load wardrobe details right now. You can try again in a moment."
       onRetry={onRetry}
     />
   );

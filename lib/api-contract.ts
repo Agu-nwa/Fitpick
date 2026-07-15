@@ -50,7 +50,7 @@ export const apiContracts: ApiContract[] = [
   },
   {
     id: "plus-status",
-    name: "FitPick Plus status",
+    name: "MyFitPick Plus status",
     method: "GET",
     path: "/api/billing/plus-status",
     status: "planned",

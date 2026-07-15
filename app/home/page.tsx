@@ -5,10 +5,10 @@ import { SimpleStartGuide } from "@/components/onboarding/SimpleStartGuide";
 export default function HomePage() {
   return (
     <AppShell>
-      <header className="relative overflow-hidden rounded-xl4 border border-line bg-white/72 p-6 shadow-card backdrop-blur-xl sm:p-8 lg:p-10">
+      <header className="relative overflow-hidden rounded-xl4 border border-line bg-white/76 p-6 shadow-card backdrop-blur-xl sm:p-8 lg:p-10">
         <div className="max-w-4xl">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">Your daily edit</p>
-          <h1 className="font-editorial text-balance text-6xl font-semibold leading-[0.83] tracking-editorial text-ink sm:text-7xl lg:text-8xl xl:text-9xl">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Your daily edit</p>
+          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl xl:text-8xl">
             Dress with{" "}
             <br />
             <span className="italic text-cocoa">intention.</span>
@@ -18,8 +18,8 @@ export default function HomePage() {
           </p>
         </div>
       </header>
-      <div className="mt-6 flex items-center justify-between border-b border-line pb-6 text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
-        <span>FitPick intelligence</span>
+      <div className="mt-6 flex items-center justify-between gap-4 border-b border-line pb-6 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+        <span>MyFitPick intelligence</span>
         <span>Collection / 2026</span>
       </div>
       <div className="mt-8 flex flex-col gap-12">

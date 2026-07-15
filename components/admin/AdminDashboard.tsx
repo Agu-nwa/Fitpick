@@ -159,7 +159,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 <ShieldCheck size={14} aria-hidden="true" />
                 Admin
               </p>
-              <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+              <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
                 Operations console.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
@@ -203,7 +203,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 eyebrow={lastRefreshed ? `Last refreshed ${formatDate(lastRefreshed)}` : "Loading"}
               />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="App" value={health?.checks?.app || "loading"} detail={health?.service || "FitPick"} tone={statusTone(health?.checks?.app)} />
+                <StatCard label="App" value={health?.checks?.app || "loading"} detail={health?.service || "MyFitPick"} tone={statusTone(health?.checks?.app)} />
                 <StatCard label="Database" value={health?.checks?.database || "loading"} detail={health?.databaseConfigured ? "MongoDB configured" : "MongoDB not configured"} tone={statusTone(health?.checks?.database)} />
                 <StatCard label="Storage" value={health?.checks?.storage || "loading"} detail="S3/CloudFront readiness" tone={statusTone(health?.checks?.storage)} />
                 <StatCard label="Worker" value={health?.checks?.worker || "loading"} detail="Background worker health signal" tone={statusTone(health?.checks?.worker)} />

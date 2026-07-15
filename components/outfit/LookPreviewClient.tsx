@@ -157,7 +157,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Full look</p>
-        <h1 className="mt-2 font-editorial text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">{outfit.title}</h1>
+        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{outfit.title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{outfit.occasionFit || outfit.summary}</p>
         </div>
       </div>

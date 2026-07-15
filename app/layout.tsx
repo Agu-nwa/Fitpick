@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "FitPick - Your AI Wardrobe", template: "%s - FitPick" },
+  title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
   description: "Your wardrobe, styled intelligently. Build looks, preview outfits, and dress with confidence.",
   appleWebApp: {
     capable: true,
-    title: "FitPick",
+    title: "MyFitPick",
     statusBarStyle: "black-translucent",
   },
   manifest: "/manifest.webmanifest",

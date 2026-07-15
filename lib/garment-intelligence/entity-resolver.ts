@@ -248,7 +248,7 @@ export function resolveGarmentEntity(analysis: WardrobeAiAnalysis, ocrResult?: D
       playerName: player.playerName,
       playerNumber: player.playerNumber,
       kitType: inferKitType(evidence, colors),
-      entityWarnings: confidence < 0.75 ? ["FitPick is not fully certain — please verify the team or nation."] : []
+      entityWarnings: confidence < 0.75 ? ["MyFitPick is not fully certain — please verify the team or nation."] : []
     };
   }
 
@@ -262,7 +262,7 @@ export function resolveGarmentEntity(analysis: WardrobeAiAnalysis, ocrResult?: D
     recognition.recognizedEntity = primary;
     recognition.entityType = "native_traditional_garment";
     recognition.entityConfidence = Number(confidence.toFixed(2));
-    recognition.entityWarnings = confidence < 0.72 ? ["FitPick is not fully certain — please verify the traditional garment type."] : [];
+    recognition.entityWarnings = confidence < 0.72 ? ["MyFitPick is not fully certain — please verify the traditional garment type."] : [];
   }
 
   if (!recognition.recognizedEntity && brandSignals.length) {
@@ -270,7 +270,7 @@ export function resolveGarmentEntity(analysis: WardrobeAiAnalysis, ocrResult?: D
       ? "luxury_brand_item"
       : "branded_sportswear";
     recognition.entityConfidence = 0.62;
-    recognition.entityWarnings = ["Visible brand signals were detected, but FitPick is not fully certain — please verify."];
+    recognition.entityWarnings = ["Visible brand signals were detected, but MyFitPick is not fully certain — please verify."];
   }
 
   return recognition;

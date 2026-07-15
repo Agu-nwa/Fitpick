@@ -14,8 +14,8 @@ export default function AvatarPage() {
               <ScanFace size={14} aria-hidden="true" />
               Digital fitting studio
             </p>
-            <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
-              Build the model FitPick styles.
+            <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
+              Build the model MyFitPick styles.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
               Choose your avatar base, add a full-body model image, and improve try-on previews without changing how your wardrobe data is stored.

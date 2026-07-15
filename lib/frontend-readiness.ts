@@ -69,6 +69,6 @@ export const backendHandoffAreas = [
   "Occasion and style preference persistence",
   "Outfit recommendation engine",
   "Worn history, saved looks, and ratings",
-  "FitPick Plus entitlement and plan status",
+  "MyFitPick Plus entitlement and plan status",
   "Notifications, privacy settings, and audit-safe data handling",
 ];

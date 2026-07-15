@@ -212,7 +212,7 @@ export function AvatarProfileForm({
             Model controls
           </p>
           <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Set your fitting profile.</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Adding your size helps FitPick show outfits better. You can skip this and add it later.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Adding your size helps MyFitPick show outfits better. You can skip this and add it later.</p>
         </div>
         <Badge tone="premium">User controlled</Badge>
       </div>
@@ -227,7 +227,7 @@ export function AvatarProfileForm({
             Avatar direction
           </p>
         </div>
-        <FieldGroup label="Avatar base" htmlFor="avatar-gender" help="Choose the avatar base FitPick should use for previews.">
+        <FieldGroup label="Avatar base" htmlFor="avatar-gender" help="Choose the avatar base MyFitPick should use for previews.">
           <select id="avatar-gender" className={inputClass} value={genderPresentation} onChange={(event) => setGenderPresentation(event.target.value as AvatarProfile["genderPresentation"])}>
             <option value="masculine">Male</option>
             <option value="feminine">Female</option>
@@ -272,7 +272,7 @@ export function AvatarProfileForm({
         </FieldGroup>
         <FieldGroup label="Avatar type" htmlFor="avatar-provider">
           <select id="avatar-provider" className={inputClass} value={avatarProvider} onChange={(event) => setAvatarProvider(event.target.value as AvatarProfile["avatarProvider"])}>
-            <option value="fitpick_preset">FitPick preset</option>
+            <option value="fitpick_preset">MyFitPick preset</option>
             <option value="ready_player_me">Ready Player Me</option>
             <option value="custom_glb">Custom GLB</option>
           </select>
@@ -310,13 +310,13 @@ export function AvatarProfileForm({
             <Camera size={14} aria-hidden="true" />
             Virtual try-on model image
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted">Use a full-body photo for the most grounded try-on, or generate a stable FitPick model image and reuse it.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Use a full-body photo for the most grounded try-on, or generate a stable MyFitPick model image and reuse it.</p>
         </div>
         <FieldGroup label="Model image source" htmlFor="tryon-model-source">
           <select id="tryon-model-source" className={inputClass} value={tryOnModelSource} onChange={(event) => setTryOnModelSource(event.target.value as AvatarProfile["tryOnModelSource"])}>
             <option value="none">No model image</option>
             <option value="uploaded">Uploaded full-body photo</option>
-            <option value="generated">Generated FitPick model</option>
+            <option value="generated">Generated MyFitPick model</option>
           </select>
         </FieldGroup>
         <input
@@ -360,7 +360,7 @@ export function AvatarProfileForm({
             <Ruler size={14} aria-hidden="true" />
             My size
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted">Adding your size helps FitPick show outfits better. These details are not used to infer identity.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Adding your size helps MyFitPick show outfits better. These details are not used to infer identity.</p>
           {!hasSizeDetails ? (
             <p className="mt-2 rounded-2xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
               No size details yet. Add your size later to improve outfit previews.

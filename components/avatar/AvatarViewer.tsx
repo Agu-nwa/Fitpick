@@ -125,7 +125,7 @@ export function AvatarViewer({ profile }: { profile?: AvatarProfileData["profile
       <details className="rounded-2xl border border-line bg-canvas/60 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge tone="neutral">{profile?.avatarProvider === "ready_player_me" ? "Ready Player Me" : profile?.avatarProvider === "custom_glb" ? "Custom GLB" : "FitPick preset"}</Badge>
+          <Badge tone="neutral">{profile?.avatarProvider === "ready_player_me" ? "Ready Player Me" : profile?.avatarProvider === "custom_glb" ? "Custom GLB" : "MyFitPick preset"}</Badge>
           <Badge tone="neutral">{posePreset}</Badge>
           <Badge tone="neutral">{profile?.visualizationStyle || "luxury"}</Badge>
           {autoRotate ? <Badge tone="info">360 view</Badge> : null}

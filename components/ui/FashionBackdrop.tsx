@@ -33,6 +33,19 @@ const cards = [
   }
 ];
 
+const mobileCards = [
+  {
+    src: "/fashion/editorial-male-teal.png",
+    alt: "Man in muted teal overshirt editorial card",
+    className: "-right-10 top-20 h-44 w-32 rotate-[4deg]"
+  },
+  {
+    src: "/fashion/product-blush-bag.png",
+    alt: "Blush handbag product card",
+    className: "-left-8 bottom-24 h-36 w-28 rotate-[-5deg]"
+  }
+];
+
 export function FashionBackdrop({
   className,
   density = "full"
@@ -45,7 +58,22 @@ export function FashionBackdrop({
   return (
     <div className={cn("pointer-events-none absolute inset-0 -z-10 overflow-hidden", className)} aria-hidden="true">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.76),transparent_28rem),radial-gradient(circle_at_80%_18%,rgba(232,183,172,0.28),transparent_18rem),radial-gradient(circle_at_18%_80%,rgba(216,185,140,0.24),transparent_22rem)]" />
-      <div className="absolute left-1/2 top-[42%] h-32 w-32 -translate-x-1/2 rounded-full bg-lime/35 blur-3xl" />
+      <div className="absolute left-1/2 top-[42%] h-32 w-32 -translate-x-1/2 rounded-full bg-lime/20 blur-3xl" />
+      <div className="md:hidden">
+        {mobileCards.map((card, index) => (
+          <div
+            key={card.src}
+            className={cn(
+              "absolute overflow-hidden rounded-[1.1rem] border border-white/70 bg-white opacity-25 shadow-card",
+              index % 2 === 0 ? "fashion-float-a" : "fashion-float-b",
+              card.className
+            )}
+            style={{ animationDelay: `${index * 0.45}s` }}
+          >
+            <img src={card.src} alt={card.alt} className="h-full w-full object-cover" loading="lazy" />
+          </div>
+        ))}
+      </div>
       <div className="hidden md:block">
         {visibleCards.map((card, index) => (
           <div

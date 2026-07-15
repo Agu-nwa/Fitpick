@@ -38,7 +38,7 @@ const config: Config = {
         serif: ["var(--font-editorial)", "serif"]
       },
       letterSpacing: {
-        editorial: "-0.035em"
+        editorial: "-0.02em"
       }
     },
   },

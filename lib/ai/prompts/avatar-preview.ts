@@ -18,7 +18,7 @@ function styleInstruction(style: AvatarPreviewPromptInput["visualizationStyle"])
 }
 
 export function buildAvatarPreviewPrompt(input: AvatarPreviewPromptInput) {
-  return `Create a photorealistic virtual try-on image for FitPick using only the selected owned wardrobe item details.
+  return `Create a photorealistic virtual try-on image for MyFitPick using only the selected owned wardrobe item details.
 
 Selected owned outfit:
 ${input.outfitDescription}

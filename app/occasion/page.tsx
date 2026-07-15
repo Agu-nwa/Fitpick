@@ -12,11 +12,11 @@ export default function OccasionPage() {
             <CalendarDays size={14} aria-hidden="true" />
             Occasion
           </p>
-          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+          <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
             Where are you going?
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Choose the moment, then FitPick will tune the outfit for formality, weather, and what is already in your closet.
+            Choose the moment, then MyFitPick will tune the outfit for formality, weather, and what is already in your closet.
           </p>
         </div>
       </header>

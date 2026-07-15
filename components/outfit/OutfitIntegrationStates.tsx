@@ -26,7 +26,7 @@ export function NotEnoughWardrobeItemsState() {
   return (
     <Card className="p-4">
       <p className="text-sm font-semibold text-ink">Your wardrobe needs a few more pieces.</p>
-      <p className="mt-2 text-xs leading-5 text-muted">Add a top, bottom, dress, shoes, or native piece so FitPick has enough to work with.</p>
+      <p className="mt-2 text-xs leading-5 text-muted">Add a top, bottom, dress, shoes, or native piece so MyFitPick has enough to work with.</p>
       <Link href="/wardrobe/add">
         <Button className="mt-4 w-full">Add clothes</Button>
       </Link>

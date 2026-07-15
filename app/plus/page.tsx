@@ -15,9 +15,9 @@ export default function PlusPage() {
         <div className="relative max-w-4xl">
           <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
             <Gem size={14} aria-hidden="true" />
-            FitPick Plus
+            MyFitPick Plus
           </p>
-          <h1 className="font-editorial text-balance text-5xl font-semibold leading-[0.9] tracking-editorial text-ink sm:text-6xl lg:text-7xl">
+          <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
             More room to plan.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">

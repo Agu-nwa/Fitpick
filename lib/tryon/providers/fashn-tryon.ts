@@ -203,14 +203,14 @@ export function createFashnTryOnProvider(): TryOnProvider {
       if (!loaded || !avatarProfile) return { ...unavailable("FASHN try-on needs an outfit recommendation and avatar profile."), status: "failed" };
 
       const modelImage = preferredTryOnModelImageUrl(avatarProfile);
-      if (!modelImage) return { ...unavailable("Add an uploaded full-body model photo or generate a FitPick model image before using FASHN."), status: "failed" };
+      if (!modelImage) return { ...unavailable("Add an uploaded full-body model photo or generate a MyFitPick model image before using FASHN."), status: "failed" };
 
       const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
       if (!products.length) return { ...unavailable("FASHN needs at least one wardrobe item with a usable reference image."), status: "failed" };
 
       const startedAt = Date.now();
       const warnings = products.length > 1
-        ? [`FitPick applied ${products.length} wardrobe references sequentially because FASHN Try-On Max accepts one product image per request.`]
+        ? [`MyFitPick applied ${products.length} wardrobe references sequentially because FASHN Try-On Max accepts one product image per request.`]
         : [];
 
       try {
@@ -224,7 +224,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
             modelImage: currentModelImage,
             stepIndex: index + 1,
             prompt: [
-              "Create a realistic virtual try-on image for FitPick.",
+              "Create a realistic virtual try-on image for MyFitPick.",
               "Preserve the current model identity, face, pose, body proportions, and already-applied outfit pieces from the model image.",
               "Apply only the provided product image in this step, without removing existing correctly applied garments.",
               "Keep the result premium, natural, and suitable for a fashion styling app.",

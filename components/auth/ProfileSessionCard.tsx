@@ -42,7 +42,7 @@ export function ProfileSessionCard() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-base font-semibold text-ink">{user?.name || "FitPick user"}</h2>
+            <h2 className="truncate text-base font-semibold text-ink">{user?.name || "MyFitPick user"}</h2>
             <StatusBadge tone={user?.plan === "plus" ? "premium" : "neutral"}>{user?.plan || "free"}</StatusBadge>
           </div>
           <p className="mt-1 truncate text-sm text-muted">{user?.email}</p>

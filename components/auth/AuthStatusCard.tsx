@@ -19,7 +19,7 @@ export function AuthStatusCard() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ink">Session check</p>
-          <p className="mt-1 text-xs leading-5 text-muted">{user?.name || "FitPick user"} is authenticated.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">{user?.name || "MyFitPick user"} is authenticated.</p>
         </div>
         <StatusBadge tone="success">connected</StatusBadge>
       </div>

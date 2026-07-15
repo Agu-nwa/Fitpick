@@ -83,7 +83,7 @@ export function ProfileIntegrationClient() {
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="FitPick Plus" action={<Link href="/plus" className="text-xs font-semibold text-cocoa">Open</Link>} />
+        <SectionHeader title="MyFitPick Plus" action={<Link href="/plus" className="text-xs font-semibold text-cocoa">Open</Link>} />
         <PlusStatusCard status={plus} />
       </section>
     </>

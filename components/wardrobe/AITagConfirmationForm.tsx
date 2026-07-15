@@ -114,7 +114,7 @@ const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
   },
   {
     title: "Color and pattern",
-    body: "These help FitPick match this item with the rest of your closet.",
+    body: "These help MyFitPick match this item with the rest of your closet.",
     keys: ["primaryColor", "secondaryColors", "pattern"]
   },
   {
@@ -124,17 +124,17 @@ const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
   },
   {
     title: "Fit and shape",
-    body: "Shape details help FitPick choose better outfits.",
+    body: "Shape details help MyFitPick choose better outfits.",
     keys: ["fit", "silhouette", "sleeveLength", "necklineCollar", "length", "layeringSuitability"]
   },
   {
     title: "Where and when to wear it",
-    body: "Use these to help FitPick choose the right moment for this item.",
+    body: "Use these to help MyFitPick choose the right moment for this item.",
     keys: ["formalityScore", "luxuryScore", "weatherSuitability", "seasonSuitability", "occasionSuitability", "culturalTraditionalRelevance"]
   },
   {
     title: "Style notes",
-    body: "Short notes FitPick can use when explaining future outfits.",
+    body: "Short notes MyFitPick can use when explaining future outfits.",
     keys: ["stylingNotes"]
   }
 ];
@@ -142,7 +142,7 @@ const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
 const detailFieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
   {
     title: "Details",
-    body: "Extra clothing details FitPick noticed. You can leave these alone if you are not sure.",
+    body: "Extra clothing details MyFitPick noticed. You can leave these alone if you are not sure.",
     keys: ["recognizedEntity", "entityType", "entityConfidence", "sportCategory", "teamOrNation", "clubOrFederation", "playerName", "playerNumber", "kitType", "seasonEstimate", "logoDetections", "textDetections", "brandSignals", "entityWarnings"]
   }
 ];
@@ -342,7 +342,7 @@ export function AITagConfirmationForm({
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-ink">FitPick found these details. Please check them.</p>
+            <p className="text-sm font-semibold text-ink">MyFitPick found these details. Please check them.</p>
             <p className="mt-1 text-xs leading-5 text-muted">Change anything that looks wrong.</p>
           </div>
           <Badge tone={lowConfidenceCount ? "warning" : "success"}>
@@ -415,7 +415,7 @@ export function AITagConfirmationForm({
 
       <details className="rounded-2xl border border-line bg-canvas/60 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">Details</summary>
-        <p className="mt-2 text-xs leading-5 text-muted">Extra clothing details FitPick noticed. You can leave these alone if you are not sure.</p>
+        <p className="mt-2 text-xs leading-5 text-muted">Extra clothing details MyFitPick noticed. You can leave these alone if you are not sure.</p>
         <div className="mt-4 space-y-4">
           {detailFieldGroups.map((group) => (
             <section key={group.title} className="rounded-2xl border border-line bg-surface/70 p-3">

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "FitPick",
-    short_name: "FitPick",
+    name: "MyFitPick",
+    short_name: "MyFitPick",
     description: "Occasion-first outfit decisions from clothes you already own.",
     start_url: "/home",
     display: "standalone",

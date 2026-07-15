@@ -114,8 +114,8 @@ export const uploadPreviewItems = [
 ];
 
 export const emptyStates = {
-  wardrobe: { title: "Your wardrobe starts here.", body: "Add a few pieces you wear often. FitPick will begin learning what works together.", cta: "Add your first item" },
-  shoes: { title: "No shoes added", body: "Shoes help FitPick finish your look and match the occasion.", cta: "Add shoes" },
+  wardrobe: { title: "Your wardrobe starts here.", body: "Add a few pieces you wear often. MyFitPick will begin learning what works together.", cta: "Add your first item" },
+  shoes: { title: "No shoes added", body: "Shoes help MyFitPick finish your look and match the occasion.", cta: "Add shoes" },
   looks: { title: "No saved looks yet", body: "Save outfits you like so you can wear them again later.", cta: "Pick outfit" }
 };
 
@@ -134,7 +134,7 @@ export const notificationPatterns = [
 export const stateSamples = {
   loading: { title: "Building your outfit", body: "Checking occasion, weather, colors, and worn history." },
   offline: { title: "You are offline", body: "Saved wardrobe items still show. New outfit picks may wait until connection returns.", cta: "Try again" },
-  permission: { title: "Weather tips are off", body: "You can still get outfit picks. Weather access only helps FitPick avoid pieces that feel too hot, cold, or rainy." },
+  permission: { title: "Weather tips are off", body: "You can still get outfit picks. Weather access only helps MyFitPick avoid pieces that feel too hot, cold, or rainy." },
   notEnoughItems: { title: "Not enough items", body: "We need at least one top, one bottom, and one pair of shoes for this outfit.", cta: "Add items" },
   premiumLocked: { title: "More swaps are included with Plus", body: "Compare more options by color, formality, travel, and event planning." }
 };

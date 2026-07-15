@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 
 const steps = [
   { title: "Add a few pieces", body: "Start with the clothes, shoes, and bags you reach for often." },
-  { title: "Choose the moment", body: "Tell FitPick where you are going and what the weather is like." },
+  { title: "Choose the moment", body: "Tell MyFitPick where you are going and what the weather is like." },
   { title: "Review the look", body: "See why the pieces work together before you decide." },
   { title: "Save what feels right", body: "Keep the outfits you want to wear again." }
 ];

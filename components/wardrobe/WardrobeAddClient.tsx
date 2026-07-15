@@ -236,7 +236,7 @@ export function WardrobeAddClient() {
 
       if (!result.ok) {
         setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
-        setMessage("FitPick could not create the wardrobe upload record.");
+        setMessage("MyFitPick could not create the wardrobe upload record.");
         return;
       }
 
@@ -298,7 +298,7 @@ export function WardrobeAddClient() {
                 Wardrobe upload
               </p>
               <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Photograph one piece.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">FitPick works best when each upload has one item with four supporting angles.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">MyFitPick works best when each upload has one item with four supporting angles.</p>
             </div>
             <Badge tone={missingRequired.length ? "warning" : "success"}>
               {selectedCount}/4 ready
@@ -365,7 +365,7 @@ export function WardrobeAddClient() {
         <Card>
           <FieldGroup
             label="Manual fallback"
-            help="Use this only when photos are unavailable. Checking photos gives FitPick better wardrobe details."
+            help="Use this only when photos are unavailable. Checking photos gives MyFitPick better wardrobe details."
           >
             <div className="mt-3">
               <WardrobeTagReviewForm showName submitLabel="Create wardrobe item" disabled={isSaving || isAnalyzing} onSubmit={handleManualCreate} />

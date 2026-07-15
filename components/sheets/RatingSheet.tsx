@@ -10,7 +10,7 @@ const followUps = ["Too casual", "Too formal", "Wrong color", "Not my style", "S
 export function RatingSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <BottomSheet open={open} onClose={onClose} title="How does this outfit feel?">
-      <p className="text-sm leading-6 text-muted">Your rating helps FitPick improve future picks without judging your appearance.</p>
+      <p className="text-sm leading-6 text-muted">Your rating helps MyFitPick improve future picks without judging your appearance.</p>
       <div className="mt-5 grid grid-cols-2 gap-3">
         {ratings.map((rating, index) => (
           <Button key={rating} variant={index === 0 ? "primary" : "secondary"}>{rating}</Button>

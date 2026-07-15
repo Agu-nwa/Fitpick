@@ -6,7 +6,7 @@ type SendOtpEmailInput = {
 };
 
 function emailFrom() {
-  return process.env.EMAIL_FROM || "FitPick <auth@myfitpick.com>";
+  return process.env.EMAIL_FROM || "MyFitPick <auth@myfitpick.com>";
 }
 
 function resendApiKey() {
@@ -18,12 +18,12 @@ function provider() {
 }
 
 function subjectForPurpose(purpose: SendOtpEmailInput["purpose"]) {
-  return purpose === "signin" ? "Your FitPick sign-in code" : "Your FitPick sign-up code";
+  return purpose === "signin" ? "Your MyFitPick sign-in code" : "Your MyFitPick sign-up code";
 }
 
 function textBody(input: SendOtpEmailInput) {
   return [
-    `Your FitPick ${input.purpose === "signin" ? "sign-in" : "sign-up"} code is ${input.code}.`,
+    `Your MyFitPick ${input.purpose === "signin" ? "sign-in" : "sign-up"} code is ${input.code}.`,
     "",
     `This code expires in ${input.expiresInMinutes} minutes.`,
     "",
@@ -35,7 +35,7 @@ function htmlBody(input: SendOtpEmailInput) {
   const label = input.purpose === "signin" ? "sign-in" : "sign-up";
   return `
     <div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#171310;max-width:520px;margin:0 auto;padding:24px">
-      <p style="font-size:12px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#8a5a44">FitPick</p>
+      <p style="font-size:12px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#8a5a44">MyFitPick</p>
       <h1 style="font-size:24px;margin:8px 0 16px">Your ${label} code</h1>
       <p style="font-size:15px;color:#4f4944">Use this 6-digit code to continue:</p>
       <p style="font-size:32px;font-weight:800;letter-spacing:0.18em;margin:20px 0;color:#3d2f2a">${input.code}</p>
