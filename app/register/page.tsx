@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { FashionBackdrop } from "@/components/ui/FashionBackdrop";
 
 export default function RegisterPage() {
   return (
-    <main id="main-content" className="relative min-h-[100svh] overflow-hidden bg-canvas px-5 py-[calc(1.5rem+var(--safe-top))] text-ink">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(166,124,82,0.14),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(68,74,58,0.12),transparent_26%)]" />
+    <main id="main-content" className="relative isolate min-h-[100svh] overflow-hidden bg-canvas px-5 py-[calc(1.5rem+var(--safe-top))] text-ink">
+      <FashionBackdrop density="soft" />
       <section className="relative mx-auto grid min-h-[calc(100svh-3rem-var(--safe-top))] w-full max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,430px)] lg:items-center">
         <div className="max-w-xl pt-4">
           <Link href="/" className="text-lg font-semibold tracking-tight text-ink">FitPick</Link>

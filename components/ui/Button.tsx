@@ -10,10 +10,10 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; variant?: ButtonVariant }) {
   const styles = {
-    primary: "bg-cocoa text-canvas shadow-glow hover:bg-cocoa/90 active:bg-cocoa/80",
-    secondary: "border border-line bg-surface text-ink hover:border-olive/60 hover:bg-ink/5",
-    ghost: "text-ink hover:bg-ink/5 hover:text-cocoa",
-    danger: "bg-danger text-ink hover:bg-danger/90"
+    primary: "bg-cocoa text-canvas shadow-glow hover:bg-cocoa/90 active:bg-espresso",
+    secondary: "border border-line bg-white/80 text-ink shadow-card hover:border-olive/70 hover:bg-white",
+    ghost: "text-ink hover:bg-white/70 hover:text-cocoa",
+    danger: "bg-danger text-canvas hover:bg-danger/90"
   };
 
   return (
