@@ -135,20 +135,6 @@ export function AvatarProfileForm({
     setNotice("Avatar saved.");
   }
 
-  async function saveModelImagePatch(patch: Record<string, unknown>, successMessage: string) {
-    const result = await updateAvatarProfile({
-      ...patch,
-      consentAccepted
-    });
-    if (!result.ok) {
-      setError(result.error.message || "Unable to save your model image.");
-      return null;
-    }
-    onSaved(result.data.profile);
-    setNotice(successMessage);
-    return result.data.profile;
-  }
-
   async function handleModelPhoto(file: File) {
     setUploadingModel(true);
     setNotice("");
@@ -175,16 +161,19 @@ export function AvatarProfileForm({
       if (!uploadResponse.ok) throw new Error("We could not upload your model photo.");
 
       const imageUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl.split("?")[0] || "";
-      const saved = await saveModelImagePatch({
+      const result = await updateAvatarProfile({
         tryOnModelSource: "uploaded",
         uploadedModelImageUrl: imageUrl,
-        uploadedModelImageStorageKey: uploadAccess.storageKey
-      }, "Model photo saved.");
-      if (saved) {
-        setTryOnModelSource("uploaded");
-        setUploadedModelImageUrl(saved.uploadedModelImageUrl || imageUrl);
-        setUploadedModelImageStorageKey(saved.uploadedModelImageStorageKey || uploadAccess.storageKey);
-      }
+        uploadedModelImageStorageKey: uploadAccess.storageKey,
+        consentAccepted
+      });
+      if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+
+      onSaved(result.data.profile);
+      setTryOnModelSource("uploaded");
+      setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || imageUrl);
+      setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || uploadAccess.storageKey);
+      setNotice("Model photo saved.");
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo.");
     } finally {

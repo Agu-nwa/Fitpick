@@ -35,6 +35,7 @@ function config() {
     generationMode: process.env.FASHN_GENERATION_MODE || "balanced",
     outputFormat: process.env.FASHN_OUTPUT_FORMAT || "png",
     returnBase64: process.env.FASHN_RETURN_BASE64 !== "false",
+    maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
     timeoutMs: Math.max(15000, Math.min(Number(process.env.FASHN_TIMEOUT_MS || process.env.TRYON_TIMEOUT_MS || 90000), 180000)),
     pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 3000), 10000))
   };
@@ -71,7 +72,7 @@ function errorMessage(error: FashnStatusResponse["error"] | FashnRunResponse["er
   return "FASHN try-on failed.";
 }
 
-function selectProductImage(items: any[]) {
+function rankedProductImages(items: any[]) {
   const ranked = [...items].sort((a, b) => {
     const aCategory = `${a.category || ""} ${a.subcategory || ""}`.toLowerCase();
     const bCategory = `${b.category || ""} ${b.subcategory || ""}`.toLowerCase();
@@ -79,7 +80,7 @@ function selectProductImage(items: any[]) {
     const bScore = fashionCategories.findIndex((category) => bCategory.includes(category));
     return (aScore === -1 ? 999 : aScore) - (bScore === -1 ? 999 : bScore);
   });
-  return ranked.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).find((entry) => entry.url);
+  return ranked.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).filter((entry) => entry.url);
 }
 
 async function outputToUrls(input: TryOnPreviewInput, output: string[] = []) {
@@ -102,6 +103,43 @@ async function outputToUrls(input: TryOnPreviewInput, output: string[] = []) {
     urls.push(value);
   }
   return urls;
+}
+
+async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
+  productImage: string;
+  modelImage: string;
+  prompt: string;
+  stepIndex: number;
+}) {
+  const providerConfig = config();
+  const response = await fetch(providerConfig.runEndpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${providerConfig.apiKey}`
+    },
+    body: JSON.stringify({
+      model_name: providerConfig.modelName,
+      inputs: {
+        product_image: payload.productImage,
+        model_image: payload.modelImage,
+        prompt: payload.prompt,
+        resolution: providerConfig.resolution,
+        generation_mode: providerConfig.generationMode,
+        output_format: providerConfig.outputFormat,
+        return_base64: providerConfig.returnBase64
+      }
+    }),
+    signal: AbortSignal.timeout(providerConfig.timeoutMs)
+  });
+
+  if (!response.ok) return { ...unavailable(`FASHN run returned HTTP ${response.status}.`), status: "failed" as const };
+  const data = await response.json() as FashnRunResponse;
+  if (!data.id) return { ...unavailable(errorMessage(data.error) || data.message || "FASHN did not return a prediction ID."), status: "failed" as const };
+  return pollUntilReady(data.id, {
+    ...input,
+    cacheKey: `${input.cacheKey || "fashn"}-step-${payload.stepIndex}`
+  });
 }
 
 async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnProviderOutput> {
@@ -167,58 +205,43 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const modelImage = preferredTryOnModelImageUrl(avatarProfile);
       if (!modelImage) return { ...unavailable("Add an uploaded full-body model photo or generate a FitPick model image before using FASHN."), status: "failed" };
 
-      const product = selectProductImage(loaded.items);
-      if (!product?.url) return { ...unavailable("FASHN needs at least one wardrobe item with a usable reference image."), status: "failed" };
+      const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
+      if (!products.length) return { ...unavailable("FASHN needs at least one wardrobe item with a usable reference image."), status: "failed" };
 
       const startedAt = Date.now();
-      const warnings = loaded.items.length > 1
-        ? ["FASHN Try-On Max accepts one product image per request; FitPick sent the strongest available garment reference and included the full outfit context in the prompt."]
+      const warnings = products.length > 1
+        ? [`FitPick applied ${products.length} wardrobe references sequentially because FASHN Try-On Max accepts one product image per request.`]
         : [];
 
       try {
-        const response = await fetch(providerConfig.runEndpoint, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Bearer ${providerConfig.apiKey}`
-          },
-          body: JSON.stringify({
-            model_name: providerConfig.modelName,
-            inputs: {
-              product_image: product.url,
-              model_image: modelImage,
-              prompt: [
-                "Create a realistic virtual try-on image for FitPick.",
-                "Preserve the model identity, pose, and body proportions from the model image.",
-                "Place the product image accurately on the model.",
-                "Keep the result premium, natural, and suitable for a fashion styling app.",
-                `Selected outfit context: ${loaded.items.map((item) => `${item.name || item.category || "item"} (${item.category || "unknown"})`).join(", ")}.`
-              ].join(" "),
-              resolution: providerConfig.resolution,
-              generation_mode: providerConfig.generationMode,
-              output_format: providerConfig.outputFormat,
-              return_base64: providerConfig.returnBase64
-            }
-          }),
-          signal: AbortSignal.timeout(providerConfig.timeoutMs)
-        });
+        let currentModelImage = modelImage;
+        let result: TryOnProviderOutput | null = null;
 
-        if (!response.ok) {
-          logAiEvent({
-            operation: "fashn-tryon-run",
-            model: providerConfig.modelName,
-            latencyMs: Date.now() - startedAt,
-            status: "failed",
-            cacheHit: false,
-            provider: "fashn",
-            errorCategory: `http_${response.status}`
+        for (let index = 0; index < products.length; index += 1) {
+          const product = products[index];
+          result = await runFashnTryOnStep(input, {
+            productImage: product.url,
+            modelImage: currentModelImage,
+            stepIndex: index + 1,
+            prompt: [
+              "Create a realistic virtual try-on image for FitPick.",
+              "Preserve the current model identity, face, pose, body proportions, and already-applied outfit pieces from the model image.",
+              "Apply only the provided product image in this step, without removing existing correctly applied garments.",
+              "Keep the result premium, natural, and suitable for a fashion styling app.",
+              `This step applies: ${product.item.name || product.item.category || "wardrobe item"} (${product.item.category || "unknown"}).`,
+              `Complete outfit context: ${loaded.items.map((item) => `${item.name || item.category || "item"} (${item.category || "unknown"})`).join(", ")}.`
+            ].join(" ")
           });
-          return { ...unavailable(`FASHN run returned HTTP ${response.status}.`), status: "failed" };
+
+          if (result.status === "failed" || result.status === "provider_unavailable") return result;
+          if (result.status !== "ready" || !result.previewUrls[0]) {
+            result.warnings = [...warnings, ...result.warnings].slice(0, 8);
+            return result;
+          }
+          currentModelImage = result.previewUrls[0];
         }
 
-        const data = await response.json() as FashnRunResponse;
-        if (!data.id) return { ...unavailable(errorMessage(data.error) || data.message || "FASHN did not return a prediction ID."), status: "failed" };
-        const result = await pollUntilReady(data.id, input);
+        if (!result) return { ...unavailable("FASHN could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
 
         logAiEvent({
