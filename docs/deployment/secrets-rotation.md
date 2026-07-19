@@ -8,7 +8,7 @@ Some development secrets were previously exposed during local setup. Do not reus
 - MongoDB database user password
 - AWS access key
 - any Cloudinary key that was ever used
-- Stripe/Paystack live keys if pasted into chat, docs, logs, or screenshots
+- Stripe/CoinPayments live keys if pasted into chat, docs, logs, or screenshots
 - `JWT_SECRET` if copied into any shared channel
 
 ## OpenAI

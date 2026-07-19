@@ -22,7 +22,7 @@ export const aiSuggestedWardrobeTagsSchema = z.object({
 
 export const aiTaggingResultSchema = z.object({
   ok: z.boolean(),
-  provider: z.enum(["mock", "gemini", "openai"]),
+  provider: z.literal("openai"),
   aiTagStatus: z.enum(["completed", "failed", "needs-review"]),
   suggestedTags: aiSuggestedWardrobeTagsSchema.optional(),
   aiAnalysis: wardrobeAiAnalysisSchema.optional(),

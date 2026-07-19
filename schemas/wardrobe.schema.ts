@@ -10,7 +10,6 @@ export const wardrobeCategorySchema = z.enum([
   "tops",
   "bottoms",
   "dresses",
-  "native",
   "outerwear",
   "shoes",
   "bags",
@@ -19,7 +18,7 @@ export const wardrobeCategorySchema = z.enum([
 
 export const wardrobeConditionSchema = z.enum(["ready", "needs-care", "missing-tags"]);
 export const taggedSizeSchema = z.enum(["XS", "S", "M", "L", "XL", "XXL", "custom", "unknown"]);
-export const sizeSystemSchema = z.enum(["US", "UK", "EU", "NG", "international", "custom", "unknown"]);
+export const sizeSystemSchema = z.enum(["US", "UK", "EU", "international", "custom", "unknown"]);
 export const garmentFitSchema = z.enum(["slim", "regular", "relaxed", "oversized", "tailored", "flowing", "unknown"]);
 export const stretchLevelSchema = z.enum(["none", "low", "medium", "high", "unknown"]);
 export const fabricDrapeSchema = z.enum(["structured", "soft", "flowing", "heavy", "stiff", "unknown"]);
@@ -141,7 +140,7 @@ const wardrobeImageVariantSchema = z
   .object({
     url: z.string().trim().url().max(600).optional().or(z.literal("")),
     storageKey: z.string().trim().max(260).optional().or(z.literal("")),
-    provider: z.enum(["local_placeholder", "metadata", "s3"]).default("s3"),
+    provider: z.literal("s3").default("s3"),
     width: z.number().int().nonnegative().max(12000).optional(),
     height: z.number().int().nonnegative().max(12000).optional(),
     bytes: z.number().int().nonnegative().max(20 * 1024 * 1024).optional(),
@@ -162,7 +161,7 @@ const wardrobeImageAssetSchema = z
   .object({
     url: z.string().trim().url().max(600),
     storageKey: z.string().trim().max(260),
-    provider: z.enum(["local_placeholder", "metadata", "s3"]).default("metadata"),
+    provider: z.literal("s3").default("s3"),
     uploadedAt: z.string().datetime().optional(),
     purpose: imagePurposeSchema,
     variants: wardrobeImageVariantsSchema.optional()
@@ -185,7 +184,7 @@ export const uploadMetadataSchema = z.object({
   sizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
   width: z.number().int().positive().max(12000).optional(),
   height: z.number().int().positive().max(12000).optional(),
-  provider: z.enum(["s3", "local_placeholder", "metadata"]).optional(),
+  provider: z.literal("s3").optional(),
   storageKey: z.string().trim().max(260).optional(),
   publicId: z.string().trim().max(260).optional(),
   imageUrl: z.string().trim().url().max(600).optional(),
@@ -193,6 +192,8 @@ export const uploadMetadataSchema = z.object({
   thumbnailUrl: z.string().trim().url().max(600).optional(),
   images: wardrobeImagesSchema.optional(),
   uploadStatus: z.enum(["pending", "uploaded", "failed"]).optional(),
+  selectedCategory: wardrobeCategorySchema.optional(),
+  selectedCategoryLabel: z.string().trim().max(80).optional(),
   suggestedTags: z.record(z.unknown()).optional()
 });
 

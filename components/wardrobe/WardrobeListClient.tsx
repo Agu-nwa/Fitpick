@@ -17,18 +17,14 @@ import { ProgressCard } from "@/components/ui/ProgressCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useSession } from "@/hooks/use-session";
 import { getWardrobe, type WardrobeListData } from "@/lib/api-client";
-import { wardrobeItems } from "@/lib/mock-data";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
 
-const mockSummary: WardrobeSummary = {
-  totalCount: wardrobeItems.length,
-  readyCount: wardrobeItems.filter((item) => item.condition === "ready").length,
-  needsCareCount: wardrobeItems.filter((item) => item.condition === "needs-care").length,
-  missingTagsCount: wardrobeItems.filter((item) => item.condition === "missing-tags").length,
-  countsByCategory: wardrobeItems.reduce<Record<string, number>>((counts, item) => {
-    counts[item.category] = (counts[item.category] || 0) + 1;
-    return counts;
-  }, {}),
+const emptySummary: WardrobeSummary = {
+  totalCount: 0,
+  readyCount: 0,
+  needsCareCount: 0,
+  missingTagsCount: 0,
+  countsByCategory: {},
   missingEssentials: []
 };
 
@@ -76,15 +72,6 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
   );
 }
 
-function MockPreview({ title = "Wardrobe preview" }: { title?: string }) {
-  return (
-    <section className="mt-10">
-      <SectionHeader title={title} />
-      <WardrobeGrid items={wardrobeItems.slice(0, 6)} />
-    </section>
-  );
-}
-
 export function WardrobeListClient() {
   const session = useSession();
   const [wardrobe, setWardrobe] = useState<WardrobeListData | null>(null);
@@ -107,37 +94,22 @@ export function WardrobeListClient() {
     if (session.status === "authenticated") void loadWardrobe();
   }, [loadWardrobe, session.status]);
 
-  const displaySummary = useMemo(() => wardrobe?.summary || mockSummary, [wardrobe]);
+  const displaySummary = useMemo(() => wardrobe?.summary || emptySummary, [wardrobe]);
 
   if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
     return <WardrobeLoadingState />;
   }
 
   if (session.status === "logged-out") {
-    return (
-      <>
-        <WardrobeAuthRequiredState />
-        <MockPreview />
-      </>
-    );
+    return <WardrobeAuthRequiredState />;
   }
 
   if (session.status === "backend-unavailable" || status === "unavailable") {
-    return (
-      <>
-        <WardrobeBackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadWardrobe} />
-        <MockPreview />
-      </>
-    );
+    return <WardrobeBackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadWardrobe} />;
   }
 
   if (status === "error") {
-    return (
-      <>
-        <WardrobeApiErrorState onRetry={loadWardrobe} />
-        <MockPreview />
-      </>
-    );
+    return <WardrobeApiErrorState onRetry={loadWardrobe} />;
   }
 
   if (status === "empty") {
@@ -148,7 +120,6 @@ export function WardrobeListClient() {
           <SectionHeader title="Style archive" eyebrow="All pieces" />
           <WardrobeEmptyState />
         </section>
-        <MockPreview title="Example wardrobe cards" />
       </>
     );
   }
@@ -158,7 +129,7 @@ export function WardrobeListClient() {
       <SummaryCard summary={displaySummary} />
       <section className="mt-10">
         <SectionHeader title="Style archive" eyebrow="All pieces" />
-        <WardrobeGrid items={wardrobe?.items || wardrobeItems} />
+        <WardrobeGrid items={wardrobe?.items || []} />
       </section>
     </>
   );

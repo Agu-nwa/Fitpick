@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { apiContracts } from "@/lib/api-contract";
 
 const integrationSteps = [
-  "Integration complete: auth, wardrobe, uploads, AI tag review, outfits, looks, preferences, and Plus status",
+  "Integration complete: auth, wardrobe, uploads, AI tag review, outfits, looks, preferences, and Credit wallet",
   "Testing complete: route checks, safety copy scan, secret scan, build, and backend smoke are ready",
   "Deployment path: EC2, PM2, Nginx reverse proxy, and HTTPS-ready production notes"
 ];
@@ -41,7 +41,7 @@ export default function BackendReadyPage() {
         </div>
         <h2 className="mt-4 font-editorial text-4xl font-semibold leading-none tracking-editorial">MyFitPick is ready for deployment hardening.</h2>
         <p className="mt-3 text-sm leading-6 text-canvas/75">
-          Mock fallback remains available while live auth, wardrobe, outfits, looks, preferences, Plus, storage, and AI tagging flows move toward production.
+          Live auth, wardrobe, outfits, looks, preferences, Credits, storage, and AI tagging flows use production routes and fail closed when credentials are missing.
         </p>
       </Card>
 
@@ -57,8 +57,8 @@ export default function BackendReadyPage() {
         <SectionHeader title="Phase status" />
         <div className="space-y-3">
           {[
-            ["Frontend complete", "Mobile app shell, routes, components, states, and mock fallbacks are preserved.", "complete"],
-            ["Backend complete", "Auth, wardrobe, outfits, Plus, uploads, admin seed, audit, and smoke checks are available.", "complete"],
+            ["Frontend complete", "Mobile app shell, routes, components, states, and production error handling are preserved.", "complete"],
+            ["Backend complete", "Auth, wardrobe, outfits, Credits, uploads, admin seed, audit, and smoke checks are available.", "complete"],
             ["API client available", "Safe requests include credentials and mobile-friendly fallback messages.", "complete"],
             ["Health endpoint connected", "GET /api/health is checked from the readiness screen.", "complete"],
             ["Session check connected", "GET /api/auth/me is checked without forcing route protection yet.", "complete"],

@@ -45,7 +45,8 @@ export function createOpenAiTryOnProvider(): TryOnProvider {
         animationUrl: null,
         modelUrl: null,
         accuracyLevel: preview.accuracyLevel || getPreviewAccuracyLevel("garment_referenced"),
-        warnings: preview.fitWarnings || []
+        warnings: preview.fitWarnings || [],
+        cached: result.cached
       };
     },
     async generateGarmentMesh() {

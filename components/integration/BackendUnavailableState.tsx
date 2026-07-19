@@ -4,7 +4,7 @@ export function BackendUnavailableState({ onRetry }: { onRetry?: () => void | Pr
   return (
     <ApiErrorState
       title="Backend unavailable"
-      message="MyFitPick could not reach the API. Mock-data screens can still stay available while integration continues."
+      message="MyFitPick could not reach the API. Please try again shortly."
       onRetry={onRetry}
     />
   );

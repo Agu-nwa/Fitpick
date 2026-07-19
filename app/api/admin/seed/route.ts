@@ -12,14 +12,14 @@ import { Occasion } from "@/models/Occasion";
 const globalOccasions = [
   { name: "Work", group: "everyday", formality: "polished" },
   { name: "School", group: "everyday", formality: "balanced" },
-  { name: "Church", group: "cultural", formality: "polished" },
+  { name: "Church", group: "formal", formality: "polished" },
   { name: "Wedding Guest", group: "social", formality: "formal" },
-  { name: "Owambe", group: "cultural", formality: "formal" },
-  { name: "Traditional Event", group: "cultural", formality: "formal" },
+  { name: "Celebration", group: "event", formality: "formal" },
+  { name: "Gala", group: "event", formality: "formal" },
   { name: "Interview", group: "formal", formality: "formal" },
   { name: "Date/Social Outing", group: "social", formality: "balanced" },
   { name: "Travel", group: "everyday", formality: "balanced" },
-  { name: "Native Friday", group: "cultural", formality: "balanced" },
+  { name: "Dinner", group: "social", formality: "balanced" },
   { name: "Business Meeting", group: "formal", formality: "polished" },
   { name: "Casual Hangout", group: "social", formality: "relaxed" },
   { name: "Rainy Day", group: "weather", formality: "balanced" },
@@ -44,7 +44,6 @@ const contentRules = [
       ["tops", "Tops"],
       ["bottoms", "Bottoms"],
       ["dresses", "Dresses"],
-      ["native", "Native/traditional"],
       ["outerwear", "Outerwear"],
       ["shoes", "Shoes"],
       ["bags", "Bags"],
@@ -62,10 +61,6 @@ const contentRules = [
       ["trousers", "Trousers"],
       ["skirt", "Skirt"],
       ["gown", "Gown"],
-      ["ankara", "Ankara"],
-      ["senator", "Senator wear"],
-      ["kaftan", "Kaftan"],
-      ["agbada", "Agbada"],
       ["lace", "Lace"],
       ["sneakers", "Sneakers"],
       ["sandals", "Sandals"],
@@ -81,7 +76,7 @@ const contentRules = [
       ["streetwear", "Streetwear"],
       ["elegant", "elegant"],
       ["bold", "bold"],
-      ["traditional", "traditional"],
+      ["statement", "statement"],
       ["sporty", "sporty"],
       ["mixed", "mixed"]
     ]
@@ -94,7 +89,7 @@ const contentRules = [
       ["polished", "Polished"],
       ["formal", "Formal"],
       ["ceremonial", "Ceremonial"],
-      ["traditional", "Traditional"]
+      ["black_tie", "Black tie"]
     ]
   },
   {
@@ -124,26 +119,26 @@ const contentRules = [
       ["school", "School"],
       ["church", "Church"],
       ["wedding", "Wedding"],
-      ["owambe", "Owambe"],
-      ["traditional_event", "Traditional event"],
+      ["celebration", "Celebration"],
+      ["gala", "Gala"],
       ["interview", "Interview"],
       ["date_social_outing", "Date/social outing"],
       ["casual_hangout", "Casual hangout"],
       ["travel", "Travel"],
       ["rainy_day", "Rainy day"],
       ["hot_day", "Hot day"],
-      ["native_friday", "Native Friday"],
+      ["dinner", "Dinner"],
       ["business_meeting", "Business meeting"]
     ]
   },
   {
     type: "premium_prompt",
     entries: [
-      ["daily_pick_limit", "You have used today’s free outfit picks. MyFitPick Plus gives you more options when you need them."],
-      ["advanced_swap_locked", "MyFitPick Plus adds more swap options when you want extra styling range."],
-      ["travel_feature_locked", "Travel planning is available with MyFitPick Plus."],
-      ["event_planning_locked", "Event planning is available with MyFitPick Plus."],
-      ["soft_plus_reminder", "MyFitPick Plus gives you more outfit memory and planning tools."]
+      ["daily_pick_limit", "Basic outfit picks are free. Credits are used only for premium actions."],
+      ["advanced_swap_locked", "Credits unlock premium styling actions when you want extra range."],
+      ["travel_feature_locked", "Travel planning remains part of the free MyFitPick experience."],
+      ["event_planning_locked", "Event planning remains part of the free MyFitPick experience."],
+      ["soft_plus_reminder", "Credits power premium chat, previews, and try-on after successful results."]
     ]
   },
   {
@@ -167,7 +162,7 @@ const contentRules = [
       ["image_unclear", "This image may need manual tag review."],
       ["recommendation_failed", "We could not create a recommendation right now."],
       ["permission_denied", "Please sign in to continue."],
-      ["premium_locked", "This Plus feature is available when you upgrade."]
+      ["credits_needed", "Add Credits to use this premium action."]
     ]
   }
 ] as const;

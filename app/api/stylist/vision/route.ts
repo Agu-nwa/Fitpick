@@ -7,7 +7,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
@@ -25,7 +25,7 @@ export async function POST(
   request: NextRequest
 ) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `stylist-vision:${meta.ip}`, limit: 10, windowMs: 60 * 1000, operation: "stylist-vision" });
+  const limited = rateLimitRequest({ key: `stylist-vision:${meta.ip}`, limit: 10, windowMs: 60 * 1000, operation: "stylist-vision" });
   if (limited) return limited;
 
   try {

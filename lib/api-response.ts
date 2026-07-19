@@ -43,7 +43,7 @@ export function statusForCode(code: ApiErrorCode) {
       return 409;
     case "RATE_LIMITED":
       return 429;
-    case "PLUS_REQUIRED":
+    case "INSUFFICIENT_CREDITS":
       return 402;
     case "SETUP_REQUIRED":
       return 503;

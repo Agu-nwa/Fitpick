@@ -141,10 +141,6 @@ export function evaluateGarmentFitOnAvatar(avatarProfile: any, wardrobeItem: any
     instructions.add("Preserve looseness and intended oversized or flowing silhouette.");
   }
 
-  if (garment.category === "native") {
-    instructions.add("Preserve native wear flowing silhouette and traditional garment proportions.");
-  }
-
   if (garment.category === "shoes") {
     instructions.add("Preserve shoe proportions.");
   }

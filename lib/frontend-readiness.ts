@@ -16,7 +16,7 @@ export const frontendReadiness: ReadinessItem[] = [
     id: "core-routes",
     area: "Core routes",
     status: "complete",
-    detail: "Onboarding, Home, Occasion, Wardrobe, Add Clothes, Item Detail, Outfit, Outfit Detail, Looks, Profile, Preferences, Plus, States, and Backend Ready routes are present.",
+    detail: "Onboarding, Home, Occasion, Wardrobe, Add Clothes, Item Detail, Outfit, Outfit Detail, Looks, Wallet, Profile, Preferences, States, and Backend Ready routes are present.",
   },
   {
     id: "design-system",
@@ -25,10 +25,10 @@ export const frontendReadiness: ReadinessItem[] = [
     detail: "Reusable cards, chips, buttons, CTA bars, status badges, empty states, error states, permission states, premium locks, sheets, upload, wardrobe, and outfit components are structured.",
   },
   {
-    id: "mock-data",
-    area: "Mock data layer",
-    status: "ready-for-backend",
-    detail: "Wardrobe, occasion, outfit recommendation, saved look, worn look, profile preference, notification, premium, and system state data are separated into typed mock data.",
+    id: "state-data",
+    area: "Reference state data",
+    status: "complete",
+    detail: "Empty, error, permission, credit, wardrobe, outfit, and account states are separated into typed UI data for QA review.",
   },
   {
     id: "outfit-flow",
@@ -39,8 +39,8 @@ export const frontendReadiness: ReadinessItem[] = [
   {
     id: "upload-flow",
     area: "Wardrobe upload flow",
-    status: "ready-for-backend",
-    detail: "Upload UI, photo guidance, preview items, AI tag review placeholder, manual tag review, and item detail pattern are ready for real upload services.",
+    status: "complete",
+    detail: "Upload UI, photo guidance, S3 upload access, AI tag review, manual correction, and item detail patterns are wired to production routes.",
   },
   {
     id: "states",
@@ -58,7 +58,7 @@ export const frontendReadiness: ReadinessItem[] = [
     id: "api-contract",
     area: "Backend API contract",
     status: "ready-for-backend",
-    detail: "Initial API contract map is documented for wardrobe, upload, tag review, recommendation, feedback, and Plus entitlement endpoints.",
+    detail: "Initial API contract map is documented for wardrobe, upload, tag review, recommendation, feedback, wallet, and Credit purchase endpoints.",
   },
 ];
 
@@ -69,6 +69,6 @@ export const backendHandoffAreas = [
   "Occasion and style preference persistence",
   "Outfit recommendation engine",
   "Worn history, saved looks, and ratings",
-  "MyFitPick Plus entitlement and plan status",
+  "MyFitPick Credit wallet and usage status",
   "Notifications, privacy settings, and audit-safe data handling",
 ];

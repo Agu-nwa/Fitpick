@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
 import { getOrCreateAvatarProfile, serializeAvatarProfile, updateAvatarProfile } from "@/lib/avatar/avatar-profile";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
@@ -64,7 +64,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `avatar-profile:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "avatar-profile-patch" });
+  const limited = rateLimitRequest({ key: `avatar-profile:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "avatar-profile-patch" });
   if (limited) return limited;
 
   try {

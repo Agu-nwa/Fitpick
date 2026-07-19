@@ -11,7 +11,7 @@ const StyleProfileSchema = new Schema(
     dislikedFits: { type: [String], default: [] },
     preferredFormality: { type: Number, default: null, min: 0, max: 10 },
     preferredOccasions: { type: [String], default: [] },
-    culturalStylePreferences: { type: [String], default: [] },
+    eventStylePreferences: { type: [String], default: [] },
     preferredCategories: { type: [String], default: [] },
     avoidedCategories: { type: [String], default: [] },
     fashionRiskLevel: { type: String, enum: ["conservative", "balanced", "expressive"], default: "balanced" },

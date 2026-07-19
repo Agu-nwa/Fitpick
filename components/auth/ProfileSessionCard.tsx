@@ -10,6 +10,7 @@ import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { WalletBalancePill } from "@/components/wallet/WalletBalancePill";
 
 export function ProfileSessionCard() {
   const { status, user, refresh } = useSession();
@@ -43,15 +44,21 @@ export function ProfileSessionCard() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="truncate text-base font-semibold text-ink">{user?.name || "MyFitPick user"}</h2>
-            <StatusBadge tone={user?.plan === "plus" ? "premium" : "neutral"}>{user?.plan || "free"}</StatusBadge>
+            <StatusBadge tone="neutral">Free tier</StatusBadge>
           </div>
           <p className="mt-1 truncate text-sm text-muted">{user?.email}</p>
         </div>
       </div>
+      <div className="mt-4">
+        <WalletBalancePill />
+      </div>
       {message ? <p className="mt-4 rounded-2xl bg-danger/10 px-3 py-2 text-xs text-danger">{message}</p> : null}
-      <div className="mt-5 grid grid-cols-2 gap-2">
+      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Link href="/profile/preferences">
           <Button variant="secondary" className="w-full">Preferences</Button>
+        </Link>
+        <Link href="/avatar">
+          <Button variant="secondary" className="w-full">Edit model</Button>
         </Link>
         <Button variant="danger" className="w-full" disabled={signingOut} onClick={handleLogout}>
           {signingOut ? "Signing out..." : "Sign out"}

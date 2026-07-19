@@ -37,7 +37,8 @@ async function run() {
   const checks = [
     ["session", () => request("/api/auth/me")],
     ["wardrobe", () => request("/api/wardrobe")],
-    ["plus", () => request("/api/billing/plus-status")],
+    ["wallet", () => request("/api/wallet")],
+    ["purchases", () => request("/api/payments/purchases")],
     ["looks", () => request("/api/looks")],
     ["notifications", () => request("/api/notifications/preferences")]
   ];

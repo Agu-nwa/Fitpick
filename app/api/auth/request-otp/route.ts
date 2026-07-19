@@ -6,7 +6,7 @@ import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { connectDB } from "@/lib/db";
 import { sendOtpEmail } from "@/lib/email/resend";
 import { consumeOtpById, createEmailOtp, normalizeEmail } from "@/lib/otp";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { User } from "@/models/User";
@@ -14,7 +14,7 @@ import { requestOtpSchema } from "@/schemas/auth.schema";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `auth-request-otp:${meta.ip}`, limit: 10, windowMs: 15 * 60 * 1000 });
+  const limited = rateLimitRequest({ key: `auth-request-otp:${meta.ip}`, limit: 10, windowMs: 15 * 60 * 1000 });
   if (limited) return limited;
 
   try {

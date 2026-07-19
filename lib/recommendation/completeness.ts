@@ -16,7 +16,7 @@ function textFor(item: any) {
 
 export function isOnePieceOutfit(item: any) {
   const text = textFor(item);
-  return item?.category === "dresses" || item?.category === "native" || /dress|gown|kaftan|agbada|senator|jumpsuit|isiagu|robe|one[-\s]?piece/.test(text);
+  return item?.category === "dresses" || /dress|gown|jumpsuit|romper|robe|one[-\s]?piece/.test(text);
 }
 
 export function isFootwear(item: any) {

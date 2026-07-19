@@ -178,7 +178,7 @@ function selectedItemDetails(items: any[]) {
         ["Silhouette", metadataValue(item, "silhouette")],
         ["Texture", metadataValue(item, "texture")],
         ["Length", metadataValue(item, "length")],
-        ["Cultural relevance", metadataValue(item, "culturalTraditionalRelevance")],
+        ["Event relevance", metadataValue(item, "eventRelevance")],
         ["Recognized entity", metadataValue(item, "recognizedEntity")],
         ["Visual reference image", preferredVisualReferenceUrl(item)]
       ]

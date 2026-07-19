@@ -87,7 +87,7 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 
 - Generate recommendation.
 - Confirm not-enough-items state.
-- Confirm Plus daily-limit response routes respectfully to Plus.
+- Confirm insufficient Credit responses route respectfully to the wallet.
 - View outfit detail.
 - Swap item.
 - Save outfit.
@@ -108,12 +108,14 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 - Toggle notifications.
 - Confirm logged-out state.
 
-### Plus and Payments
+### Credits and Payments
 
-- View plan status.
+- View wallet balance.
+- View complimentary and purchased Credit split.
+- View purchase history.
 - View provider readiness.
-- Paystack option.
-- Stripe option.
+- Stripe card or digital wallet option.
+- CoinPayments USDT option.
 - Checkout not configured state.
 - Confirm no raw provider errors appear.
 
@@ -128,22 +130,22 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 - Looks: `/api/looks`
 - Preferences: `/api/preferences`
 - Notifications: `/api/notifications/preferences`
-- Billing: `/api/billing/plus-status`, `/api/billing/checkout`, `/api/billing/providers`
-- Webhooks: `/api/billing/webhook/stripe`, `/api/billing/webhook/paystack`
+- Payments: `/api/payments/providers`, `/api/payments/packs`, `/api/payments/purchases`, `/api/payments/stripe/checkout`, `/api/payments/usdt/checkout`, `/api/payments/usdt/networks`
+- Webhooks: `/api/webhooks/stripe`, `/api/webhooks/coinpayments`
 
 ## Safety Checks
 
 - No raw backend errors.
 - No stack traces.
 - No storage keys in normal UI.
-- No S3, AI, Stripe, or Paystack secrets exposed.
+- No S3, AI, Stripe, or CoinPayments secrets exposed.
 - No push tokens exposed.
 - No body-critical or appearance-shaming language.
 
 ## Production Limitations
 
 - Live Stripe activation remains.
-- Live Paystack activation remains.
+- Live CoinPayments activation remains.
 - Webhook sandbox verification remains.
 - Production AI image-understanding provider tuning remains.
 - Push notification delivery remains.

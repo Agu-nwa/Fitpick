@@ -5,7 +5,7 @@ import { WardrobeListClient } from "@/components/wardrobe/WardrobeListClient";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 
-const categories = ["All", "Tops", "Bottoms", "Shoes", "Native", "Accessories"];
+const categories = ["All", "Tops", "Bottoms", "Shoes", "Outerwear", "Accessories"];
 const filters = ["Color", "Occasion", "Weather", "Recently worn", "Needs care"];
 
 export default function WardrobePage() {

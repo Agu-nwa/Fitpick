@@ -6,7 +6,7 @@ import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { askStylist } from "@/lib/ai/stylist";
 import { requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 
@@ -19,7 +19,7 @@ export async function POST(
   request: NextRequest
 ) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `stylist-legacy:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "stylist-legacy" });
+  const limited = rateLimitRequest({ key: `stylist-legacy:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "stylist-legacy" });
   if (limited) return limited;
 
   try {

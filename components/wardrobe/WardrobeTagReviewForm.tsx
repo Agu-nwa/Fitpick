@@ -30,7 +30,6 @@ const categoryOptions: Array<{ value: WardrobeCategory; label: string }> = [
   { value: "tops", label: "Tops" },
   { value: "bottoms", label: "Bottoms" },
   { value: "dresses", label: "Dresses" },
-  { value: "native", label: "Native wear" },
   { value: "outerwear", label: "Outerwear" },
   { value: "shoes", label: "Shoes" },
   { value: "bags", label: "Bags" },
@@ -43,7 +42,7 @@ const conditionOptions: Array<{ value: WardrobeCondition; label: string }> = [
   { value: "missing-tags", label: "Needs more tags" }
 ];
 const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
-const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "NG", "custom"];
+const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "custom"];
 const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];
 const stretchOptions: StretchLevel[] = ["unknown", "none", "low", "medium", "high"];
 const drapeOptions: FabricDrape[] = ["unknown", "structured", "soft", "flowing", "heavy", "stiff"];

@@ -98,10 +98,10 @@ function ItemDetails({ item }: { item: WardrobeItem }) {
   );
 }
 
-export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: WardrobeItem }) {
+export function WardrobeDetailClient({ id }: { id: string }) {
   const session = useSession();
   const router = useRouter();
-  const [item, setItem] = useState<WardrobeItem | null>(mockItem || null);
+  const [item, setItem] = useState<WardrobeItem | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "not-found" | "unavailable" | "error">("idle");
   const [isEditable, setIsEditable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -117,17 +117,10 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
       return;
     }
 
-    if (mockItem) {
-      setItem(mockItem);
-      setIsEditable(false);
-      setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "ready");
-      return;
-    }
-
     setItem(null);
     setIsEditable(false);
     setStatus(result.error.code === "NOT_FOUND" ? "not-found" : result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
-  }, [id, mockItem]);
+  }, [id]);
 
   useEffect(() => {
     if (session.status === "authenticated") void loadItem();
@@ -179,31 +172,16 @@ export function WardrobeDetailClient({ id, mockItem }: { id: string; mockItem?: 
     setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
   }
 
-  if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle" && !mockItem)) {
+  if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
     return <WardrobeLoadingState />;
   }
 
   if (session.status === "logged-out") {
-    return (
-      <>
-        <WardrobeAuthRequiredState />
-        {mockItem ? (
-          <section className="mt-7">
-            <SectionHeader title="Wardrobe preview" />
-            <WardrobeItemCard item={mockItem} />
-          </section>
-        ) : null}
-      </>
-    );
+    return <WardrobeAuthRequiredState />;
   }
 
   if (session.status === "backend-unavailable" || status === "unavailable") {
-    return (
-      <>
-        <WardrobeBackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadItem} />
-        {mockItem ? <ItemDetails item={mockItem} /> : null}
-      </>
-    );
+    return <WardrobeBackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadItem} />;
   }
 
   if (status === "not-found" || !item) {

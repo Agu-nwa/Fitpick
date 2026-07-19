@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { getMemorySummary, recordFashionMemory, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -60,7 +60,7 @@ async function assertOwnedReferences(userId: any, data: z.infer<typeof memoryEve
 
 export async function GET(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `fashion-memory:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000 });
+  const limited = rateLimitRequest({ key: `fashion-memory:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000 });
   if (limited) return limited;
 
   try {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `fashion-memory:post:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "fashion-memory-post" });
+  const limited = rateLimitRequest({ key: `fashion-memory:post:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "fashion-memory-post" });
   if (limited) return limited;
 
   try {

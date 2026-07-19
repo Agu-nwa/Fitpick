@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { jwtVerify, SignJWT } from "jose";
 import type { SessionUser } from "@/types/auth";
 
@@ -10,11 +11,16 @@ function jwtSecret() {
   return new TextEncoder().encode(secret);
 }
 
+export function createActiveSessionId() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
 export async function createSessionToken(user: SessionUser) {
   return new SignJWT({
     userId: user.userId,
     email: user.email,
     role: user.role,
+    sessionId: user.sessionId,
     scope: "fitpick:user"
   })
     .setProtectedHeader({ alg: "HS256" })
@@ -40,7 +46,8 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
     return {
       userId: payload.userId,
       email: payload.email,
-      role: payload.role
+      role: payload.role,
+      sessionId: typeof payload.sessionId === "string" ? payload.sessionId : undefined
     };
   } catch {
     return null;

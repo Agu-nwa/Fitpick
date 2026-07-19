@@ -38,6 +38,7 @@ export type TryOnProviderOutput = {
   accuracyLevel: ReturnType<typeof getPreviewAccuracyLevel>;
   warnings: string[];
   jobId?: string | null;
+  cached?: boolean;
 };
 
 export interface TryOnProvider {

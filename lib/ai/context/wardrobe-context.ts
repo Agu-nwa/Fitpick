@@ -35,7 +35,7 @@ export function compactWardrobeItemContext(item: any, options: { includeImageUrl
     weather: list(fieldValue(item, "weatherSuitability")).concat(list(item.weather)).slice(0, 10),
     season: list(fieldValue(item, "seasonSuitability")).slice(0, 10),
     formality: fieldValue(item, "formalityScore") || "unknown",
-    culturalRelevance: fieldValue(item, "culturalTraditionalRelevance") || "unknown",
+    eventRelevance: fieldValue(item, "eventRelevance") || "unknown",
     ...(options.includeImageUrl ? { imageUrl: item.imageUrl || item.thumbnailUrl || "" } : {})
   };
 }

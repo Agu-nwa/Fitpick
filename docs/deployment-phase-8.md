@@ -2,7 +2,7 @@
 
 ## Deployment Overview
 
-FitPick is prepared for production deployment on AWS EC2 with a Next.js production build, PM2 process management, and Nginx as the public reverse proxy. The mobile-first app shell, bottom navigation, compact flows, and mock fallbacks remain in place.
+FitPick is prepared for production deployment on AWS EC2 with a Next.js production build, PM2 process management, and Nginx as the public reverse proxy. The mobile-first app shell, bottom navigation, compact flows, and production error handling remain in place.
 
 Current EC2 validation:
 
@@ -20,7 +20,7 @@ Production traffic should go through Nginx on port 80 and, after domain setup, H
 - Nginx proxies requests to `http://127.0.0.1:3000`.
 - PM2 keeps the Next.js production server running.
 - Next.js serves frontend routes and App Router API routes.
-- MongoDB, S3/CloudFront, AI provider, Stripe, and Paystack are configured through environment variables.
+- MongoDB, S3/CloudFront, AI provider, Stripe, and CoinPayments are configured through environment variables.
 
 ## EC2 Folder Location
 
@@ -41,8 +41,8 @@ Required production groups:
 - App/session: `NODE_ENV`, `APP_URL`, `NEXT_PUBLIC_APP_URL`, `SESSION_COOKIE_NAME`, `JWT_SECRET`
 - Database: `MONGODB_URI`
 - S3/CloudFront: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`; optional `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` when not using EC2 IAM role credentials
-- AI tagging: `AI_TAGGING_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
-- Payments: `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FITPICK_PLUS_STRIPE_PRICE_ID`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `FITPICK_PLUS_PAYSTACK_PLAN_CODE`, `PAYSTACK_CALLBACK_URL`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
+- AI tagging: `OPENAI_API_KEY`
+- Credit purchases: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `COINPAYMENTS_API_BASE_URL`, `COINPAYMENTS_CLIENT_ID`, `COINPAYMENTS_CLIENT_SECRET`, `COINPAYMENTS_WEBHOOK_SECRET`, `COINPAYMENTS_WEBHOOK_URL`, `COINPAYMENTS_USD_CURRENCY_ID`, `COINPAYMENTS_USDT_NETWORK_ALLOWLIST`
 - Optional rate limiting: `RATE_LIMIT_REDIS_URL`
 
 See `docs/production-env-checklist.md` for the full checklist.
@@ -167,14 +167,14 @@ sudo dnf install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d YOUR_DOMAIN
 ```
 
-HTTPS should be active before live Stripe or Paystack payments. Payment webhook URLs should use HTTPS.
+HTTPS should be active before live Stripe or CoinPayments purchases. Payment webhook URLs should use HTTPS.
 
 ## Payment Webhook Production Notes
 
-Future webhook URLs:
+Webhook URLs:
 
-- Stripe: `https://YOUR_DOMAIN/api/billing/webhook/stripe`
-- Paystack: `https://YOUR_DOMAIN/api/billing/webhook/paystack`
+- Stripe: `https://YOUR_DOMAIN/api/webhooks/stripe`
+- CoinPayments: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
 
 Configure webhook secrets in `.env.local`. Test webhooks in sandbox mode before activating live payments.
 
@@ -189,8 +189,7 @@ Configure webhook secrets in `.env.local`. Test webhooks in sandbox mode before 
 
 ## AI Tagging Production Notes
 
-- `AI_TAGGING_PROVIDER=mock` is safe for launch preparation.
-- Switch to `gemini` or `openai` only after provider testing.
+- Production wardrobe analysis uses OpenAI. Missing OpenAI credentials fail closed with clear setup messaging.
 - User review must remain required.
 - Suggested tags must not auto-save without confirmation.
 
@@ -275,7 +274,7 @@ If Nginx config is the issue, restore the previous `/etc/nginx/conf.d/fitpick.co
 - Real domain setup remains.
 - HTTPS activation remains.
 - Live Stripe activation remains.
-- Live Paystack activation remains.
+- Live CoinPayments activation remains.
 - Webhook sandbox and live verification remain.
 - Production MongoDB security review remains.
 - Production S3/CloudFront delivery hardening remains.

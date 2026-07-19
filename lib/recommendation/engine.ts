@@ -55,19 +55,19 @@ function itemLabel(item: any) {
   return item.name || [item.color, item.subcategory || item.category].filter(Boolean).join(" ") || item.category;
 }
 
-function hasCulturalSignal(items: any[]) {
+function hasEventSignal(items: any[]) {
   return items.some((item) =>
     [
       item.category,
       item.subcategory,
       metadataValue(item, "garmentType"),
-      metadataValue(item, "culturalTraditionalRelevance"),
+      metadataValue(item, "eventRelevance"),
       metadataValue(item, "pattern"),
       metadataValue(item, "fabricEstimate")
     ]
       .join(" ")
       .toLowerCase()
-      .match(/native|traditional|agbada|kaftan|isiagu|ankara|aso-oke|aso ebi|lace|senator/)
+      .match(/wedding|church|ceremony|celebration|party|graduation|gala|formal|dressy|statement|evening/)
   );
 }
 
@@ -96,13 +96,13 @@ function buildFashionExplanation(input: {
   const silhouettes = input.items
     .map((item) => metadataValue(item, "silhouette") || item.fit)
     .filter(Boolean);
-  const cultural = hasCulturalSignal(input.items);
+  const eventReady = hasEventSignal(input.items);
   const missingText = input.missing.length ? ` Missing ${input.missing.join(", ")} keeps this from being fully complete.` : "";
 
   return {
     occasionFit:
-      input.occasionGroup === "cultural" || cultural
-        ? "Grounded in owned native or culturally relevant wardrobe pieces where available."
+      input.occasionGroup === "event" || eventReady
+        ? "Built from owned wardrobe pieces that can hold up for the event."
         : `Built from owned wardrobe pieces for ${input.occasion}.`,
     whyItWorks: `${itemNames.join(", ")} create a wearable ${input.occasion.toLowerCase()} look from actual wardrobe items.${missingText}`,
     materialNote: fabrics.length
@@ -119,7 +119,7 @@ function buildFashionExplanation(input: {
       : "",
     stylingTips: [
       input.occasionGroup === "formal" ? "Keep grooming and footwear polished for the event." : "Keep proportions clean and intentional.",
-      cultural ? "Let the traditional piece lead; keep supporting items restrained." : "Use accessories only if they support the outfit, not compete with it.",
+      eventReady ? "Let the strongest piece lead; keep supporting items restrained." : "Use accessories only if they support the outfit, not compete with it.",
       input.weatherContext ? "Check weather before leaving and swap outerwear if needed." : "Review weather before wearing."
     ]
   };
@@ -284,7 +284,7 @@ export function buildRecommendation(input: EngineInput) {
     ),
 
     eventAware:
-      occasionGroup === "cultural" ||
+      occasionGroup === "event" ||
       occasionGroup === "formal"
   });
 

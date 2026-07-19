@@ -25,7 +25,6 @@ export function PreferencesClient() {
   const [colorPreferences, setColorPreferences] = useState("Neutrals, navy, earth tones");
   const [avoidColors, setAvoidColors] = useState("");
   const [comfortPriority, setComfortPriority] = useState("medium");
-  const [nativeWearFrequency, setNativeWearFrequency] = useState("sometimes");
   const [repeatSensitivity, setRepeatSensitivity] = useState("medium");
   const [weatherEnabled, setWeatherEnabled] = useState(true);
   const [personalizedRecommendations, setPersonalizedRecommendations] = useState(true);
@@ -43,7 +42,6 @@ export function PreferencesClient() {
       setColorPreferences((prefs.colorPreferences || ["Neutrals", "navy", "earth tones"]).join(", "));
       setAvoidColors((prefs.avoidColors || []).join(", "));
       setComfortPriority(prefs.comfortPriority || "medium");
-      setNativeWearFrequency(prefs.nativeWearFrequency || "sometimes");
       setRepeatSensitivity(prefs.repeatSensitivity || "medium");
       setWeatherEnabled(prefs.weatherEnabled ?? true);
       setPersonalizedRecommendations(privacy.personalizedRecommendations ?? true);
@@ -67,7 +65,6 @@ export function PreferencesClient() {
       colorPreferences: splitTags(colorPreferences),
       avoidColors: splitTags(avoidColors),
       comfortPriority,
-      nativeWearFrequency,
       repeatSensitivity,
       weatherEnabled,
       personalizedRecommendations,
@@ -99,7 +96,6 @@ export function PreferencesClient() {
         </Card>
         <Card className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Outfit ideas</p>
-          <label className="block text-xs font-semibold text-ink">Native wear frequency<select className={inputClass} value={nativeWearFrequency} onChange={(event) => setNativeWearFrequency(event.target.value)}><option value="rarely">Rarely</option><option value="sometimes">Sometimes</option><option value="often">Often</option><option value="weekly">Weekly</option></select></label>
           <label className="block text-xs font-semibold text-ink">Repeat sensitivity<select className={inputClass} value={repeatSensitivity} onChange={(event) => setRepeatSensitivity(event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
           {[
             ["Weather tips", weatherEnabled, setWeatherEnabled],

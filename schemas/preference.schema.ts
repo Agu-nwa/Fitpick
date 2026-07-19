@@ -6,7 +6,6 @@ export const stylePreferenceSchema = z.object({
   colorPreferences: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   avoidColors: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   comfortPriority: z.enum(["low", "medium", "high"]).optional(),
-  nativeWearFrequency: z.enum(["rarely", "sometimes", "often", "weekly"]).optional(),
   repeatSensitivity: z.enum(["low", "medium", "high"]).optional(),
   weatherEnabled: z.boolean().optional(),
   photoStorageConsent: z.boolean().optional(),

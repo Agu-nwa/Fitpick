@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { assertStorageConfigured, createWardrobeStorageKey, storageKeyBelongsToUser } from "@/lib/storage";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
@@ -75,7 +75,7 @@ function sanitizeImageAssets(images: any, userId: string, fallback: { width?: nu
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-upload:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "wardrobe-upload" });
+  const limited = rateLimitRequest({ key: `wardrobe-upload:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "wardrobe-upload" });
   if (limited) return limited;
 
   try {
@@ -87,7 +87,22 @@ export async function POST(request: NextRequest) {
 
     const userId = String(auth.user._id);
     const storage = assertStorageConfigured();
-    const submittedStorageKey = normalizeStorageKey(parsed.data.publicId || parsed.data.storageKey || "");
+    if (!storage.ready) {
+      return apiError("SETUP_REQUIRED", "Image storage is not configured yet.");
+    }
+    if (parsed.data.provider && parsed.data.provider !== "s3") {
+      return apiError("BAD_REQUEST", "Upload images must use configured S3 storage.");
+    }
+
+    const submittedStorageKey = normalizeStorageKey(
+      parsed.data.publicId ||
+      parsed.data.storageKey ||
+      parsed.data.images?.front?.storageKey ||
+      ""
+    );
+    if (!submittedStorageKey) {
+      return apiError("BAD_REQUEST", "Upload object is required.");
+    }
     if (submittedStorageKey && !storageKeyBelongsToUser({ userId, storageKey: submittedStorageKey, prefix: "wardrobe" })) {
       return apiError("BAD_REQUEST", "Upload object is invalid.");
     }
@@ -140,6 +155,8 @@ export async function POST(request: NextRequest) {
       provider: parsed.data.provider || storage.provider,
       imageUrl,
       thumbnailUrl,
+      selectedCategory: parsed.data.selectedCategory || "",
+      selectedCategoryLabel: parsed.data.selectedCategoryLabel || "",
       images,
       uploadStatus: parsed.data.uploadStatus || (imageUrl ? "uploaded" : storage.ready ? "pending" : "uploaded"),
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",
@@ -160,7 +177,7 @@ export async function POST(request: NextRequest) {
         storage: {
           provider: storage.provider,
           ready: storage.ready,
-          mode: storage.ready ? "provider-ready" : "metadata-only"
+          mode: "provider-ready"
         },
         nextAction: "review-tags"
       },

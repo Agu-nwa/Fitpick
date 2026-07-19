@@ -15,3 +15,4 @@ npm-debug.log*
 .env.local.save
 .env.*.save
 *.env.save
+tsconfig.tsbuildinfo

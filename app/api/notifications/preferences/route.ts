@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { NotificationPreference } from "@/models/NotificationPreference";
@@ -40,7 +40,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `notifications:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "notifications-patch" });
+  const limited = rateLimitRequest({ key: `notifications:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "notifications-patch" });
   if (limited) return limited;
 
   try {

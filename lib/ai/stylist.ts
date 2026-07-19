@@ -15,7 +15,7 @@ function detectIntent(message: string, allowShoppingAdvice: boolean): StylistInt
   if (/why|explain|work/.test(text)) return "explain_item";
   if (/pack|packing|travel|trip|vacation/.test(text)) return "packing_help";
   if (/missing|gap|need/.test(text)) return "wardrobe_gap";
-  if (/wear|style me|outfit|church|wedding|date|owambe|aso-ebi|traditional|native|business|casual/.test(text)) return "outfit_request";
+  if (/wear|style me|outfit|church|wedding|date|dinner|party|event|gala|business|casual/.test(text)) return "outfit_request";
   if (text.length < 10) return "unclear";
   return "general_style_advice";
 }
@@ -101,6 +101,7 @@ export async function askStylist({
   allowShoppingAdvice = false,
   ownedItemIds = [],
   recentMessages = [],
+  weatherContext,
   deterministicRecommendation
 }: {
   message: string;
@@ -112,6 +113,7 @@ export async function askStylist({
   allowShoppingAdvice?: boolean;
   ownedItemIds?: string[];
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+  weatherContext?: string;
   deterministicRecommendation?: unknown;
 }) {
   const model = getAiModel("stylistChat");
@@ -146,6 +148,7 @@ export async function askStylist({
     ownedItemIds,
     styleProfile,
     memorySummary,
+    weatherContext,
     deterministicItemIds: (deterministicRecommendation as any)?.items?.map((item: any) => String(item._id || item.id)) || []
   });
   const cached = await aiCache.get<StylistResponse>(cacheKey);
@@ -166,6 +169,7 @@ export async function askStylist({
         allowShoppingAdvice,
         fallback,
         recentMessages: sanitizedRecentMessages,
+        weatherContext,
         deterministicRecommendation
       })
     });

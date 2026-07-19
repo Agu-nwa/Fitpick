@@ -60,7 +60,7 @@ const OutfitRecommendationSchema = new Schema(
     swapGroups: { type: Schema.Types.Mixed, default: [] },
     source: {
       type: String,
-      enum: ["rule_based", "manual", "ai_placeholder", "ai", "outfit_page", "stylist_chat", "system"],
+      enum: ["rule_based", "manual", "ai", "outfit_page", "stylist_chat", "system"],
       default: "rule_based",
       index: true
     },

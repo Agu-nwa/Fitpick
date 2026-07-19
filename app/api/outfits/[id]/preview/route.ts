@@ -5,6 +5,8 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
+import { type CreditFeature } from "@/lib/credits/credit-costs";
+import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import {
@@ -17,7 +19,7 @@ import {
   serializeOutfitPreview
 } from "@/lib/outfit-preview/outfit-preview";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -69,7 +71,7 @@ async function markPreview(
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `outfit-preview:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "outfit-preview-get" });
+  const limited = rateLimitRequest({ key: `outfit-preview:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "outfit-preview-get" });
   if (limited) return limited;
 
   try {
@@ -92,7 +94,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `outfit-preview:post:${meta.ip}`, limit: 10, windowMs: 60 * 1000, operation: "outfit-preview-generation" });
+  const limited = rateLimitRequest({ key: `outfit-preview:post:${meta.ip}`, limit: 10, windowMs: 60 * 1000, operation: "outfit-preview-generation" });
   if (limited) return limited;
   let activeCacheKey = "";
   let activeUserId: any = null;
@@ -132,6 +134,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
         provider: cached.provider || "s3"
       });
       return apiSuccess({ preview: serializeOutfitPreview({ ...cached, cached: true }) });
+    }
+
+    const creditFeature: CreditFeature = parsed.data.regenerate ? "regenerate_try_on" : "outfit_preview";
+    try {
+      await ensureCreditsForFeature(auth.user._id, creditFeature);
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
     }
 
     const inFlight = await OutfitPreview.findOne({
@@ -183,7 +197,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         {
           outfitId: id,
           style: parsed.data.style,
-          cacheKey
+          cacheKey,
+          creditFeature,
+          source: "outfit_preview_route"
         },
         {
           userId: auth.user._id,
@@ -209,8 +225,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const generated = await generateOutfitPreview(String(auth.user._id), loaded.outfit, loaded.items, parsed.data);
     const saved = await saveGeneratedPreview(String(auth.user._id), id, generated, cacheKey);
+    let creditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>>;
+    try {
+      creditCharge = await spendCreditsAfterSuccess({
+        userId: auth.user._id,
+        feature: creditFeature,
+        referenceId: `outfit-preview:${id}:${cacheKey}`,
+        metadata: { source: "outfit_preview_route", style: parsed.data.style }
+      });
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
+    }
 
-    return apiSuccess({ preview: serializeOutfitPreview(saved) }, { message: "Premium outfit preview generated.", status: 201 });
+    return apiSuccess({
+      preview: serializeOutfitPreview(saved),
+      wallet: creditCharge.wallet,
+      creditCharge: { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance }
+    }, { message: "Premium outfit preview generated.", status: 201 });
   } catch (error) {
     try {
       if (activeUserId && isObjectId(activeOutfitId)) {

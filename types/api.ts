@@ -6,7 +6,7 @@ export type ApiErrorCode =
   | "CONFLICT"
   | "VALIDATION_ERROR"
   | "RATE_LIMITED"
-  | "PLUS_REQUIRED"
+  | "INSUFFICIENT_CREDITS"
   | "SETUP_REQUIRED"
   | "INTERNAL_ERROR";
 

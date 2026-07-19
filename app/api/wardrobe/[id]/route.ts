@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-update:${meta.ip}`, limit: 40, windowMs: 60 * 1000 });
+  const limited = rateLimitRequest({ key: `wardrobe-update:${meta.ip}`, limit: 40, windowMs: 60 * 1000 });
   if (limited) return limited;
 
   try {
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-delete:${meta.ip}`, limit: 20, windowMs: 60 * 1000 });
+  const limited = rateLimitRequest({ key: `wardrobe-delete:${meta.ip}`, limit: 20, windowMs: 60 * 1000 });
   if (limited) return limited;
 
   try {

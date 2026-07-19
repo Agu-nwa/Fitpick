@@ -23,12 +23,19 @@ export async function requireUser() {
   }
 
   await connectDB();
-  const user = await User.findById(session.userId);
+  const user = await User.findById(session.userId).select("+activeSessionId");
 
   if (!user) {
     return {
       ok: false as const,
       response: apiError("UNAUTHORIZED", "Please sign in to continue.")
+    };
+  }
+
+  if (!session.sessionId || !user.activeSessionId || user.activeSessionId !== session.sessionId) {
+    return {
+      ok: false as const,
+      response: apiError("UNAUTHORIZED", "Your account was signed in on another device. Please sign in again.")
     };
   }
 

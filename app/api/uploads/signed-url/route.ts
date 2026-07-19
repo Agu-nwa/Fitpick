@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { createSignedUploadUrl } from "@/lib/storage";
 import { readJson, validateBody } from "@/lib/validation";
@@ -12,7 +12,7 @@ import { signedUploadSchema } from "@/schemas/upload.schema";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `signed-upload:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "signed-upload" });
+  const limited = rateLimitRequest({ key: `signed-upload:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "signed-upload" });
   if (limited) return limited;
 
   try {

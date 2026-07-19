@@ -1,43 +1,31 @@
-import { paystackPaymentProvider, paystackReady } from "@/lib/payments/paystack";
-import { resolveCheckoutProvider } from "@/lib/payments/provider";
-import { stripePaymentProvider, stripeReady } from "@/lib/payments/stripe";
-import type { CheckoutInput } from "@/lib/payments/types";
-import type { BillingCurrency, CheckoutProviderInput, ProviderReadiness } from "@/types/payment";
+import { serializeCreditPacks } from "@/lib/payments/packs";
+import { coinpaymentsProviderReadiness, parseUsdtNetworks } from "@/lib/payments/providers/coinpayments";
+import { stripeProviderReadiness } from "@/lib/payments/providers/stripe";
 
-export function providerReadiness(): Record<"stripe" | "paystack" | "flutterwave", ProviderReadiness> {
+export function providerReadiness() {
   return {
-    stripe: stripePaymentProvider.readiness(),
-    paystack: paystackPaymentProvider.readiness(),
-    flutterwave: {
-      configured: false,
-      currencies: ["NGN"],
-      supportsRecurring: false
-    }
+    stripe: stripeProviderReadiness(),
+    coinpayments: coinpaymentsProviderReadiness()
   };
 }
 
-export function billingReady() {
-  return stripeReady() || paystackReady();
+export function paymentsReady() {
+  const readiness = providerReadiness();
+  return readiness.stripe.configured || readiness.coinpayments.configured;
 }
 
-export function providerForCheckout(input: { provider?: CheckoutProviderInput; currency?: BillingCurrency }) {
-  const provider = resolveCheckoutProvider(input);
-  if (provider === "paystack") return paystackPaymentProvider;
-  if (provider === "stripe") return stripePaymentProvider;
-  return null;
-}
-
-export async function createProviderCheckout(input: CheckoutInput) {
-  const provider = providerForCheckout({ provider: input.provider, currency: input.currency });
-  if (!provider) {
-    return {
-      provider: "placeholder" as const,
-      ready: false,
-      plan: input.plan,
-      currency: input.currency,
-      message: "This payment option is not configured yet.",
-      nextAction: "choose_provider"
-    };
-  }
-  return provider.createCheckout(input);
+export function paymentOverview() {
+  return {
+    paymentsReady: paymentsReady(),
+    providers: providerReadiness(),
+    packs: serializeCreditPacks(),
+    usdtNetworks: parseUsdtNetworks().map((network) => ({
+      id: network.id,
+      displayName: network.displayName,
+      asset: network.asset,
+      network: network.network,
+      estimatedFee: network.estimatedFee,
+      availability: network.availability
+    }))
+  };
 }

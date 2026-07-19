@@ -3,7 +3,6 @@ export type WardrobeCategory =
   | "tops"
   | "bottoms"
   | "dresses"
-  | "native"
   | "outerwear"
   | "shoes"
   | "bags"
@@ -12,7 +11,7 @@ export type WardrobeCategory =
 import type { WardrobeImageAsset } from "@/types/ai-tagging";
 
 export type TaggedSize = "XS" | "S" | "M" | "L" | "XL" | "XXL" | "custom" | "unknown";
-export type SizeSystem = "US" | "UK" | "EU" | "NG" | "international" | "custom" | "unknown";
+export type SizeSystem = "US" | "UK" | "EU" | "international" | "custom" | "unknown";
 export type GarmentFit = "slim" | "regular" | "relaxed" | "oversized" | "tailored" | "flowing" | "unknown";
 export type StretchLevel = "none" | "low" | "medium" | "high" | "unknown";
 export type FabricDrape = "structured" | "soft" | "flowing" | "heavy" | "stiff" | "unknown";

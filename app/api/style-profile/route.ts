@@ -5,7 +5,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import {
@@ -29,7 +29,7 @@ const styleProfilePatchSchema = z
     dislikedFits: tagList.optional(),
     preferredFormality: z.number().min(0).max(10).nullable().optional(),
     preferredOccasions: tagList.optional(),
-    culturalStylePreferences: tagList.optional(),
+    eventStylePreferences: tagList.optional(),
     preferredCategories: tagList.optional(),
     avoidedCategories: tagList.optional(),
     fashionRiskLevel: z.enum(["conservative", "balanced", "expressive"]).optional(),
@@ -63,7 +63,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `style-profile:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "style-profile-patch" });
+  const limited = rateLimitRequest({ key: `style-profile:patch:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "style-profile-patch" });
   if (limited) return limited;
 
   try {

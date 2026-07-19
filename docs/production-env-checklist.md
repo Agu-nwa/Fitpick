@@ -75,20 +75,12 @@ Notes:
 ## AI Tagging
 
 ```bash
-AI_TAGGING_PROVIDER=mock
-GEMINI_API_KEY=
 OPENAI_API_KEY=
-```
-
-Allowed provider values:
-
-```text
-mock | gemini | openai
 ```
 
 Notes:
 
-- `mock` is the safest default until provider testing is complete.
+- Production wardrobe analysis uses OpenAI. Do not configure mock AI tagging for launch.
 - Keep user tag review required.
 - Do not auto-save AI suggestions without user confirmation.
 
@@ -106,35 +98,40 @@ Notes:
 - Worker logs may show missing variable names, but must not show secret values.
 
 
-## Payments
+## Credit Purchases
 
 ```bash
-PAYMENT_PROVIDER=placeholder
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-FITPICK_PLUS_STRIPE_PRICE_ID=
-STRIPE_SUCCESS_URL=
-STRIPE_CANCEL_URL=
-PAYSTACK_SECRET_KEY=
-PAYSTACK_PUBLIC_KEY=
-PAYSTACK_WEBHOOK_SECRET=
-FITPICK_PLUS_PAYSTACK_PLAN_CODE=
-PAYSTACK_CALLBACK_URL=
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=
-```
-
-Allowed provider values:
-
-```text
-auto | stripe | paystack | placeholder
+COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
+COINPAYMENTS_CLIENT_ID=
+COINPAYMENTS_CLIENT_SECRET=
+COINPAYMENTS_WEBHOOK_SECRET=
+COINPAYMENTS_WEBHOOK_URL=https://YOUR_DOMAIN/api/webhooks/coinpayments
+COINPAYMENTS_USD_CURRENCY_ID=
+COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Notes:
 
 - Use sandbox keys until HTTPS and webhook verification are complete.
-- Stripe webhook URL: `https://YOUR_DOMAIN/api/billing/webhook/stripe`
-- Paystack webhook URL: `https://YOUR_DOMAIN/api/billing/webhook/paystack`
+- Stripe webhook URL: `https://YOUR_DOMAIN/api/webhooks/stripe`
+- CoinPayments webhook URL: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
+- Stripe is used only for one-time Credit purchases with hosted Checkout.
+- CoinPayments is used only for hosted USDT invoices. Do not use a static wallet address.
+- `COINPAYMENTS_USDT_NETWORK_ALLOWLIST` must use exact CoinPayments provider currency IDs from the merchant account.
 - Live payments should not be activated before HTTPS is working.
+
+Example network allowlist shape:
+
+```json
+[
+  { "id": "usdt-trc20", "displayName": "USDT on Tron", "asset": "USDT", "network": "TRC20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Very low" },
+  { "id": "usdt-bep20", "displayName": "USDT on BNB Smart Chain", "asset": "USDT", "network": "BEP20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Very low" },
+  { "id": "usdt-erc20", "displayName": "USDT on Ethereum", "asset": "USDT", "network": "ERC20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Higher" },
+  { "id": "usdt-solana", "displayName": "USDT on Solana", "asset": "USDT", "network": "Solana", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Fast · Lower network fees" }
+]
+```
 
 ## Optional
 

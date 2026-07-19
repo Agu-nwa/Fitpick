@@ -7,18 +7,19 @@ export const outfitRecommendationRequestSchema = z.object({
   customOccasion: z
     .object({
       name: z.string().trim().min(2).max(80),
-      group: z.enum(["everyday", "work", "formal", "social", "cultural", "weather", "travel"]).optional(),
+      group: z.enum(["everyday", "work", "formal", "social", "event", "weather", "travel"]).optional(),
       formality: z.enum(["relaxed", "balanced", "polished", "formal"]).optional()
     })
     .optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  weatherLocation: z.string().trim().max(120).optional(),
   occasionName: z.string().trim().min(2).max(80).optional(),
   formality: z.enum(["relaxed", "balanced", "polished", "formal"]).optional(),
   weatherContext: z.string().trim().max(120).optional(),
   constraints: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
   allowNeedsCare: z.boolean().optional(),
-  styleDirection: z.enum(["simple", "polished", "bold", "native", "weather-safe", "comfortable"]).optional()
+  styleDirection: z.enum(["simple", "polished", "bold", "statement", "weather-safe", "comfortable"]).optional()
 });
 
 export const outfitIdSchema = z.object({
@@ -30,7 +31,7 @@ export const swapOutfitSchema = z.object({
   replacementItemId: objectId.optional(),
   category: z.string().trim().max(60).optional(),
   swapDirection: z
-    .enum(["best-match", "more-polished", "more-casual", "color-change", "weather-safe", "native-touch"])
+    .enum(["best-match", "more-polished", "more-casual", "color-change", "weather-safe", "statement"])
     .optional()
 });
 
@@ -57,7 +58,7 @@ export const outfitFeedbackSchema = z.object({
         "not-my-style",
         "not-today",
         "weather-issue",
-        "needs-native-touch"
+        "needs-polish"
       ])
     )
     .max(10)
@@ -71,3 +72,21 @@ export const looksQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
   cursor: objectId.optional()
 });
+
+export const manualLookSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  occasion: z.string().trim().max(80).optional().or(z.literal("")),
+  itemIds: z.array(objectId).min(1).max(20),
+  favorite: z.boolean().optional(),
+  notes: z.string().trim().max(500).optional().or(z.literal(""))
+});
+
+export const updateManualLookSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120).optional(),
+    occasion: z.string().trim().max(80).optional().or(z.literal("")),
+    itemIds: z.array(objectId).min(1).max(20).optional(),
+    favorite: z.boolean().optional(),
+    notes: z.string().trim().max(500).optional().or(z.literal(""))
+  })
+  .strict();

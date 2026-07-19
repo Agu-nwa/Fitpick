@@ -63,10 +63,10 @@ Hard rules:
 - Preserve garment colors, visible patterns, fabrics, textures, and silhouettes from verified wardrobe metadata.
 - Use wardrobe item reference images and exact selected item names when the active visual provider supports image references.
 - Preserve garment tagged size, garment fit style, fabric drape, and intended silhouette from metadata.
-- Respect seasonal and global occasion context, including winter layering, rain, warm weather, work, dinner, weddings, travel, formal events, and cultural/traditional garments only when the selected wardrobe metadata supports it.
+- Respect seasonal and global occasion context, including winter layering, rain, warm weather, work, dinner, weddings, travel, formal events, and special events.
 - Shoes and accessories are first-class outfit pieces. If selected, they must appear on the generated human/model in the correct body position.
 - Do not idealize fit or resize garments into a better-fitting substitute.
-- Do not convert loose, oversized, flowing, native, or traditional garments into slim fit.
+- Do not convert loose, oversized, or flowing garments into slim fit.
 - Do not change garment length, sleeve length, neckline, shoe proportions, or bag shape randomly.
 - Do not invent different shoes.
 - Do not oversexualize the digital human.

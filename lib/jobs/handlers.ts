@@ -1,5 +1,7 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
+import { isCreditFeature, type CreditFeature } from "@/lib/credits/credit-costs";
+import { spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
 import { getTryOnProvider, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
@@ -21,6 +23,8 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
     imageUrl: upload.imageUrl || "",
     thumbnailUrl: upload.thumbnailUrl || "",
     images: (upload.images || {}) as any,
+    selectedCategory: (upload.selectedCategory || "") as any,
+    selectedCategoryLabel: upload.selectedCategoryLabel || "",
     suggestedTags: upload.suggestedTags || {}
   });
 
@@ -44,6 +48,21 @@ export async function runBackgroundJobByType(job: any) {
   const payload = job.payload || {};
   const userId = String(job.userId);
 
+  const chargeSuccessfulJob = async (fallbackFeature: CreditFeature, cached?: boolean) => {
+    const feature = isCreditFeature(payload.creditFeature) ? payload.creditFeature : fallbackFeature;
+    if (cached) return null;
+    return spendCreditsAfterSuccess({
+      userId,
+      feature,
+      referenceId: `job:${String(job._id)}`,
+      metadata: {
+        jobType: job.type,
+        outfitId: String(payload.outfitId || ""),
+        source: typeof payload.source === "string" ? payload.source : "background_job"
+      }
+    });
+  };
+
   if (job.type === "outfit_preview_generation") {
     const result = await runOutfitPreviewGenerationJob({
       userId,
@@ -52,9 +71,11 @@ export async function runBackgroundJobByType(job: any) {
       cacheKey: payload.cacheKey
     });
     const preview = (result.preview as any)?.toObject?.() ?? result.preview;
+    const creditCharge = await chargeSuccessfulJob("outfit_preview", result.cached);
 
     return {
-      preview: serializeOutfitPreview({ ...preview, cached: result.cached })
+      preview: serializeOutfitPreview({ ...preview, cached: result.cached }),
+      creditCharge: creditCharge ? { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance } : null
     };
   }
 
@@ -70,9 +91,11 @@ export async function runBackgroundJobByType(job: any) {
       cacheKey: payload.cacheKey
     });
     const preview = (result.preview as any)?.toObject?.() ?? result.preview;
+    const creditCharge = await chargeSuccessfulJob("virtual_try_on", result.cached);
 
     return {
-      preview: serializeAvatarPreview({ ...preview, cached: result.cached })
+      preview: serializeAvatarPreview({ ...preview, cached: result.cached }),
+      creditCharge: creditCharge ? { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance } : null
     };
   }
 
@@ -123,6 +146,6 @@ export async function runBackgroundJobByType(job: any) {
 
   return {
     skipped: true,
-    reason: `${job.type} is not implemented in this worker version.`
+    reason: `Unsupported background job type: ${job.type}.`
   };
 }

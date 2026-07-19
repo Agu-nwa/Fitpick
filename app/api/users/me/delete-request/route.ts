@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { PrivacyPreference } from "@/models/PrivacyPreference";
@@ -12,7 +12,7 @@ import { deleteRequestSchema } from "@/schemas/user.schema";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `users-me-delete:${meta.ip}`, limit: 5, windowMs: 60 * 60 * 1000, operation: "users-me-delete-request" });
+  const limited = rateLimitRequest({ key: `users-me-delete:${meta.ip}`, limit: 5, windowMs: 60 * 60 * 1000, operation: "users-me-delete-request" });
   if (limited) return limited;
 
   try {

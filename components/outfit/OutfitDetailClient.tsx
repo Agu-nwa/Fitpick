@@ -14,18 +14,14 @@ import { getOutfit } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 
 export function OutfitDetailClient({
-  id,
-  mockOutfit
+  id
 }: {
   id: string;
-  mockOutfit?: OutfitRecommendation;
 }) {
   const session = useSession();
 
   const [outfit, setOutfit] =
-    useState<OutfitRecommendation | null>(
-      mockOutfit || null
-    );
+    useState<OutfitRecommendation | null>(null);
 
   const [status, setStatus] = useState<
     "idle" |
@@ -50,19 +46,6 @@ export function OutfitDetailClient({
       return;
     }
 
-    if (mockOutfit) {
-      setOutfit(mockOutfit);
-      setCanSwap(false);
-
-      setStatus(
-        result.error.code === "INTERNAL_ERROR"
-          ? "unavailable"
-          : "ready"
-      );
-
-      return;
-    }
-
     setOutfit(null);
     setCanSwap(false);
 
@@ -74,7 +57,7 @@ export function OutfitDetailClient({
           ? "unavailable"
           : "error"
     );
-  }, [id, mockOutfit]);
+  }, [id]);
 
   useEffect(() => {
     if (session.status === "authenticated") {
@@ -87,22 +70,14 @@ export function OutfitDetailClient({
     status === "loading" ||
     (
       session.status === "authenticated" &&
-      status === "idle" &&
-      !mockOutfit
+      status === "idle"
     )
   ) {
     return <OutfitGeneratingState />;
   }
 
   if (session.status === "logged-out") {
-    return (
-      <>
-        <OutfitAuthRequiredState />
-        {mockOutfit ? (
-          <OutfitResult outfit={mockOutfit} />
-        ) : null}
-      </>
-    );
+    return <OutfitAuthRequiredState />;
   }
 
   if (
@@ -120,9 +95,6 @@ export function OutfitDetailClient({
           }
         />
 
-        {mockOutfit ? (
-          <OutfitResult outfit={mockOutfit} />
-        ) : null}
       </>
     );
   }

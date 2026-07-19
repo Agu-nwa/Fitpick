@@ -178,7 +178,7 @@ export async function runConfiguredVirtualTryOnJob(input: {
       : "");
     const preview = await AvatarOutfitPreview.findOne({ userId: input.userId, outfitId: input.outfitId, cacheKey }).lean();
     if (!preview && output.status === "failed") throw new Error(output.warnings[0] || "OpenAI virtual try-on fallback failed.");
-    return { preview, cached: false, providerOutput: output };
+    return { preview, cached: Boolean(output.cached), providerOutput: output };
   }
 
   const saved = await saveProviderPreview(input, output);

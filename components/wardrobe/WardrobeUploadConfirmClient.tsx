@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { ConfidenceBadge } from "@/components/wardrobe/ConfidenceBadge";
 import { WardrobeImageSlots } from "@/components/wardrobe/WardrobeImageSlots";
 import {
   WardrobeApiErrorState,
@@ -32,6 +31,14 @@ function cleanItemPayload(values: AITagConfirmationValues) {
     pattern: values.pattern || "",
     fabric: values.fabric || "",
     fit: values.fit || "",
+    taggedSize: values.taggedSize,
+    sizeSystem: values.sizeSystem,
+    garmentFit: values.garmentFit,
+    garmentMeasurements: values.garmentMeasurements,
+    stretchLevel: values.stretchLevel,
+    fabricDrape: values.fabricDrape,
+    fitConfidence: values.fitConfidence,
+    measurementSource: values.measurementSource,
     formality: values.formality,
     occasions: values.occasions,
     weather: values.weather,
@@ -195,18 +202,17 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   return (
     <div className="mt-7 space-y-7">
       <section>
-        <SectionHeader title="Clothing check" eyebrow="Uploaded photos" />
+        <SectionHeader title="Review your garment intelligence" eyebrow="Uploaded photos" />
         <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
                 <Sparkles size={14} aria-hidden="true" />
-                AI tag review
+                Review details
               </p>
-              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what MyFitPick found.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">Check the suggested category, color, fabric, fit, and size details before saving the item to your closet.</p>
+              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what MyFitPick detected.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">Check the category, colour, material, fit, and size details before saving the item to your closet.</p>
             </div>
-            {upload.aiAnalysis ? <ConfidenceBadge confidence={upload.aiConfidence || 0} /> : null}
           </div>
           <ProgressSteps steps={reviewSteps} />
           <WardrobeImageSlots images={upload.images as any} disabled />
@@ -237,7 +243,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
       </section>
 
       <section>
-        <SectionHeader title="Save item" eyebrow="Check details" />
+        <SectionHeader title="Save to wardrobe" eyebrow="Check details" />
         <Card>
           <AITagConfirmationForm
             aiAnalysis={upload.aiAnalysis}

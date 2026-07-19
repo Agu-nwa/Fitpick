@@ -5,13 +5,12 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProfileIntegrationClient } from "@/components/profile/ProfileIntegrationClient";
 import { Card } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { stylePreferences } from "@/lib/mock-data";
 
 const links = [
-  { label: "Frontend state library", href: "/states", helper: "Loading, empty, error, offline, permission, and premium states." },
-  { label: "Backend readiness map", href: "/backend-ready", helper: "API contract notes for the next engineering phase." },
-  { label: "Sign in", href: "/login", helper: "Access your saved wardrobe, preferences, and outfit history." },
-  { label: "Delete/export data", href: "/profile", helper: "Privacy action placeholder for backend phase." },
+  { label: "Your Style DNA", href: "/style-profile", helper: "Teach MyFitPick how you like to dress." },
+  { label: "Preferences", href: "/profile/preferences", helper: "Manage outfit, weather, and privacy preferences." },
+  { label: "Credits", href: "/wallet", helper: "Review your balance, ledger, and one-time Credit purchases." },
+  { label: "Avatar model", href: "/avatar", helper: "Edit your model photo, fit details, and try-on settings." }
 ];
 
 export default function ProfilePage() {
@@ -28,7 +27,7 @@ export default function ProfilePage() {
             Your style profile.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Personalization, privacy, notifications, and MyFitPick Plus in one place.
+            Personalization, privacy, notifications, and Credits in one place.
           </p>
         </div>
       </header>
@@ -37,21 +36,7 @@ export default function ProfilePage() {
       <ProfileIntegrationClient />
 
       <section className="mt-7">
-        <SectionHeader title="Style preferences" action={<Link href="/profile/preferences" className="text-xs font-semibold text-cocoa">Edit</Link>} />
-        <div className="space-y-3">
-          {stylePreferences.map((preference) => (
-            <Card key={preference.id} className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-ink">{preference.label}</p>
-                <p className="text-right text-sm text-muted">{preference.value}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <SectionHeader title="Build system" />
+        <SectionHeader title="Account links" />
         <div className="space-y-2">
           {links.map((item) => (
             <Link key={item.label} href={item.href} className="focus-ring block rounded-xl3">

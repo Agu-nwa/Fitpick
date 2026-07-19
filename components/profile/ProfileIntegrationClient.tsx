@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
-import { PlusStatusCard } from "@/components/plus/PlusStatusClient";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { WalletSummaryCard } from "@/components/wallet/WalletSummaryCard";
 import { useSession } from "@/hooks/use-session";
-import { getNotificationPreferences, getPlusStatus, updateCurrentUser, updateNotificationPreferences, type NotificationPreferencesData, type PlusStatusData } from "@/lib/api-client";
+import { getNotificationPreferences, getWallet, updateCurrentUser, updateNotificationPreferences, type CreditWalletData, type NotificationPreferencesData } from "@/lib/api-client";
 
 const notificationRows = [
   ["morningReminder", "Morning reminder", "A gentle prompt to pick an outfit."],
@@ -23,15 +23,15 @@ export function ProfileIntegrationClient() {
   const session = useSession();
   const [name, setName] = useState("");
   const [notifications, setNotifications] = useState<NotificationPreferencesData["preferences"] | null>(null);
-  const [plus, setPlus] = useState<PlusStatusData | null>(null);
+  const [wallet, setWallet] = useState<CreditWalletData["wallet"] | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "unavailable" | "saved">("idle");
 
   const loadProfileData = useCallback(async () => {
     setState("loading");
-    const [notificationResult, plusResult] = await Promise.all([getNotificationPreferences(), getPlusStatus()]);
+    const [notificationResult, walletResult] = await Promise.all([getNotificationPreferences(), getWallet()]);
     if (notificationResult.ok) setNotifications(notificationResult.data.preferences);
-    if (plusResult.ok) setPlus(plusResult.data);
-    setState(notificationResult.ok || plusResult.ok ? "idle" : "unavailable");
+    if (walletResult.ok) setWallet(walletResult.data.wallet);
+    setState(notificationResult.ok || walletResult.ok ? "idle" : "unavailable");
   }, []);
 
   useEffect(() => {
@@ -83,8 +83,8 @@ export function ProfileIntegrationClient() {
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="MyFitPick Plus" action={<Link href="/plus" className="text-xs font-semibold text-cocoa">Open</Link>} />
-        <PlusStatusCard status={plus} />
+        <SectionHeader title="Credits" action={<Link href="/wallet" className="text-xs font-semibold text-cocoa">Open</Link>} />
+        <WalletSummaryCard wallet={wallet} />
       </section>
     </>
   );

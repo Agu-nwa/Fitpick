@@ -7,37 +7,141 @@ import { Camera, CheckCircle2, ImagePlus, PencilLine, Sparkles } from "lucide-re
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { FieldGroup } from "@/components/ui/FieldGroup";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import {
   WardrobeApiErrorState,
   WardrobeAuthRequiredState,
   WardrobeBackendUnavailableState,
-  WardrobeLoadingState,
-  WardrobeSaveSuccessState
+  WardrobeLoadingState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
-import { WardrobeImageSlots } from "@/components/wardrobe/WardrobeImageSlots";
-import { WardrobeTagReviewForm, type WardrobeTagFormValues } from "@/components/wardrobe/WardrobeTagReviewForm";
+import { WardrobeImageSlots, type WardrobeImageSlotDefinition } from "@/components/wardrobe/WardrobeImageSlots";
 import { useSession } from "@/hooks/use-session";
 import {
   analyzeWardrobeUpload,
-  createWardrobeItem,
   requestSignedUploadUrl,
   uploadWardrobeMetadata
 } from "@/lib/api-client";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
-import type { WardrobeItem } from "@/types/wardrobe";
+import type { WardrobeCategory } from "@/types/wardrobe";
 
-const slotOrder: WardrobeImagePurpose[] = ["front", "back", "fabricCloseUp", "label"];
-
-const slotCopy: Record<WardrobeImagePurpose, { title: string; body: string }> = {
-  front: { title: "Front", body: "Shape, color, neckline, closure" },
-  back: { title: "Back", body: "Back fit and construction" },
-  fabricCloseUp: { title: "Fabric", body: "Texture, weave, print detail" },
-  label: { title: "Label", body: "Size, brand, care, composition" },
-  additional: { title: "Extra", body: "Optional supporting photo" }
+type CategoryOption = {
+  label: string;
+  backendCategory: WardrobeCategory;
+  subcategory?: string;
+  helper: string;
+  slots: WardrobeImageSlotDefinition[];
 };
+
+const categoryOptions: CategoryOption[] = [
+  {
+    label: "Top",
+    backendCategory: "tops",
+    helper: "Shirts, tees, blouses, knits, and similar pieces.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full front view", required: true },
+      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
+      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, weave, or pattern" },
+      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
+    ]
+  },
+  {
+    label: "Bottom",
+    backendCategory: "bottoms",
+    helper: "Trousers, jeans, skirts, shorts, and similar pieces.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
+      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, weave, or stretch" },
+      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
+    ]
+  },
+  {
+    label: "Dress",
+    backendCategory: "dresses",
+    helper: "Dresses, gowns, jumpsuits, and one-piece outfits.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
+      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, drape, or pattern" },
+      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
+    ]
+  },
+  {
+    label: "Outerwear",
+    backendCategory: "outerwear",
+    helper: "Jackets, coats, blazers, cardigans, and layers.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Back or lining if useful" },
+      { key: "fabricCloseUp", label: "Material detail", helper: "Texture, hardware, or lining" },
+      { key: "label", label: "Label or product details", helper: "Care, brand, size, or code" }
+    ]
+  },
+  {
+    label: "Shoes",
+    backendCategory: "shoes",
+    helper: "Sneakers, loafers, heels, boots, sandals, and similar items.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Pair or single shoe view", required: true },
+      { key: "back", label: "Additional angle", helper: "Side, sole, or insole" },
+      { key: "label", label: "Label or product details", helper: "Tongue, insole, size, or sole marking" }
+    ]
+  },
+  {
+    label: "Bag",
+    backendCategory: "bags",
+    helper: "Handbags, totes, backpacks, luggage, and clutches.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full bag view", required: true },
+      { key: "back", label: "Additional angle", helper: "Interior or hardware" },
+      { key: "label", label: "Label or product details", helper: "Interior stamp, date code, or serial detail" }
+    ]
+  },
+  {
+    label: "Watch",
+    backendCategory: "accessories",
+    subcategory: "Watch",
+    helper: "Watches, straps, and timepieces.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Dial and strap", required: true },
+      { key: "back", label: "Additional angle", helper: "Case-back or clasp" },
+      { key: "label", label: "Label or product details", helper: "Serial, reference, box, or certificate" }
+    ]
+  },
+  {
+    label: "Jewellery",
+    backendCategory: "accessories",
+    subcategory: "Jewellery",
+    helper: "Rings, necklaces, bracelets, earrings, and fine jewellery.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Clasp, setting, or underside" },
+      { key: "label", label: "Label or product details", helper: "Hallmark, engraving, or certificate" }
+    ]
+  },
+  {
+    label: "Accessory",
+    backendCategory: "accessories",
+    helper: "Belts, scarves, eyewear, hats, and smaller pieces.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Back, clasp, or interior" },
+      { key: "label", label: "Label or product details", helper: "Stamp, code, size, or care detail" }
+    ]
+  },
+  {
+    label: "Other",
+    backendCategory: "accessories",
+    subcategory: "Other",
+    helper: "Use this when the item does not fit another category.",
+    slots: [
+      { key: "front", label: "Main photo", helper: "Clear full item view", required: true },
+      { key: "back", label: "Additional angle", helper: "Any useful second view" },
+      { key: "label", label: "Label or product details", helper: "Marking, code, or product detail" }
+    ]
+  }
+];
 
 type SlotFile = {
   file: File;
@@ -53,29 +157,14 @@ type UploadedSlot = WardrobeImageAsset & {
   thumbnailUrl: string;
 };
 
-function toImageAsset(uploaded: UploadedSlot): WardrobeImageAsset {
+function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
+  if (!uploaded) return undefined;
   return {
     url: uploaded.url,
     storageKey: uploaded.storageKey,
     provider: uploaded.provider,
     uploadedAt: uploaded.uploadedAt,
     purpose: uploaded.purpose
-  };
-}
-
-function cleanItemPayload(values: WardrobeTagFormValues) {
-  return {
-    name: values.name,
-    category: values.category,
-    subcategory: values.subcategory || "",
-    color: values.color,
-    pattern: values.pattern || "",
-    fabric: values.fabric || "",
-    fit: values.fit || "",
-    formality: values.formality,
-    occasions: values.occasions,
-    weather: values.weather,
-    condition: values.condition
   };
 }
 
@@ -86,7 +175,7 @@ function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFil
       {
         url: value?.previewUrl || "",
         storageKey: "",
-        provider: "local_placeholder",
+        provider: "browser_preview",
         purpose
       }
     ])
@@ -97,24 +186,38 @@ export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCategoryLabel, setSelectedCategoryLabel] = useState("");
+  const selectedCategory = categoryOptions.find((option) => option.label === selectedCategoryLabel);
   const [activePurpose, setActivePurpose] = useState<WardrobeImagePurpose>("front");
   const [slotFiles, setSlotFiles] = useState<Partial<Record<WardrobeImagePurpose, SlotFile>>>({});
-  const [createdItem, setCreatedItem] = useState<WardrobeItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [status, setStatus] = useState<"idle" | "unavailable" | "error">("idle");
   const [message, setMessage] = useState("");
 
+  const activeSlots = selectedCategory?.slots || [];
+  const requiredSlots = activeSlots.filter((slot) => slot.required);
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
-  const selectedCount = Object.keys(slotFiles).length;
-  const missingRequired = slotOrder.filter((purpose) => !slotFiles[purpose]);
+  const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length;
+  const missingRequired = requiredSlots.filter((slot) => !slotFiles[slot.key]);
   const uploadSteps = [
-    { label: "Capture 4 photos", status: selectedCount === slotOrder.length ? "complete" : "current" },
-    { label: "Upload together", status: isSaving ? "current" : selectedCount === slotOrder.length ? "complete" : "pending" },
-    { label: "Check clothes", status: isAnalyzing ? "current" : "pending" }
+    { label: "Choose category", status: selectedCategory ? "complete" : "current" },
+    { label: "Add photos", status: selectedCategory && !missingRequired.length ? "complete" : selectedCategory ? "current" : "pending" },
+    { label: "Review details", status: isAnalyzing ? "current" : "pending" }
   ] as const;
 
+  function selectCategory(label: string) {
+    setSelectedCategoryLabel(label);
+    setActivePurpose("front");
+    setMessage("");
+    setStatus("idle");
+  }
+
   function handleSelectSlot(purpose: WardrobeImagePurpose) {
+    if (!selectedCategory) {
+      setMessage("Choose what you are adding first.");
+      return;
+    }
     setActivePurpose(purpose);
     fileInputRef.current?.click();
   }
@@ -164,16 +267,13 @@ export function WardrobeAddClient() {
       body: slot.file
     });
 
-    if (!s3Response.ok) {
-      throw new Error("We could not upload one of the photos.");
-    }
+    if (!s3Response.ok) throw new Error("We could not upload one of the photos.");
 
     const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
-    const storageKey = uploadAccess.storageKey;
 
     return {
       url: publicUrl,
-      storageKey,
+      storageKey: uploadAccess.storageKey,
       provider: "s3",
       uploadedAt: new Date().toISOString(),
       purpose,
@@ -186,14 +286,14 @@ export function WardrobeAddClient() {
     };
   }
 
-  async function handleMultiPhotoUpload() {
-    if (!selectedCount) {
-      setMessage("Add the front, back, fabric, and label photos before continuing.");
+  async function handlePhotoUpload() {
+    if (!selectedCategory) {
+      setMessage("Choose what you are adding first.");
       return;
     }
 
     if (missingRequired.length) {
-      setMessage(`Missing ${missingRequired.map((purpose) => slotCopy[purpose].title.toLowerCase()).join(", ")} photo${missingRequired.length === 1 ? "" : "s"}.`);
+      setMessage("Add a main photo before continuing.");
       return;
     }
 
@@ -202,16 +302,15 @@ export function WardrobeAddClient() {
     setMessage("");
 
     try {
-      const uploaded = await Promise.all(
-        slotOrder.map(async (purpose) => {
-          const slot = slotFiles[purpose];
-          if (!slot) throw new Error(`Missing ${slotCopy[purpose].title.toLowerCase()} photo.`);
-          return uploadSlot(purpose, slot);
-        })
-      );
-
-      const byPurpose = Object.fromEntries(uploaded.map((asset) => [asset.purpose, asset])) as Record<WardrobeImagePurpose, UploadedSlot>;
+      const uploadableSlots = activeSlots
+        .map((slot) => ({ purpose: slot.key, slot: slotFiles[slot.key] }))
+        .filter((entry): entry is { purpose: WardrobeImagePurpose; slot: SlotFile } => Boolean(entry.slot));
+      const uploaded = await Promise.all(uploadableSlots.map((entry) => uploadSlot(entry.purpose, entry.slot)));
+      const byPurpose = Object.fromEntries(uploaded.map((asset) => [asset.purpose, asset])) as Partial<Record<WardrobeImagePurpose, UploadedSlot>>;
       const primary = byPurpose.front || uploaded[0];
+
+      if (!primary) throw new Error("Add a main photo before continuing.");
+
       const result = await uploadWardrobeMetadata({
         filename: primary.filename,
         mimeType: primary.mimeType,
@@ -225,18 +324,24 @@ export function WardrobeAddClient() {
         secureUrl: primary.url,
         thumbnailUrl: primary.thumbnailUrl,
         uploadStatus: "uploaded",
+        selectedCategory: selectedCategory.backendCategory,
+        selectedCategoryLabel: selectedCategory.label,
+        suggestedTags: {
+          category: selectedCategory.backendCategory,
+          subcategory: selectedCategory.subcategory || selectedCategory.label
+        },
         images: {
-          front: toImageAsset(byPurpose.front),
-          back: toImageAsset(byPurpose.back),
-          fabricCloseUp: toImageAsset(byPurpose.fabricCloseUp),
-          label: toImageAsset(byPurpose.label),
+          ...(toImageAsset(byPurpose.front) ? { front: toImageAsset(byPurpose.front) } : {}),
+          ...(toImageAsset(byPurpose.back) ? { back: toImageAsset(byPurpose.back) } : {}),
+          ...(toImageAsset(byPurpose.fabricCloseUp) ? { fabricCloseUp: toImageAsset(byPurpose.fabricCloseUp) } : {}),
+          ...(toImageAsset(byPurpose.label) ? { label: toImageAsset(byPurpose.label) } : {}),
           additional: []
         }
       });
 
       if (!result.ok) {
         setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
-        setMessage("MyFitPick could not create the wardrobe upload record.");
+        setMessage("MyFitPick could not create the upload record.");
         return;
       }
 
@@ -246,7 +351,7 @@ export function WardrobeAddClient() {
       setIsAnalyzing(false);
 
       if (!analysis.ok) {
-        setMessage("Upload saved, but the clothing check did not finish. You can review manually on the next screen.");
+        setMessage("Upload saved, but the detail check did not finish. You can review the item on the next screen.");
       }
 
       router.push(`/wardrobe/${result.data.upload.id}/confirm`);
@@ -258,20 +363,6 @@ export function WardrobeAddClient() {
     }
   }
 
-  async function handleManualCreate(values: WardrobeTagFormValues) {
-    setIsSaving(true);
-    setStatus("idle");
-    const result = await createWardrobeItem(cleanItemPayload(values));
-    setIsSaving(false);
-
-    if (result.ok) {
-      setCreatedItem(result.data.item);
-      return;
-    }
-
-    setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
-  }
-
   if (session.status === "loading") return <WardrobeLoadingState />;
   if (session.status === "logged-out") return <WardrobeAuthRequiredState />;
   if (session.status === "backend-unavailable") return <WardrobeBackendUnavailableState onRetry={session.refresh} />;
@@ -280,16 +371,34 @@ export function WardrobeAddClient() {
     <div className="mt-7 space-y-7">
       {status === "unavailable" ? <WardrobeBackendUnavailableState /> : null}
       {status === "error" ? <WardrobeApiErrorState /> : null}
-      {createdItem ? (
-        <WardrobeSaveSuccessState
-          title="Added to wardrobe"
-          body={`${createdItem.name} is saved and ready for outfit planning.`}
-          href={`/wardrobe/${createdItem.id}`}
-        />
-      ) : null}
 
       <section>
-        <SectionHeader title="Capture set" eyebrow="Front, back, fabric, label" />
+        <SectionHeader title="What are you adding?" eyebrow="Start here" />
+        <Card className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {categoryOptions.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                className={`focus-ring min-h-24 rounded-2xl border p-3 text-left transition ${
+                  selectedCategoryLabel === option.label
+                    ? "border-cocoa bg-cocoa text-canvas shadow-glow"
+                    : "border-line bg-canvas/70 text-ink hover:border-cocoa/40"
+                }`}
+                onClick={() => selectCategory(option.label)}
+              >
+                <span className="block text-sm font-bold">{option.label}</span>
+                <span className={`mt-2 block text-xs leading-5 ${selectedCategoryLabel === option.label ? "text-canvas/70" : "text-muted"}`}>
+                  {option.helper}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader title="Add photos" eyebrow={selectedCategory ? selectedCategory.label : "Choose category first"} />
         <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -298,21 +407,31 @@ export function WardrobeAddClient() {
                 Wardrobe upload
               </p>
               <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Photograph one piece.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">MyFitPick works best when each upload has one item with four supporting angles.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Add a clear main photo. Use optional detail photos when they help MyFitPick read brand, material, size, serial marks, care, or authenticity details.
+              </p>
             </div>
-            <Badge tone={missingRequired.length ? "warning" : "success"}>
-              {selectedCount}/4 ready
+            <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>
+              {selectedCategory ? `${selectedCount}/${activeSlots.length} added` : "Pick category"}
             </Badge>
           </div>
           <ProgressSteps steps={[...uploadSteps]} />
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-canvas/60 px-3 py-2">
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-ink">
               <Camera size={14} className="text-cocoa" aria-hidden="true" />
-              Clothing photos
+              Add label or product details - optional
             </p>
-            <span className="text-xs leading-5 text-muted">Tap a slot to add or replace its photo.</span>
+            <span className="text-xs leading-5 text-muted">
+              Label, serial number, hallmark, engraving, size marking, care tag, or product code.
+            </span>
           </div>
-          <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} />
+          {selectedCategory ? (
+            <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} slots={activeSlots} />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-line bg-canvas/60 px-4 py-8 text-center text-sm font-semibold text-muted">
+              Choose a category to see the right photo slots.
+            </div>
+          )}
           <input
             ref={fileInputRef}
             className="sr-only"
@@ -326,30 +445,32 @@ export function WardrobeAddClient() {
             }}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            {slotOrder.map((purpose) => {
-              const slot = slotFiles[purpose];
-              return (
-                <div key={purpose} className="rounded-2xl border border-line bg-canvas/60 p-3 shadow-card">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slotCopy[purpose].title}</p>
-                  <p className="mt-1 min-h-8 break-words text-[11px] leading-4 text-muted">{slot ? slot.file.name : slotCopy[purpose].body}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(purpose)} disabled={isSaving || isAnalyzing}>
-                      {slot ? <PencilLine size={13} aria-hidden="true" /> : <ImagePlus size={13} aria-hidden="true" />}
-                      {slot ? "Replace" : "Add"}
-                    </Button>
-                    <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(purpose)} disabled={!slot || isSaving || isAnalyzing}>
-                      Clear
-                    </Button>
+          {selectedCategory ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {activeSlots.map((slot) => {
+                const selected = slotFiles[slot.key];
+                return (
+                  <div key={slot.key} className="rounded-2xl border border-line bg-canvas/60 p-3 shadow-card">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}</p>
+                    <p className="mt-1 min-h-8 break-words text-[11px] leading-4 text-muted">{selected ? selected.file.name : slot.helper}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(slot.key)} disabled={isSaving || isAnalyzing}>
+                        {selected ? <PencilLine size={13} aria-hidden="true" /> : <ImagePlus size={13} aria-hidden="true" />}
+                        {selected ? "Replace" : "Add"}
+                      </Button>
+                      <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(slot.key)} disabled={!selected || isSaving || isAnalyzing}>
+                        Clear
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : null}
 
-          <Button type="button" className="w-full" onClick={() => void handleMultiPhotoUpload()} disabled={isSaving || isAnalyzing}>
+          <Button type="button" className="w-full" onClick={() => void handlePhotoUpload()} disabled={isSaving || isAnalyzing}>
             {isSaving || isAnalyzing ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-            {isSaving ? "Uploading photos..." : isAnalyzing ? "Checking clothes..." : "Upload and check clothes"}
+            {isSaving ? "Uploading photos..." : isAnalyzing ? "Checking details..." : "Upload and review details"}
           </Button>
 
           {message ? (
@@ -357,20 +478,6 @@ export function WardrobeAddClient() {
               {message}
             </p>
           ) : null}
-        </Card>
-      </section>
-
-      <section>
-        <SectionHeader title="Add manually" eyebrow="Fallback" />
-        <Card>
-          <FieldGroup
-            label="Manual fallback"
-            help="Use this only when photos are unavailable. Checking photos gives MyFitPick better wardrobe details."
-          >
-            <div className="mt-3">
-              <WardrobeTagReviewForm showName submitLabel="Create wardrobe item" disabled={isSaving || isAnalyzing} onSubmit={handleManualCreate} />
-            </div>
-          </FieldGroup>
         </Card>
       </section>
 

@@ -1,7 +1,7 @@
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 
-export type AiTaggingProvider = "mock" | "gemini" | "openai";
+export type AiTaggingProvider = "openai";
 
 export type AiSuggestedWardrobeTags = {
   name?: string;
@@ -41,6 +41,8 @@ export type AiTaggingInput = {
     label?: WardrobeImageAsset;
     additional?: WardrobeImageAsset[];
   };
+  selectedCategory?: WardrobeCategory;
+  selectedCategoryLabel?: string;
   suggestedTags?: Record<string, unknown>;
 };
 

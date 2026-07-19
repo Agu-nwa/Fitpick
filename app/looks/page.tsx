@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Images, Plus, Sparkles } from "lucide-react";
+import { Images, Plus, Save } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { LooksClient } from "@/components/looks/LooksClient";
 import { Button } from "@/components/ui/Button";
@@ -24,9 +24,9 @@ export default function LooksPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
-            <Link href="/outfit">
+            <Link href="#manual-look-builder">
               <Button className="w-full rounded-full">
-                <Sparkles size={18} aria-hidden="true" />
+                <Save size={18} aria-hidden="true" />
                 Build a look
               </Button>
             </Link>

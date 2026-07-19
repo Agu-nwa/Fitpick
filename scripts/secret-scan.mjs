@@ -23,7 +23,7 @@ const riskyPatterns = [
   /S3_SECRET_ACCESS_KEY\s*[:=]\s*['"][^'"]+['"]/,
   /S3_ACCESS_KEY_ID\s*[:=]\s*['"][^'"]+['"]/,
   /OPENAI_API_KEY\s*[:=]\s*['"][^'"]+['"]/,
-  /PAYSTACK_SECRET_KEY\s*=\s*['"][^'"]+['"]/,
+  /COINPAYMENTS_(CLIENT_SECRET|WEBHOOK_SECRET)\s*[:=]\s*['"][^'"]+['"]/,
   /CLOUDINARY_API_SECRET\s*=\s*['"][^'"]+['"]/,
   /CLOUDINARY_(CLOUD_NAME|API_KEY|API_SECRET)\s*:\s*['"][^'"]+['"]/,
   /JWT_SECRET\s*=\s*['"][^'"]+['"]/,

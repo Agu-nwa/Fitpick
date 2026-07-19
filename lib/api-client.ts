@@ -71,8 +71,18 @@ export type CurrentUserSummary = {
     name: string;
     email: string;
     role: "user" | "admin";
-    plan: "free" | "plus";
+    credits?: number;
+    totalCreditsPurchased?: number;
+    totalCreditsRefunded?: number;
+    totalCreditsSpent?: number;
+    complimentaryCreditsUsed?: number;
+    modelSetupCompletedAt?: string;
+    weatherLocationName?: string;
+    weatherLatitude?: number;
+    weatherLongitude?: number;
+    weatherLocationUpdatedAt?: string;
   };
+  wallet?: CreditWalletSummary;
 };
 
 export type AuthOtpPurpose = "signup" | "signin";
@@ -117,6 +127,8 @@ export type WardrobeUploadRecord = {
   aiErrorSafeMessage?: string;
   imageUrl?: string;
   thumbnailUrl?: string;
+  selectedCategory?: WardrobeItem["category"] | "";
+  selectedCategoryLabel?: string;
   images?: {
     front?: WardrobeImageAsset;
     back?: WardrobeImageAsset;
@@ -243,11 +255,13 @@ export type JobStatusData = {
 
 export type SavedLookSummary = {
   id: string;
-  outfitId: string;
+  outfitId: string | null;
+  source: "manual" | "ai_saved" | string;
   title: string;
   occasion: string;
   itemIds: string[];
   favorite: boolean;
+  notes?: string;
   savedAt: string | null;
 };
 
@@ -300,7 +314,7 @@ export type StyleProfileData = {
     dislikedFits: string[];
     preferredFormality: number | null;
     preferredOccasions: string[];
-    culturalStylePreferences: string[];
+    eventStylePreferences: string[];
     preferredCategories: string[];
     avoidedCategories: string[];
     fashionRiskLevel: "conservative" | "balanced" | "expressive";
@@ -431,7 +445,7 @@ export type FashionMemorySummary = {
   recentlyWornItemIds: string[];
   savedItemIds: string[];
   occasions: string[];
-  culturalContext: string[];
+  eventContext: string[];
   season: string[];
   weather: string[];
   lastEventAt: string | null;
@@ -446,40 +460,154 @@ export type FashionMemoryData = {
   };
 };
 
-export type PlusStatusData = {
-  plan: "free" | "plus";
-  provider?: string;
+export type CreditWalletSummary = {
+  balance: number;
+  totalCreditsPurchased: number;
+  totalCreditsRefunded: number;
+  totalCreditsSpent: number;
+  complimentaryCreditsUsed: number;
+  complimentaryCreditsRemaining: number;
+  purchasedCreditsRemaining: number;
+};
+
+export type CreditTransactionSummary = {
+  id: string;
+  feature: string;
+  credits: number;
+  status: "pending" | "processing" | "spent" | "credited" | "reversed" | "failed" | "refunded" | string;
+  referenceId: string;
+  balanceAfter: number | null;
+  createdAt: string | null;
+};
+
+export type CreditPackSummary = {
+  id: string;
+  label: string;
+  credits: number;
+  amountMinor: number;
+  currency: "USD";
+  amountLabel: string;
+  status: "available";
+};
+
+export type CreditPurchaseSummary = {
+  id: string;
+  packId: string;
+  packName: string;
+  credits: number;
+  amountMinor: number;
+  amountLabel: string;
+  currency: "USD";
+  provider: "stripe" | "coinpayments";
+  paymentMethod: "fiat" | "usdt";
   status: string;
-  currency?: string;
-  amount?: number;
-  interval?: string;
-  currentPeriodEnd: string | null;
-  limits: Record<string, unknown>;
-  usageToday: number;
-  remainingDailyPicks: number;
-  features: Record<string, boolean> | string[];
-  billingReady?: boolean;
-  availableProviders?: Record<string, { configured: boolean; currencies: string[]; supportsRecurring: boolean }>;
+  createdAt: string | null;
+  paidAt: string | null;
+  creditedAt: string | null;
+  refundedAt: string | null;
+  checkoutUrl?: string | null;
+  usdtNetwork?: string | null;
+  expectedUsdtAmount?: string | null;
+  receivedUsdtAmount?: string | null;
+  confirmations?: number | null;
+  requiredConfirmations?: number | null;
+};
+
+export type UsdtNetworkSummary = {
+  id: string;
+  displayName: string;
+  asset: "USDT";
+  network: string;
+  estimatedFee?: string;
+  availability: "available" | "unavailable";
+};
+
+export type CreditWalletData = {
+  wallet: CreditWalletSummary;
+  transactions: CreditTransactionSummary[];
+  usageHistory: CreditTransactionSummary[];
+  costs: Array<{ feature: string; label: string; credits: number; description: string }>;
+  freeFeatures: string[];
+  packs: CreditPackSummary[];
+  purchases: CreditPurchaseSummary[];
+  paymentsReady: boolean;
+  providers: Record<string, { configured: boolean; currencies: string[]; paymentMethods: string[]; message?: string }>;
+  usdtNetworks: UsdtNetworkSummary[];
+};
+
+export type WeatherForecastData = {
+  status: "ready" | "location_needed" | "unavailable" | string;
+  forecast: null | {
+    location: {
+      name: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    current: {
+      temperature: number;
+      feelsLike?: number;
+      high?: number;
+      low?: number;
+      rainChance?: number;
+      humidity: number;
+      windKph?: number;
+      uvIndex?: number | null;
+      condition: string;
+      city?: string;
+      country?: string;
+      stylingAdvice?: string;
+    };
+    days: Array<{
+      date: string;
+      label: string;
+      temperature: number;
+      feelsLike?: number;
+      high?: number;
+      low?: number;
+      rainChance?: number;
+      humidity: number;
+      windKph?: number;
+      uvIndex?: number | null;
+      condition: string;
+      stylingAdvice?: string;
+    }>;
+    summary: string;
+    cached: boolean;
+    provider: string;
+    fetchedAt: string;
+  };
+  safeMessage: string;
 };
 
 export type CheckoutData = {
   checkout: {
     ready: boolean;
-    plan: string;
     checkoutUrl?: string | null;
-    authorizationUrl?: string | null;
-    accessCode?: string | null;
-    reference?: string | null;
+    purchaseId?: string;
+    invoiceId?: string;
+    paymentMethod?: "fiat" | "usdt";
+    network?: UsdtNetworkSummary;
+    warning?: string;
     currency?: string;
-    provider?: string;
+    provider?: "stripe" | "coinpayments";
     message?: string;
     nextAction?: string;
   };
 };
 
-export type BillingProvidersData = {
-  billingReady: boolean;
-  providers: Record<string, { configured: boolean; currencies: string[]; supportsRecurring: boolean }>;
+export type PaymentProvidersData = {
+  paymentsReady: boolean;
+  providers: Record<string, { configured: boolean; currencies: string[]; paymentMethods: string[]; message?: string }>;
+  packs: CreditPackSummary[];
+  usdtNetworks: UsdtNetworkSummary[];
+};
+
+export type PaymentPurchaseData = {
+  purchase: CreditPurchaseSummary;
+};
+
+export type PaymentPurchasesData = {
+  purchases: CreditPurchaseSummary[];
 };
 
 export type AdminAuditData = {
@@ -516,7 +644,7 @@ export const getAdminContent = () => apiRequest<AdminContentData>("/api/admin/co
 export const runAdminSeed = () => apiRequest<AdminSeedData>("/api/admin/seed", { method: "POST" });
 export const requestAuthOtp = (body: { email: string; purpose: AuthOtpPurpose }) =>
   apiRequest<RequestOtpData>("/api/auth/request-otp", { method: "POST", body });
-export const verifyAuthOtp = (body: { email: string; code: string; purpose: AuthOtpPurpose }) =>
+export const verifyAuthOtp = (body: { email: string; code: string; purpose: AuthOtpPurpose; name?: string }) =>
   apiRequest<VerifyOtpData>("/api/auth/verify-otp", { method: "POST", body });
 export const register = (body: unknown) => apiRequest("/api/auth/register", { method: "POST", body });
 export const login = (body: unknown) => apiRequest("/api/auth/login", { method: "POST", body });
@@ -556,11 +684,27 @@ export const saveOutfit = (id: string, body: unknown) => apiRequest(`/api/outfit
 export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/wear`, { method: "POST", body });
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });
 export const getLooks = () => apiRequest<LooksData>("/api/looks", { cache: "no-store" });
+export const createManualLook = (body: unknown) => apiRequest<{ look: SavedLookSummary }>("/api/looks", { method: "POST", body });
+export const updateLook = (id: string, body: unknown) => apiRequest<{ look: SavedLookSummary }>(`/api/looks/${id}`, { method: "PATCH", body });
+export const deleteLook = (id: string) => apiRequest<{ deleted: boolean }>(`/api/looks/${id}`, { method: "DELETE" });
 export const getFashionMemorySummary = () => apiRequest<FashionMemoryData>("/api/fashion-memory", { cache: "no-store" });
 export const recordFashionMemory = (event: unknown) => apiRequest<FashionMemoryData>("/api/fashion-memory", { method: "POST", body: event });
-export const getPlusStatus = () => apiRequest<PlusStatusData>("/api/billing/plus-status", { cache: "no-store" });
-export const startCheckout = (body: unknown) => apiRequest<CheckoutData>("/api/billing/checkout", { method: "POST", body });
-export const getBillingProviders = () => apiRequest<BillingProvidersData>("/api/billing/providers", { cache: "no-store" });
+export const getWallet = () => apiRequest<CreditWalletData>("/api/wallet", { cache: "no-store" });
+export const getPaymentProviders = () => apiRequest<PaymentProvidersData>("/api/payments/providers", { cache: "no-store" });
+export const getPaymentPurchases = () => apiRequest<PaymentPurchasesData>("/api/payments/purchases", { cache: "no-store" });
+export const getPaymentPurchase = (purchaseId: string) => apiRequest<PaymentPurchaseData>(`/api/payments/purchases/${purchaseId}`, { cache: "no-store" });
+export const getUsdtNetworks = () => apiRequest<{ networks: UsdtNetworkSummary[] }>("/api/payments/usdt/networks", { cache: "no-store" });
+export const startStripeCheckout = (body: { packId: string }) => apiRequest<CheckoutData>("/api/payments/stripe/checkout", { method: "POST", body });
+export const startUsdtCheckout = (body: { packId: string; network: string }) => apiRequest<CheckoutData>("/api/payments/usdt/checkout", { method: "POST", body });
+export const getWeatherForecast = (params: { city?: string; latitude?: number; longitude?: number; days?: number } = {}) => {
+  const searchParams = new URLSearchParams();
+  if (params.city) searchParams.set("city", params.city);
+  if (typeof params.latitude === "number") searchParams.set("latitude", String(params.latitude));
+  if (typeof params.longitude === "number") searchParams.set("longitude", String(params.longitude));
+  if (typeof params.days === "number") searchParams.set("days", String(params.days));
+  const query = searchParams.toString();
+  return apiRequest<WeatherForecastData>(`/api/weather/forecast${query ? `?${query}` : ""}`, { cache: "no-store" });
+};
 export const updateCurrentUser = (body: unknown) => apiRequest<CurrentUserSummary>("/api/users/me", { method: "PATCH", body });
 export const getNotificationPreferences = () => apiRequest<NotificationPreferencesData>("/api/notifications/preferences", { cache: "no-store" });
 export const updateNotificationPreferences = (body: unknown) =>

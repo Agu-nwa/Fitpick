@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldGroup } from "@/components/ui/FieldGroup";
-import { ConfidenceBadge } from "@/components/wardrobe/ConfidenceBadge";
-import { simpleSourceLabel } from "@/lib/copy/simple-copy";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory } from "@/types/wardrobe";
 
@@ -41,20 +38,37 @@ export type AITagConfirmationValues = {
   verifiedFields: Record<string, { value: string | string[] | number | null; confidence: number; originalConfidence: number; source: "user_confirmed" }>;
 };
 
-const fields: FieldConfig[] = [
-  { key: "garmentType", label: "Item type", required: true },
+const essentialFields: FieldConfig[] = [
   { key: "category", label: "Category", kind: "category", required: true },
   { key: "subcategory", label: "Subcategory" },
-  { key: "primaryColor", label: "Primary color", required: true },
-  { key: "secondaryColors", label: "Secondary colors", kind: "list" },
-  { key: "pattern", label: "Pattern" },
-  { key: "fabricEstimate", label: "Fabric guess" },
-  { key: "fabricComposition", label: "Fabric from label" },
-  { key: "size", label: "What size is it?" },
   { key: "brand", label: "Brand" },
-  { key: "recognizedEntity", label: "Clothing detail" },
+  { key: "primaryColor", label: "Colour", required: true },
+  { key: "pattern", label: "Pattern" },
+  { key: "fabricComposition", label: "Material from details" },
+  { key: "fabricEstimate", label: "Material estimate" },
+  { key: "size", label: "Size" },
+  { key: "fit", label: "Fit" },
+  { key: "formalityScore", label: "Formality" },
+  { key: "occasionSuitability", label: "Occasions", kind: "list" },
+  { key: "weatherSuitability", label: "Weather suitability", kind: "list" }
+];
+
+const hiddenAiFields: FieldConfig[] = [
+  { key: "garmentType", label: "Item type" },
+  { key: "secondaryColors", label: "Secondary colours", kind: "list" },
+  { key: "silhouette", label: "Silhouette" },
+  { key: "sleeveLength", label: "Sleeve length" },
+  { key: "necklineCollar", label: "Neckline / collar" },
+  { key: "length", label: "Length" },
+  { key: "texture", label: "Texture" },
+  { key: "thicknessEstimate", label: "Thickness estimate" },
+  { key: "layeringSuitability", label: "Layering suitability" },
+  { key: "luxuryScore", label: "Luxury score" },
+  { key: "seasonSuitability", label: "Season suitability", kind: "list" },
+  { key: "eventRelevance", label: "Event relevance" },
+  { key: "recognizedEntity", label: "Recognised detail" },
   { key: "entityType", label: "Detail type" },
-  { key: "entityConfidence", label: "Detail confidence" },
+  { key: "entityConfidence", label: "Detail match" },
   { key: "sportCategory", label: "Sport category" },
   { key: "teamOrNation", label: "Team or nation" },
   { key: "clubOrFederation", label: "Club or federation" },
@@ -65,28 +79,17 @@ const fields: FieldConfig[] = [
   { key: "logoDetections", label: "Logo detections", kind: "list" },
   { key: "textDetections", label: "Visible text", kind: "list" },
   { key: "brandSignals", label: "Brand signals", kind: "list" },
-  { key: "entityWarnings", label: "Entity warnings", kind: "list" },
-  { key: "fit", label: "Fit" },
-  { key: "silhouette", label: "Silhouette" },
-  { key: "sleeveLength", label: "Sleeve length" },
-  { key: "necklineCollar", label: "Neckline / collar" },
-  { key: "length", label: "Length" },
-  { key: "texture", label: "Texture" },
-  { key: "thicknessEstimate", label: "Thickness estimate" },
-  { key: "layeringSuitability", label: "Layering suitability" },
-  { key: "formalityScore", label: "Formality score" },
-  { key: "luxuryScore", label: "Luxury score" },
-  { key: "weatherSuitability", label: "Weather suitability", kind: "list" },
-  { key: "seasonSuitability", label: "Season suitability", kind: "list" },
-  { key: "occasionSuitability", label: "Occasion suitability", kind: "list" },
-  { key: "culturalTraditionalRelevance", label: "Cultural relevance" },
+  { key: "entityWarnings", label: "Detail warnings", kind: "list" },
   { key: "careInstructions", label: "Care instructions", kind: "list" },
-  { key: "stylingNotes", label: "Styling notes", kind: "list" }
+  { key: "stylingNotes", label: "Styling notes", kind: "list" },
+  { key: "rawLabelText", label: "Readable product text" },
+  { key: "countryOfOrigin", label: "Manufacturing text" }
 ];
 
-const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories"];
+const allFields = [...essentialFields, ...hiddenAiFields];
+const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
 const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
-const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "NG", "custom"];
+const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "custom"];
 const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];
 const stretchOptions: StretchLevel[] = ["unknown", "none", "low", "medium", "high"];
 const drapeOptions: FabricDrape[] = ["unknown", "structured", "soft", "flowing", "heavy", "stiff"];
@@ -103,55 +106,9 @@ const garmentMeasurementFields: Array<{ key: keyof GarmentMeasurements; label: s
   { key: "shoeLengthCm", label: "Shoe length", placeholder: "28" },
   { key: "heelHeightCm", label: "Heel height", placeholder: "4" }
 ];
+
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
-
-const fieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
-  {
-    title: "Item details",
-    body: "Check the basics first.",
-    keys: ["garmentType", "category", "subcategory", "brand", "size"]
-  },
-  {
-    title: "Color and pattern",
-    body: "These help MyFitPick match this item with the rest of your closet.",
-    keys: ["primaryColor", "secondaryColors", "pattern"]
-  },
-  {
-    title: "Fabric and label",
-    body: "Check fabric, care, and label details if you can see them.",
-    keys: ["fabricEstimate", "fabricComposition", "texture", "thicknessEstimate", "careInstructions"]
-  },
-  {
-    title: "Fit and shape",
-    body: "Shape details help MyFitPick choose better outfits.",
-    keys: ["fit", "silhouette", "sleeveLength", "necklineCollar", "length", "layeringSuitability"]
-  },
-  {
-    title: "Where and when to wear it",
-    body: "Use these to help MyFitPick choose the right moment for this item.",
-    keys: ["formalityScore", "luxuryScore", "weatherSuitability", "seasonSuitability", "occasionSuitability", "culturalTraditionalRelevance"]
-  },
-  {
-    title: "Style notes",
-    body: "Short notes MyFitPick can use when explaining future outfits.",
-    keys: ["stylingNotes"]
-  }
-];
-
-const detailFieldGroups: Array<{ title: string; body: string; keys: string[] }> = [
-  {
-    title: "Details",
-    body: "Extra clothing details MyFitPick noticed. You can leave these alone if you are not sure.",
-    keys: ["recognizedEntity", "entityType", "entityConfidence", "sportCategory", "teamOrNation", "clubOrFederation", "playerName", "playerNumber", "kitType", "seasonEstimate", "logoDetections", "textDetections", "brandSignals", "entityWarnings"]
-  }
-];
-
-const fieldsByKey = new Map(fields.map((field) => [field.key, field]));
-
-function isFieldConfig(field: FieldConfig | undefined): field is FieldConfig {
-  return Boolean(field);
-}
 
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
@@ -192,18 +149,8 @@ function measurementNumber(value: string) {
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 10) / 10 : null;
 }
 
-function sourceLabel(source?: string) {
-  return simpleSourceLabel(source);
-}
-
-function sourceTone(source?: string) {
-  if (source === "ocr") return "info" as const;
-  if (source === "logo_detection") return "info" as const;
-  if (source === "entity_resolver") return "warning" as const;
-  if (source === "vision") return "premium" as const;
-  if (source === "user_confirmed") return "success" as const;
-  if (source === "system_inferred") return "neutral" as const;
-  return "warning" as const;
+function fieldFromAnalysis(aiAnalysis: WardrobeAiAnalysis | null | undefined, key: string) {
+  return aiAnalysis?.fields?.[key as keyof WardrobeAiAnalysis["fields"]] as any;
 }
 
 export function AITagConfirmationForm({
@@ -218,7 +165,7 @@ export function AITagConfirmationForm({
   const initialValues = useMemo(
     () =>
       Object.fromEntries(
-        fields.map((field) => [field.key, stringifyValue(aiAnalysis?.fields?.[field.key as keyof typeof aiAnalysis.fields]?.value)])
+        allFields.map((field) => [field.key, stringifyValue(fieldFromAnalysis(aiAnalysis, field.key)?.value)])
       ) as Record<string, string>,
     [aiAnalysis]
   );
@@ -235,46 +182,29 @@ export function AITagConfirmationForm({
   const [error, setError] = useState("");
   const lowConfidenceCount = useMemo(() => {
     if (!aiAnalysis?.fields) return 0;
-    return fields.filter((field) => {
-      const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
-      return (aiField?.confidence ?? 0) < 0.65;
-    }).length;
+    return essentialFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
   }, [aiAnalysis]);
 
   useEffect(() => {
     const next = initialValues;
     setValues(next);
-    setName([next.primaryColor, next.garmentType].filter(Boolean).join(" ").trim());
-    const sizeField = aiAnalysis?.fields?.taggedSize?.value || aiAnalysis?.fields?.size?.value;
-    const fitField = aiAnalysis?.fields?.garmentFit?.value || aiAnalysis?.fields?.fit?.value;
+    setName([next.brand, next.primaryColor, next.garmentType || next.subcategory].filter(Boolean).join(" ").trim());
+    const sizeField = fieldFromAnalysis(aiAnalysis, "taggedSize")?.value || fieldFromAnalysis(aiAnalysis, "size")?.value;
+    const fitField = fieldFromAnalysis(aiAnalysis, "garmentFit")?.value || fieldFromAnalysis(aiAnalysis, "fit")?.value;
     setTaggedSize(normalizeTaggedSize(sizeField));
-    setSizeSystem(normalizeOption(aiAnalysis?.fields?.sizeSystem?.value, sizeSystemOptions, "unknown"));
+    setSizeSystem(normalizeOption(fieldFromAnalysis(aiAnalysis, "sizeSystem")?.value, sizeSystemOptions, "unknown"));
     setGarmentFit(normalizeOption(fitField, garmentFitOptions, "unknown"));
-    setStretchLevel(normalizeOption(aiAnalysis?.fields?.stretchLevel?.value, stretchOptions, "unknown"));
-    setFabricDrape(normalizeOption(aiAnalysis?.fields?.fabricDrape?.value || aiAnalysis?.fields?.silhouette?.value, drapeOptions, "unknown"));
-    setMeasurementSource(aiAnalysis?.fields?.size?.source === "ocr" ? "label_ocr" : normalizeOption(aiAnalysis?.fields?.measurementSource?.value, measurementSourceOptions, "ai_estimated"));
-    setFitConfidence(String(Math.max(aiAnalysis?.fields?.fit?.confidence ?? 0, aiAnalysis?.fields?.garmentFit?.confidence ?? 0).toFixed(2)));
+    setStretchLevel(normalizeOption(fieldFromAnalysis(aiAnalysis, "stretchLevel")?.value, stretchOptions, "unknown"));
+    setFabricDrape(normalizeOption(fieldFromAnalysis(aiAnalysis, "fabricDrape")?.value || fieldFromAnalysis(aiAnalysis, "silhouette")?.value, drapeOptions, "unknown"));
+    setMeasurementSource(fieldFromAnalysis(aiAnalysis, "size")?.source === "ocr" ? "label_ocr" : normalizeOption(fieldFromAnalysis(aiAnalysis, "measurementSource")?.value, measurementSourceOptions, "ai_estimated"));
+    setFitConfidence(String(Math.max(fieldFromAnalysis(aiAnalysis, "fit")?.confidence ?? 0, fieldFromAnalysis(aiAnalysis, "garmentFit")?.confidence ?? 0).toFixed(2)));
     setGarmentMeasurements({});
   }, [aiAnalysis, initialValues]);
 
-  function submit() {
-    const itemName = name.trim();
-    const category = values.category as WardrobeCategory;
-    const primaryColor = values.primaryColor.trim();
-
-    if (!itemName || !category || !primaryColor) {
-      setError("Name, category, and primary color are required before saving.");
-      return;
-    }
-
-    const fitConfidenceValue = Math.max(0, Math.min(1, Number(fitConfidence) || 0));
-    const parsedGarmentMeasurements = Object.fromEntries(
-      garmentMeasurementFields.map((field) => [field.key, measurementNumber(garmentMeasurements[field.key] || "")])
-    ) as GarmentMeasurements;
-
+  function buildVerifiedFields() {
     const verifiedFields = Object.fromEntries(
-      fields.map((field) => {
-        const original = aiAnalysis?.fields?.[field.key as keyof typeof aiAnalysis.fields] as any;
+      allFields.map((field) => {
+        const original = fieldFromAnalysis(aiAnalysis, field.key);
         const value = field.kind === "list" ? splitList(values[field.key] || "") : clampScore(field.key, values[field.key] || "") || null;
         return [
           field.key,
@@ -287,15 +217,33 @@ export function AITagConfirmationForm({
         ];
       })
     );
+
     Object.assign(verifiedFields, {
-      taggedSize: { value: taggedSize, confidence: 1, originalConfidence: aiAnalysis?.fields?.taggedSize?.confidence ?? aiAnalysis?.fields?.size?.confidence ?? 0, source: "user_confirmed" as const },
-      sizeSystem: { value: sizeSystem, confidence: 1, originalConfidence: aiAnalysis?.fields?.sizeSystem?.confidence ?? 0, source: "user_confirmed" as const },
-      garmentFit: { value: garmentFit, confidence: 1, originalConfidence: aiAnalysis?.fields?.garmentFit?.confidence ?? aiAnalysis?.fields?.fit?.confidence ?? 0, source: "user_confirmed" as const },
-      stretchLevel: { value: stretchLevel, confidence: 1, originalConfidence: aiAnalysis?.fields?.stretchLevel?.confidence ?? 0, source: "user_confirmed" as const },
-      fabricDrape: { value: fabricDrape, confidence: 1, originalConfidence: aiAnalysis?.fields?.fabricDrape?.confidence ?? 0, source: "user_confirmed" as const },
-      fitConfidence: { value: fitConfidenceValue, confidence: 1, originalConfidence: aiAnalysis?.fields?.fitConfidence?.confidence ?? 0, source: "user_confirmed" as const },
-      measurementSource: { value: measurementSource, confidence: 1, originalConfidence: aiAnalysis?.fields?.measurementSource?.confidence ?? 0, source: "user_confirmed" as const }
+      taggedSize: { value: taggedSize, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "taggedSize")?.confidence ?? fieldFromAnalysis(aiAnalysis, "size")?.confidence ?? 0, source: "user_confirmed" as const },
+      sizeSystem: { value: sizeSystem, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "sizeSystem")?.confidence ?? 0, source: "user_confirmed" as const },
+      garmentFit: { value: garmentFit, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "garmentFit")?.confidence ?? fieldFromAnalysis(aiAnalysis, "fit")?.confidence ?? 0, source: "user_confirmed" as const },
+      stretchLevel: { value: stretchLevel, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "stretchLevel")?.confidence ?? 0, source: "user_confirmed" as const },
+      fabricDrape: { value: fabricDrape, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "fabricDrape")?.confidence ?? 0, source: "user_confirmed" as const },
+      fitConfidence: { value: Math.max(0, Math.min(1, Number(fitConfidence) || 0)), confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "fitConfidence")?.confidence ?? 0, source: "user_confirmed" as const },
+      measurementSource: { value: measurementSource, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "measurementSource")?.confidence ?? 0, source: "user_confirmed" as const }
     });
+
+    return verifiedFields;
+  }
+
+  function submit() {
+    const itemName = name.trim();
+    const category = (values.category || "tops") as WardrobeCategory;
+    const primaryColor = values.primaryColor.trim();
+
+    if (!itemName || !category || !primaryColor) {
+      setError("Add a name, category, and colour before saving.");
+      return;
+    }
+
+    const parsedGarmentMeasurements = Object.fromEntries(
+      garmentMeasurementFields.map((field) => [field.key, measurementNumber(garmentMeasurements[field.key] || "")])
+    ) as GarmentMeasurements;
 
     void onSubmit({
       name: itemName,
@@ -314,21 +262,11 @@ export function AITagConfirmationForm({
       garmentMeasurements: parsedGarmentMeasurements,
       stretchLevel,
       fabricDrape,
-      fitConfidence: fitConfidenceValue,
+      fitConfidence: Math.max(0, Math.min(1, Number(fitConfidence) || 0)),
       measurementSource,
       condition: "ready",
-      verifiedFields
+      verifiedFields: buildVerifiedFields()
     });
-  }
-
-  if (!aiAnalysis) {
-    return (
-      <div className="space-y-3">
-        <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
-          Clothing suggestions are not available. Check the item again or add details manually.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -340,141 +278,72 @@ export function AITagConfirmationForm({
       }}
     >
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold text-ink">MyFitPick found these details. Please check them.</p>
-            <p className="mt-1 text-xs leading-5 text-muted">Change anything that looks wrong.</p>
-          </div>
-          <Badge tone={lowConfidenceCount ? "warning" : "success"}>
-            {lowConfidenceCount ? `${lowConfidenceCount} to verify` : "Ready to save"}
-          </Badge>
+        <p className="text-sm font-semibold text-ink">Confirm what MyFitPick detected</p>
+        <p className="mt-1 text-xs leading-5 text-muted">
+          Review the essentials. Anything you save becomes the trusted wardrobe detail.
+        </p>
+        {lowConfidenceCount ? (
+          <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
+            Low confidence - please verify {lowConfidenceCount} field{lowConfidenceCount === 1 ? "" : "s"}.
+          </p>
+        ) : null}
+        {!aiAnalysis ? (
+          <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
+            MyFitPick could not read enough details. Add the essentials below and save the piece.
+          </p>
+        ) : null}
+        <div className="mt-3">
+          <FieldGroup label="Item name" htmlFor="ai-field-name" required>
+            <input id="ai-field-name" className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="White cotton shirt" required />
+          </FieldGroup>
         </div>
-        <FieldGroup label="Item name" htmlFor="ai-field-name" required>
-          <input id="ai-field-name" className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="White cotton shirt" required />
-        </FieldGroup>
       </div>
 
       {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
-      <div className="space-y-4">
-        {fieldGroups.map((group) => (
-          <section key={group.title} className="rounded-2xl border border-line bg-canvas/60 p-3">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-ink">{group.title}</h3>
-              <p className="mt-1 text-xs leading-5 text-muted">{group.body}</p>
-            </div>
-            <div className="space-y-3">
-              {group.keys.map((key) => fieldsByKey.get(key)).filter(isFieldConfig).map((field) => {
-                const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
-                const lowConfidence = (aiField?.confidence ?? 0) < 0.65;
-                const fieldId = `ai-field-${field.key}`;
-
-                return (
-                  <FieldGroup
-                    key={field.key}
-                    label={field.label}
-                    htmlFor={fieldId}
-                    required={field.required}
-                    meta={
-                      <div className="flex max-w-full flex-wrap justify-end gap-1.5">
-                        <Badge tone={sourceTone(aiField?.source)}>{sourceLabel(aiField?.source)}</Badge>
-                        <ConfidenceBadge confidence={aiField?.confidence ?? 0} />
-                      </div>
-                    }
-                    help={lowConfidence ? "Low confidence — please verify" : undefined}
-                  >
-                    {field.kind === "category" ? (
-                      <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
-                        {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    ) : field.kind === "list" ? (
-                      <textarea
-                        id={fieldId}
-                        className={`${inputClass} min-h-20`}
-                        value={values[field.key] || ""}
-                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                        placeholder="Comma-separated values"
-                      />
-                    ) : (
-                      <input
-                        id={fieldId}
-                        className={inputClass}
-                        value={values[field.key] || ""}
-                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                        placeholder={field.required ? "Required" : "Unknown"}
-                        required={field.required}
-                      />
-                    )}
-                  </FieldGroup>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <details className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Details</summary>
-        <p className="mt-2 text-xs leading-5 text-muted">Extra clothing details MyFitPick noticed. You can leave these alone if you are not sure.</p>
-        <div className="mt-4 space-y-4">
-          {detailFieldGroups.map((group) => (
-            <section key={group.title} className="rounded-2xl border border-line bg-surface/70 p-3">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-ink">{group.title}</h3>
-                <p className="mt-1 text-xs leading-5 text-muted">{group.body}</p>
-              </div>
-              <div className="space-y-3">
-                {group.keys.map((key) => fieldsByKey.get(key)).filter(isFieldConfig).map((field) => {
-                  const aiField = aiAnalysis.fields[field.key as keyof typeof aiAnalysis.fields] as any;
-                  const lowConfidence = (aiField?.confidence ?? 0) < 0.65;
-                  const fieldId = `ai-field-${field.key}`;
-
-                  return (
-                    <FieldGroup
-                      key={field.key}
-                      label={field.label}
-                      htmlFor={fieldId}
-                      meta={
-                        <div className="flex max-w-full flex-wrap justify-end gap-1.5">
-                          <Badge tone={sourceTone(aiField?.source)}>{sourceLabel(aiField?.source)}</Badge>
-                          <ConfidenceBadge confidence={aiField?.confidence ?? 0} />
-                        </div>
-                      }
-                      help={lowConfidence ? "Low confidence — please verify" : undefined}
-                    >
-                      {field.kind === "list" ? (
-                        <textarea
-                          id={fieldId}
-                          className={`${inputClass} min-h-20`}
-                          value={values[field.key] || ""}
-                          onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                          placeholder="Comma-separated values"
-                        />
-                      ) : (
-                        <input
-                          id={fieldId}
-                          className={inputClass}
-                          value={values[field.key] || ""}
-                          onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                          placeholder="Unknown"
-                        />
-                      )}
-                    </FieldGroup>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-      </details>
-
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-ink">Size and fit</h3>
-          <p className="mt-1 text-xs leading-5 text-muted">Add measurements if you know them. You can leave this simple and update it later.</p>
+          <h3 className="text-sm font-semibold text-ink">Review details</h3>
+          <p className="mt-1 text-xs leading-5 text-muted">Keep unknown details blank and update them later if needed.</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FieldGroup label="What size is it?" htmlFor="fit-tagged-size">
+          {essentialFields.map((field) => {
+            const fieldId = `ai-field-${field.key}`;
+            return (
+              <FieldGroup key={field.key} label={field.label} htmlFor={fieldId} required={field.required}>
+                {field.kind === "category" ? (
+                  <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
+                    {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                ) : field.kind === "list" ? (
+                  <textarea
+                    id={fieldId}
+                    className={`${inputClass} min-h-20`}
+                    value={values[field.key] || ""}
+                    onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                    placeholder="Comma-separated"
+                  />
+                ) : (
+                  <input
+                    id={fieldId}
+                    className={inputClass}
+                    value={values[field.key] || ""}
+                    onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                    placeholder={field.required ? "Required" : "Optional"}
+                    required={field.required}
+                  />
+                )}
+              </FieldGroup>
+            );
+          })}
+        </div>
+      </section>
+
+      <details className="rounded-2xl border border-line bg-canvas/60 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-ink">Improve fit accuracy</summary>
+        <p className="mt-2 text-xs leading-5 text-muted">Optional. Add size and measurement details only when you know them.</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FieldGroup label="Size" htmlFor="fit-tagged-size">
             <select id="fit-tagged-size" className={inputClass} value={taggedSize} onChange={(event) => setTaggedSize(event.target.value as TaggedSize)}>
               {taggedSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
@@ -499,42 +368,37 @@ export function AITagConfirmationForm({
               {drapeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </FieldGroup>
+          <FieldGroup label="Size accuracy" htmlFor="fit-confidence">
+            <input id="fit-confidence" type="number" min="0" max="1" step="0.05" className={inputClass} value={fitConfidence} onChange={(event) => setFitConfidence(event.target.value)} />
+          </FieldGroup>
+          <FieldGroup label="How size was added" htmlFor="fit-source">
+            <select id="fit-source" className={inputClass} value={measurementSource} onChange={(event) => setMeasurementSource(event.target.value as MeasurementSource)}>
+              {measurementSourceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </FieldGroup>
+          {garmentMeasurementFields.map((field) => (
+            <FieldGroup key={field.key} label={`${field.label} (cm)`} htmlFor={`fit-${field.key}`}>
+              <input
+                id={`fit-${field.key}`}
+                type="number"
+                min="0"
+                step="0.1"
+                className={inputClass}
+                value={garmentMeasurements[field.key] || ""}
+                onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [field.key]: event.target.value }))}
+                placeholder={field.placeholder}
+              />
+            </FieldGroup>
+          ))}
         </div>
-        <details className="mt-4 rounded-2xl border border-line bg-surface/70 p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-ink">Fit details</summary>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <FieldGroup label="How size was added" htmlFor="fit-source">
-              <select id="fit-source" className={inputClass} value={measurementSource} onChange={(event) => setMeasurementSource(event.target.value as MeasurementSource)}>
-                {measurementSourceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </FieldGroup>
-            <FieldGroup label="Size accuracy" htmlFor="fit-confidence" help="Use a lower number when this is only a guess.">
-              <input id="fit-confidence" type="number" min="0" max="1" step="0.05" className={inputClass} value={fitConfidence} onChange={(event) => setFitConfidence(event.target.value)} />
-            </FieldGroup>
-            {garmentMeasurementFields.map((field) => (
-              <FieldGroup key={field.key} label={`${field.label} (cm)`} htmlFor={`fit-${field.key}`}>
-                <input
-                  id={`fit-${field.key}`}
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className={inputClass}
-                  value={garmentMeasurements[field.key] || ""}
-                  onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [field.key]: event.target.value }))}
-                  placeholder={field.placeholder}
-                />
-              </FieldGroup>
-            ))}
-          </div>
-        </details>
-      </section>
+      </details>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button type="button" variant="secondary" onClick={submit} disabled={disabled}>
           Confirm all
         </Button>
         <Button type="submit" disabled={disabled}>
-          Save item
+          Save to wardrobe
         </Button>
       </div>
     </form>

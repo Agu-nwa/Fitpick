@@ -10,7 +10,7 @@ type StyleProfilePatch = Partial<{
   dislikedFits: string[];
   preferredFormality: number | null;
   preferredOccasions: string[];
-  culturalStylePreferences: string[];
+  eventStylePreferences: string[];
   preferredCategories: string[];
   avoidedCategories: string[];
   fashionRiskLevel: "conservative" | "balanced" | "expressive";
@@ -59,7 +59,7 @@ export async function updateStyleProfile(userId: string | Types.ObjectId, patch:
     "preferredFits",
     "dislikedFits",
     "preferredOccasions",
-    "culturalStylePreferences",
+    "eventStylePreferences",
     "preferredCategories",
     "avoidedCategories",
     "notes",
@@ -85,7 +85,7 @@ export function inferStyleSignalsFromWardrobe(items: any[]): StyleProfilePatch {
   const fits = new Map<string, number>();
   const categories = new Map<string, number>();
   const occasions = new Map<string, number>();
-  const cultural = new Map<string, number>();
+  const eventStyles = new Map<string, number>();
   const brands = new Map<string, number>();
 
   for (const item of items) {
@@ -94,10 +94,8 @@ export function inferStyleSignalsFromWardrobe(items: any[]): StyleProfilePatch {
     addCount(categories, item.category);
     for (const occasion of metadataValue(item, "occasionSuitability") || item.occasions || []) addCount(occasions, occasion);
     addCount(brands, metadataValue(item, "brand"));
-    const culturalValue = String(metadataValue(item, "culturalTraditionalRelevance") || "").toLowerCase();
-    if (/native|traditional|ankara|agbada|kaftan|aso|isiagu|lace|senator/.test(culturalValue) || item.category === "native") {
-      addCount(cultural, item.category === "native" ? "native wear" : culturalValue);
-    }
+    const eventValue = String(metadataValue(item, "eventRelevance") || "").toLowerCase();
+    if (/wedding|church|ceremony|celebration|gala|formal|dressy|evening|statement/.test(eventValue)) addCount(eventStyles, eventValue);
   }
 
   return {
@@ -105,7 +103,7 @@ export function inferStyleSignalsFromWardrobe(items: any[]): StyleProfilePatch {
     preferredFits: topValues(fits, 2),
     preferredCategories: topValues(categories, 2),
     preferredOccasions: topValues(occasions, 2),
-    culturalStylePreferences: topValues(cultural, 1),
+    eventStylePreferences: topValues(eventStyles, 1),
     favoriteBrands: topValues(brands, 2),
     inferredFrom: items.length ? ["wardrobe"] : []
   };
@@ -117,7 +115,7 @@ export function mergeStyleSignals(profile: any, signals: StyleProfilePatch): Sty
     preferredFits: cleanList([...(profile.preferredFits || []), ...(signals.preferredFits || [])]),
     preferredCategories: cleanList([...(profile.preferredCategories || []), ...(signals.preferredCategories || [])]),
     preferredOccasions: cleanList([...(profile.preferredOccasions || []), ...(signals.preferredOccasions || [])]),
-    culturalStylePreferences: cleanList([...(profile.culturalStylePreferences || []), ...(signals.culturalStylePreferences || [])]),
+    eventStylePreferences: cleanList([...(profile.eventStylePreferences || []), ...(signals.eventStylePreferences || [])]),
     favoriteBrands: cleanList([...(profile.favoriteBrands || []), ...(signals.favoriteBrands || [])]),
     inferredFrom: cleanList([...(profile.inferredFrom || []), ...(signals.inferredFrom || [])])
   };
@@ -143,7 +141,7 @@ export function mergeMemorySignals(profile: any, signals: StyleProfilePatch): St
       .slice(0, 12),
     dislikedFits: keepExplicitFits,
     preferredOccasions: cleanList([...(profile.preferredOccasions || []), ...(signals.preferredOccasions || [])]).slice(0, 12),
-    culturalStylePreferences: cleanList([...(profile.culturalStylePreferences || []), ...(signals.culturalStylePreferences || [])]).slice(0, 12),
+    eventStylePreferences: cleanList([...(profile.eventStylePreferences || []), ...(signals.eventStylePreferences || [])]).slice(0, 12),
     preferredCategories: cleanList([...(profile.preferredCategories || []), ...(signals.preferredCategories || [])])
       .filter((value) => !avoidedCategories.includes(value))
       .slice(0, 12),
@@ -163,7 +161,7 @@ export function serializeStyleProfile(profile: any) {
     dislikedFits: profile.dislikedFits || [],
     preferredFormality: profile.preferredFormality ?? null,
     preferredOccasions: profile.preferredOccasions || [],
-    culturalStylePreferences: profile.culturalStylePreferences || [],
+    eventStylePreferences: profile.eventStylePreferences || [],
     preferredCategories: profile.preferredCategories || [],
     avoidedCategories: profile.avoidedCategories || [],
     fashionRiskLevel: profile.fashionRiskLevel || "balanced",

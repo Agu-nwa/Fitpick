@@ -10,6 +10,8 @@ import {
   serializeAvatarPreview
 } from "@/lib/avatar/avatar-preview";
 import type { PosePreset, VisualizationStyle } from "@/lib/avatar/avatar-profile";
+import type { CreditFeature } from "@/lib/credits/credit-costs";
+import { ensureCreditsForFeature, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
@@ -106,6 +108,28 @@ function fitLockSummary(fitEvaluation?: FitEvaluation) {
   };
 }
 
+function outOfCreditsVisualization(visualMode: StylistVisualMode, outfitRecommendationId: string, patch: Partial<AvatarPreviewSummary> = {}) {
+  return serializeStylistVisualization({
+    visualMode,
+    outfitRecommendationId,
+    avatarPreview: defaultAvatarPreview({
+      status: "failed",
+      errorMessage: "You're out of Credits. Purchase more Credits to continue.",
+      ...patch
+    })
+  });
+}
+
+async function ensureVisualizationCredits(userId: string, feature: CreditFeature) {
+  try {
+    await ensureCreditsForFeature(userId, feature);
+    return true;
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) return false;
+    throw error;
+  }
+}
+
 function previewFitPatch(fitEvaluation?: FitEvaluation): Partial<AvatarPreviewSummary> {
   if (!fitEvaluation) return {};
   return {
@@ -196,7 +220,7 @@ export function shouldGenerateVisualization(
   }
 
   const text = userMessage.toLowerCase();
-  const stylingText = /(style me|what should i wear|build|look|outfit|wear|church|wedding|date|business casual|traditional|native|owambe|aso-ebi|vacation)/.test(text);
+  const stylingText = /(style me|what should i wear|build|look|outfit|wear|church|wedding|date|dinner|party|event|gala|business casual|vacation)/.test(text);
   return allowedIntent || (options.includeVisualization === true && stylingText);
 }
 
@@ -346,6 +370,10 @@ async function triggerPremiumPreviewForStylist(
     });
   }
 
+  const creditFeature: CreditFeature = options.regenerate ? "regenerate_try_on" : "outfit_preview";
+  const hasCredits = await ensureVisualizationCredits(userId, creditFeature);
+  if (!hasCredits) return outOfCreditsVisualization(visualMode, outfitRecommendationId, { cacheKey });
+
   const previewRecord = await markPremiumPreviewStatus(
     userId,
     outfitRecommendationId,
@@ -372,6 +400,7 @@ async function triggerPremiumPreviewForStylist(
         outfitId: outfitRecommendationId,
         style: previewOptions.style,
         cacheKey,
+        creditFeature,
         source: "stylist_chat",
         visualMode
       },
@@ -397,6 +426,12 @@ async function triggerPremiumPreviewForStylist(
   try {
     const generated = await generatePremiumOutfitPreview(userId, loaded.outfit, loaded.items, previewOptions);
     const saved = await saveGeneratedPreview(userId, outfitRecommendationId, generated, cacheKey);
+    await spendCreditsAfterSuccess({
+      userId,
+      feature: creditFeature,
+      referenceId: `stylist-preview:${outfitRecommendationId}:${cacheKey}`,
+      metadata: { source: "stylist_chat", visualMode }
+    });
     const preview = serializeOutfitPreview(saved);
 
     return serializeStylistVisualization({
@@ -534,6 +569,16 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
   }
 
+  const creditFeature: CreditFeature = options.regenerate ? "regenerate_try_on" : "virtual_try_on";
+  const hasCredits = await ensureVisualizationCredits(userId, creditFeature);
+  if (!hasCredits) {
+    return outOfCreditsVisualization(visualMode, outfitRecommendationId, {
+      cacheKey,
+      ...previewFitPatch(fitEvaluation),
+      ...groundingPatch
+    });
+  }
+
   const previewRecord = await markAvatarPreviewStatus(
     userId,
     outfitRecommendationId,
@@ -578,6 +623,7 @@ export async function triggerDigitalHumanPreviewForStylist(
         posePreset: previewOptions.posePreset,
         wardrobeItemIds: loaded.itemIds,
         cacheKey,
+        creditFeature,
         source: "stylist_chat",
         visualMode
       },
@@ -616,6 +662,14 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
     const saved = (result.preview as any)?.toObject?.() ?? result.preview;
     if (!saved) throw new Error("Virtual try-on is not ready yet.");
+    if (!result.cached) {
+      await spendCreditsAfterSuccess({
+        userId,
+        feature: creditFeature,
+        referenceId: `stylist-tryon:${outfitRecommendationId}:${cacheKey}`,
+        metadata: { source: "stylist_chat", visualMode }
+      });
+    }
     const preview = serializeAvatarPreview(saved);
 
     return serializeStylistVisualization({

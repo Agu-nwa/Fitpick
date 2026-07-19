@@ -45,13 +45,6 @@ const sportsEntities = [
     clubOrFederation: "Chelsea FC",
     type: "club_kit"
   },
-  {
-    match: /\bnigeria\b|\bsuper eagles\b|\bng\b/i,
-    entity: "Nigerian Super Eagles Jersey",
-    teamOrNation: "Nigeria",
-    clubOrFederation: "Nigeria Super Eagles",
-    type: "national_team_kit"
-  }
 ] as const;
 
 const brandPatterns = [
@@ -67,18 +60,6 @@ const brandPatterns = [
   ["Burberry", /\bburberry\b/i],
   ["Balenciaga", /\bbalenciaga\b/i],
   ["Hermes", /\bherm[eè]s\b|\bhermes\b/i]
-] as const;
-
-const culturalPatterns = [
-  ["Agbada", /\bagbada\b/i],
-  ["Senator wear", /\bsenator\b/i],
-  ["Kaftan", /\bkaftan\b|\bcaftan\b/i],
-  ["Isiagu", /\bisiagu\b/i],
-  ["Ankara", /\bankara\b/i],
-  ["Aso-ebi", /\baso[-\s]?ebi\b/i],
-  ["Aso-oke", /\baso[-\s]?oke\b/i],
-  ["Lace native wear", /\blace\b/i],
-  ["Native wear", /\bnative\b|\btraditional\b/i]
 ] as const;
 
 function clean(value: unknown): string {
@@ -109,7 +90,7 @@ function evidenceText(analysis: WardrobeAiAnalysis, ocrResult?: DedicatedLabelEx
     fieldValue(analysis, "primaryColor"),
     fieldValue(analysis, "pattern"),
     fieldValue(analysis, "fabricEstimate"),
-    fieldValue(analysis, "culturalTraditionalRelevance"),
+    fieldValue(analysis, "eventRelevance"),
     listField(analysis, "logoDetections").join(" "),
     listField(analysis, "textDetections").join(" "),
     listField(analysis, "brandSignals").join(" "),
@@ -143,7 +124,7 @@ function inferKitType(evidence: string, colors: string[]) {
 function extractPlayerSignals(evidence: string) {
   const playerNumber = evidence.match(/\b([1-9][0-9]?)\b/)?.[1] || null;
   const nameMatch = evidence.match(/\b([A-Z][A-Z.'-]{2,}(?:\s+[A-Z][A-Z.'-]{2,})?)\b/);
-  const blocked = new Set(["PORTUGAL", "NIGERIA", "CHELSEA", "NIKE", "ADIDAS", "PUMA"]);
+  const blocked = new Set(["PORTUGAL", "CHELSEA", "NIKE", "ADIDAS", "PUMA"]);
   const playerName = nameMatch && !blocked.has(nameMatch[1]) ? nameMatch[1] : null;
   return { playerName, playerNumber };
 }
@@ -176,18 +157,23 @@ export function extractSportswearSignals(fields: WardrobeAiAnalysis["fields"]) {
   ]);
 }
 
-export function extractCulturalSignals(fields: WardrobeAiAnalysis["fields"]) {
+export function extractEventSignals(fields: WardrobeAiAnalysis["fields"]) {
   const text = [
     clean(fields.category?.value),
     clean(fields.garmentType?.value),
     clean(fields.subcategory?.value),
     clean(fields.pattern?.value),
     clean(fields.fabricEstimate?.value),
-    clean(fields.culturalTraditionalRelevance?.value),
+    clean(fields.eventRelevance?.value),
     clean(fields.textDetections?.value)
   ].join(" ");
 
-  return uniq(culturalPatterns.filter(([, pattern]) => pattern.test(text)).map(([label]) => label));
+  return uniq([
+    /\bwedding\b/i.test(text) ? "wedding-ready" : "",
+    /\bchurch\b/i.test(text) ? "church-ready" : "",
+    /\bgala\b|\bblack tie\b|\bevening\b/i.test(text) ? "formal-event-ready" : "",
+    /\bparty\b|\bcelebration\b/i.test(text) ? "celebration-ready" : ""
+  ]);
 }
 
 function defaultRecognition(): EntityRecognition {
@@ -214,7 +200,7 @@ export function resolveGarmentEntity(analysis: WardrobeAiAnalysis, ocrResult?: D
   const colors = [fieldValue(analysis, "primaryColor"), ...listField(analysis, "secondaryColors")].filter(Boolean);
   const existingTextDetections = listField(analysis, "textDetections");
   const brandSignals = uniq([...listField(analysis, "brandSignals"), ...extractBrandSignals(analysis.fields)]);
-  const culturalSignals = extractCulturalSignals(analysis.fields);
+  const eventSignals = extractEventSignals(analysis.fields);
   const jerseyLike = isJerseyLike(analysis, evidence);
   const recognition = defaultRecognition();
   recognition.brandSignals = brandSignals;
@@ -256,13 +242,13 @@ export function resolveGarmentEntity(analysis: WardrobeAiAnalysis, ocrResult?: D
     recognition.entityWarnings.push("Sports text was visible, but the garment did not look enough like a jersey or kit to classify confidently.");
   }
 
-  if (!recognition.recognizedEntity && culturalSignals.length) {
-    const primary = culturalSignals[0];
-    const confidence = Math.min(0.86, 0.58 + (fieldValue(analysis, "category") === "native" ? 0.16 : 0) + (culturalSignals.length > 1 ? 0.08 : 0));
+  if (!recognition.recognizedEntity && eventSignals.length) {
+    const primary = eventSignals[0];
+    const confidence = Math.min(0.82, 0.58 + (eventSignals.length > 1 ? 0.08 : 0));
     recognition.recognizedEntity = primary;
-    recognition.entityType = "native_traditional_garment";
+    recognition.entityType = "event_ready_item";
     recognition.entityConfidence = Number(confidence.toFixed(2));
-    recognition.entityWarnings = confidence < 0.72 ? ["MyFitPick is not fully certain — please verify the traditional garment type."] : [];
+    recognition.entityWarnings = confidence < 0.72 ? ["MyFitPick is not fully certain - please verify the event styling detail."] : [];
   }
 
   if (!recognition.recognizedEntity && brandSignals.length) {

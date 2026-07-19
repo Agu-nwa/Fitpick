@@ -35,12 +35,29 @@ export function validateEnv(options: { strict?: boolean } = {}): EnvCheck {
     process.env.NEXT_PUBLIC_CLOUDFRONT_URL ||
     process.env.S3_PUBLIC_BASE_URL
   );
+  const stripePaymentKeys = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"] as const;
+  const coinpaymentsKeys = [
+    "COINPAYMENTS_API_BASE_URL",
+    "COINPAYMENTS_CLIENT_ID",
+    "COINPAYMENTS_CLIENT_SECRET",
+    "COINPAYMENTS_WEBHOOK_SECRET",
+    "COINPAYMENTS_USD_CURRENCY_ID",
+    "COINPAYMENTS_USDT_NETWORK_ALLOWLIST"
+  ] as const;
+  const hasPartialStripePayments = stripePaymentKeys.some((key) => Boolean(process.env[key]));
+  const hasPartialCoinPayments = coinpaymentsKeys.some((key) => Boolean(process.env[key])) || Boolean(process.env.COINPAYMENTS_WEBHOOK_URL);
 
   if (!hasS3Bucket && strict) missing.push("S3_BUCKET_OR_S3_BUCKET_NAME");
   if (strict && hasS3AccessKey !== hasS3SecretKey) {
     missing.push("Provide both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or leave both empty to use IAM role credentials.");
   }
   if (!hasCloudFront && strict) missing.push("CLOUDFRONT_URL_OR_NEXT_PUBLIC_CLOUDFRONT_URL");
+  if (strict && hasPartialStripePayments) {
+    for (const key of stripePaymentKeys) if (!process.env[key]) missing.push(key);
+  }
+  if (strict && hasPartialCoinPayments) {
+    for (const key of coinpaymentsKeys) if (!process.env[key]) missing.push(key);
+  }
 
   return {
     ok: missing.length === 0,

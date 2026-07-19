@@ -6,13 +6,12 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { setSessionCookie } from "@/lib/cookies";
 import { connectDB } from "@/lib/db";
-import { createSessionToken } from "@/lib/jwt";
+import { createActiveSessionId, createSessionToken } from "@/lib/jwt";
 import { normalizeEmail, verifyEmailOtp } from "@/lib/otp";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { NotificationPreference } from "@/models/NotificationPreference";
-import { PlusSubscription } from "@/models/PlusSubscription";
 import { StylePreference } from "@/models/StylePreference";
 import { toSafeUser, User } from "@/models/User";
 import { verifyOtpSchema } from "@/schemas/auth.schema";
@@ -38,14 +37,13 @@ function otpFailureMessage(reason: string) {
 async function ensureUserDefaults(userId: mongoose.Types.ObjectId) {
   await Promise.all([
     StylePreference.updateOne({ userId }, { $setOnInsert: { userId } }, { upsert: true }),
-    NotificationPreference.updateOne({ userId }, { $setOnInsert: { userId } }, { upsert: true }),
-    PlusSubscription.updateOne({ userId }, { $setOnInsert: { userId } }, { upsert: true })
+    NotificationPreference.updateOne({ userId }, { $setOnInsert: { userId } }, { upsert: true })
   ]);
 }
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `auth-verify-otp:${meta.ip}`, limit: 20, windowMs: 15 * 60 * 1000 });
+  const limited = rateLimitRequest({ key: `auth-verify-otp:${meta.ip}`, limit: 20, windowMs: 15 * 60 * 1000 });
   if (limited) return limited;
 
   try {
@@ -71,11 +69,15 @@ export async function POST(request: NextRequest) {
     } else if (!user) {
       try {
         user = await User.create({
-          name: defaultNameFromEmail(email),
+          name: parsed.data.name || defaultNameFromEmail(email),
           email,
           passwordHash: "",
           role: "user",
-          plan: "free"
+          credits: 20,
+          totalCreditsPurchased: 0,
+          totalCreditsRefunded: 0,
+          totalCreditsSpent: 0,
+          complimentaryCreditsUsed: 0
         });
         await ensureUserDefaults(user._id);
       } catch (error: any) {
@@ -91,6 +93,9 @@ export async function POST(request: NextRequest) {
       return apiError("CONFLICT", "Account already exists. Sign in instead.");
     }
 
+    const activeSessionId = createActiveSessionId();
+    user.activeSessionId = activeSessionId;
+    user.activeSessionIssuedAt = new Date();
     user.lastLoginAt = new Date();
     await user.save();
 
@@ -105,7 +110,8 @@ export async function POST(request: NextRequest) {
     const token = await createSessionToken({
       userId: String(user._id),
       email: user.email,
-      role: user.role
+      role: user.role,
+      sessionId: activeSessionId
     });
 
     const response = apiSuccess(

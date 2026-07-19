@@ -26,7 +26,7 @@ export function NotEnoughWardrobeItemsState() {
   return (
     <Card className="p-4">
       <p className="text-sm font-semibold text-ink">Your wardrobe needs a few more pieces.</p>
-      <p className="mt-2 text-xs leading-5 text-muted">Add a top, bottom, dress, shoes, or native piece so MyFitPick has enough to work with.</p>
+      <p className="mt-2 text-xs leading-5 text-muted">Add a top, bottom, dress, shoes, or outerwear piece so MyFitPick has enough to work with.</p>
       <Link href="/wardrobe/add">
         <Button className="mt-4 w-full">Add clothes</Button>
       </Link>
@@ -37,10 +37,10 @@ export function NotEnoughWardrobeItemsState() {
 export function PremiumLimitState() {
   return (
     <Card className="border-cocoa/20 bg-cocoa/10 p-4">
-      <p className="text-sm font-semibold text-ink">Daily picks used</p>
-      <p className="mt-2 text-xs leading-5 text-muted">You have used today&apos;s free outfit picks. Plus gives you more options when you need them.</p>
-      <Link href="/plus">
-        <Button className="mt-4 w-full">View Plus</Button>
+      <p className="text-sm font-semibold text-ink">Credits needed</p>
+      <p className="mt-2 text-xs leading-5 text-muted">You&apos;re out of Credits. Purchase more Credits to continue premium actions.</p>
+      <Link href="/wallet">
+        <Button className="mt-4 w-full">Open wallet</Button>
       </Link>
     </Card>
   );

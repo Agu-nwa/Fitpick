@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
@@ -17,18 +17,20 @@ type RouteContext = { params: Promise<{ id: string }> };
 function serializeSavedLook(look: any) {
   return {
     id: String(look._id),
-    outfitId: String(look.outfitId),
+    outfitId: look.outfitId ? String(look.outfitId) : null,
+    source: look.source || "ai_saved",
     title: look.title,
     occasion: look.occasion,
     itemIds: (look.itemIds || []).map(String),
     favorite: Boolean(look.favorite),
+    notes: look.notes || "",
     savedAt: look.savedAt ? new Date(look.savedAt).toISOString() : null
   };
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `outfit-save:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-save" });
+  const limited = rateLimitRequest({ key: `outfit-save:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-save" });
   if (limited) return limited;
 
   try {
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         $setOnInsert: {
           userId: auth.user._id,
           outfitId: outfit._id,
+          source: "ai_saved",
           itemIds: outfit.itemIds,
           occasion: outfit.occasion,
           savedAt: new Date()

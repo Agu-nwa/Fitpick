@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { StylePreference } from "@/models/StylePreference";
@@ -30,7 +30,7 @@ export async function POST(
   context: RouteContext
 ) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `outfit-feedback:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-feedback" });
+  const limited = rateLimitRequest({ key: `outfit-feedback:${meta.ip}`, limit: 40, windowMs: 60 * 1000, operation: "outfit-feedback" });
   if (limited) return limited;
 
   try {

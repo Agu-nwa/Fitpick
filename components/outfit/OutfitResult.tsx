@@ -37,7 +37,7 @@ const swapDirections = [
   { value: "more-casual", label: "More casual" },
   { value: "color-change", label: "Color change" },
   { value: "weather-safe", label: "Weather-safe" },
-  { value: "native-touch", label: "Native touch" }
+  { value: "statement", label: "Statement" }
 ];
 
 const feedbackRatings = [
@@ -53,7 +53,7 @@ const feedbackTags = [
   { label: "Too formal", value: "too-formal" },
   { label: "Wrong color", value: "wrong-color" },
   { label: "Weather issue", value: "weather-issue" },
-  { label: "Needs native touch", value: "needs-native-touch" }
+  { label: "Needs polish", value: "needs-polish" }
 ];
 
 function Notes({ outfit }: { outfit: OutfitRecommendation }) {

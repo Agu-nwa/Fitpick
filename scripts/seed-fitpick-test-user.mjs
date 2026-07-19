@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
   FitPick test account + wardrobe seed script.
-  This creates/logs in a test user and creates metadata-only wardrobe items through the API.
+  This creates/logs in a test user and creates wardrobe items through the authenticated API.
   It does not upload real image files. Use the images folder for UI upload tests.
 
   Usage:

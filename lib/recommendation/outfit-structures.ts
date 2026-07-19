@@ -3,15 +3,15 @@ export type OccasionGroup =
   | "work"
   | "formal"
   | "social"
-  | "cultural"
+  | "event"
   | "weather"
   | "travel";
 
 export function inferOccasionGroup(input: { name?: string; group?: string; weatherContext?: string }) {
   const name = `${input.name || ""} ${input.group || ""} ${input.weatherContext || ""}`.toLowerCase();
-  if (/(native|traditional|owambe|aso-ebi|aso ebi|cultural|agbada|kaftan|ankara|isiagu)/.test(name)) return "cultural";
+  if (/(wedding|ceremony|celebration|party|graduation|birthday|gala|red carpet|event)/.test(name)) return "event";
   if (/(church|wedding)/.test(name)) return "formal";
-  if (/(rain|hot|cold|weather|harmattan)/.test(name)) return "weather";
+  if (/(rain|hot|cold|weather|wind|snow|humid)/.test(name)) return "weather";
   if (/(travel|vacation|airport|beach|resort)/.test(name)) return "travel";
   if (/(work|office|meeting|business casual|business)/.test(name)) return "work";
   if (/(formal|interview|gala|black tie)/.test(name)) return "formal";
@@ -26,8 +26,8 @@ export function structureFor(group: OccasionGroup) {
       return ["tops", "bottoms", "shoes", "outerwear", "accessories"];
     case "formal":
       return ["dresses", "tops", "bottoms", "shoes", "outerwear", "accessories"];
-    case "cultural":
-      return ["native", "shoes", "accessories"];
+    case "event":
+      return ["dresses", "tops", "bottoms", "shoes", "outerwear", "accessories"];
     case "weather":
       return ["tops", "bottoms", "shoes", "outerwear"];
     case "travel":

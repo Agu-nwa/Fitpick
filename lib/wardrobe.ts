@@ -40,7 +40,7 @@ function recognizedEntityFromItem(item: any) {
   return (
     item.verifiedMetadata?.recognizedEntity?.value ||
     item.aiAnalysis?.fields?.recognizedEntity?.value ||
-    item.verifiedMetadata?.culturalTraditionalRelevance?.value ||
+    item.verifiedMetadata?.eventRelevance?.value ||
     ""
   );
 }
@@ -95,6 +95,8 @@ export function serializeWardrobeUpload(upload: any) {
     aiErrorSafeMessage: upload.aiErrorSafeMessage || "",
     imageUrl: upload.imageUrl || "",
     thumbnailUrl: upload.thumbnailUrl || "",
+    selectedCategory: upload.selectedCategory || "",
+    selectedCategoryLabel: upload.selectedCategoryLabel || "",
     images: upload.images || {},
     aiAnalysis: upload.aiAnalysis || null,
     suggestedTags: upload.suggestedTags || {},
@@ -122,7 +124,7 @@ export function wardrobeSummary(items: any[]) {
     { key: "tops", label: "Add tops to build everyday outfits." },
     { key: "bottoms", label: "Add bottoms to complete outfit combinations." },
     { key: "shoes", label: "Add shoes for stronger recommendations." },
-    { key: "native", label: "Add native or traditional wear for cultural occasions." },
+    { key: "outerwear", label: "Add outerwear for weather and layering options." },
     { key: "accessories", label: "Add accessories for polished finish options." }
   ];
 

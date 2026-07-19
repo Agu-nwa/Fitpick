@@ -12,7 +12,7 @@ function compactStyleProfile(profile?: any) {
     dislikedFits: profile.dislikedFits || [],
     preferredFormality: profile.preferredFormality ?? null,
     preferredOccasions: profile.preferredOccasions || [],
-    culturalStylePreferences: profile.culturalStylePreferences || [],
+    eventStylePreferences: profile.eventStylePreferences || [],
     preferredCategories: profile.preferredCategories || [],
     avoidedCategories: profile.avoidedCategories || [],
     fashionRiskLevel: profile.fashionRiskLevel || "balanced",
@@ -40,7 +40,7 @@ function compactMemorySummary(memorySummary?: any) {
     },
     recentlyWornItemIds: (memorySummary.recentlyWornItemIds || []).slice(0, 12),
     occasions: memorySummary.occasions || [],
-    culturalContext: memorySummary.culturalContext || [],
+    eventContext: memorySummary.eventContext || [],
     lastEventAt: memorySummary.lastEventAt || null
   };
 }

@@ -106,8 +106,6 @@ S3_PUBLIC_BASE_URL=
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 
-AI_TAGGING_PROVIDER=mock
-GEMINI_API_KEY=
 OPENAI_API_KEY=
 
 ENABLE_BACKGROUND_JOBS=true
@@ -116,18 +114,15 @@ AI_CACHE_PROVIDER=memory
 RATE_LIMIT_PROVIDER=memory
 RATE_LIMIT_REDIS_URL=
 
-PAYMENT_PROVIDER=placeholder
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-FITPICK_PLUS_STRIPE_PRICE_ID=
-STRIPE_SUCCESS_URL=https://YOUR_DOMAIN/plus?checkout=success
-STRIPE_CANCEL_URL=https://YOUR_DOMAIN/plus?checkout=cancelled
-PAYSTACK_SECRET_KEY=
-PAYSTACK_PUBLIC_KEY=
-PAYSTACK_WEBHOOK_SECRET=
-FITPICK_PLUS_PAYSTACK_PLAN_CODE=
-PAYSTACK_CALLBACK_URL=https://YOUR_DOMAIN/plus?checkout=success
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=
+COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
+COINPAYMENTS_CLIENT_ID=
+COINPAYMENTS_CLIENT_SECRET=
+COINPAYMENTS_WEBHOOK_SECRET=
+COINPAYMENTS_WEBHOOK_URL=https://YOUR_DOMAIN/api/webhooks/coinpayments
+COINPAYMENTS_USD_CURRENCY_ID=
+COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Temporary EC2 IP testing may use:
@@ -222,7 +217,7 @@ Verify these flows after deployment:
 - Mark outfit as worn.
 - Open looks history.
 - Open profile/preferences.
-- Open Plus page.
+- Open wallet and verify Credit balance, packs, and purchase history.
 - Open `/admin` with an admin account and verify health, audit, content, and seed controls.
 - Run a checkout only in sandbox mode until HTTPS and webhooks are confirmed.
 
@@ -232,16 +227,17 @@ Do not activate live payments until HTTPS is working.
 
 Webhook endpoints:
 
-- Stripe: `https://YOUR_DOMAIN/api/billing/webhook/stripe`
-- Paystack: `https://YOUR_DOMAIN/api/billing/webhook/paystack`
+- Stripe: `https://YOUR_DOMAIN/api/webhooks/stripe`
+- CoinPayments: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
 
-Start with:
+Stripe must use one-time Checkout Sessions. CoinPayments must use hosted USDT invoices with exact merchant-approved network IDs.
 
-```env
-PAYMENT_PROVIDER=placeholder
-```
+Intended USDT options for `COINPAYMENTS_USDT_NETWORK_ALLOWLIST`:
 
-Then move to `stripe`, `paystack`, or `auto` only after sandbox validation.
+- USDT on Tron (`TRC20`) - recommended, very low fees.
+- USDT on BNB Smart Chain (`BEP20`) - recommended, very low fees.
+- USDT on Ethereum (`ERC20`) - recommended, higher fees.
+- USDT on Solana - fast, lower network fees.
 
 ## S3 CORS
 

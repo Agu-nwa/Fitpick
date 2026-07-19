@@ -48,7 +48,7 @@ export function rateLimit(input: {
   return null;
 }
 
-export const rateLimitPlaceholder = rateLimit;
+export const rateLimitRequest = rateLimit;
 
 // Future Redis adapter boundary:
 // Keep the rateLimit(input) contract and move bucket increments into Redis

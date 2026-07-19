@@ -6,7 +6,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { PermissionCard } from "@/components/ui/PermissionCard";
 import { PremiumLockedState } from "@/components/ui/PremiumLockedState";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { emptyStates, errorStates, stateSamples } from "@/lib/mock-data";
+import { emptyStates, errorStates, stateSamples } from "@/lib/state-copy";
 
 export default function StatesPage() {
   return (

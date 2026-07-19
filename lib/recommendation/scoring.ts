@@ -91,30 +91,30 @@ export function silhouetteBalanceScore(items: any[]) {
   const silhouettes = items.map((item) => normalize(metadataValue(item, "silhouette") || item.fit)).filter(Boolean);
   if (!silhouettes.length) return 5;
   const hasStructured = silhouettes.some((value) => /tailored|structured|slim|straight|fitted/.test(value));
-  const hasVolume = silhouettes.some((value) => /wide|flowy|oversized|relaxed|agbada|kaftan/.test(value));
+  const hasVolume = silhouettes.some((value) => /wide|flowy|oversized|relaxed|voluminous/.test(value));
   if (hasStructured && hasVolume) return 15;
   if (hasStructured || hasVolume) return 11;
   return 8;
 }
 
-export function culturalRelevanceScore(items: any[], occasionName = "") {
+export function eventRelevanceScore(items: any[], occasionName = "") {
   const target = normalize(occasionName);
-  const culturalContext = /native|traditional|cultural|wedding|church|owambe|aso-ebi|agbada|kaftan|ankara|isiagu/.test(target);
-  if (!culturalContext) return 8;
+  const eventContext = /wedding|church|ceremony|celebration|party|graduation|gala|date|dinner|formal|event/.test(target);
+  if (!eventContext) return 8;
 
   const hasRelevant = items.some((item) => {
     const text = [
       item.category,
       item.subcategory,
       metadataValue(item, "garmentType"),
-      metadataValue(item, "culturalTraditionalRelevance"),
+      metadataValue(item, "eventRelevance"),
       metadataValue(item, "pattern"),
       metadataValue(item, "fabricEstimate")
     ].map(normalize).join(" ");
-    return /native|traditional|agbada|kaftan|isiagu|ankara|aso-oke|aso ebi|lace|senator/.test(text);
+    return /wedding|church|ceremony|party|celebration|formal|elegant|dressy|statement|evening|gala/.test(text);
   });
 
-  return hasRelevant ? 22 : -12;
+  return hasRelevant ? 18 : -4;
 }
 
 export function completenessScore(items: any[], desiredCategories: string[]) {
@@ -145,14 +145,14 @@ export function styleProfileScore(items: any[], styleProfile?: any) {
   const preferredOccasions = styleProfile.preferredOccasions || [];
   const preferredCategories = styleProfile.preferredCategories || [];
   const avoidedCategories = styleProfile.avoidedCategories || [];
-  const culturalPreferences = styleProfile.culturalStylePreferences || [];
+  const eventPreferences = styleProfile.eventStylePreferences || [];
 
   for (const item of items) {
     const color = metadataValue(item, "primaryColor") || item.color;
     const brand = metadataValue(item, "brand");
     const fit = metadataValue(item, "fit") || item.fit;
     const occasions = metadataList(item, "occasionSuitability").concat(item.occasions || []);
-    const cultural = metadataValue(item, "culturalTraditionalRelevance");
+    const eventRelevance = metadataValue(item, "eventRelevance");
 
     if (hasAny(color, favoriteColors)) score += 6;
     if (hasAny(color, dislikedColors)) score -= 12;
@@ -163,11 +163,11 @@ export function styleProfileScore(items: any[], styleProfile?: any) {
     if (preferredCategories.includes(item.category)) score += 5;
     if (avoidedCategories.includes(item.category)) score -= 16;
     if (occasions.some((occasion: string) => hasAny(occasion, preferredOccasions))) score += 4;
-    if (hasAny(cultural, culturalPreferences) || (item.category === "native" && culturalPreferences.length)) score += 5;
+    if (hasAny(eventRelevance, eventPreferences)) score += 5;
   }
 
   const risk = styleProfile.fashionRiskLevel || "balanced";
-  const hasPattern = items.some((item) => /print|pattern|ankara|bold|stripe|check/i.test(`${item.pattern || ""} ${metadataValue(item, "pattern") || ""}`));
+  const hasPattern = items.some((item) => /print|pattern|bold|stripe|check|statement/i.test(`${item.pattern || ""} ${metadataValue(item, "pattern") || ""}`));
   const colorGroups = new Set(items.map((item) => normalize(metadataValue(item, "primaryColor") || item.color)).filter(Boolean));
   if (risk === "conservative" && (hasPattern || colorGroups.size > 3)) score -= 8;
   if (risk === "expressive" && (hasPattern || colorGroups.size > 2)) score += 7;
@@ -246,7 +246,7 @@ export function scoreOutfit(
     colorCompatibilityScore(items) +
     fabricCompatibilityScore(items) +
     silhouetteBalanceScore(items) +
-    culturalRelevanceScore(items, input.occasionName) +
+    eventRelevanceScore(items, input.occasionName) +
     completenessScore(items, input.desiredCategories || []) +
     styleProfileScore(items, input.styleProfile) +
     memoryPreferenceScore(items, input.memorySummary, input.allowRecentRepeat)

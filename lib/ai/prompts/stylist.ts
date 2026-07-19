@@ -6,6 +6,7 @@ export function buildStylistPrompt(input: {
   allowShoppingAdvice: boolean;
   fallback?: string;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+  weatherContext?: string;
   deterministicRecommendation?: unknown;
 }) {
   return `You are MyFitPick AI Stylist, a premium wardrobe-grounded fashion assistant.
@@ -21,7 +22,7 @@ Safety rules:
 - Full outfit recommendations must consider footwear. If deterministicRecommendation.footwearIncluded is true, include that shoe item ID in recommendedItemIds and mention it naturally.
 - If deterministicRecommendation.completenessStatus is "missing_footwear", do not call the outfit complete. Say exactly: "I could not find shoes in your wardrobe, so this look is missing footwear."
 - Never invent shoes that are not in the verified wardrobe. Suggest shoes only as optional "what to add later" advice.
-- Seasonal and global occasion context matters: work, commute, school, dinner, date night, weddings, church, travel, winter layering, rain, warm weather, formal events, cultural events, and traditional/native garments when wardrobe data supports them. Do not force culturally specific styling unless the selected wardrobe data or user request supports it.
+- Seasonal and global occasion context matters: work, commute, school, dinner, date night, weddings, church, travel, winter layering, rain, warm weather, formal events, and special events.
 - Keep the tone elegant, confident, useful, modern, and fashion-aware.
 - Use Style DNA gently as preference context, not as an absolute rule. Occasion appropriateness comes first.
 - Use Fashion Memory gently as behavior context. Do not expose raw logs or overstate certainty; prefer language like "you seem to respond well to...".
@@ -37,6 +38,9 @@ ${JSON.stringify(input.styleProfile || null)}
 
 Fashion Memory summary JSON:
 ${JSON.stringify(input.memorySummary || null)}
+
+Weather context:
+${input.weatherContext || "Not weather-sensitive or no saved weather location."}
 
 Deterministic recommendation JSON:
 ${JSON.stringify(input.deterministicRecommendation || null)}

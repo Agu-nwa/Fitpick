@@ -93,4 +93,4 @@ Do not claim zero-access storage, military-grade encryption, anonymity, or that 
 
 ## Capitalization
 
-Use sentence case for headings, buttons, and labels unless a proper noun is required. Keep product terms consistent: FitPick, FitPick Plus, FitPick Stylist.
+Use sentence case for headings, buttons, and labels unless a proper noun is required. Keep product terms consistent: MyFitPick, Credits, and Stylist.

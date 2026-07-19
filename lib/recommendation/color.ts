@@ -9,7 +9,7 @@ export function colorGroup(color = "") {
   if (earthColors.has(normalized)) return "earth";
   if (coolColors.has(normalized)) return "cool";
   if (warmColors.has(normalized)) return "warm";
-  if (normalized.includes("print") || normalized.includes("ankara") || normalized.includes("pattern")) return "pattern";
+  if (normalized.includes("print") || normalized.includes("pattern")) return "pattern";
   return "other";
 }
 

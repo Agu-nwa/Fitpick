@@ -1,4 +1,4 @@
-export type OccasionGroup = "everyday" | "formal" | "social" | "cultural" | "weather";
+export type OccasionGroup = "everyday" | "formal" | "social" | "event" | "weather";
 export type Formality = "relaxed" | "balanced" | "polished" | "formal";
 
 export type Occasion = {

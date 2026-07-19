@@ -1,22 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import {
-  getWeather
+  getWeatherForecast
 } from "@/lib/weather/weather-service";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import {
   buildRecommendation,
   serializeOutfit
 } from "@/lib/recommendation/engine";
-import {
-  canCreateOutfitPick,
-  incrementDailyPickUsage
-} from "@/lib/usage-limits";
+import { incrementDailyPickUsage } from "@/lib/usage-limits";
 import {
   readJson,
   validateBody
@@ -36,7 +33,7 @@ import { outfitRecommendationRequestSchema }
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
 
-  const limited = rateLimitPlaceholder({
+  const limited = rateLimitRequest({
     key: `outfit-recommend:${meta.ip}`,
     limit: 20,
     windowMs: 60 * 1000
@@ -55,29 +52,6 @@ export async function POST(request: NextRequest) {
     );
 
     if (!parsed.ok) return parsed.response;
-
-    const usageGate =
-      await canCreateOutfitPick(
-        String(auth.user._id)
-      );
-
-    if (!usageGate.allowed) {
-      return apiError(
-        "PLUS_REQUIRED",
-        "You have used today’s free outfit picks. MyFitPick Plus gives you more options when you need them.",
-        {
-          details: {
-            feature:
-              "unlimited_outfit_picks",
-            upgradePath: "/plus",
-            usageToday:
-              usageGate.usageToday,
-            remainingDailyPicks:
-              usageGate.remainingDailyPicks
-          }
-        }
-      );
-    }
 
     const [
       preferences,
@@ -125,17 +99,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let liveWeather = null;
+    let weatherForecast = null;
+    const savedLatitude = typeof auth.user.weatherLatitude === "number" ? auth.user.weatherLatitude : undefined;
+    const savedLongitude = typeof auth.user.weatherLongitude === "number" ? auth.user.weatherLongitude : undefined;
 
     if (
-      parsed.data.latitude &&
-      parsed.data.longitude
+      (typeof parsed.data.latitude === "number" && typeof parsed.data.longitude === "number") ||
+      (typeof savedLatitude === "number" && typeof savedLongitude === "number") ||
+      parsed.data.weatherLocation ||
+      auth.user.weatherLocationName
     ) {
       try {
-        liveWeather = await getWeather(
-          parsed.data.latitude,
-          parsed.data.longitude
-        );
+        weatherForecast = await getWeatherForecast({
+          latitude: typeof parsed.data.latitude === "number" ? parsed.data.latitude : savedLatitude,
+          longitude: typeof parsed.data.longitude === "number" ? parsed.data.longitude : savedLongitude,
+          city: typeof parsed.data.latitude === "number" && typeof parsed.data.longitude === "number" ? undefined : parsed.data.weatherLocation || auth.user.weatherLocationName || undefined,
+          days: 3
+        });
       } catch (error) {
         logSafeError("outfit.recommend.weather", error);
       }
@@ -154,7 +134,7 @@ export async function POST(request: NextRequest) {
         parsed.data.customOccasion?.group ||
         occasion?.group,
 
-      weather: liveWeather,
+      weather: weatherForecast?.current || null,
 
       formality:
         parsed.data.formality ||
@@ -163,8 +143,8 @@ export async function POST(request: NextRequest) {
         preferences?.formality,
 
       weatherContext:
-        liveWeather
-          ? `${liveWeather.city} • ${liveWeather.temperature}°C • ${liveWeather.condition}`
+        weatherForecast
+          ? weatherForecast.summary
           : parsed.data.weatherContext || "",
 
       allowNeedsCare:

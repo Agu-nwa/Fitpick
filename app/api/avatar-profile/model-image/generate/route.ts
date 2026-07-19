@@ -9,7 +9,7 @@ import { openai } from "@/lib/ai/openai";
 import { buildAvatarPromptContext, getOrCreateAvatarProfile, serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 import { AvatarProfile } from "@/models/AvatarProfile";
@@ -50,7 +50,7 @@ Requirements:
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `avatar-model-image:${meta.ip}`, limit: 4, windowMs: 60 * 1000, operation: "avatar-model-image-generation" });
+  const limited = rateLimitRequest({ key: `avatar-model-image:${meta.ip}`, limit: 4, windowMs: 60 * 1000, operation: "avatar-model-image-generation" });
   if (limited) return limited;
 
   try {

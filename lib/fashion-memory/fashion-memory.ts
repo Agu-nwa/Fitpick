@@ -76,7 +76,7 @@ function itemMetadata(items: any[]) {
   const categories: string[] = [];
   const brands: string[] = [];
   const fits: string[] = [];
-  const culturalContext: string[] = [];
+  const eventContext: string[] = [];
   const season: string[] = [];
   const weather: string[] = [];
   const formalities: number[] = [];
@@ -86,7 +86,7 @@ function itemMetadata(items: any[]) {
     categories.push(item.category);
     brands.push(metadataValue(item, "brand"));
     fits.push(metadataValue(item, "fit") || item.fit);
-    culturalContext.push(metadataValue(item, "culturalTraditionalRelevance"));
+    eventContext.push(metadataValue(item, "eventRelevance"));
     season.push(...metadataList(item, "seasonSuitability"));
     weather.push(...metadataList(item, "weatherSuitability"), ...(item.weather || []));
     const formality = numberOrNull(metadataValue(item, "formalityScore"));
@@ -99,7 +99,7 @@ function itemMetadata(items: any[]) {
     brands: cleanList(brands),
     fits: cleanList(fits),
     formality: formalities.length ? Math.round((formalities.reduce((sum, value) => sum + value, 0) / formalities.length) * 10) / 10 : null,
-    culturalContext: cleanList(culturalContext),
+    eventContext: cleanList(eventContext),
     season: cleanList(season),
     weather: cleanList(weather)
   };
@@ -155,7 +155,7 @@ export async function getMemorySummary(userId: string | Types.ObjectId) {
   const recentlyWornItemIds: string[] = [];
   const savedItemIds: string[] = [];
   const occasions = new Map<string, number>();
-  const culturalContext = new Map<string, number>();
+  const eventContext = new Map<string, number>();
   const season = new Map<string, number>();
   const weather = new Map<string, number>();
 
@@ -185,7 +185,7 @@ export async function getMemorySummary(userId: string | Types.ObjectId) {
     }
 
     addCount(occasions, event.occasion, recencyWeight);
-    for (const value of event.metadata?.culturalContext || []) addCount(culturalContext, value, recencyWeight);
+    for (const value of event.metadata?.eventContext || []) addCount(eventContext, value, recencyWeight);
     for (const value of event.metadata?.season || []) addCount(season, value, recencyWeight);
     for (const value of event.metadata?.weather || []) addCount(weather, value, recencyWeight);
   }
@@ -209,7 +209,7 @@ export async function getMemorySummary(userId: string | Types.ObjectId) {
     recentlyWornItemIds: cleanList(recentlyWornItemIds, 20),
     savedItemIds: cleanList(savedItemIds, 20),
     occasions: topValues(occasions),
-    culturalContext: topValues(culturalContext),
+    eventContext: topValues(eventContext),
     season: topValues(season),
     weather: topValues(weather),
     lastEventAt: events[0]?.createdAt ? new Date(events[0].createdAt).toISOString() : null
@@ -226,7 +226,7 @@ export async function inferPreferenceSignalsFromMemory(userId: string | Types.Ob
     preferredFits: summary.positive.fits.slice(0, 5),
     dislikedFits: summary.negative.fits.slice(0, 5),
     preferredOccasions: summary.occasions.slice(0, 5),
-    culturalStylePreferences: summary.culturalContext.slice(0, 5),
+    eventStylePreferences: summary.eventContext.slice(0, 5),
     preferredCategories: summary.positive.categories.slice(0, 5),
     avoidedCategories: summary.negative.categories.slice(0, 5),
     inferredFrom: summary.eventCount ? ["memory: liked outfits", "memory: saved outfits"] : []
@@ -249,7 +249,7 @@ export function serializeMemorySummary(summary: any) {
     recentlyWornItemIds: summary?.recentlyWornItemIds || [],
     savedItemIds: summary?.savedItemIds || [],
     occasions: summary?.occasions || [],
-    culturalContext: summary?.culturalContext || [],
+    eventContext: summary?.eventContext || [],
     season: summary?.season || [],
     weather: summary?.weather || [],
     lastEventAt: summary?.lastEventAt || null

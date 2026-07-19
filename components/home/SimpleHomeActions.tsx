@@ -1,16 +1,14 @@
 import Link from "next/link";
-import { ArrowUpRight, Images, ScanFace, Shirt, Sparkles } from "lucide-react";
+import { ArrowUpRight, Shirt, Sparkles } from "lucide-react";
 
 const actions = [
-  { title: "Build today's look", body: "A considered outfit from pieces you already own.", href: "/outfit", icon: Sparkles, primary: true, number: "01" },
-  { title: "Add new pieces", body: "Photograph clothing and let AI organize the details.", href: "/wardrobe/add", icon: Shirt, number: "02" },
-  { title: "Browse your closet", body: "See every piece, category, and recent addition.", href: "/wardrobe", icon: Images, number: "03" },
-  { title: "Enter fitting studio", body: "Preview complete looks on your digital model.", href: "/avatar", icon: ScanFace, number: "04" }
+  { title: "Ask your Stylist", body: "Get a grounded outfit idea from pieces you already own.", href: "/stylist", icon: Sparkles, primary: true, number: "01", cta: "Start chat" },
+  { title: "Add wardrobe pieces", body: "Photograph one item and let MyFitPick organize the details.", href: "/wardrobe/add", icon: Shirt, number: "02", cta: "Add a piece" }
 ];
 
 export function SimpleHomeActions() {
   return (
-    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-3 md:grid-cols-2">
       {actions.map((action) => {
         const Icon = action.icon;
         return (
@@ -26,10 +24,10 @@ export function SimpleHomeActions() {
               <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
             </div>
             <div className="mt-auto">
-              <h2 className="font-editorial text-3xl font-semibold leading-[0.95] tracking-tight">{action.title}</h2>
+              <h2 className="font-editorial text-3xl font-semibold leading-[0.95] tracking-tight sm:text-4xl">{action.title}</h2>
               <p className={`mt-3 text-sm leading-6 ${action.primary ? "text-canvas/70" : "text-muted"}`}>{action.body}</p>
               <span className="mt-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em]">
-                Explore
+                {action.cta}
                 <ArrowUpRight size={15} className="transition group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
               </span>
             </div>

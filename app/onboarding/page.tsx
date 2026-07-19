@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
-import { OnboardingAccountCard } from "@/components/auth/OnboardingAccountCard";
 import { AppShell } from "@/components/layout/AppShell";
+import { EssentialModelSetup } from "@/components/onboarding/EssentialModelSetup";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 
 const steps = [
-  { title: "Start with a few favourites", body: "Add the pieces you wear most. You can build the rest over time.", action: "Add pieces" },
-  { title: "Tell us what feels like you", body: "Choose the styles, colours, and fits you naturally reach for.", action: "Set preferences" },
-  { title: "Find something to wear", body: "Get outfit ideas shaped by your wardrobe, plans, and the weather.", action: "Choose outfit" }
+  { title: "Create your model", body: "Set a simple profile so MyFitPick understands fit, style, and weather context." },
+  { title: "Add a few pieces", body: "Start with the clothing, shoes, bags, and accessories you reach for often." },
+  { title: "Ask your Stylist", body: "Get outfit ideas shaped by your wardrobe, plans, and the weather." }
 ];
 
-const preferences = ["Clean", "Polished", "Comfort", "Native wear", "Neutrals", "Easy layers"];
+const preferences = ["Clean", "Polished", "Comfort", "Minimal", "Neutrals", "Easy layers"];
 
 export default function OnboardingPage() {
   return (
@@ -20,11 +20,11 @@ export default function OnboardingPage() {
       <section>
         <div className="mb-7 h-80 overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card" role="img" aria-label="wardrobe flat lay preview">
           <div className="flex h-full flex-col justify-end bg-[radial-gradient(circle_at_80%_10%,rgba(166,124,82,0.22),transparent_34%)]">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-cocoa">
-              <CheckCircle2 size={14} aria-hidden="true" />
-              MyFitPick
-            </p>
-            <h1 className="mt-3 max-w-[420px] font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl">Let&apos;s make your wardrobe easier to use.</h1>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-cocoa">
+            <CheckCircle2 size={14} aria-hidden="true" />
+              MyFitPick setup
+          </p>
+            <h1 className="mt-3 max-w-[420px] font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl">Teach MyFitPick the essentials.</h1>
           </div>
         </div>
         <div className="space-y-3">
@@ -44,7 +44,7 @@ export default function OnboardingPage() {
           {preferences.map((item, index) => <Chip key={item} active={index < 2}>{item}</Chip>)}
         </div>
         <div className="mt-5">
-          <OnboardingAccountCard />
+          <EssentialModelSetup />
         </div>
       </section>
       <div className="mt-8 grid gap-3">

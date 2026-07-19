@@ -70,7 +70,13 @@ export function FashionBackdrop({
             )}
             style={{ animationDelay: `${index * 0.45}s` }}
           >
-            <img src={card.src} alt={card.alt} className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={card.src}
+              alt={card.alt}
+              className="block max-w-full object-cover"
+              style={{ width: "100%", height: "100%" }}
+              loading="lazy"
+            />
           </div>
         ))}
       </div>
@@ -86,7 +92,13 @@ export function FashionBackdrop({
             )}
             style={{ animationDelay: `${index * 0.4}s` }}
           >
-            <img src={card.src} alt={card.alt} className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={card.src}
+              alt={card.alt}
+              className="block max-w-full object-cover"
+              style={{ width: "100%", height: "100%" }}
+              loading="lazy"
+            />
           </div>
         ))}
       </div>

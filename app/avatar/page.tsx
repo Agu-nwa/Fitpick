@@ -12,13 +12,13 @@ export default function AvatarPage() {
           <div className="max-w-4xl">
             <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
               <ScanFace size={14} aria-hidden="true" />
-              Digital fitting studio
+              Model studio
             </p>
             <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
-              Build the model MyFitPick styles.
+              Edit the model MyFitPick styles.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-              Choose your avatar base, add a full-body model image, and improve try-on previews without changing how your wardrobe data is stored.
+              Update your avatar base, model photo, pose, and fit details when you want more accurate previews.
             </p>
           </div>
           <div className="rounded-full border border-cocoa/25 bg-cocoa/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">

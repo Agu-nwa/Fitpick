@@ -33,7 +33,7 @@ export function StyleProfileForm() {
   const [dislikedColors, setDislikedColors] = useState("");
   const [preferredFits, setPreferredFits] = useState("");
   const [preferredOccasions, setPreferredOccasions] = useState("");
-  const [culturalStylePreferences, setCulturalStylePreferences] = useState("");
+  const [eventStylePreferences, setEventStylePreferences] = useState("");
   const [notes, setNotes] = useState("");
   const [fashionRiskLevel, setFashionRiskLevel] = useState<"conservative" | "balanced" | "expressive">("balanced");
   const [comfortPriority, setComfortPriority] = useState<"low" | "medium" | "high">("medium");
@@ -54,7 +54,7 @@ export function StyleProfileForm() {
       setDislikedColors(joinList(next.dislikedColors));
       setPreferredFits(joinList(next.preferredFits));
       setPreferredOccasions(joinList(next.preferredOccasions));
-      setCulturalStylePreferences(joinList(next.culturalStylePreferences));
+      setEventStylePreferences(joinList(next.eventStylePreferences));
       setNotes(joinList(next.notes));
       setFashionRiskLevel(next.fashionRiskLevel);
       setComfortPriority(next.comfortPriority);
@@ -71,7 +71,7 @@ export function StyleProfileForm() {
       dislikedColors: splitList(dislikedColors),
       preferredFits: splitList(preferredFits),
       preferredOccasions: splitList(preferredOccasions),
-      culturalStylePreferences: splitList(culturalStylePreferences),
+      eventStylePreferences: splitList(eventStylePreferences),
       notes: splitList(notes),
       fashionRiskLevel,
       comfortPriority,
@@ -124,8 +124,8 @@ export function StyleProfileForm() {
         <FieldGroup label="Preferred occasions" htmlFor="preferred-occasions">
           <input id="preferred-occasions" className={inputClass} value={preferredOccasions} onChange={(event) => setPreferredOccasions(event.target.value)} placeholder="church, business casual, date night" />
         </FieldGroup>
-        <FieldGroup label="Cultural style preferences" htmlFor="cultural-style-preferences" help="Use clothing context only, such as native wear or ankara. MyFitPick does not need identity attributes.">
-          <input id="cultural-style-preferences" className={inputClass} value={culturalStylePreferences} onChange={(event) => setCulturalStylePreferences(event.target.value)} placeholder="native wear, ankara, senator wear" />
+        <FieldGroup label="Event style preferences" htmlFor="event-style-preferences">
+          <input id="event-style-preferences" className={inputClass} value={eventStylePreferences} onChange={(event) => setEventStylePreferences(event.target.value)} placeholder="weddings, business dinners, black tie" />
         </FieldGroup>
       </section>
 

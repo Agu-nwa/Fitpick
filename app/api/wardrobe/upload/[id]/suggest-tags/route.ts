@@ -5,7 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
@@ -14,7 +14,7 @@ import { WardrobeUpload } from "@/models/WardrobeUpload";
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const meta = requestMeta(request);
 
-  const limited = rateLimitPlaceholder({
+  const limited = rateLimitRequest({
     key: `wardrobe-suggest-tags:${meta.ip}`,
     limit: 20,
     windowMs: 60 * 1000,
@@ -84,6 +84,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       imageUrl: upload.imageUrl || "",
       thumbnailUrl: upload.thumbnailUrl || "",
       images: (upload.images || {}) as any,
+      selectedCategory: (upload.selectedCategory || "") as any,
+      selectedCategoryLabel: upload.selectedCategoryLabel || "",
       suggestedTags: upload.suggestedTags || {}
     });
 

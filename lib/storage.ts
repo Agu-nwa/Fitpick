@@ -4,7 +4,7 @@ import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/a
 import { deleteGeneratedImage, getGeneratedImageUrl } from "@/lib/storage/generated-images";
 import { normalizeStorageKey } from "@/lib/storage/url";
 
-export type StorageProvider = "s3" | "local_placeholder";
+export type StorageProvider = "s3";
 
 const defaultAllowedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"] as const;
 const maxImageSizeBytes = 8 * 1024 * 1024;
@@ -19,7 +19,7 @@ const extensionByMime: Record<string, string> = {
 };
 
 export function storageProvider(): StorageProvider {
-  return process.env.STORAGE_PROVIDER === "local_placeholder" ? "local_placeholder" : "s3";
+  return "s3";
 }
 
 function s3Config() {

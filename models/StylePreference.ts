@@ -8,7 +8,6 @@ const StylePreferenceSchema = new Schema(
     colorPreferences: { type: [String], default: [] },
     avoidColors: { type: [String], default: [] },
     comfortPriority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
-    nativeWearFrequency: { type: String, enum: ["rarely", "sometimes", "often", "weekly"], default: "sometimes" },
     repeatSensitivity: { type: String, enum: ["low", "medium", "high"], default: "medium" },
     weatherEnabled: { type: Boolean, default: true }
   },

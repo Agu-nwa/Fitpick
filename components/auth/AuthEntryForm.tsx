@@ -21,6 +21,7 @@ function friendlyAuthError(message?: string) {
 export function AuthEntryForm({ compact = false, initialMode = "signin" }: { compact?: boolean; initialMode?: AuthMode }) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<Step>("email");
@@ -55,7 +56,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
     setMessage("");
     setNotice("");
 
-    const result = await verifyAuthOtp({ email, code, purpose: mode });
+    const result = await verifyAuthOtp({ email, code, purpose: mode, name: mode === "signup" ? name : undefined });
     setLoading(false);
 
     if (!result.ok) {
@@ -63,7 +64,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
       return;
     }
 
-    router.push("/home");
+    router.push(mode === "signup" ? "/onboarding?setup=model" : "/home");
     router.refresh();
   }
 
@@ -105,6 +106,23 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
       ) : null}
 
       <form onSubmit={step === "email" ? requestCode : verifyCode} className="space-y-4">
+        {mode === "signup" && step === "email" ? (
+          <label className="block">
+            <span className="text-sm font-semibold text-ink">Display name</span>
+            <input
+              type="text"
+              autoComplete="name"
+              required
+              minLength={2}
+              maxLength={80}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="mt-2 h-12 w-full rounded-2xl border border-line bg-canvas/70 px-4 text-base text-ink outline-none shadow-inner transition focus:border-cocoa"
+              placeholder="What should MyFitPick call you?"
+            />
+          </label>
+        ) : null}
+
         <label className="block">
           <span className="text-sm font-semibold text-ink">Email address</span>
           <input

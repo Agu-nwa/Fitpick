@@ -30,8 +30,7 @@ export default async function AdminPage() {
         id: safeUser.id,
         name: safeUser.name,
         email: safeUser.email,
-        role: safeUser.role,
-        plan: safeUser.plan
+        role: safeUser.role
       }}
     />
   );

@@ -62,6 +62,12 @@ const WardrobeUploadSchema = new Schema(
     provider: { type: String, default: "metadata" },
     imageUrl: { type: String, default: "" },
     thumbnailUrl: { type: String, default: "" },
+    selectedCategory: {
+      type: String,
+      enum: ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"],
+      default: ""
+    },
+    selectedCategoryLabel: { type: String, default: "" },
     images: {
       front: { type: WardrobeImageSchema },
       back: { type: WardrobeImageSchema },
@@ -81,7 +87,7 @@ const WardrobeUploadSchema = new Schema(
     aiAnalysis: { type: Schema.Types.Mixed, default: null },
     suggestedTags: { type: Schema.Types.Mixed, default: {} },
     taggedSize: { type: String, enum: ["XS", "S", "M", "L", "XL", "XXL", "custom", "unknown"], default: "unknown" },
-    sizeSystem: { type: String, enum: ["US", "UK", "EU", "NG", "international", "custom", "unknown"], default: "unknown" },
+    sizeSystem: { type: String, enum: ["US", "UK", "EU", "international", "custom", "unknown"], default: "unknown" },
     garmentFit: { type: String, enum: ["slim", "regular", "relaxed", "oversized", "tailored", "flowing", "unknown"], default: "unknown" },
     garmentMeasurements: { type: GarmentMeasurementsSchema, default: () => ({}) },
     stretchLevel: { type: String, enum: ["none", "low", "medium", "high", "unknown"], default: "unknown" },

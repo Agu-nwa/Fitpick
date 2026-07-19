@@ -4,7 +4,7 @@ FitPick is planned for broad launch availability, so privacy controls should be 
 
 ## Data Inventory
 
-FitPick stores account profile details, wardrobe metadata, wardrobe images, label photos, AI analysis, advanced garment recognition metadata, image variant metadata, Style DNA, Fashion Memory, generated previews, Digital Human avatar presets, avatar preview metadata, billing events, and audit events.
+FitPick stores account profile details, wardrobe metadata, wardrobe images, label photos, AI analysis, advanced garment recognition metadata, image variant metadata, Style DNA, Fashion Memory, generated previews, Digital Human avatar presets, avatar preview metadata, Credit purchase records, and audit events.
 
 ## User Control
 

@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, serializeWardrobeItem, wardrobeSummary } from "@/lib/wardrobe";
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-create:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
+  const limited = rateLimitRequest({ key: `wardrobe-create:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
   if (limited) return limited;
 
   try {

@@ -15,6 +15,8 @@
     "test:authenticated-flow": "node scripts/authenticated-flow-test.mjs",
     "test:safety-copy": "node scripts/safety-copy-scan.mjs",
     "test:secret-scan": "node scripts/secret-scan.mjs",
+    "test:payments": "node scripts/payment-credit-system-test.mjs",
+    "migrate:credit-wallets": "node scripts/migrate-credit-wallets.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
     "test:qa": "npm run check:routes && npm run test:safety-copy && npm run test:secret-scan && npm run build",
     "qa": "npm run test:qa"

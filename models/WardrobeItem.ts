@@ -66,7 +66,7 @@ const WardrobeItemSchema = new Schema(
     },
     category: {
       type: String,
-      enum: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories"],
+      enum: ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"],
       required: true
     },
     subcategory: { type: String, default: "" },
@@ -75,7 +75,7 @@ const WardrobeItemSchema = new Schema(
     fabric: { type: String, default: "" },
     fit: { type: String, default: "" },
     taggedSize: { type: String, enum: ["XS", "S", "M", "L", "XL", "XXL", "custom", "unknown"], default: "unknown" },
-    sizeSystem: { type: String, enum: ["US", "UK", "EU", "NG", "international", "custom", "unknown"], default: "unknown" },
+    sizeSystem: { type: String, enum: ["US", "UK", "EU", "international", "custom", "unknown"], default: "unknown" },
     garmentFit: { type: String, enum: ["slim", "regular", "relaxed", "oversized", "tailored", "flowing", "unknown"], default: "unknown" },
     garmentMeasurements: { type: GarmentMeasurementsSchema, default: () => ({}) },
     stretchLevel: { type: String, enum: ["none", "low", "medium", "high", "unknown"], default: "unknown" },

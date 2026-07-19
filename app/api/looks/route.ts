@@ -3,20 +3,26 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
+import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { validateBody } from "@/lib/validation";
+import { readJson } from "@/lib/validation";
 import { SavedLook } from "@/models/SavedLook";
+import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
-import { looksQuerySchema } from "@/schemas/outfit.schema";
+import { looksQuerySchema, manualLookSchema } from "@/schemas/outfit.schema";
 
 function serializeSaved(look: any) {
   return {
     id: String(look._id),
-    outfitId: String(look.outfitId),
+    outfitId: look.outfitId ? String(look.outfitId) : null,
+    source: look.source || "ai_saved",
     title: look.title,
     occasion: look.occasion,
     itemIds: (look.itemIds || []).map(String),
     favorite: Boolean(look.favorite),
+    notes: look.notes || "",
     savedAt: look.savedAt ? new Date(look.savedAt).toISOString() : null
   };
 }
@@ -68,5 +74,56 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logSafeError("looks.get", error);
     return apiError("INTERNAL_ERROR", "Unable to load looks right now.");
+  }
+}
+
+async function ownedWardrobeItemIds(userId: any, itemIds: string[]) {
+  const uniqueIds = Array.from(new Set(itemIds.map(String)));
+  const items = await WardrobeItem.find({ _id: { $in: uniqueIds }, userId, archivedAt: null }).select("_id").lean();
+  const owned = new Set(items.map((item) => String(item._id)));
+  return uniqueIds.every((itemId) => owned.has(itemId)) ? uniqueIds : null;
+}
+
+export async function POST(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitRequest({ key: `looks:create:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "looks-create" });
+  if (limited) return limited;
+
+  try {
+    const auth = await requireUser();
+    if (!auth.ok) return auth.response;
+
+    const parsed = validateBody(manualLookSchema, await readJson(request));
+    if (!parsed.ok) return parsed.response;
+
+    const itemIds = await ownedWardrobeItemIds(auth.user._id, parsed.data.itemIds);
+    if (!itemIds) return apiError("BAD_REQUEST", "Choose only items from your closet.");
+
+    const lookId = new SavedLook()._id;
+    const look = await SavedLook.create({
+      _id: lookId,
+      userId: auth.user._id,
+      outfitId: lookId,
+      source: "manual",
+      title: parsed.data.title,
+      occasion: parsed.data.occasion || "",
+      itemIds,
+      favorite: parsed.data.favorite || false,
+      notes: parsed.data.notes || "",
+      savedAt: new Date()
+    });
+
+    await recordAuditEvent({
+      request,
+      userId: String(auth.user._id),
+      action: "looks.create",
+      entityType: "SavedLook",
+      entityId: String(look._id)
+    });
+
+    return apiSuccess({ look: serializeSaved(look) }, { message: "Look saved.", status: 201 });
+  } catch (error) {
+    logSafeError("looks.create", error);
+    return apiError("INTERNAL_ERROR", "Unable to save this look right now.");
   }
 }

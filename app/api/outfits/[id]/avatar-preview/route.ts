@@ -16,10 +16,12 @@ import {
 import { serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
+import { type CreditFeature } from "@/lib/credits/credit-costs";
+import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getConfiguredTryOnProviderType, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { readJson, validateBody } from "@/lib/validation";
@@ -56,7 +58,7 @@ function groundingPatch(items: any[], preview?: any) {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `avatar-preview:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "avatar-preview-get" });
+  const limited = rateLimitRequest({ key: `avatar-preview:get:${meta.ip}`, limit: 60, windowMs: 60 * 1000, operation: "avatar-preview-get" });
   if (limited) return limited;
 
   try {
@@ -88,7 +90,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `avatar-preview:post:${meta.ip}`, limit: 8, windowMs: 60 * 1000, operation: "avatar-preview-generation" });
+  const limited = rateLimitRequest({ key: `avatar-preview:post:${meta.ip}`, limit: 8, windowMs: 60 * 1000, operation: "avatar-preview-generation" });
   if (limited) return limited;
 
   let activeCacheKey = "";
@@ -145,6 +147,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
         preview: serializeAvatarPreview({ ...cached, ...groundingPatch(loaded.items, cached), cached: true }),
         avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
       });
+    }
+
+    const creditFeature: CreditFeature = parsed.data.regenerate ? "regenerate_try_on" : "virtual_try_on";
+    try {
+      await ensureCreditsForFeature(auth.user._id, creditFeature);
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
     }
 
     const inFlight = await AvatarOutfitPreview.findOne({
@@ -214,7 +228,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           visualizationStyle: options.visualizationStyle,
           posePreset: options.posePreset,
           wardrobeItemIds: loaded.itemIds,
-          cacheKey
+          cacheKey,
+          creditFeature,
+          source: "avatar_preview_route"
         },
         {
           userId: auth.user._id,
@@ -258,10 +274,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
     const saved = (result.preview as any)?.toObject?.() ?? result.preview;
     if (!saved) return apiError("INTERNAL_ERROR", "Virtual try-on is not ready yet.");
+    let creditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>> | null = null;
+    if (!result.cached) {
+      try {
+        creditCharge = await spendCreditsAfterSuccess({
+          userId: auth.user._id,
+          feature: creditFeature,
+          referenceId: `avatar-preview:${id}:${cacheKey}`,
+          metadata: { source: "avatar_preview_route", posePreset: options.posePreset, visualizationStyle: options.visualizationStyle }
+        });
+      } catch (error) {
+        if (error instanceof InsufficientCreditsError) {
+          return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+            details: insufficientCreditsPayload(error)
+          });
+        }
+        throw error;
+      }
+    }
 
     return apiSuccess({
       preview: serializeAvatarPreview(saved),
-      avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
+      avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+      ...(creditCharge ? {
+        wallet: creditCharge.wallet,
+        creditCharge: { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance }
+      } : {})
     }, { message: "Avatar preview ready.", status: 201 });
   } catch (error) {
     try {

@@ -2,7 +2,7 @@ const baseUrl = process.env.BACKEND_SMOKE_BASE_URL || "http://127.0.0.1:3000";
 
 const checks = [
   { method: "GET", path: "/api/health", expected: 200 },
-  { method: "GET", path: "/api/billing/providers", expected: 200 },
+  { method: "GET", path: "/api/payments/providers", expected: 200 },
   { method: "GET", path: "/api/auth/me", expected: 401 },
   { method: "GET", path: "/api/wardrobe", expected: 401 },
   { method: "POST", path: "/api/wardrobe", expected: 401, body: { name: "Test shirt", category: "tops", color: "White" } },
@@ -10,8 +10,9 @@ const checks = [
   { method: "POST", path: "/api/wardrobe/upload/test/suggest-tags", expected: [401, 404], body: {} },
   { method: "POST", path: "/api/outfits/recommend", expected: 401, body: { occasionName: "Work" } },
   { method: "GET", path: "/api/looks", expected: 401 },
-  { method: "GET", path: "/api/billing/plus-status", expected: 401 },
-  { method: "POST", path: "/api/billing/checkout", expected: 401, body: { provider: "stripe", plan: "plus_monthly", currency: "USD" } },
+  { method: "GET", path: "/api/payments/purchases", expected: 401 },
+  { method: "POST", path: "/api/payments/stripe/checkout", expected: 401, body: { packId: "starter" } },
+  { method: "POST", path: "/api/payments/usdt/checkout", expected: 401, body: { packId: "starter", network: "usdt-trc20" } },
   { method: "GET", path: "/api/notifications/preferences", expected: 401 },
   {
     method: "POST",

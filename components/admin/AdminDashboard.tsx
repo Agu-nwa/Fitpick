@@ -169,7 +169,6 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           </header>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="premium">{user.role}</Badge>
-            <Badge tone={user.plan === "plus" ? "success" : "neutral"}>{user.plan}</Badge>
             <Button variant="secondary" onClick={load} disabled={status === "loading"} className="px-4">
               {status === "loading" ? "Refreshing" : "Refresh"}
             </Button>

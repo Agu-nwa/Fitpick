@@ -24,7 +24,7 @@ import type { OutfitRecommendation } from "@/types/outfit";
 const styleDirections = [
   { value: "polished", label: "Polished" },
   { value: "comfortable", label: "Comfortable" },
-  { value: "native", label: "Native touch" },
+  { value: "statement", label: "Statement" },
   { value: "weather-safe", label: "Weather-safe" }
 ];
 
@@ -61,7 +61,7 @@ export function OutfitRecommendationClient() {
     }
 
     if (result.error.code === "UNAUTHORIZED") setStatus("idle");
-    else if (result.error.code === "PLUS_REQUIRED") setStatus("premium");
+    else if (result.error.code === "INSUFFICIENT_CREDITS") setStatus("premium");
     else if (result.error.code === "BAD_REQUEST") setStatus("not-enough");
     else if (result.error.code === "INTERNAL_ERROR") setStatus("unavailable");
     else setStatus("error");

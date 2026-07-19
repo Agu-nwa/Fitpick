@@ -1,13 +1,26 @@
 import { z } from "zod";
 
-export const checkoutProviderSchema = z.enum(["stripe", "paystack", "auto", "placeholder"]).default("auto");
-export const billingPlanSchema = z.enum(["plus_monthly", "plus_yearly"]);
-export const billingCurrencySchema = z.enum(["USD", "NGN"]).optional();
+export const creditPackIdSchema = z.enum(["starter", "popular", "pro", "creator"]);
 
-export const paymentCheckoutSchema = z.object({
-  provider: checkoutProviderSchema.optional(),
-  plan: billingPlanSchema,
-  currency: billingCurrencySchema,
-  successUrl: z.string().trim().url().max(500).optional(),
-  cancelUrl: z.string().trim().url().max(500).optional()
+export const stripeCheckoutSchema = z.object({
+  packId: creditPackIdSchema
+}).strict();
+
+export const usdtCheckoutSchema = z.object({
+  packId: creditPackIdSchema,
+  network: z.string().trim().min(1).max(80)
+}).strict();
+
+export const purchaseIdParamSchema = z.object({
+  purchaseId: z.string().trim().min(12).max(80)
 });
+
+export const adminRefundSchema = z.object({
+  purchaseId: z.string().trim().min(12).max(80),
+  amountMinor: z.number().int().min(1).optional(),
+  reason: z.string().trim().min(3).max(240).optional()
+}).strict();
+
+export const adminReconcileSchema = z.object({
+  purchaseId: z.string().trim().min(12).max(80)
+}).strict();

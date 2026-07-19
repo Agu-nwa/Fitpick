@@ -8,7 +8,6 @@ import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { emptyStates } from "@/lib/mock-data";
 
 export function WardrobeLoadingState() {
   return <LoadingCard title="Loading wardrobe" />;
@@ -17,9 +16,9 @@ export function WardrobeLoadingState() {
 export function WardrobeEmptyState() {
   return (
     <EmptyState
-      title={emptyStates.wardrobe.title}
-      body={emptyStates.wardrobe.body}
-      cta={emptyStates.wardrobe.cta}
+      title="Your wardrobe starts here."
+      body="Add a few pieces you wear often. MyFitPick will begin learning what works together."
+      cta="Add your first item"
       href="/wardrobe/add"
     />
   );

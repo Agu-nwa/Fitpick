@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
+import crypto from "node:crypto";
 import { z } from "zod";
 
 import { apiSuccess, apiError } from "@/lib/api-response";
@@ -10,10 +11,12 @@ import { askStylist } from "@/lib/ai/stylist";
 import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/context/stylist-context";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
+import { getWeatherForecast, isWeatherSensitiveMessage } from "@/lib/weather/weather-service";
 import {
   createOrReuseStylistOutfitRecommendation,
   serializeStylistVisualization,
@@ -67,7 +70,7 @@ function compactRecommendationForStylist(recommendation: any) {
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `stylist-chat:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "stylist-chat" });
+  const limited = rateLimitRequest({ key: `stylist-chat:${meta.ip}`, limit: 30, windowMs: 60 * 1000, operation: "stylist-chat" });
   if (limited) return limited;
 
   try {
@@ -79,6 +82,17 @@ export async function POST(request: NextRequest) {
 
     const parsed = stylistChatSchema.safeParse(await request.json());
     if (!parsed.success) return apiError("BAD_REQUEST", "Message is required.");
+
+    try {
+      await ensureCreditsForFeature(auth.user._id, "ai_stylist_chat");
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
+    }
 
     const [wardrobe, styleProfile, memorySummary] = await Promise.all([
       WardrobeItem.find({
@@ -94,9 +108,23 @@ export async function POST(request: NextRequest) {
     const stylistContext = buildStylistContext(wardrobe, serializedStyleProfile, serializedMemorySummary);
     const recentMessages = buildRecentConversationContext(parsed.data.recentMessages || []);
     const sanitizedMessage = sanitizeUserPrompt(parsed.data.message);
+    let weatherContext = "";
+    if (isWeatherSensitiveMessage(sanitizedMessage)) {
+      try {
+        const forecast = await getWeatherForecast({
+          city: auth.user.weatherLocationName || undefined,
+          latitude: typeof auth.user.weatherLatitude === "number" ? auth.user.weatherLatitude : undefined,
+          longitude: typeof auth.user.weatherLongitude === "number" ? auth.user.weatherLongitude : undefined,
+          days: 3
+        });
+        weatherContext = forecast.summary;
+      } catch (error) {
+        logSafeError("stylist.chat.weather", error);
+      }
+    }
     const deterministicRecommendation = buildRecommendation({
       occasionName: sanitizedMessage,
-      weatherContext: "",
+      weatherContext,
       preferences: {},
       styleProfile: serializedStyleProfile,
       memorySummary: serializedMemorySummary,
@@ -140,8 +168,29 @@ export async function POST(request: NextRequest) {
       allowShoppingAdvice: parsed.data.allowShoppingAdvice,
       ownedItemIds: stylistContext.ownedItemIds,
       recentMessages,
+      weatherContext,
       deterministicRecommendation: stylistRecommendation
     });
+
+    let chatCreditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>>;
+    try {
+      chatCreditCharge = await spendCreditsAfterSuccess({
+        userId: auth.user._id,
+        feature: "ai_stylist_chat",
+        referenceId: `stylist-chat:${crypto.randomUUID()}`,
+        metadata: {
+          source: "stylist_chat",
+          visualMode: parsed.data.visualMode || "digital_human"
+        }
+      });
+    } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
+    }
 
     let visualization = serializeStylistVisualization();
     let persistedOutfit: Awaited<ReturnType<typeof createOrReuseStylistOutfitRecommendation>> = null;
@@ -154,7 +203,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (wantsVisualization) {
-      const visualizationLimited = rateLimitPlaceholder({
+      const visualizationLimited = rateLimitRequest({
         key: `stylist-visualization:${String(auth.user._id)}`,
         limit: 6,
         windowMs: 60 * 1000,
@@ -233,6 +282,12 @@ export async function POST(request: NextRequest) {
       visualization,
       outfit: persistedOutfit?.serializedOutfit || null,
       job: visualization.job,
+      wallet: chatCreditCharge.wallet,
+      creditCharge: {
+        feature: chatCreditCharge.transaction.feature,
+        credits: chatCreditCharge.transaction.credits,
+        balance: chatCreditCharge.wallet.balance
+      },
       groundedItemCount: wardrobe.length
     });
   } catch (error) {

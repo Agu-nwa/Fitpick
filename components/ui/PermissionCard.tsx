@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -12,9 +11,8 @@ export function PermissionCard({ title, body, status = "Optional" }: { title: st
           <p className="mt-2 text-sm leading-6 text-muted">{body}</p>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <Button variant="secondary">Not now</Button>
-        <Button>Allow</Button>
+      <div className="mt-5">
+        <StatusBadge tone="neutral">Manage in browser settings</StatusBadge>
       </div>
     </Card>
   );

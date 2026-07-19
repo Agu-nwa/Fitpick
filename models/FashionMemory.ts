@@ -7,7 +7,7 @@ const FashionMemoryMetadataSchema = new Schema(
     brands: { type: [String], default: [] },
     fits: { type: [String], default: [] },
     formality: { type: Number, default: null },
-    culturalContext: { type: [String], default: [] },
+    eventContext: { type: [String], default: [] },
     season: { type: [String], default: [] },
     weather: { type: [String], default: [] }
   },

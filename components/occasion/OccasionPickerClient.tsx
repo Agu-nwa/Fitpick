@@ -13,7 +13,6 @@ import { CTABar } from "@/components/ui/CTABar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useSession } from "@/hooks/use-session";
 import { createCustomOccasion, getOccasions } from "@/lib/api-client";
-import { occasions as mockOccasions } from "@/lib/mock-data";
 import type { Formality, Occasion, OccasionGroup } from "@/types/occasion";
 
 const formalityLevels: Array<{ value: Formality; label: string }> = [
@@ -27,7 +26,7 @@ const groupOptions: Array<{ value: OccasionGroup; label: string }> = [
   { value: "everyday", label: "Everyday" },
   { value: "formal", label: "Formal" },
   { value: "social", label: "Social" },
-  { value: "cultural", label: "Cultural" },
+  { value: "event", label: "Event" },
   { value: "weather", label: "Weather" }
 ];
 
@@ -41,15 +40,15 @@ function normalizeOccasion(raw: any): Occasion {
     group: raw.group || "everyday",
     formality: raw.formality || "balanced",
     description: raw.description || `${raw.name} outfit context.`,
-    icon: raw.icon || (raw.group === "cultural" ? "◇" : raw.group === "formal" ? "▣" : raw.group === "weather" ? "☼" : "○"),
+    icon: raw.icon || (raw.group === "event" ? "◇" : raw.group === "formal" ? "▣" : raw.group === "weather" ? "☼" : "○"),
     isGlobal: raw.isGlobal
   };
 }
 
 export function OccasionPickerClient() {
   const session = useSession();
-  const [items, setItems] = useState<Occasion[]>(mockOccasions);
-  const [selected, setSelected] = useState(mockOccasions[0]?.id || "");
+  const [items, setItems] = useState<Occasion[]>([]);
+  const [selected, setSelected] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "unavailable" | "error">("idle");
   const [search, setSearch] = useState("");
   const [customName, setCustomName] = useState("");
@@ -62,7 +61,7 @@ export function OccasionPickerClient() {
     const result = await getOccasions();
     if (result.ok) {
       const normalized = result.data.occasions.map(normalizeOccasion);
-      const next = normalized.length ? normalized : mockOccasions;
+      const next = normalized;
       setItems(next);
       setSelected((current) => next.some((occasion) => occasion.id === current) ? current : next[0]?.id || "");
       setStatus("ready");
@@ -111,12 +110,13 @@ export function OccasionPickerClient() {
     : "/outfit";
 
   if (session.status === "loading" || status === "loading") return <LoadingCard title="Loading occasions" />;
+  if (session.status === "logged-out") return <AuthRequiredState />;
+  if (session.status === "backend-unavailable" || status === "unavailable") {
+    return <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadOccasions} />;
+  }
 
   return (
     <>
-      {session.status === "logged-out" ? <AuthRequiredState /> : null}
-      {session.status === "backend-unavailable" || status === "unavailable" ? <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadOccasions} /> : null}
-
       <label className="mb-5 mt-5 block">
         <span className="sr-only">Search occasions</span>
         <input
@@ -137,8 +137,10 @@ export function OccasionPickerClient() {
           </div>
         ) : (
           <Card className="p-4">
-            <p className="text-sm font-semibold text-ink">No occasion found</p>
-            <p className="mt-2 text-xs leading-5 text-muted">Try another search or create a custom occasion.</p>
+            <p className="text-sm font-semibold text-ink">{search.trim() ? "No occasion found" : "No occasions saved yet"}</p>
+            <p className="mt-2 text-xs leading-5 text-muted">
+              {search.trim() ? "Try another search or create a custom occasion." : "Create a custom occasion, or ask an admin to seed the standard occasion list."}
+            </p>
           </Card>
         )}
       </section>
@@ -185,9 +187,13 @@ export function OccasionPickerClient() {
       ) : null}
 
       <CTABar className="mt-6">
-        <Link href={href}>
-          <Button className="w-full">Find my outfit</Button>
-        </Link>
+        {selectedOccasion ? (
+          <Link href={href}>
+            <Button className="w-full">Find my outfit</Button>
+          </Link>
+        ) : (
+          <Button className="w-full" disabled>Choose an occasion</Button>
+        )}
       </CTABar>
     </>
   );

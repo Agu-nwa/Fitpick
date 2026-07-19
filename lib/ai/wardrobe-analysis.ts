@@ -142,6 +142,34 @@ export function analysisToSuggestedTags(analysis: WardrobeAiAnalysis): AiSuggest
   };
 }
 
+function categoryConstraint(input: AiTaggingInput) {
+  const selected = input.selectedCategory;
+  if (!selected) return undefined;
+  return selected;
+}
+
+function applySelectedCategory(analysis: WardrobeAiAnalysis, input: AiTaggingInput) {
+  if (!input.selectedCategory) return analysis;
+  return {
+    ...analysis,
+    fields: {
+      ...analysis.fields,
+      category: {
+        value: input.selectedCategory,
+        confidence: 1,
+        source: "user_confirmed" as const
+      },
+      subcategory: input.selectedCategoryLabel
+        ? {
+            value: input.selectedCategoryLabel,
+            confidence: 1,
+            source: "user_confirmed" as const
+          }
+        : analysis.fields.subcategory
+    }
+  };
+}
+
 export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTaggingResult> {
   const model = getAiModel("wardrobeVision");
   if (!process.env.OPENAI_API_KEY) {
@@ -177,7 +205,9 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
       input.images?.front?.storageKey || input.images?.front?.url,
       input.images?.back?.storageKey || input.images?.back?.url,
       input.images?.fabricCloseUp?.storageKey || input.images?.fabricCloseUp?.url,
-      input.images?.label?.storageKey || input.images?.label?.url
+      input.images?.label?.storageKey || input.images?.label?.url,
+      input.selectedCategory,
+      input.selectedCategoryLabel
     ].filter(Boolean)
   });
   const cached = await aiCache.get<AiTaggingResult>(cacheKey);
@@ -194,7 +224,13 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
         {
           role: "user",
           content: [
-            { type: "input_text", text: buildWardrobeAnalysisPrompt() },
+            {
+              type: "input_text",
+              text: buildWardrobeAnalysisPrompt({
+                selectedCategory: input.selectedCategory,
+                selectedCategoryLabel: input.selectedCategoryLabel
+              })
+            },
             ...imageEntries.flatMap((entry) => [
               { type: "input_text" as const, text: `Image purpose: ${entry.label}` },
               { type: "input_image" as const, image_url: entry.url || "", detail: "auto" as const }
@@ -220,14 +256,18 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     });
 
     const labelResult = await extractLabelMetadata(input.images?.label);
-    const mergedAnalysis = mergeEntityRecognition(mergeLabelExtraction(visionAnalysis, labelResult.extraction), labelResult.extraction);
+    const mergedAnalysis = mergeEntityRecognition(mergeLabelExtraction(applySelectedCategory(visionAnalysis, input), labelResult.extraction), labelResult.extraction);
     const analysis = wardrobeAiAnalysisSchema.parse({
       ...mergedAnalysis,
       labelExtractionStatus: labelResult.status,
       labelWarnings: [...mergedAnalysis.labelWarnings, ...labelResult.warnings].slice(0, 10)
     });
 
-    const suggestedTags = analysisToSuggestedTags(analysis);
+    const suggestedTags = {
+      ...analysisToSuggestedTags(analysis),
+      ...(categoryConstraint(input) ? { category: categoryConstraint(input) } : {}),
+      ...(input.selectedCategoryLabel ? { subcategory: input.selectedCategoryLabel } : {})
+    };
     const result = {
       ok: true,
       provider: "openai",

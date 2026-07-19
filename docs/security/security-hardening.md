@@ -43,7 +43,7 @@ Protected resources include wardrobe items, wardrobe uploads, outfit recommendat
 
 ## Abuse Protection
 
-The current limiter is in-memory and Redis-ready. Apply limits to login/register, signed upload creation, wardrobe upload/analyze/confirm, outfit recommendations, outfit previews, stylist chat/vision, Fashion Memory POST, Style DNA PATCH, and billing checkout.
+The current limiter is in-memory and Redis-ready. Apply limits to login/register, signed upload creation, wardrobe upload/analyze/confirm, outfit recommendations, outfit previews, stylist chat/vision, Fashion Memory POST, Style DNA PATCH, and Credit checkout.
 
 Move to Redis before multi-instance production traffic.
 

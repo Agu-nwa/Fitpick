@@ -1,5 +1,4 @@
 import { DailyUsage } from "@/models/DailyUsage";
-import { getPlanEntitlements, getUserPlan } from "@/lib/entitlements";
 
 export function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
@@ -15,16 +14,13 @@ export async function getDailyPickUsage(userId: string) {
 }
 
 export async function getRemainingDailyPicks(userId: string) {
-  const [{ plan }, usage] = await Promise.all([getUserPlan(userId), getDailyPickUsage(userId)]);
-  const entitlements = getPlanEntitlements(plan);
-  const limit = entitlements.limits.dailyPicks;
+  const usage = await getDailyPickUsage(userId);
 
   return {
-    plan,
     usageToday: usage.outfitPickCount,
-    limit,
-    remainingDailyPicks: limit === null ? null : Math.max(0, limit - usage.outfitPickCount),
-    unlimited: limit === null
+    limit: null,
+    remainingDailyPicks: null,
+    unlimited: true
   };
 }
 

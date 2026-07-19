@@ -7,7 +7,7 @@ export async function suggestWithOpenAiProvider(
 ): Promise<AiTaggingResult> {
 
   if (!process.env.OPENAI_API_KEY) {
-    return fallback("OpenAI API key is missing.");
+    return fallback("AI tag suggestions are not configured yet.");
   }
 
   try {
@@ -20,7 +20,7 @@ export async function suggestWithOpenAiProvider(
             {
               type: "input_text",
               text: `
-Return ONLY JSON for clothing analysis:
+Return ONLY JSON for clothing analysis. The user-selected category is "${input.selectedCategory || "not provided"}"${input.selectedCategoryLabel ? ` (${input.selectedCategoryLabel})` : ""}; use it unless the photo clearly contradicts it.
 
 {
   "category":"",
@@ -61,8 +61,8 @@ Return ONLY JSON for clothing analysis:
       confidence: tags.confidence ?? 0.75,
       aiTagStatus: "completed",
       suggestedTags: {
-        category: tags.category || "",
-        subcategory: tags.subcategory || "",
+        category: input.selectedCategory || tags.category || "accessories",
+        subcategory: input.selectedCategoryLabel || tags.subcategory || "",
         color: tags.color || "",
         pattern: tags.pattern || "",
         fabric: tags.fabric || "",
@@ -78,10 +78,9 @@ Return ONLY JSON for clothing analysis:
   } catch (error: any) {
     logSafeError("ai.openai-tagging", error);
 
-    // 🔥 CRITICAL FIX: NEVER FAIL APP ON QUOTA
     const msg =
       error?.status === 429 || error?.code === "insufficient_quota"
-        ? "AI quota exhausted. Using fallback tagging."
+        ? "AI tag suggestions are temporarily unavailable."
         : "We could not analyze this image.";
 
     return fallback(msg);
@@ -90,23 +89,10 @@ Return ONLY JSON for clothing analysis:
 
 function fallback(message: string): AiTaggingResult {
   return {
-    ok: true, // 🔥 IMPORTANT: DO NOT BREAK UX
-    provider: "mock",
-    aiTagStatus: "completed",
-    confidence: 0.3,
-    suggestedTags: {
-      category: "accessories",
-      subcategory: "",
-      color: "",
-      pattern: "",
-      fabric: "",
-      fit: "",
-      formality: [],
-      occasions: [],
-      weather: [],
-      confidence: 0.3,
-      needsReview: true
-    },
+    ok: false,
+    provider: "openai",
+    aiTagStatus: "failed",
+    confidence: 0,
     safeMessage: message
   };
 }

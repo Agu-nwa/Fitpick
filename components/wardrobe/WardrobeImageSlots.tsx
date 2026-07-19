@@ -4,25 +4,34 @@ import { Badge } from "@/components/ui/Badge";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { cn } from "@/lib/utils";
 
-const slotLabels: Array<{ key: WardrobeImagePurpose; label: string; helper: string }> = [
-  { key: "front", label: "Front", helper: "Shape and color" },
-  { key: "back", label: "Back", helper: "Fit and construction" },
-  { key: "fabricCloseUp", label: "Fabric", helper: "Texture and pattern" },
-  { key: "label", label: "Label", helper: "Size, care, brand" }
+export type WardrobeImageSlotDefinition = {
+  key: WardrobeImagePurpose;
+  label: string;
+  helper: string;
+  required?: boolean;
+};
+
+const slotLabels: WardrobeImageSlotDefinition[] = [
+  { key: "front", label: "Main", helper: "Full item view", required: true },
+  { key: "back", label: "Angle", helper: "Back, side, or interior" },
+  { key: "fabricCloseUp", label: "Detail", helper: "Texture, pattern, or hardware" },
+  { key: "label", label: "Product details", helper: "Label, stamp, code, or care tag" }
 ];
 
 export function WardrobeImageSlots({
   images = {},
   onSelect,
-  disabled = false
+  disabled = false,
+  slots = slotLabels
 }: {
   images?: Partial<Record<WardrobeImagePurpose, WardrobeImageAsset>>;
   onSelect?: (purpose: WardrobeImagePurpose) => void;
   disabled?: boolean;
+  slots?: WardrobeImageSlotDefinition[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {slotLabels.map((slot) => {
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {slots.map((slot) => {
         const image = images[slot.key];
         const displayUrl = image?.variants?.thumbnail?.status === "ready" && image.variants.thumbnail.url
           ? image.variants.thumbnail.url
@@ -52,7 +61,7 @@ export function WardrobeImageSlots({
               }
               overlay={
                 <div className="flex items-center justify-between gap-2">
-                  <Badge tone={image?.url ? "success" : "neutral"}>{image?.url ? "Added" : "Needed"}</Badge>
+                  <Badge tone={image?.url ? "success" : slot.required ? "warning" : "neutral"}>{image?.url ? "Added" : slot.required ? "Needed" : "Optional"}</Badge>
                   <span className="inline-flex items-center gap-1 truncate rounded-full bg-surface/90 px-2 py-1 text-[11px] font-semibold text-ink shadow-card backdrop-blur">
                     {image?.url ? <CheckCircle2 size={12} className="text-success" aria-hidden="true" /> : null}
                     {slot.label}

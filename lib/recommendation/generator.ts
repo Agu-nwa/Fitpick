@@ -35,12 +35,6 @@ export function generateCombinations(
     outfits.push({ items: uniqueItems, score });
   }
 
-  for (const native of byCategory("native")) {
-    for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
-      pushOutfit([native, shoe, byCategory("accessories")[0]]);
-    }
-  }
-
   for (const dress of byCategory("dresses")) {
     for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
       pushOutfit([dress, shoe, byCategory("outerwear")[0], byCategory("accessories")[0]]);

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
-import { rateLimitPlaceholder } from "@/lib/rate-limit";
+import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { requestMeta } from "@/lib/audit";
 import { isObjectId, serializeWardrobeUpload } from "@/lib/wardrobe";
@@ -17,7 +17,7 @@ type RouteContext = {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
-  const limited = rateLimitPlaceholder({ key: `wardrobe-upload-detail:${meta.ip}`, limit: 60, windowMs: 60 * 1000 });
+  const limited = rateLimitRequest({ key: `wardrobe-upload-detail:${meta.ip}`, limit: 60, windowMs: 60 * 1000 });
   if (limited) return limited;
 
   try {

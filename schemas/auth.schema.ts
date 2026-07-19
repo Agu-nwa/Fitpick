@@ -27,5 +27,6 @@ export const requestOtpSchema = z.object({
 export const verifyOtpSchema = z.object({
   email: z.string().trim().email().max(160),
   code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code."),
-  purpose: otpPurposeSchema
+  purpose: otpPurposeSchema,
+  name: z.string().trim().min(2).max(80).optional()
 });
