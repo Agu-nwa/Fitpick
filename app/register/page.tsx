@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { FashionBackdrop } from "@/components/ui/FashionBackdrop";
+import { getSessionUser } from "@/lib/auth";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const session = await getSessionUser();
+  if (session) redirect("/home");
+
   return (
     <main id="main-content" className="relative isolate min-h-[100svh] overflow-hidden bg-canvas px-5 py-[calc(1.5rem+var(--safe-top))] text-ink">
       <FashionBackdrop density="soft" />

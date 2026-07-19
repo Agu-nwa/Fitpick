@@ -1,5 +1,5 @@
 import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
 
 export function LoginForm() {
-  return <AuthEntryForm compact initialMode="signin" />;
+  return <AuthEntryForm compact initialMode="signin" showContextLink={false} />;
 }

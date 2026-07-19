@@ -1,18 +1,27 @@
-node_modules
-.next
-.env
-.env.local
-.DS_Store
-npm-debug.log*
-.vercel
-.pm2
-.env.local
-.env.local.save
-.env
-.env.*.local
+# Dependencies
+node_modules/
 
-# Local secret backups
-.env.local.save
-.env.*.save
-*.env.save
+# Next.js build output
+.next/
+out/
 tsconfig.tsbuildinfo
+
+# Environment files and local secret backups
+.env
+.env.*
+!.env.example
+.env*.save
+*.env.save
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local tooling and deployment state
+.vercel/
+.pm2/
+
+# OS files
+.DS_Store

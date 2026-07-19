@@ -18,7 +18,15 @@ function friendlyAuthError(message?: string) {
   return message;
 }
 
-export function AuthEntryForm({ compact = false, initialMode = "signin" }: { compact?: boolean; initialMode?: AuthMode }) {
+export function AuthEntryForm({
+  compact = false,
+  initialMode = "signin",
+  showContextLink = true
+}: {
+  compact?: boolean;
+  initialMode?: AuthMode;
+  showContextLink?: boolean;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState("");
@@ -64,7 +72,7 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
       return;
     }
 
-    router.push(mode === "signup" ? "/onboarding?setup=model" : "/home");
+    router.push("/home");
     router.refresh();
   }
 
@@ -192,9 +200,11 @@ export function AuthEntryForm({ compact = false, initialMode = "signin" }: { com
       <p className="mt-4 text-center text-xs leading-5 text-muted">
         Only you can see the wardrobe you add.
       </p>
-      <p className="mt-2 text-center text-xs leading-5 text-muted">
-        Need context first? <Link href="/onboarding" className="font-semibold text-cocoa">See how MyFitPick works</Link>
-      </p>
+      {showContextLink ? (
+        <p className="mt-2 text-center text-xs leading-5 text-muted">
+          Need context first? <Link href="/onboarding" className="font-semibold text-cocoa">See how MyFitPick works</Link>
+        </p>
+      ) : null}
     </div>
   );
 }
