@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { getCurrentUser, type CurrentUserSummary } from "@/lib/api-client";
 
 export type SessionState = {
@@ -11,6 +12,8 @@ export type SessionState = {
 };
 
 export function useSession(): SessionState {
+  const pathname = usePathname();
+  const router = useRouter();
   const [status, setStatus] = useState<SessionState["status"]>("loading");
   const [user, setUser] = useState<CurrentUserSummary["user"]>();
   const [message, setMessage] = useState<string>();
@@ -35,5 +38,37 @@ export function useSession(): SessionState {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (status !== "logged-out" || !isProtectedClientPath(pathname)) return;
+
+    const query = window.location.search.replace(/^\?/, "");
+    const next = `${pathname}${query ? `?${query}` : ""}`;
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
+  }, [pathname, router, status]);
+
   return { status, user, message, refresh };
+}
+
+const protectedClientPrefixes = [
+  "/admin",
+  "/avatar",
+  "/backend-ready",
+  "/frontend-complete",
+  "/home",
+  "/looks",
+  "/occasion",
+  "/onboarding",
+  "/outfit",
+  "/plus",
+  "/profile",
+  "/states",
+  "/style-profile",
+  "/stylist",
+  "/wallet",
+  "/wardrobe"
+];
+
+function isProtectedClientPath(pathname: string | null) {
+  if (!pathname) return false;
+  return protectedClientPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText } from "@/lib/upload-limits";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier.");
 
@@ -125,14 +126,7 @@ export const wardrobeFiltersSchema = z.object({
   archived: z.enum(["true", "false"]).optional()
 });
 
-const allowedMimeTypes = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif"
-] as const;
+const allowedMimeTypes = DEFAULT_ALLOWED_IMAGE_MIME_TYPES;
 
 const imagePurposeSchema = z.enum(["front", "back", "fabricCloseUp", "label", "additional"]);
 
@@ -143,7 +137,7 @@ const wardrobeImageVariantSchema = z
     provider: z.literal("s3").default("s3"),
     width: z.number().int().nonnegative().max(12000).optional(),
     height: z.number().int().nonnegative().max(12000).optional(),
-    bytes: z.number().int().nonnegative().max(20 * 1024 * 1024).optional(),
+    bytes: z.number().int().nonnegative().max(MAX_IMAGE_UPLOAD_BYTES).optional(),
     status: z.enum(["not_started", "processing", "ready", "failed", "unavailable"]).optional(),
     processedAt: z.string().datetime().optional(),
     errorMessage: z.string().trim().max(180).optional().or(z.literal(""))
@@ -181,7 +175,7 @@ export const wardrobeImagesSchema = z
 export const uploadMetadataSchema = z.object({
   filename: z.string().trim().min(1).max(180),
   mimeType: z.enum(allowedMimeTypes),
-  sizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
+  sizeBytes: z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText()),
   width: z.number().int().positive().max(12000).optional(),
   height: z.number().int().positive().max(12000).optional(),
   provider: z.literal("s3").optional(),

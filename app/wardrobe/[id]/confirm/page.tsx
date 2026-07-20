@@ -7,7 +7,7 @@ export default async function WardrobeConfirmPage({ params }: { params: Promise<
 
   return (
     <AppShell>
-      <PageHeader eyebrow="Check details" title="Review your garment intelligence" subtitle="Confirm what MyFitPick detected before this piece enters your closet." />
+      <PageHeader compact eyebrow="Check details" title="Review item details" subtitle="Confirm or edit what MyFitPick found before saving." />
       <WardrobeUploadConfirmClient uploadId={id} />
     </AppShell>
   );

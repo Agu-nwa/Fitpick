@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleDollarSign, Clock3, CreditCard, Gift, Sparkles, WalletCards } from "lucide-react";
+import { CheckCircle2, CreditCard, Gift, Rocket, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -13,10 +13,11 @@ import { useSession } from "@/hooks/use-session";
 import {
   getWallet,
   startStripeCheckout,
-  startUsdtCheckout,
   type CreditPackSummary,
   type CreditWalletData
 } from "@/lib/api-client";
+
+const cryptoComingSoonCopy = "Crypto payments are coming soon.";
 
 function friendlyFeature(feature: string) {
   if (feature === "credit_purchase") return "Credit purchase";
@@ -51,13 +52,11 @@ function PaymentMethodPanel({
   onClose: () => void;
   onReload: () => Promise<void>;
 }) {
-  const [network, setNetwork] = useState(data.usdtNetworks.find((item) => item.availability === "available")?.id || "");
-  const [busy, setBusy] = useState<"stripe" | "coinpayments" | null>(null);
+  const [busy, setBusy] = useState<"stripe" | null>(null);
   const [message, setMessage] = useState("");
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
 
   const stripeConfigured = Boolean(data.providers?.stripe?.configured);
-  const coinpaymentsConfigured = Boolean(data.providers?.coinpayments?.configured);
-  const availableNetworks = data.usdtNetworks.filter((item) => item.availability === "available");
 
   const startCardPayment = async () => {
     setBusy("stripe");
@@ -72,21 +71,9 @@ function PaymentMethodPanel({
     await onReload();
   };
 
-  const startUsdtPayment = async () => {
-    if (!network) {
-      setMessage("Choose a USDT network first.");
-      return;
-    }
-    setBusy("coinpayments");
+  const showCryptoSoon = () => {
     setMessage("");
-    const result = await startUsdtCheckout({ packId: pack.id, network });
-    if (result.ok && result.data.checkout.checkoutUrl) {
-      window.location.href = result.data.checkout.checkoutUrl;
-      return;
-    }
-    setMessage(result.ok ? "USDT checkout is not available right now." : result.error.message);
-    setBusy(null);
-    await onReload();
+    setCryptoModalOpen(true);
   };
 
   return (
@@ -107,11 +94,14 @@ function PaymentMethodPanel({
           type="button"
           disabled={!stripeConfigured || busy !== null}
           onClick={startCardPayment}
-          className="focus-ring rounded-2xl border border-line bg-canvas p-4 text-left shadow-soft transition hover:border-cocoa/40 disabled:cursor-not-allowed disabled:opacity-55"
+          className="focus-ring rounded-2xl border border-success/25 bg-gradient-to-br from-white via-canvas to-success/10 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-cocoa/40 disabled:cursor-not-allowed disabled:opacity-55"
         >
-          <span className="flex items-center gap-2 text-sm font-bold text-ink">
-            <CreditCard size={17} className="text-cocoa" aria-hidden="true" />
-            Card or digital wallet
+          <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
+              Card
+            </span>
+            <Badge tone="success">Available</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
             Pay securely with card, Apple Pay, Google Pay, Link, or another available method when eligible.
@@ -119,42 +109,93 @@ function PaymentMethodPanel({
           <span className="mt-3 inline-flex text-xs font-bold text-cocoa">{busy === "stripe" ? "Opening checkout" : "Continue"}</span>
         </button>
 
-        <div className="rounded-2xl border border-line bg-canvas p-4 shadow-soft">
-          <span className="flex items-center gap-2 text-sm font-bold text-ink">
-            <CircleDollarSign size={17} className="text-cocoa" aria-hidden="true" />
-            USDT
+        <button
+          type="button"
+          title="Crypto payments will be available soon."
+          aria-label="USDT payments coming soon"
+          onClick={showCryptoSoon}
+          className="focus-ring group rounded-2xl border border-cocoa/15 bg-gradient-to-br from-cocoa/10 via-white/75 to-olive/10 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-cocoa/35"
+        >
+          <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
+            <span className="inline-flex items-center gap-2">
+              <Rocket size={17} className="text-cocoa transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+              USDT
+            </span>
+            <Badge tone="premium">Coming Soon</Badge>
           </span>
-          <p className="mt-2 text-xs leading-5 text-muted">Pay using USDT on a supported blockchain network.</p>
-          <label className="mt-3 block text-[11px] font-bold uppercase tracking-[0.16em] text-muted" htmlFor="wallet-usdt-network">
-            Network
-          </label>
-          <select
-            id="wallet-usdt-network"
-            value={network}
-            onChange={(event) => setNetwork(event.target.value)}
-            disabled={!availableNetworks.length || busy !== null}
-            className="mt-2 w-full rounded-2xl border border-line bg-surface px-3 py-3 text-sm font-semibold text-ink outline-none focus:border-cocoa"
-          >
-            {availableNetworks.length ? null : <option value="">No networks configured</option>}
-            {availableNetworks.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.displayName} · {item.network}{item.estimatedFee ? ` · ${item.estimatedFee}` : ""}
-              </option>
-            ))}
-          </select>
-          <Button
-            className="mt-3 w-full"
-            variant="secondary"
-            disabled={!coinpaymentsConfigured || !network || busy !== null}
-            onClick={startUsdtPayment}
-          >
-            {busy === "coinpayments" ? "Opening checkout" : "Continue with USDT"}
-          </Button>
-        </div>
+          <span className="mt-2 block text-xs leading-5 text-muted">
+            Secure crypto payments are on the way. USDT purchases will support TRC20, BEP20, and ERC20.
+          </span>
+          <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-cocoa/15 bg-white/70 px-3 py-1.5 text-xs font-bold text-cocoa">
+            <ShieldCheck size={13} aria-hidden="true" />
+            Launching soon
+          </span>
+        </button>
       </div>
 
       {message ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-xs leading-5 text-danger">{message}</p> : null}
+      {cryptoModalOpen ? (
+        <CryptoComingSoonModal
+          onClose={() => setCryptoModalOpen(false)}
+          onContinueWithCard={() => {
+            setCryptoModalOpen(false);
+            void startCardPayment();
+          }}
+          cardBusy={busy === "stripe"}
+          cardReady={stripeConfigured}
+        />
+      ) : null}
     </Card>
+  );
+}
+
+function CryptoComingSoonModal({
+  onClose,
+  onContinueWithCard,
+  cardBusy,
+  cardReady
+}: {
+  onClose: () => void;
+  onContinueWithCard: () => void;
+  cardBusy: boolean;
+  cardReady: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-3 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="crypto-coming-soon-title">
+      <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-cocoa/20 bg-surface shadow-glow">
+        <div className="bg-gradient-to-br from-cocoa/12 via-white to-olive/12 p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-cocoa text-canvas shadow-soft">
+              <Rocket size={21} aria-hidden="true" />
+            </span>
+            <button type="button" onClick={onClose} className="focus-ring rounded-full p-2 text-muted hover:bg-white/70 hover:text-ink" aria-label="Close crypto payments coming soon">
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <h3 id="crypto-coming-soon-title" className="mt-4 text-2xl font-black tracking-[-0.03em] text-ink">Crypto Payments Coming Soon</h3>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            We&apos;re completing our secure cryptocurrency payment integration.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Soon you&apos;ll be able to purchase FitPick Credits using USDT.
+          </p>
+          <div className="mt-4 rounded-2xl border border-line bg-white/70 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Supported networks will include</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['TRC20', 'BEP20', 'ERC20'].map((network) => <Badge key={network} tone="premium">{network}</Badge>)}
+            </div>
+          </div>
+          <p className="mt-4 text-sm font-semibold leading-6 text-ink">For now you can securely purchase credits using Stripe.</p>
+        </div>
+        <div className="grid gap-2 border-t border-line bg-canvas/80 p-4 sm:grid-cols-2">
+          <Button type="button" onClick={onContinueWithCard} disabled={!cardReady || cardBusy}>
+            <CreditCard size={16} aria-hidden="true" />
+            {cardBusy ? "Opening checkout" : "Continue with Card"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -163,6 +204,7 @@ export function WalletClient() {
   const [data, setData] = useState<CreditWalletData | null>(null);
   const [state, setState] = useState<"loading" | "idle" | "unavailable">("loading");
   const [selectedPackId, setSelectedPackId] = useState<string>("");
+  const [routeNotice, setRouteNotice] = useState("");
 
   const loadWallet = useCallback(async () => {
     setState("loading");
@@ -179,6 +221,17 @@ export function WalletClient() {
     if (session.status === "authenticated") void loadWallet();
     if (session.status === "logged-out") setState("idle");
   }, [loadWallet, session.status]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const provider = (params.get("provider") || "").toLowerCase();
+    if (!["crypto", "coinpayments", "usdt"].includes(provider)) return;
+
+    params.delete("provider");
+    const nextQuery = params.toString();
+    window.history.replaceState(null, "", `/wallet${nextQuery ? `?${nextQuery}` : ""}`);
+    setRouteNotice(cryptoComingSoonCopy);
+  }, []);
 
   const selectedPack = useMemo(
     () => data?.packs.find((pack) => pack.id === selectedPackId) || null,
@@ -243,6 +296,15 @@ export function WalletClient() {
 
       <section className="space-y-4">
         <SectionHeader title="Top Up Credits" />
+        {routeNotice ? (
+          <div className="flex items-start gap-3 rounded-2xl border border-cocoa/20 bg-gradient-to-r from-cocoa/10 via-white/70 to-olive/10 p-4 text-sm leading-6 text-ink">
+            <Rocket size={17} className="mt-0.5 shrink-0 text-cocoa" aria-hidden="true" />
+            <div>
+              <p className="font-bold">{routeNotice}</p>
+              <p className="text-xs leading-5 text-muted">Secure crypto payments are on the way. Card checkout is available now.</p>
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {data.packs.map((pack) => (
             <Card key={pack.id} className={`space-y-3 ${selectedPackId === pack.id ? "border-cocoa/40 bg-cocoa/5" : ""}`}>

@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
+import { CRYPTO_COMING_SOON_MESSAGE, cryptoPaymentsComingSoon } from "@/lib/payments/crypto-availability";
 import { createCreditPurchase } from "@/lib/payments/purchases";
 import { PaymentConfigurationError, PaymentValidationError, safePaymentErrorCode } from "@/lib/payments/errors";
 import { createCoinPaymentsInvoice } from "@/lib/payments/providers/coinpayments";
@@ -21,6 +22,10 @@ export async function POST(request: NextRequest) {
     operation: "usdt-checkout"
   });
   if (limited) return limited;
+
+  if (cryptoPaymentsComingSoon()) {
+    return apiError("SETUP_REQUIRED", CRYPTO_COMING_SOON_MESSAGE, { status: 503 });
+  }
 
   try {
     const auth = await requireUser();

@@ -3,11 +3,10 @@ import { assertEnvReady } from "@/lib/config/env";
 import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
 import { deleteGeneratedImage, getGeneratedImageUrl } from "@/lib/storage/generated-images";
 import { normalizeStorageKey } from "@/lib/storage/url";
+import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB } from "@/lib/upload-limits";
 
 export type StorageProvider = "s3";
 
-const defaultAllowedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"] as const;
-const maxImageSizeBytes = 8 * 1024 * 1024;
 const service = "s3";
 const extensionByMime: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -40,8 +39,12 @@ function hmac(key: Buffer | string, value: string) {
   return crypto.createHmac("sha256", key).update(value).digest();
 }
 
-function hash(value: string) {
+function hash(value: string | Buffer) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function dateStamp(amz: string) {
+  return amz.slice(0, 8);
 }
 
 function signingKey(secret: string, stamp: string, region: string) {
@@ -75,11 +78,11 @@ export function getAllowedImageTypes() {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  return configured.length ? configured : [...defaultAllowedImageTypes];
+  return configured.length ? configured : [...DEFAULT_ALLOWED_IMAGE_MIME_TYPES];
 }
 
 export function getMaxImageSizeBytes() {
-  return maxImageSizeBytes;
+  return MAX_IMAGE_UPLOAD_BYTES;
 }
 
 export function validateImageMetadata(input: { mimeType: string; sizeBytes: number }) {
@@ -87,9 +90,9 @@ export function validateImageMetadata(input: { mimeType: string; sizeBytes: numb
   const normalizedMime = input.mimeType.toLowerCase();
 
   return {
-    valid: allowedMimeTypes.includes(normalizedMime as any) && normalizedMime.startsWith("image/") && input.sizeBytes > 0 && input.sizeBytes <= maxImageSizeBytes,
+    valid: allowedMimeTypes.includes(normalizedMime as any) && normalizedMime.startsWith("image/") && input.sizeBytes > 0 && input.sizeBytes <= MAX_IMAGE_UPLOAD_BYTES,
     allowedMimeTypes,
-    maxSizeBytes: maxImageSizeBytes
+    maxSizeBytes: MAX_IMAGE_UPLOAD_BYTES
   };
 }
 
@@ -170,7 +173,7 @@ export async function createSignedUploadUrl(input: {
       storageKey,
       maxSizeBytes: validation.maxSizeBytes,
       allowedMimeTypes: validation.allowedMimeTypes,
-      message: "Choose a JPG, PNG, WebP, or HEIC image under 8 MB.",
+      message: `Choose a JPG, PNG, WebP, or HEIC image under ${MAX_IMAGE_UPLOAD_MB} MB.`,
       nextAction: "choose_supported_image"
     };
   }
@@ -200,6 +203,55 @@ export async function createSignedUploadUrl(input: {
     maxSizeBytes: validation.maxSizeBytes,
     allowedMimeTypes: validation.allowedMimeTypes,
     nextAction: "upload_to_s3"
+  };
+}
+
+export async function uploadImageObject(input: { storageKey: string; mimeType: string; body: Buffer }) {
+  const storage = assertStorageConfigured();
+  const validation = validateImageMetadata({ mimeType: input.mimeType, sizeBytes: input.body.byteLength });
+  if (!validation.valid) throw new Error(`Choose a supported image under ${MAX_IMAGE_UPLOAD_MB} MB.`);
+  if (!storage.ready) throw new Error("S3 image upload is not configured yet.");
+
+  const config = s3Config();
+  const credentials = await resolveAwsCredentials();
+  const storageKey = normalizeStorageKey(input.storageKey);
+  const host = objectHost(config.bucket, config.region);
+  const now = amzDate();
+  const stamp = dateStamp(now);
+  const payloadHash = hash(input.body);
+  const canonicalUri = `/${storageKey.split("/").map(encodePathPart).join("/")}`;
+  const tokenHeader = credentials.sessionToken ? `x-amz-security-token:${credentials.sessionToken}\n` : "";
+  const canonicalHeaders = `content-type:${input.mimeType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n${tokenHeader}`;
+  const signedHeaders = credentials.sessionToken
+    ? "content-type;host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+    : "content-type;host;x-amz-content-sha256;x-amz-date";
+  const canonicalRequest = ["PUT", canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+  const scope = `${stamp}/${config.region}/${service}/aws4_request`;
+  const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  const authorization = `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const headers: Record<string, string> = {
+    authorization,
+    "content-type": input.mimeType,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": now
+  };
+  if (credentials.sessionToken) headers["x-amz-security-token"] = credentials.sessionToken;
+
+  const response = await fetch(`https://${host}${canonicalUri}`, {
+    method: "PUT",
+    headers,
+    body: input.body as unknown as BodyInit
+  });
+
+  if (!response.ok) throw new Error(`S3 upload failed with status ${response.status}.`);
+
+  return {
+    provider: "s3" as const,
+    storageKey,
+    url: await getGeneratedImageUrl(storageKey),
+    mimeType: input.mimeType,
+    bytes: input.body.byteLength
   };
 }
 

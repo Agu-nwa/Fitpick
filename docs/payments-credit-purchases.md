@@ -69,6 +69,7 @@ Run `npm run migrate:credit-wallets` only after reviewing the target environment
 ```env
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+COINPAYMENTS_CHECKOUT_ENABLED=false
 COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
 COINPAYMENTS_CLIENT_ID=
 COINPAYMENTS_CLIENT_SECRET=
@@ -79,6 +80,8 @@ COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Do not commit live values.
+
+For the Stripe-only production launch, keep `COINPAYMENTS_CHECKOUT_ENABLED=false`. USDT checkout remains visible in the wallet as coming soon and should only be enabled after CoinPayments has been configured and tested end to end.
 
 ## Production Activation
 

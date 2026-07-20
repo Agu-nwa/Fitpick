@@ -172,6 +172,18 @@ export type SignedUploadData = {
   };
 };
 
+export type ServerUploadData = {
+  upload: {
+    ready: true;
+    provider: string;
+    storageKey: string;
+    publicUrl: string;
+    maxSizeBytes: number;
+    allowedMimeTypes: string[];
+    nextAction: string;
+  };
+};
+
 export type WardrobeUploadData = {
   upload: WardrobeUploadRecord;
   storage?: {
@@ -710,6 +722,30 @@ export const getNotificationPreferences = () => apiRequest<NotificationPreferenc
 export const updateNotificationPreferences = (body: unknown) =>
   apiRequest<NotificationPreferencesData>("/api/notifications/preferences", { method: "PATCH", body });
 export const requestSignedUploadUrl = (body: unknown) => apiRequest<SignedUploadData>("/api/uploads/signed-url", { method: "POST", body });
+
+export async function uploadImageViaServer(input: { file: File; purpose: string }): Promise<ApiResponse<ServerUploadData>> {
+  try {
+    const formData = new FormData();
+    formData.set("file", input.file);
+    formData.set("purpose", input.purpose);
+
+    const response = await fetch("/api/uploads/server-upload", {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) return invalidResponse;
+
+    const payload = (await response.json()) as ApiResponse<ServerUploadData>;
+    if (payload && typeof payload === "object" && "ok" in payload) return payload;
+
+    return invalidResponse;
+  } catch {
+    return backendUnavailable;
+  }
+}
 export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-profile", { cache: "no-store" });
 export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });
 export const getAvatarProfile = () => apiRequest<AvatarProfileData>("/api/avatar-profile", { cache: "no-store" });

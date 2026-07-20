@@ -103,6 +103,7 @@ Notes:
 ```bash
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+COINPAYMENTS_CHECKOUT_ENABLED=false
 COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
 COINPAYMENTS_CLIENT_ID=
 COINPAYMENTS_CLIENT_SECRET=
@@ -113,6 +114,8 @@ COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Notes:
+
+- Production launch is Stripe-only. Keep `COINPAYMENTS_CHECKOUT_ENABLED=false` until USDT invoices have been verified end to end.
 
 - Use sandbox keys until HTTPS and webhook verification are complete.
 - Stripe webhook URL: `https://YOUR_DOMAIN/api/webhooks/stripe`

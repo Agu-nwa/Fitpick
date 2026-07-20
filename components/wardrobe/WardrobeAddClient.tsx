@@ -3,12 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, ImagePlus, PencilLine, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, ImagePlus, PencilLine, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { SectionHeader } from "@/components/ui/SectionHeader";
 import {
   WardrobeApiErrorState,
   WardrobeAuthRequiredState,
@@ -20,8 +19,10 @@ import { useSession } from "@/hooks/use-session";
 import {
   analyzeWardrobeUpload,
   requestSignedUploadUrl,
+  uploadImageViaServer,
   uploadWardrobeMetadata
 } from "@/lib/api-client";
+import { MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB, isAllowedImageMimeType } from "@/lib/upload-limits";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
 import type { WardrobeCategory } from "@/types/wardrobe";
 
@@ -182,6 +183,33 @@ function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFil
   ) as Partial<Record<WardrobeImagePurpose, WardrobeImageAsset>>;
 }
 
+function mimeTypeForFile(file: File) {
+  const type = file.type?.toLowerCase();
+  if (type) return type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  if (name.endsWith(".heic")) return "image/heic";
+  if (name.endsWith(".heif")) return "image/heif";
+  return "image/jpeg";
+}
+
+function validateLocalImage(file: File) {
+  const mimeType = mimeTypeForFile(file);
+  if (!isAllowedImageMimeType(mimeType)) return "Choose a JPG, PNG, WebP, or HEIC image.";
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) return `This photo is too large. Choose an image under ${MAX_IMAGE_UPLOAD_MB} MB.`;
+  if (file.size <= 0) return "Choose a valid image file.";
+  return "";
+}
+
+function uploadFailureMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (/failed to fetch|network|cors|direct_upload_failed|s3/i.test(message)) {
+    return "We could not send the photo to storage. Try again, or use a smaller JPG/PNG image.";
+  }
+  return message || "We could not upload these photos. Try again.";
+}
+
 export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
@@ -223,6 +251,13 @@ export function WardrobeAddClient() {
   }
 
   function handleFile(purpose: WardrobeImagePurpose, file: File) {
+    const validationMessage = validateLocalImage(file);
+    if (validationMessage) {
+      setMessage(validationMessage);
+      setStatus("idle");
+      return;
+    }
+
     setSlotFiles((current) => {
       if (current[purpose]?.previewUrl) URL.revokeObjectURL(current[purpose]?.previewUrl || "");
       return {
@@ -247,43 +282,59 @@ export function WardrobeAddClient() {
   }
 
   async function uploadSlot(purpose: WardrobeImagePurpose, slot: SlotFile): Promise<UploadedSlot> {
+    const mimeType = mimeTypeForFile(slot.file);
+    const validationMessage = validateLocalImage(slot.file);
+    if (validationMessage) throw new Error(validationMessage);
+
+    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string }): UploadedSlot => ({
+      url: input.url,
+      storageKey: input.storageKey,
+      provider: "s3",
+      uploadedAt: new Date().toISOString(),
+      purpose,
+      filename: slot.file.name,
+      mimeType,
+      sizeBytes: slot.file.size,
+      width: 1,
+      height: 1,
+      thumbnailUrl: input.url
+    });
+
     const signed = await requestSignedUploadUrl({
       filename: slot.file.name,
-      mimeType: slot.file.type || "image/jpeg",
+      mimeType,
       sizeBytes: slot.file.size,
       purpose: `wardrobe_${purpose}`
     });
 
-    if (!signed.ok) throw new Error(signed.error.message);
+    if (!signed.ok) {
+      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
+      if (fallback.ok) return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      throw new Error(signed.error.message || fallback.error.message);
+    }
+
     const uploadAccess = signed.data.upload;
     const uploadUrl = uploadAccess.uploadUrl;
     if (!uploadAccess.ready || !uploadUrl) {
       throw new Error(uploadAccess.message || "Image upload is not configured yet.");
     }
 
-    const s3Response = await fetch(uploadUrl, {
-      method: uploadAccess.method || "PUT",
-      headers: uploadAccess.headers || { "content-type": slot.file.type || "image/jpeg" },
-      body: slot.file
-    });
+    try {
+      const s3Response = await fetch(uploadUrl, {
+        method: uploadAccess.method || "PUT",
+        headers: uploadAccess.headers || { "content-type": mimeType },
+        body: slot.file
+      });
 
-    if (!s3Response.ok) throw new Error("We could not upload one of the photos.");
+      if (!s3Response.ok) throw new Error("direct_upload_failed");
 
-    const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
-
-    return {
-      url: publicUrl,
-      storageKey: uploadAccess.storageKey,
-      provider: "s3",
-      uploadedAt: new Date().toISOString(),
-      purpose,
-      filename: slot.file.name,
-      mimeType: slot.file.type || "image/jpeg",
-      sizeBytes: slot.file.size,
-      width: 1,
-      height: 1,
-      thumbnailUrl: publicUrl
-    };
+      const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
+      return makeUploadedSlot({ url: publicUrl, storageKey: uploadAccess.storageKey });
+    } catch {
+      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
+      if (fallback.ok) return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      throw new Error(fallback.error.message || "direct_upload_failed");
+    }
   }
 
   async function handlePhotoUpload() {
@@ -340,8 +391,8 @@ export function WardrobeAddClient() {
       });
 
       if (!result.ok) {
-        setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
-        setMessage("MyFitPick could not create the upload record.");
+        setStatus("idle");
+        setMessage(result.error.message || "MyFitPick could not save the upload. Try again.");
         return;
       }
 
@@ -358,8 +409,8 @@ export function WardrobeAddClient() {
     } catch (error) {
       setIsSaving(false);
       setIsAnalyzing(false);
-      setStatus("error");
-      setMessage(error instanceof Error ? error.message : "We could not upload these photos. Try again.");
+      setStatus("idle");
+      setMessage(uploadFailureMessage(error));
     }
   }
 
@@ -368,62 +419,58 @@ export function WardrobeAddClient() {
   if (session.status === "backend-unavailable") return <WardrobeBackendUnavailableState onRetry={session.refresh} />;
 
   return (
-    <div className="mt-7 space-y-7">
+    <div className="mt-4 space-y-5">
       {status === "unavailable" ? <WardrobeBackendUnavailableState /> : null}
       {status === "error" ? <WardrobeApiErrorState /> : null}
 
-      <section>
-        <SectionHeader title="What are you adding?" eyebrow="Start here" />
-        <Card className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Start here</p>
+            <h2 className="mt-1 text-xl font-bold text-ink">What are you adding?</h2>
+          </div>
+          <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? selectedCategory.label : "Choose"}</Badge>
+        </div>
+        <div className="mobile-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0 lg:grid-cols-5">
             {categoryOptions.map((option) => (
               <button
                 key={option.label}
                 type="button"
-                className={`focus-ring min-h-24 rounded-2xl border p-3 text-left transition ${
+                className={`focus-ring min-w-fit rounded-full border px-4 py-2 text-left transition sm:min-h-20 sm:rounded-2xl sm:p-3 ${
                   selectedCategoryLabel === option.label
                     ? "border-cocoa bg-cocoa text-canvas shadow-glow"
                     : "border-line bg-canvas/70 text-ink hover:border-cocoa/40"
                 }`}
                 onClick={() => selectCategory(option.label)}
               >
-                <span className="block text-sm font-bold">{option.label}</span>
-                <span className={`mt-2 block text-xs leading-5 ${selectedCategoryLabel === option.label ? "text-canvas/70" : "text-muted"}`}>
+                <span className="block whitespace-nowrap text-sm font-bold">{option.label}</span>
+                <span className={`mt-2 hidden text-xs leading-5 sm:block ${selectedCategoryLabel === option.label ? "text-canvas/70" : "text-muted"}`}>
                   {option.helper}
                 </span>
               </button>
             ))}
-          </div>
-        </Card>
+        </div>
       </section>
 
       <section>
-        <SectionHeader title="Add photos" eyebrow={selectedCategory ? selectedCategory.label : "Choose category first"} />
-        <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <Card className="space-y-4 overflow-hidden p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                 <ImagePlus size={14} aria-hidden="true" />
-                Wardrobe upload
+                Photos
               </p>
-              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Photograph one piece.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Add a clear main photo. Use optional detail photos when they help MyFitPick read brand, material, size, serial marks, care, or authenticity details.
+              <h2 className="mt-1 text-xl font-bold text-ink">Add one clear main photo.</h2>
+              <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
+                Optional detail photos help with size, fabric, care label, brand, or product code.
               </p>
             </div>
             <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>
               {selectedCategory ? `${selectedCount}/${activeSlots.length} added` : "Pick category"}
             </Badge>
           </div>
-          <ProgressSteps steps={[...uploadSteps]} />
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-canvas/60 px-3 py-2">
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-ink">
-              <Camera size={14} className="text-cocoa" aria-hidden="true" />
-              Add label or product details - optional
-            </p>
-            <span className="text-xs leading-5 text-muted">
-              Label, serial number, hallmark, engraving, size marking, care tag, or product code.
-            </span>
+          <div className="hidden sm:block">
+            <ProgressSteps steps={[...uploadSteps]} />
           </div>
           {selectedCategory ? (
             <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} slots={activeSlots} />
@@ -446,17 +493,18 @@ export function WardrobeAddClient() {
           />
 
           {selectedCategory ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {activeSlots.map((slot) => {
                 const selected = slotFiles[slot.key];
+                if (!selected) return null;
                 return (
-                  <div key={slot.key} className="rounded-2xl border border-line bg-canvas/60 p-3 shadow-card">
+                  <div key={slot.key} className="rounded-2xl border border-line bg-canvas/60 p-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}</p>
-                    <p className="mt-1 min-h-8 break-words text-[11px] leading-4 text-muted">{selected ? selected.file.name : slot.helper}</p>
+                    <p className="mt-1 break-words text-[11px] leading-4 text-muted">{selected.file.name}</p>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(slot.key)} disabled={isSaving || isAnalyzing}>
-                        {selected ? <PencilLine size={13} aria-hidden="true" /> : <ImagePlus size={13} aria-hidden="true" />}
-                        {selected ? "Replace" : "Add"}
+                        <PencilLine size={13} aria-hidden="true" />
+                        Replace
                       </Button>
                       <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(slot.key)} disabled={!selected || isSaving || isAnalyzing}>
                         Clear
@@ -474,7 +522,8 @@ export function WardrobeAddClient() {
           </Button>
 
           {message ? (
-            <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
+            <p className="inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
+              <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
               {message}
             </p>
           ) : null}

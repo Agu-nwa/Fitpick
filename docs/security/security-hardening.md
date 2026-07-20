@@ -29,7 +29,7 @@ Protected resources include wardrobe items, wardrobe uploads, outfit recommendat
 - Browser upload keys are server-generated.
 - S3 keys must remain under the authenticated user prefix.
 - Allowed image types are JPG, PNG, WebP, HEIC, and HEIF.
-- Max wardrobe upload size is 8 MB.
+- Max wardrobe upload size is 20 MB.
 - Generated previews must remain under `generated-previews/<userId>/`.
 - Never log signed URLs, Authorization headers, Base64 image data, AWS keys, or raw provider errors.
 
