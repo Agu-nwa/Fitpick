@@ -163,7 +163,7 @@ export function WardrobeAddClient() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLElement>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>("clothing");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const selectedCategory = findIntakeCategory(selectedCategoryId);
   const [activeTarget, setActiveTarget] = useState<FileTarget>({ purpose: "front" });
@@ -578,18 +578,14 @@ export function WardrobeAddClient() {
 
       <section className="mx-auto max-w-[520px]">
         <Card className="border-cocoa/15 bg-gradient-to-br from-white via-surface to-cocoa/5 p-5 shadow-card sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Step 1</p>
-              <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">What are you adding today?</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">Choose the category and subtype. MyFitPick will open only the photo slots needed for this item.</p>
-            </div>
-            <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? "Ready" : "Choose"}</Badge>
+          <div>
+            <h2 className="font-editorial text-3xl font-semibold leading-none text-ink">Add to Wardrobe</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">Tell me what you&apos;re adding.</p>
           </div>
 
           <div className="mt-6 space-y-4">
             <div>
-              <label htmlFor="wardrobe-intake-group" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Category</label>
+              <label htmlFor="wardrobe-intake-group" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Category *</label>
               <div className="relative mt-2">
                 <select
                   id="wardrobe-intake-group"
@@ -609,7 +605,7 @@ export function WardrobeAddClient() {
             </div>
 
             <div className="transition duration-200 ease-out">
-              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Subtype</label>
+              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Subtype *</label>
               <div className="relative mt-2">
                 <select
                   id="wardrobe-intake-subtype"
@@ -630,7 +626,7 @@ export function WardrobeAddClient() {
             </div>
           </div>
 
-          <div id="wardrobe-intake-help" className="mt-5 rounded-2xl border border-line bg-canvas/65 px-4 py-3">
+          <div id="wardrobe-intake-help" className="sr-only">
             {selectedCategory ? (
               <div>
                 <p className="text-sm font-semibold text-ink">{selectedGroup?.title} · {selectedCategory.title}</p>
@@ -643,9 +639,9 @@ export function WardrobeAddClient() {
             )}
           </div>
 
-          <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-5 rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-            <Button type="button" className="w-full rounded-full" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
-              Continue to photos
+          <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-6 flex justify-end rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+            <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
+              Continue
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           </div>
