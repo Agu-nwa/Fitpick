@@ -58,12 +58,15 @@ const feedbackTags = [
 
 function Notes({ outfit }: { outfit: OutfitRecommendation }) {
   const notes = [
+    outfit.styleIntent ? { label: "Style intent", body: outfit.styleIntent } : null,
+    outfit.freshnessCue ? { label: "Freshness", body: outfit.freshnessCue } : null,
     outfit.occasionFit ? { label: "Occasion", body: outfit.occasionFit } : null,
     outfit.whyItWorks ? { label: "Why it works", body: outfit.whyItWorks } : null,
     { label: "Weather", body: outfit.weatherFit },
     { label: "Color", body: outfit.colorNote },
     outfit.materialNote ? { label: "Material", body: outfit.materialNote } : null,
     outfit.silhouetteNote ? { label: "Silhouette", body: outfit.silhouetteNote } : null,
+    outfit.gapInsights?.[0]?.message ? { label: "Closet insight", body: outfit.gapInsights[0].message } : null,
     outfit.improvementNote ? { label: "Improve", body: outfit.improvementNote } : null,
     outfit.addLater ? { label: "Add later", body: outfit.addLater } : null,
     { label: "Repeat", body: outfit.repeatNote },
@@ -338,7 +341,11 @@ export function OutfitResult({
     }
 
     setAvatarPreviewStatus("failed");
-    setAvatarPreviewError(result.error.message || "Unable to create virtual try-on right now.");
+    const details = result.error.details as { progressiveTrigger?: { title?: string; body?: string }; setupPath?: string } | undefined;
+    const setupMessage = details?.progressiveTrigger
+      ? [details.progressiveTrigger.title, details.progressiveTrigger.body].filter(Boolean).join(". ")
+      : "";
+    setAvatarPreviewError(setupMessage || result.error.message || "Unable to create virtual try-on right now.");
   }
 
   async function pollAvatarPreviewJob(jobId: string) {

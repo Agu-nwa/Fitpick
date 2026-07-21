@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { buildSwappedPayload } from "@/lib/recommendation/swap";
+import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
@@ -72,6 +73,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action: "outfit.swap",
       entityType: "OutfitRecommendation",
       entityId: String(outfit._id)
+    });
+
+    await recordOutfitHistory({
+      userId: auth.user._id,
+      outfitId: outfit._id,
+      itemIds: updatedItemIds,
+      eventType: "swapped",
+      source: outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+      recommendationMode: (outfit as any).recommendationMode || (outfit as any).reasoningMetadata?.recommendationMode || "todays_best",
+      occasion: outfit.occasion,
+      feedbackReason: parsed.data.swapDirection || "best-match"
     });
 
     return apiSuccess({ outfit: payload }, { message: "Outfit item swapped." });

@@ -1,6 +1,9 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
 import { completenessLabel, evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
+import { diversifyOutfits, noveltyScore } from "@/lib/recommendation/diversity";
+import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
 import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/recommendation/outfit-structures";
+import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/policy";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import {
   fabricCompatibilityScore,
@@ -139,6 +142,9 @@ export type EngineInput = {
   previousLooks?: any[];
   wornLooks?: any[];
   weather?: any;
+  outfitHistorySummary?: any;
+  recommendationMode?: string;
+  traceId?: string;
 };
 
 export function buildRecommendation(input: EngineInput) {
@@ -146,6 +152,8 @@ export function buildRecommendation(input: EngineInput) {
     input.preferences?.repeatSensitivity
   );
   const allowRecentRepeat = /repeat|again|same look|rewear/i.test(`${input.occasionName || ""} ${input.styleDirection || ""}`);
+  const recommendationMode = normalizeRecommendationMode(input.recommendationMode || input.styleDirection || input.occasionName || "todays_best");
+  const modeTitle = modeLabel(recommendationMode);
 
   const occasionGroup = inferOccasionGroup({
     name: input.occasionName,
@@ -179,6 +187,8 @@ export function buildRecommendation(input: EngineInput) {
   // Generate and score outfit combinations
 
   const missing = missingCoreCategories(readyFirst, desiredStructure);
+  const readiness = wardrobeReadiness(readyFirst);
+  const gapInsights = wardrobeGapInsights(readyFirst, input.occasionName || input.weatherContext || "");
 
   const combinations = generateCombinations(
     readyFirst,
@@ -193,12 +203,23 @@ export function buildRecommendation(input: EngineInput) {
       desiredCategories: desiredStructure,
       styleProfile: input.styleProfile,
       memorySummary: input.memorySummary,
+      outfitHistorySummary: input.outfitHistorySummary,
       allowRecentRepeat,
-      previousLooks: input.previousLooks || []
+      previousLooks: input.previousLooks || [],
+      recommendationMode,
+      weather: input.weather,
+      preferences: input.preferences,
+      maxCandidates: 650
     }
   );
 
-  const bestOutfit = combinations[0];
+  const diverseOutfits = diversifyOutfits(combinations, {
+    limit: 3,
+    historySummary: input.outfitHistorySummary,
+    diversityWeight: recommendationMode === "todays_best" ? 0.3 : 0.42
+  });
+
+  const bestOutfit = diverseOutfits[0] || combinations[0];
 
   const coreItems: any[] = bestOutfit?.items || [];
 
@@ -228,14 +249,24 @@ export function buildRecommendation(input: EngineInput) {
       missingCategories: completeness.missingCategories,
       completenessWarnings: completeness.completenessWarnings,
       footwearIncluded: completeness.footwearIncluded,
-      stylingTips: ["Add more verified wardrobe items, then request this occasion again."]
+      stylingTips: ["Add more verified wardrobe items, then request this occasion again."],
+      recommendationMode,
+      styleIntent: modeTitle,
+      freshnessCue: "Rotation starts after more complete outfits are available.",
+      wardrobeReadiness: readiness,
+      gapInsights,
+      candidateCount: combinations.length,
+      diverseCandidateCount: diverseOutfits.length,
+      scoreBreakdown: {},
+      similarityMetadata: {},
+      alternatives: []
     };
   }
 
   const completeness = evaluateOutfitCompleteness(coreItems);
   const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
 
-  const score = scoreOutfit(coreItems, {
+  const score = bestOutfit.score || scoreOutfit(coreItems, {
     occasionName: input.occasionName,
     formality: input.formality,
     weatherContext: input.weatherContext,
@@ -245,7 +276,9 @@ export function buildRecommendation(input: EngineInput) {
     desiredCategories: desiredStructure,
     styleProfile: input.styleProfile,
     memorySummary: input.memorySummary,
-    allowRecentRepeat
+    outfitHistorySummary: input.outfitHistorySummary,
+    allowRecentRepeat,
+    recommendationMode
   });
 
   const confidence = confidenceFromScore(score);
@@ -300,7 +333,7 @@ export function buildRecommendation(input: EngineInput) {
   const completenessSummary = completeness.completenessWarnings.length ? ` ${completeness.completenessWarnings.join(" ")}` : "";
   const addLater = completeness.completenessStatus === "missing_footwear"
     ? "Add black shoes, loafers, sneakers, or sandals to complete this look."
-    : explanation.addLater;
+    : gapInsights[0]?.message || explanation.addLater;
   const styleProfileNote = input.styleProfile
     ? ` Style preferences considered: ${[
         input.styleProfile.fashionRiskLevel ? `${input.styleProfile.fashionRiskLevel} risk` : "",
@@ -311,14 +344,21 @@ export function buildRecommendation(input: EngineInput) {
   const memoryNote = input.memorySummary?.eventCount
     ? ` Style history considered: recent likes, saves, rejections, and worn items were used gently.`
     : "";
+  const novelty = noveltyScore(coreItems, input.outfitHistorySummary);
+  const rotationNote = input.outfitHistorySummary?.eventCount
+    ? ` Freshness check: ${novelty >= 14 ? "this combination is meaningfully different from recent recommendations" : "this look reuses familiar pieces because they fit the context best"}.`
+    : " Freshness check: MyFitPick will start rotating pieces as recommendation history grows.";
+  const smallWardrobeNote = readiness.isSmallWardrobe
+    ? ` You currently have ${readiness.itemCount} closet item${readiness.itemCount === 1 ? "" : "s"}, so variety may be naturally limited.`
+    : "";
 
   return {
-    title: `${occasion} outfit`,
+    title: recommendationMode === "todays_best" ? `${occasion} outfit` : `${modeTitle} for ${occasion}`,
     occasion,
     confidence,
-    summary: `${explanation.whyItWorks}${completenessSummary}${styleProfileNote}${memoryNote} Confidence ${Math.round(boundedConfidenceScore(score) * 100)}%.`,
+    summary: `${explanation.whyItWorks}${completenessSummary}${styleProfileNote}${memoryNote}${rotationNote}${smallWardrobeNote}`,
     items: coreItems,
-    reasonChips: [completenessLabel(completeness.completenessStatus), ...chips],
+    reasonChips: [completenessLabel(completeness.completenessStatus), modeTitle, novelty >= 14 ? "Fresh rotation" : "Context led", ...chips].slice(0, 8),
     weatherContext: input.weatherContext || "",
     repetitionNote: freshnessNote(
       coreItems,
@@ -333,7 +373,21 @@ export function buildRecommendation(input: EngineInput) {
     completenessStatus: completeness.completenessStatus,
     missingCategories: completeness.missingCategories,
     completenessWarnings: completeness.completenessWarnings,
-    footwearIncluded: completeness.footwearIncluded
+    footwearIncluded: completeness.footwearIncluded,
+    recommendationMode,
+    styleIntent: modeTitle,
+    freshnessCue: novelty >= 14 ? "Fresh compared with recent looks" : input.outfitHistorySummary?.eventCount ? "Familiar pieces used intentionally" : "Rotation starts after more use",
+    wardrobeReadiness: readiness,
+    gapInsights,
+    scoreBreakdown: bestOutfit.scoreBreakdown || {},
+    similarityMetadata: bestOutfit.similarityMetadata || {},
+    candidateCount: combinations.length,
+    diverseCandidateCount: diverseOutfits.length,
+    alternatives: diverseOutfits.slice(1).map((outfit) => ({
+      title: `${modeTitle} alternative`,
+      itemIds: outfit.items.map((item: any) => String(item._id || item.id)),
+      similarityMetadata: outfit.similarityMetadata || {}
+    }))
   };
 }
 
@@ -431,6 +485,16 @@ export function serializeOutfit(
     completenessWarnings: outfit.completenessWarnings || computedCompleteness.completenessWarnings,
     footwearIncluded: typeof outfit.footwearIncluded === "boolean" ? outfit.footwearIncluded : computedCompleteness.footwearIncluded,
     stylingTips: outfit.stylingTips || [],
+    recommendationMode: outfit.recommendationMode || outfit.reasoningMetadata?.recommendationMode || "todays_best",
+    styleIntent: outfit.styleIntent || outfit.reasoningMetadata?.styleIntent || "Today's Best Look",
+    freshnessCue: outfit.freshnessCue || outfit.reasoningMetadata?.freshnessCue || "Freshness tracked as you use MyFitPick.",
+    wardrobeReadiness: outfit.wardrobeReadiness || outfit.reasoningMetadata?.wardrobeReadiness || null,
+    gapInsights: outfit.gapInsights || outfit.reasoningMetadata?.gapInsights || [],
+    scoreBreakdown: outfit.scoreBreakdown || outfit.reasoningMetadata?.scoreBreakdown || {},
+    similarityMetadata: outfit.similarityMetadata || outfit.reasoningMetadata?.similarityMetadata || {},
+    candidateCount: outfit.candidateCount || outfit.reasoningMetadata?.candidateCount || 0,
+    diverseCandidateCount: outfit.diverseCandidateCount || outfit.reasoningMetadata?.diverseCandidateCount || 0,
+    alternatives: outfit.alternatives || outfit.reasoningMetadata?.alternatives || [],
     source: outfit.source || "rule_based",
     preview: { ...previewDefaults, ...(outfit.preview || {}) },
     colorNote:

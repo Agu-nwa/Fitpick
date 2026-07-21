@@ -11,6 +11,7 @@ import { askStylist } from "@/lib/ai/stylist";
 import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/context/stylist-context";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
+import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
@@ -56,6 +57,13 @@ function compactRecommendationForStylist(recommendation: any) {
     missingCategories: recommendation.missingCategories || [],
     completenessWarnings: recommendation.completenessWarnings || [],
     footwearIncluded: Boolean(recommendation.footwearIncluded),
+    recommendationMode: recommendation.recommendationMode,
+    styleIntent: recommendation.styleIntent,
+    freshnessCue: recommendation.freshnessCue,
+    wardrobeReadiness: recommendation.wardrobeReadiness,
+    gapInsights: recommendation.gapInsights || [],
+    candidateCount: recommendation.candidateCount || 0,
+    diverseCandidateCount: recommendation.diverseCandidateCount || 0,
     stylingTips: recommendation.stylingTips || [],
     items: (recommendation.items || []).map((item: any) => ({
       id: String(item._id),
@@ -102,9 +110,11 @@ export async function POST(request: NextRequest) {
       getOrCreateStyleProfile(auth.user._id),
       getMemorySummary(auth.user._id)
     ]);
+    const outfitHistory = await getRecentOutfitHistory(auth.user._id, 60);
 
     const serializedStyleProfile = serializeStyleProfile(styleProfile);
     const serializedMemorySummary = serializeMemorySummary(memorySummary);
+    const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
     const stylistContext = buildStylistContext(wardrobe, serializedStyleProfile, serializedMemorySummary);
     const recentMessages = buildRecentConversationContext(parsed.data.recentMessages || []);
     const sanitizedMessage = sanitizeUserPrompt(parsed.data.message);
@@ -128,6 +138,7 @@ export async function POST(request: NextRequest) {
       preferences: {},
       styleProfile: serializedStyleProfile,
       memorySummary: serializedMemorySummary,
+      outfitHistorySummary,
       wardrobeItems: wardrobe,
       wornLooks: []
     });
@@ -233,6 +244,34 @@ export async function POST(request: NextRequest) {
               source: "stylist_chat"
             }
           );
+
+          if (persistedOutfit?.outfitRecommendationId) {
+            await Promise.all([
+              WardrobeItem.updateMany(
+                { _id: { $in: deterministicRecommendation.items.map((item: any) => item._id) }, userId: auth.user._id },
+                {
+                  $set: { lastRecommendedAt: new Date() },
+                  $inc: { recommendationCount: 1 }
+                }
+              ),
+              recordOutfitHistory({
+                userId: auth.user._id,
+                outfitId: persistedOutfit.outfitRecommendationId,
+                itemIds: deterministicRecommendation.items.map((item: any) => item._id),
+                eventType: "generated",
+                source: "stylist_chat",
+                recommendationMode: deterministicRecommendation.recommendationMode,
+                occasion: deterministicRecommendation.occasion,
+                context: {
+                  requestText: sanitizedMessage.slice(0, 220),
+                  weatherContext,
+                  wardrobeItemCount: wardrobe.length
+                },
+                scoreBreakdown: deterministicRecommendation.scoreBreakdown,
+                similarityMetadata: deterministicRecommendation.similarityMetadata
+              })
+            ]);
+          }
 
           visualization = persistedOutfit
             ? await triggerDigitalHumanPreviewForStylist(String(auth.user._id), persistedOutfit.outfitRecommendationId, { visualMode })

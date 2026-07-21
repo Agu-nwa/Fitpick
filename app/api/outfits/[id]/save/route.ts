@@ -10,6 +10,7 @@ import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { SavedLook } from "@/models/SavedLook";
+import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { saveOutfitSchema } from "@/schemas/outfit.schema";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -70,6 +71,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action: "outfit.save",
       entityType: "SavedLook",
       entityId: String(look._id)
+    });
+
+    await recordOutfitHistory({
+      userId: auth.user._id,
+      outfitId: outfit._id,
+      itemIds: outfit.itemIds,
+      eventType: "saved",
+      source: outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+      recommendationMode: (outfit as any).recommendationMode || (outfit as any).reasoningMetadata?.recommendationMode || "todays_best",
+      occasion: outfit.occasion,
+      feedbackRating: parsed.data.favorite ? 5 : 4
     });
 
     return apiSuccess({ look: serializeSavedLook(look) }, { message: "Outfit saved." });

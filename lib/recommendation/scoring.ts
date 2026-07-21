@@ -1,4 +1,6 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
+import { outfitItemSignature } from "@/lib/recommendation/history";
+import { RECOMMENDATION_SCORING_VERSION, scoringWeightsForMode } from "@/lib/recommendation/policy";
 
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
@@ -69,6 +71,26 @@ export function freshnessScore(item: any, repeatDays: number) {
   if (!item.lastWornAt) return 14;
   const ageDays = (Date.now() - new Date(item.lastWornAt).getTime()) / 86_400_000;
   return ageDays >= repeatDays ? 14 : 2;
+}
+
+export function rotationScore(item: any, historySummary?: any, allowRecentRepeat = false) {
+  const id = String(item._id || item.id || "");
+  if (!id) return 0;
+  const recentRecommended = new Set((historySummary?.recentRecommendedItemIds || []).map(String));
+  const recentlyWorn = new Set((historySummary?.recentlyWornItemIds || []).map(String));
+  const recommendationCount = Number(item.recommendationCount || item.recommendationMetadata?.recommendationCount || 0);
+  const timesWorn = Number(item.timesWorn || item.recommendationMetadata?.timesWorn || 0);
+  const lastRecommendedAt = item.lastRecommendedAt || item.recommendationMetadata?.lastRecommendedAt;
+  const daysSinceRecommended = lastRecommendedAt ? (Date.now() - new Date(lastRecommendedAt).getTime()) / 86_400_000 : 999;
+
+  let score = 8;
+  if (!allowRecentRepeat && recentRecommended.has(id)) score -= 10;
+  if (!allowRecentRepeat && recentlyWorn.has(id)) score -= 12;
+  if (daysSinceRecommended > 21) score += 7;
+  if (daysSinceRecommended < 4) score -= 8;
+  if (recommendationCount <= 1 && timesWorn <= 1) score += 4;
+  if (recommendationCount > 8 && timesWorn < 2) score -= 3;
+  return Math.max(-20, Math.min(18, score));
 }
 
 export function readinessScore(item: any, allowNeedsCare?: boolean) {
@@ -214,41 +236,126 @@ export function memoryPreferenceScore(items: any[], memorySummary?: any, allowRe
   return score;
 }
 
-export function scoreOutfit(
-  items: any[],
-  input: {
-    occasionName?: string;
-    formality?: string;
-    weatherContext?: string;
-    seasonContext?: string;
-    repeatDays: number;
-    allowNeedsCare?: boolean;
-    desiredCategories?: string[];
-    styleProfile?: any;
-    memorySummary?: any;
-    allowRecentRepeat?: boolean;
-  }
-) {
-  const itemScore = items.reduce(
-    (sum, item) =>
-      sum +
-      occasionScore(item, input.occasionName) +
-      formalityScore(item, input.formality) +
-      weatherScore(item, input.weatherContext) +
-      seasonScore(item, input.seasonContext || input.weatherContext) +
-      freshnessScore(item, input.repeatDays) +
-      readinessScore(item, input.allowNeedsCare),
-    0
+export function noveltyPreferenceScore(items: any[], historySummary?: any) {
+  if (!historySummary?.eventCount) return 10;
+  const signature = outfitItemSignature(items.map((item) => String(item._id || item.id)).filter(Boolean));
+  if ((historySummary.recentRecommendationSignatures || []).includes(signature)) return -28;
+  if ((historySummary.recentlyWornSignatures || []).includes(signature)) return -22;
+
+  const recentRecommended = new Set((historySummary.recentRecommendedItemIds || []).map(String));
+  const recentlyWorn = new Set((historySummary.recentlyWornItemIds || []).map(String));
+  const itemIds = items.map((item) => String(item._id || item.id)).filter(Boolean);
+  const recentShare = itemIds.filter((id) => recentRecommended.has(id) || recentlyWorn.has(id)).length / Math.max(1, itemIds.length);
+  return Math.round(14 - recentShare * 24);
+}
+
+export function comfortScore(items: any[], styleProfile?: any) {
+  const comfortSignals = items.filter((item) => /comfort|relaxed|loose|soft|stretch|breathable/i.test([
+    item.fit,
+    item.garmentFit,
+    metadataValue(item, "fit"),
+    metadataValue(item, "fabricEstimate"),
+    metadataValue(item, "texture")
+  ].join(" "))).length;
+  const priority = styleProfile?.comfortPriority || "medium";
+  const base = comfortSignals ? 8 + comfortSignals * 3 : 4;
+  return priority === "high" ? base + 6 : priority === "low" ? Math.max(1, base - 3) : base;
+}
+
+export function luxuryAestheticScore(items: any[], styleProfile?: any) {
+  const luxuryValues = items
+    .map((item) => Number(metadataValue(item, "luxuryScore") || item.recommendationMetadata?.luxuryLevel || 0))
+    .filter((value) => Number.isFinite(value));
+  const hasBrandEvidence = items.some((item) => metadataValue(item, "brand") || metadataValue(item, "recognizedEntity"));
+  const paletteSize = new Set(items.map((item) => normalize(metadataValue(item, "primaryColor") || item.color)).filter(Boolean)).size;
+  const restrainedPalette = paletteSize > 0 && paletteSize <= 3;
+  const averageLuxury = luxuryValues.length ? luxuryValues.reduce((sum, value) => sum + value, 0) / luxuryValues.length : 0;
+  let score = Math.min(16, averageLuxury > 1 ? averageLuxury * 1.6 : averageLuxury * 16);
+  if (hasBrandEvidence) score += 3;
+  if (restrainedPalette) score += 3;
+  if (styleProfile?.luxuryPreference === "high") score += 4;
+  if (styleProfile?.luxuryPreference === "low") score -= 2;
+  return Math.max(0, Math.min(24, Math.round(score)));
+}
+
+type ScoreInput = {
+  occasionName?: string;
+  formality?: string;
+  weatherContext?: string;
+  seasonContext?: string;
+  repeatDays: number;
+  allowNeedsCare?: boolean;
+  desiredCategories?: string[];
+  styleProfile?: any;
+  memorySummary?: any;
+  outfitHistorySummary?: any;
+  allowRecentRepeat?: boolean;
+  recommendationMode?: string;
+};
+
+export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
+  const weights = scoringWeightsForMode(input.recommendationMode);
+  const itemBreakdown = items.reduce(
+    (acc, item) => {
+      acc.occasionFit += occasionScore(item, input.occasionName);
+      acc.dressCodeFit += formalityScore(item, input.formality);
+      acc.weatherFit += weatherScore(item, input.weatherContext);
+      acc.seasonFit += seasonScore(item, input.seasonContext || input.weatherContext);
+      acc.freshness += freshnessScore(item, input.repeatDays);
+      acc.rotation += rotationScore(item, input.outfitHistorySummary, input.allowRecentRepeat);
+      acc.readiness += readinessScore(item, input.allowNeedsCare);
+      return acc;
+    },
+    { occasionFit: 0, dressCodeFit: 0, weatherFit: 0, seasonFit: 0, freshness: 0, rotation: 0, readiness: 0 }
   );
 
-  return (
-    itemScore +
-    colorCompatibilityScore(items) +
-    fabricCompatibilityScore(items) +
-    silhouetteBalanceScore(items) +
-    eventRelevanceScore(items, input.occasionName) +
-    completenessScore(items, input.desiredCategories || []) +
-    styleProfileScore(items, input.styleProfile) +
-    memoryPreferenceScore(items, input.memorySummary, input.allowRecentRepeat)
-  );
+  const breakdown = {
+    version: RECOMMENDATION_SCORING_VERSION,
+    categoryValidity: completenessScore(items, input.desiredCategories || []),
+    occasionFit: itemBreakdown.occasionFit + eventRelevanceScore(items, input.occasionName),
+    dressCodeFit: itemBreakdown.dressCodeFit,
+    weatherFit: itemBreakdown.weatherFit,
+    seasonFit: itemBreakdown.seasonFit,
+    colorHarmony: colorCompatibilityScore(items),
+    silhouetteBalance: silhouetteBalanceScore(items),
+    materialCompatibility: fabricCompatibilityScore(items),
+    styleProfile: styleProfileScore(items, input.styleProfile),
+    memoryPreference: memoryPreferenceScore(items, input.memorySummary, input.allowRecentRepeat),
+    rotation: itemBreakdown.rotation,
+    freshness: itemBreakdown.freshness,
+    novelty: noveltyPreferenceScore(items, input.outfitHistorySummary),
+    readiness: itemBreakdown.readiness,
+    comfort: comfortScore(items, input.styleProfile),
+    luxury: luxuryAestheticScore(items, input.styleProfile)
+  };
+
+  const total =
+    breakdown.categoryValidity * weights.categoryValidity +
+    breakdown.occasionFit * weights.occasionFit +
+    breakdown.dressCodeFit +
+    breakdown.weatherFit * weights.weatherFit +
+    breakdown.seasonFit +
+    breakdown.colorHarmony * weights.colorHarmony +
+    breakdown.silhouetteBalance * weights.silhouetteBalance +
+    breakdown.materialCompatibility * weights.materialCompatibility +
+    breakdown.styleProfile * weights.styleProfile +
+    breakdown.memoryPreference * weights.memoryPreference +
+    breakdown.rotation * weights.rotation +
+    breakdown.freshness +
+    breakdown.novelty * weights.novelty +
+    breakdown.readiness +
+    breakdown.comfort * weights.comfort +
+    breakdown.luxury * weights.luxury;
+
+  return {
+    total: Math.round(total * 10) / 10,
+    breakdown
+  };
+}
+
+export function scoreOutfit(
+  items: any[],
+  input: ScoreInput
+) {
+  return scoreOutfitDetailed(items, input).total;
 }

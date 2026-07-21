@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
+import { confidenceLabel, measurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory } from "@/types/wardrobe";
 
 type FieldKind = "text" | "list" | "category";
@@ -153,6 +155,14 @@ function fieldFromAnalysis(aiAnalysis: WardrobeAiAnalysis | null | undefined, ke
   return aiAnalysis?.fields?.[key as keyof WardrobeAiAnalysis["fields"]] as any;
 }
 
+function sourceLabel(source?: string) {
+  if (source === "ocr") return "Label";
+  if (source === "vision") return "Vision";
+  if (source === "user_confirmed") return "User";
+  if (source === "system_inferred") return "FitPick";
+  return "FitPick";
+}
+
 export function AITagConfirmationForm({
   aiAnalysis,
   disabled = false,
@@ -184,6 +194,10 @@ export function AITagConfirmationForm({
     if (!aiAnalysis?.fields) return 0;
     return essentialFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
   }, [aiAnalysis]);
+  const visibleMeasurementFields = useMemo(() => {
+    const allowed = new Set(measurementKeysForCategory(values.category || "tops", values.subcategory || ""));
+    return garmentMeasurementFields.filter((field) => allowed.has(field.key));
+  }, [values.category, values.subcategory]);
 
   useEffect(() => {
     const next = initialValues;
@@ -242,7 +256,9 @@ export function AITagConfirmationForm({
     }
 
     const parsedGarmentMeasurements = Object.fromEntries(
-      garmentMeasurementFields.map((field) => [field.key, measurementNumber(garmentMeasurements[field.key] || "")])
+      visibleMeasurementFields
+        .map((field) => [field.key, measurementNumber(garmentMeasurements[field.key] || "")])
+        .filter(([, value]) => value !== null)
     ) as GarmentMeasurements;
 
     void onSubmit({
@@ -309,8 +325,17 @@ export function AITagConfirmationForm({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {essentialFields.map((field) => {
             const fieldId = `ai-field-${field.key}`;
+            const original = fieldFromAnalysis(aiAnalysis, field.key);
             return (
               <FieldGroup key={field.key} label={field.label} htmlFor={fieldId} required={field.required}>
+                {original ? (
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <Badge tone={original.source === "ocr" && original.confidence >= 0.8 ? "success" : original.confidence < 0.65 ? "warning" : "neutral"}>
+                      {confidenceLabel(original.confidence, original.source)}
+                    </Badge>
+                    <span className="text-[11px] font-semibold text-muted">{sourceLabel(original.source)}</span>
+                  </div>
+                ) : null}
                 {field.kind === "category" ? (
                   <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
                     {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -376,7 +401,7 @@ export function AITagConfirmationForm({
               {measurementSourceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </FieldGroup>
-          {garmentMeasurementFields.map((field) => (
+          {visibleMeasurementFields.length ? visibleMeasurementFields.map((field) => (
             <FieldGroup key={field.key} label={`${field.label} (cm)`} htmlFor={`fit-${field.key}`}>
               <input
                 id={`fit-${field.key}`}
@@ -389,7 +414,11 @@ export function AITagConfirmationForm({
                 placeholder={field.placeholder}
               />
             </FieldGroup>
-          ))}
+          )) : (
+            <p className="rounded-2xl border border-line bg-white/70 p-3 text-xs font-semibold leading-5 text-muted sm:col-span-2">
+              No garment body measurements are needed for this category.
+            </p>
+          )}
         </div>
       </details>
 

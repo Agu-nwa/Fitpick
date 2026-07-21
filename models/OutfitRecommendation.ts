@@ -21,6 +21,16 @@ const OutfitRecommendationSchema = new Schema(
     improvementNote: { type: String, default: "" },
     addLater: { type: String, default: "" },
     stylingTips: { type: [String], default: [] },
+    recommendationMode: { type: String, default: "todays_best", maxlength: 80, index: true },
+    styleIntent: { type: String, default: "", maxlength: 120 },
+    freshnessCue: { type: String, default: "", maxlength: 180 },
+    wardrobeReadiness: { type: Schema.Types.Mixed, default: null },
+    gapInsights: { type: Schema.Types.Mixed, default: [] },
+    scoreBreakdown: { type: Schema.Types.Mixed, default: {} },
+    similarityMetadata: { type: Schema.Types.Mixed, default: {} },
+    candidateCount: { type: Number, default: 0, min: 0 },
+    diverseCandidateCount: { type: Number, default: 0, min: 0 },
+    alternatives: { type: Schema.Types.Mixed, default: [] },
     confidenceScore: { type: Number, default: 0 },
     completenessStatus: {
       type: String,
@@ -74,6 +84,7 @@ const OutfitRecommendationSchema = new Schema(
 OutfitRecommendationSchema.index({ userId: 1, occasion: 1 });
 OutfitRecommendationSchema.index({ userId: 1, createdAt: -1 });
 OutfitRecommendationSchema.index({ userId: 1, source: 1, reuseKey: 1 });
+OutfitRecommendationSchema.index({ userId: 1, recommendationMode: 1, createdAt: -1 });
 
 export type OutfitRecommendationDocument = InferSchemaType<typeof OutfitRecommendationSchema> & {
   _id: mongoose.Types.ObjectId;

@@ -51,6 +51,8 @@ export function DigitalHumanTryOnPanel({
   onGenerateFitLocked,
   onRegenerate
 }: DigitalHumanTryOnPanelProps) {
+  const setupRequired = /try-on model|avatar settings|full-body|model image/i.test(previewError || "");
+
   return (
     <div className="space-y-4">
       <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
@@ -157,7 +159,7 @@ export function DigitalHumanTryOnPanel({
             </Button>
           </Link>
           <Link href="/avatar">
-            <Button type="button" variant="secondary" className="w-full">Improve size details</Button>
+            <Button type="button" variant="secondary" className="w-full">{setupRequired ? "Set up try-on model" : "Improve size details"}</Button>
           </Link>
           {previewUrl ? (
             <Button type="button" variant="ghost" onClick={onRegenerate} disabled={isGenerating}>

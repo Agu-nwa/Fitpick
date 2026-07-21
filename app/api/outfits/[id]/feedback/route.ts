@@ -10,6 +10,7 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { StylePreference } from "@/models/StylePreference";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { learnFromFeedback } from "@/lib/recommendation/learning";
+import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { z } from "zod";
@@ -103,6 +104,18 @@ export async function POST(
 
       await preferences.save();
     }
+
+    await recordOutfitHistory({
+      userId: auth.user._id,
+      outfitId: outfit._id,
+      itemIds: outfit.itemIds,
+      eventType: parsed.data.liked ? "accepted" : "rejected",
+      source: outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+      recommendationMode: (outfit as any).recommendationMode || (outfit as any).reasoningMetadata?.recommendationMode || "todays_best",
+      occasion: outfit.occasion,
+      feedbackReason: parsed.data.reason || "",
+      feedbackRating: parsed.data.liked ? 5 : 1
+    });
 
     return apiSuccess({
       message:

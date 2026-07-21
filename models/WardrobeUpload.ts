@@ -68,6 +68,16 @@ const WardrobeUploadSchema = new Schema(
       default: ""
     },
     selectedCategoryLabel: { type: String, default: "" },
+    intakeCategoryId: { type: String, default: "", trim: true, maxlength: 80, index: true },
+    intakeGroup: { type: String, enum: ["clothing", "shoes", "bags", "accessories", ""], default: "" },
+    userInputMetadata: { type: Schema.Types.Mixed, default: {} },
+    categorySpecificMetadata: { type: Schema.Types.Mixed, default: {} },
+    ocrMetadata: { type: Schema.Types.Mixed, default: {} },
+    labelPhotoKinds: { type: [String], default: [] },
+    recommendationMetadata: { type: Schema.Types.Mixed, default: {} },
+    virtualTryOnMetadata: { type: Schema.Types.Mixed, default: {} },
+    searchMetadata: { type: Schema.Types.Mixed, default: {} },
+    enrichmentStatus: { type: String, enum: ["not_started", "queued", "completed", "failed"], default: "not_started", index: true },
     images: {
       front: { type: WardrobeImageSchema },
       back: { type: WardrobeImageSchema },

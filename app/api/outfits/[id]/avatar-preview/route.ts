@@ -21,7 +21,9 @@ import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCredit
 import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
+import { serializeProgressiveTrigger, triggerForVirtualTryOn } from "@/lib/progressive-intelligence/triggers";
 import { rateLimitRequest } from "@/lib/rate-limit";
+import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getConfiguredTryOnProviderType, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { readJson, validateBody } from "@/lib/validation";
@@ -119,8 +121,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("BAD_REQUEST", "This avatar preview needs all selected saved clothes available.");
     }
 
-    if (!loaded.avatarProfile.consentAccepted) {
-      return apiError("BAD_REQUEST", "Please review and save your avatar settings before showing the outfit.");
+    const tryOnSetupTrigger = triggerForVirtualTryOn(loaded.avatarProfile);
+    if (tryOnSetupTrigger) {
+      return apiError("SETUP_REQUIRED", "Set up your try-on model before generating this preview.", {
+        details: {
+          progressiveTrigger: serializeProgressiveTrigger(tryOnSetupTrigger),
+          setupPath: "/avatar"
+        }
+      });
     }
 
     activeAvatarProfileId = String(loaded.avatarProfile._id);
@@ -238,6 +246,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
       );
 
+      await recordOutfitHistory({
+        userId: auth.user._id,
+        outfitId: loaded.outfit._id,
+        itemIds: loaded.itemIds,
+        eventType: "virtual_try_on_generated",
+        source: loaded.outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+        recommendationMode: loaded.outfit.recommendationMode || loaded.outfit.reasoningMetadata?.recommendationMode || "todays_best",
+        occasion: loaded.outfit.occasion,
+        context: { visualMode: "digital_human", queued: true }
+      });
+
       return apiSuccess(
         {
           preview: serializeAvatarPreview({
@@ -274,6 +293,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
     const saved = (result.preview as any)?.toObject?.() ?? result.preview;
     if (!saved) return apiError("INTERNAL_ERROR", "Virtual try-on is not ready yet.");
+    await recordOutfitHistory({
+      userId: auth.user._id,
+      outfitId: loaded.outfit._id,
+      itemIds: loaded.itemIds,
+      eventType: "virtual_try_on_generated",
+      source: loaded.outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+      recommendationMode: loaded.outfit.recommendationMode || loaded.outfit.reasoningMetadata?.recommendationMode || "todays_best",
+      occasion: loaded.outfit.occasion,
+      context: { visualMode: "digital_human", cached: Boolean(result.cached) }
+    });
     let creditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>> | null = null;
     if (!result.cached) {
       try {

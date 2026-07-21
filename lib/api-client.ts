@@ -129,6 +129,16 @@ export type WardrobeUploadRecord = {
   thumbnailUrl?: string;
   selectedCategory?: WardrobeItem["category"] | "";
   selectedCategoryLabel?: string;
+  intakeCategoryId?: string;
+  intakeGroup?: string;
+  userInputMetadata?: Record<string, unknown>;
+  categorySpecificMetadata?: Record<string, unknown>;
+  ocrMetadata?: Record<string, unknown>;
+  labelPhotoKinds?: string[];
+  recommendationMetadata?: Record<string, unknown>;
+  virtualTryOnMetadata?: Record<string, unknown>;
+  searchMetadata?: Record<string, unknown>;
+  enrichmentStatus?: "not_started" | "queued" | "completed" | "failed" | string;
   images?: {
     front?: WardrobeImageAsset;
     back?: WardrobeImageAsset;
@@ -403,6 +413,8 @@ export type AvatarPreviewData = {
     visualizationWarnings?: string[];
     footwearIncluded?: boolean;
     visualGroundingStatus?: string;
+    progressiveTrigger?: StylistAvatarPreview["progressiveTrigger"];
+    setupPath?: string | null;
     generatedAt: string | null;
     errorMessage: string;
     attempts: number;

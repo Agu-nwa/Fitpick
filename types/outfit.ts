@@ -21,6 +21,20 @@ export type OutfitRecommendation = {
   improvementNote?: string;
   addLater?: string;
   confidenceScore?: number;
+  recommendationMode?: string;
+  styleIntent?: string;
+  freshnessCue?: string;
+  wardrobeReadiness?: Record<string, unknown> | null;
+  gapInsights?: Array<{ category?: string; message?: string; unlockPotential?: number }>;
+  scoreBreakdown?: Record<string, unknown>;
+  similarityMetadata?: Record<string, unknown>;
+  candidateCount?: number;
+  diverseCandidateCount?: number;
+  alternatives?: Array<{
+    title: string;
+    itemIds: string[];
+    similarityMetadata?: Record<string, unknown>;
+  }>;
   stylingTips?: string[];
   completenessStatus?: OutfitCompletenessStatus;
   missingCategories?: string[];
@@ -107,6 +121,15 @@ export type StylistAvatarPreview = {
   visualizationWarnings?: string[];
   footwearIncluded?: boolean;
   visualGroundingStatus?: VisualGroundingStatus;
+  progressiveTrigger?: {
+    id: string;
+    title: string;
+    body: string;
+    primaryAction: string;
+    secondaryAction: string;
+    value: string;
+  } | null;
+  setupPath?: string | null;
 };
 
 export type StylistResponse = {

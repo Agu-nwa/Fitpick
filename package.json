@@ -15,6 +15,7 @@
     "test:authenticated-flow": "node scripts/authenticated-flow-test.mjs",
     "test:safety-copy": "node scripts/safety-copy-scan.mjs",
     "test:secret-scan": "node scripts/secret-scan.mjs",
+    "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
     "test:payments": "node scripts/payment-credit-system-test.mjs",
     "migrate:credit-wallets": "node scripts/migrate-credit-wallets.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",

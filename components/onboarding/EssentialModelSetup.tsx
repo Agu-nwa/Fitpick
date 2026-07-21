@@ -1,20 +1,20 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, ImagePlus, MapPin, ScanFace, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, MapPin, Palette, Sparkles } from "lucide-react";
 import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
 import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useSession } from "@/hooks/use-session";
-import { getAvatarProfile, requestSignedUploadUrl, updateAvatarProfile, updateCurrentUser, updatePreferences } from "@/lib/api-client";
+import { updateCurrentUser, updatePreferences } from "@/lib/api-client";
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
-const modelMimeTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
-const maxModelPhotoBytes = 8 * 1024 * 1024;
+
 const otherLocation = "Other";
 const dressingLocationOptions = [
   { country: "Nigeria", cities: ["Lagos", "Abuja", "Port Harcourt", "Ibadan"] },
@@ -31,8 +31,16 @@ const dressingLocationOptions = [
   { country: "Spain", cities: ["Madrid", "Barcelona", "Valencia"] }
 ];
 
-function previewBackground(url: string) {
-  return { backgroundImage: `url("${url.replace(/"/g, "%22")}")` };
+const styleChips = ["clean", "polished", "relaxed", "minimal", "classic", "smart casual"];
+const colorChips = ["black", "white", "navy", "grey", "earth tones", "green"];
+const occasionChips = ["work", "weekend", "date night", "church", "wedding", "travel"];
+
+function splitTags(value: string) {
+  return value
+    .split(",")
+    .map((item) => cleanLocationPart(item).toLowerCase())
+    .filter(Boolean)
+    .slice(0, 12);
 }
 
 function cleanLocationPart(value: string) {
@@ -47,7 +55,7 @@ function formatLocation(city: string, country: string) {
 
 function locationFromSaved(value: string) {
   const cleaned = cleanLocationPart(value);
-  if (!cleaned || cleaned === "Current location") return { country: "", city: "", custom: cleaned };
+  if (!cleaned) return { country: "", city: "", custom: "" };
 
   const [cityPart, ...countryParts] = cleaned.split(",").map((part) => part.trim()).filter(Boolean);
   const countryPart = countryParts.join(", ");
@@ -58,28 +66,26 @@ function locationFromSaved(value: string) {
   return { country: otherLocation, city: otherLocation, custom: cleaned };
 }
 
+function addChip(current: string, value: string) {
+  const tags = splitTags(current);
+  if (tags.includes(value)) return tags.join(", ");
+  return [...tags, value].slice(0, 12).join(", ");
+}
+
 export function EssentialModelSetup() {
   const router = useRouter();
   const session = useSession();
-  const modelFileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
-  const [genderPresentation, setGenderPresentation] = useState("neutral");
-  const [bodyPreset, setBodyPreset] = useState("average");
-  const [heightPreset, setHeightPreset] = useState("");
-  const [bodyFitPreference, setBodyFitPreference] = useState("regular");
-  const [shoeSize, setShoeSize] = useState("");
   const [styleIdentity, setStyleIdentity] = useState("clean, polished");
-  const [weatherLocationName, setWeatherLocationName] = useState("");
+  const [colorPreferences, setColorPreferences] = useState("black, white, navy");
+  const [avoidColors, setAvoidColors] = useState("");
+  const [comfortPriority, setComfortPriority] = useState<"low" | "medium" | "high">("medium");
+  const [formality, setFormality] = useState("balanced");
+  const [repeatSensitivity, setRepeatSensitivity] = useState("medium");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [customLocation, setCustomLocation] = useState("");
-  const [weatherLatitude, setWeatherLatitude] = useState<number | null>(null);
-  const [weatherLongitude, setWeatherLongitude] = useState<number | null>(null);
-  const [uploadedModelImageUrl, setUploadedModelImageUrl] = useState("");
-  const [uploadedModelImageStorageKey, setUploadedModelImageStorageKey] = useState("");
-  const [consentAccepted, setConsentAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploadingModel, setUploadingModel] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -87,226 +93,65 @@ export function EssentialModelSetup() {
     if (session.user?.name) setName(session.user.name);
     if (session.user?.weatherLocationName) {
       const saved = locationFromSaved(session.user.weatherLocationName);
-      setWeatherLocationName(session.user.weatherLocationName);
       setSelectedCountry(saved.country);
       setSelectedCity(saved.city);
       setCustomLocation(saved.custom);
     }
-    if (typeof session.user?.weatherLatitude === "number") setWeatherLatitude(session.user.weatherLatitude);
-    if (typeof session.user?.weatherLongitude === "number") setWeatherLongitude(session.user.weatherLongitude);
   }, [session.user]);
 
-  const selectedCountryOption = dressingLocationOptions.find((option) => option.country === selectedCountry);
+  const selectedCountryOption = useMemo(
+    () => dressingLocationOptions.find((option) => option.country === selectedCountry),
+    [selectedCountry]
+  );
   const cityOptions = selectedCountryOption?.cities || [];
   const usesCustomLocation = selectedCountry === otherLocation || selectedCity === otherLocation;
-
-  useEffect(() => {
-    if (session.status !== "authenticated") return;
-    let mounted = true;
-
-    void getAvatarProfile().then((result) => {
-      if (!mounted || !result.ok) return;
-      const profile = result.data.profile;
-      setGenderPresentation(profile.genderPresentation);
-      setBodyPreset(profile.bodyPreset);
-      setHeightPreset(profile.heightPreset || "");
-      setBodyFitPreference(profile.bodyFitPreference || "regular");
-      setShoeSize(profile.shoeSize || "");
-      setUploadedModelImageUrl(profile.uploadedModelImageUrl || "");
-      setUploadedModelImageStorageKey(profile.uploadedModelImageStorageKey || "");
-      setConsentAccepted(profile.consentAccepted);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [session.status]);
-
-  function useCurrentLocation() {
-    setError("");
-    setMessage("");
-    if (!navigator.geolocation) {
-      setError("Location is not available in this browser. Add a city instead.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setWeatherLatitude(Math.round(position.coords.latitude * 10000) / 10000);
-        setWeatherLongitude(Math.round(position.coords.longitude * 10000) / 10000);
-        setWeatherLocationName("Current location");
-        setSelectedCountry("");
-        setSelectedCity("");
-        setCustomLocation("Current location");
-        setMessage("Location added. You can change it later in Profile.");
-      },
-      () => setError("Location permission was not granted. Choose your city from the list."),
-      { enableHighAccuracy: false, maximumAge: 30 * 60 * 1000, timeout: 8000 }
-    );
-  }
 
   function chooseCountry(value: string) {
     setSelectedCountry(value);
     setSelectedCity("");
-    setWeatherLatitude(null);
-    setWeatherLongitude(null);
-    if (!value) {
-      setWeatherLocationName("");
-      setCustomLocation("");
-      return;
-    }
-    if (value === otherLocation) {
-      setSelectedCity(otherLocation);
-      setWeatherLocationName(customLocation);
-      return;
-    }
-    setCustomLocation("");
-    setWeatherLocationName("");
+    if (value !== otherLocation) setCustomLocation("");
   }
 
-  function chooseCity(value: string) {
-    setSelectedCity(value);
-    setWeatherLatitude(null);
-    setWeatherLongitude(null);
-    if (!selectedCountry || !value) {
-      setWeatherLocationName("");
-      return;
-    }
-    if (value === otherLocation) {
-      setCustomLocation("");
-      setWeatherLocationName("");
-      return;
-    }
-    setWeatherLocationName(formatLocation(value, selectedCountry));
-  }
-
-  function updateCustomLocation(value: string) {
-    const cleaned = cleanLocationPart(value);
-    setCustomLocation(value);
-    setWeatherLocationName(cleaned);
-    setWeatherLatitude(null);
-    setWeatherLongitude(null);
-  }
-
-  async function handleModelPhoto(file: File) {
-    setError("");
-    setMessage("");
-
-    const mimeType = file.type || "image/jpeg";
-    if (!modelMimeTypes.has(mimeType)) {
-      setError("Choose a JPG, PNG, WebP, or HEIC full-body photo.");
-      return;
-    }
-    if (file.size > maxModelPhotoBytes) {
-      setError("Choose a full-body photo under 8 MB.");
-      return;
-    }
-    if (!consentAccepted) {
-      setError("Accept preview consent before uploading your model photo.");
-      return;
-    }
-
-    setUploadingModel(true);
-    try {
-      const signed = await requestSignedUploadUrl({
-        filename: file.name,
-        mimeType,
-        sizeBytes: file.size,
-        purpose: "avatar_model"
-      });
-      if (!signed.ok) throw new Error(signed.error.message);
-
-      const uploadAccess = signed.data.upload;
-      if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
-        throw new Error(uploadAccess.message || "Image upload is not configured yet.");
-      }
-
-      const uploadResponse = await fetch(uploadAccess.uploadUrl, {
-        method: uploadAccess.method || "PUT",
-        headers: uploadAccess.headers || { "content-type": mimeType },
-        body: file
-      });
-      if (!uploadResponse.ok) throw new Error("We could not upload your model photo.");
-
-      const imageUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl.split("?")[0] || "";
-      const avatarResult = await updateAvatarProfile({
-        tryOnModelSource: "uploaded",
-        uploadedModelImageUrl: imageUrl,
-        uploadedModelImageStorageKey: uploadAccess.storageKey,
-        consentAccepted: true
-      });
-      if (!avatarResult.ok) throw new Error(avatarResult.error.message || "Unable to save your model photo.");
-
-      setUploadedModelImageUrl(avatarResult.data.profile.uploadedModelImageUrl || imageUrl);
-      setUploadedModelImageStorageKey(avatarResult.data.profile.uploadedModelImageStorageKey || uploadAccess.storageKey);
-      setConsentAccepted(true);
-      setMessage("Full-body model photo saved.");
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo.");
-    } finally {
-      setUploadingModel(false);
-    }
+  function currentLocationName() {
+    if (usesCustomLocation) return cleanLocationPart(customLocation);
+    if (selectedCountry && selectedCity) return formatLocation(selectedCity, selectedCountry);
+    return "";
   }
 
   async function saveSetup(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!uploadedModelImageUrl || !uploadedModelImageStorageKey) {
-      setError("Upload a full-body model photo before entering MyFitPick.");
-      return;
-    }
-    if (!consentAccepted) {
-      setError("Accept preview consent before entering MyFitPick.");
-      return;
-    }
-
     setSaving(true);
     setError("");
     setMessage("");
 
-    const avatarResult = await updateAvatarProfile({
-      genderPresentation,
-      bodyPreset,
-      heightPreset: heightPreset || null,
-      bodyFitPreference,
-      shoeSize: shoeSize || null,
-      bodyMeasurementSource: shoeSize ? "manual" : "unknown",
-      bodyMeasurementConfidence: shoeSize ? 0.8 : 0,
-      tryOnModelSource: "uploaded",
-      uploadedModelImageUrl,
-      uploadedModelImageStorageKey,
-      consentAccepted: true
-    });
-
-    if (!avatarResult.ok) {
-      setSaving(false);
-      setError("We could not save your model photo. Check the upload and try again.");
-      return;
-    }
-
+    const locationName = currentLocationName();
     const [preferencesResult, userResult] = await Promise.all([
       updatePreferences({
-        styleIdentity: styleIdentity
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean)
-          .slice(0, 8)
+        styleIdentity: splitTags(styleIdentity),
+        colorPreferences: splitTags(colorPreferences),
+        avoidColors: splitTags(avoidColors).slice(0, 20),
+        comfortPriority,
+        formality,
+        repeatSensitivity,
+        weatherEnabled: Boolean(locationName)
       }),
       updateCurrentUser({
-        name,
-        weatherLocationName,
-        weatherLatitude,
-        weatherLongitude,
+        name: cleanLocationPart(name),
+        weatherLocationName: locationName,
+        weatherLatitude: null,
+        weatherLongitude: null,
         modelSetupCompleted: true
       })
     ]);
 
     setSaving(false);
 
-    if (!userResult.ok || !avatarResult.ok || !preferencesResult.ok) {
-      setError("We could not save your setup. Check the fields and try again.");
+    if (!preferencesResult.ok || !userResult.ok) {
+      setError("We could not save your style start. Check the fields and try again.");
       return;
     }
 
+    setMessage("Style start saved.");
     await session.refresh();
     router.push("/home");
     router.refresh();
@@ -323,7 +168,7 @@ export function EssentialModelSetup() {
             Create account
           </p>
           <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Start with your account.</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">After email verification, MyFitPick will help you set up your model in a few simple choices.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">After email verification, MyFitPick will ask only for the style basics needed to start.</p>
         </div>
         <AuthEntryForm compact initialMode="signup" />
       </Card>
@@ -334,11 +179,11 @@ export function EssentialModelSetup() {
     <Card className="space-y-5">
       <div>
         <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-          <ScanFace size={14} aria-hidden="true" />
-          Model setup
+          <Palette size={14} aria-hidden="true" />
+          Style start
         </p>
-        <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Create your model.</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">A few details and a full-body model photo help MyFitPick style your wardrobe, power virtual try-ons, and keep weather suggestions useful.</p>
+        <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Teach MyFitPick the essentials.</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">Start with a few preferences. Model photos, measurements, and weather permissions appear later when they improve a specific feature.</p>
       </div>
 
       {message ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{message}</p> : null}
@@ -349,129 +194,68 @@ export function EssentialModelSetup() {
           <input id="setup-name" className={inputClass} required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} />
         </FieldGroup>
 
+        <FieldGroup label="Style words" htmlFor="setup-style" help="Use a few words separated by commas.">
+          <input id="setup-style" className={inputClass} value={styleIdentity} onChange={(event) => setStyleIdentity(event.target.value)} placeholder="clean, polished, relaxed" />
+        </FieldGroup>
+        <div className="flex flex-wrap gap-2">
+          {styleChips.map((chip) => (
+            <button key={chip} type="button" onClick={() => setStyleIdentity((current) => addChip(current, chip))}>
+              <Chip active={splitTags(styleIdentity).includes(chip)}>{chip}</Chip>
+            </button>
+          ))}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
-          <FieldGroup label="Avatar base" htmlFor="setup-presentation">
-            <select id="setup-presentation" className={inputClass} value={genderPresentation} onChange={(event) => setGenderPresentation(event.target.value)}>
-              <option value="neutral">Not specified</option>
-              <option value="masculine">Male</option>
-              <option value="feminine">Female</option>
+          <FieldGroup label="Favorite colors" htmlFor="setup-colors">
+            <input id="setup-colors" className={inputClass} value={colorPreferences} onChange={(event) => setColorPreferences(event.target.value)} placeholder="black, white, navy" />
+          </FieldGroup>
+          <FieldGroup label="Use less often" htmlFor="setup-avoid-colors">
+            <input id="setup-avoid-colors" className={inputClass} value={avoidColors} onChange={(event) => setAvoidColors(event.target.value)} placeholder="yellow, orange" />
+          </FieldGroup>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {colorChips.map((chip) => (
+            <button key={chip} type="button" onClick={() => setColorPreferences((current) => addChip(current, chip))}>
+              <Chip active={splitTags(colorPreferences).includes(chip)}>{chip}</Chip>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FieldGroup label="Comfort" htmlFor="setup-comfort">
+            <select id="setup-comfort" className={inputClass} value={comfortPriority} onChange={(event) => setComfortPriority(event.target.value as "low" | "medium" | "high")}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
             </select>
           </FieldGroup>
-          <FieldGroup label="Body shape" htmlFor="setup-body">
-            <select id="setup-body" className={inputClass} value={bodyPreset} onChange={(event) => setBodyPreset(event.target.value)}>
-              <option value="average">Average</option>
-              <option value="slim">Slim</option>
-              <option value="athletic">Athletic</option>
-              <option value="curvy">Curvy</option>
-              <option value="plus">Plus</option>
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Height range" htmlFor="setup-height">
-            <select id="setup-height" className={inputClass} value={heightPreset} onChange={(event) => setHeightPreset(event.target.value)}>
-              <option value="">Not specified</option>
-              <option value="short">Short</option>
-              <option value="average">Average</option>
-              <option value="tall">Tall</option>
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Preferred fit" htmlFor="setup-fit">
-            <select id="setup-fit" className={inputClass} value={bodyFitPreference} onChange={(event) => setBodyFitPreference(event.target.value)}>
-              <option value="true_to_size">True to size</option>
-              <option value="slim">Slim</option>
-              <option value="regular">Regular</option>
+          <FieldGroup label="Formality" htmlFor="setup-formality">
+            <select id="setup-formality" className={inputClass} value={formality} onChange={(event) => setFormality(event.target.value)}>
               <option value="relaxed">Relaxed</option>
-              <option value="oversized">Oversized</option>
+              <option value="balanced">Balanced</option>
+              <option value="polished">Polished</option>
+              <option value="formal">Formal</option>
+            </select>
+          </FieldGroup>
+          <FieldGroup label="Repeat sensitivity" htmlFor="setup-repeat">
+            <select id="setup-repeat" className={inputClass} value={repeatSensitivity} onChange={(event) => setRepeatSensitivity(event.target.value)}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
             </select>
           </FieldGroup>
         </div>
 
-        <section className="space-y-4 rounded-xl3 border border-cocoa/20 bg-cocoa/5 p-4">
-          <div>
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
-              <Camera size={14} aria-hidden="true" />
-              Full-body model photo
-            </p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              Required for virtual try-on. The image must show your full body, from head to feet. You can upload a photo you already have or take a new one.
-            </p>
-          </div>
-          <label className="flex gap-3 rounded-2xl border border-line bg-surface/80 p-3 text-sm leading-6 text-ink">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 accent-cocoa"
-              checked={consentAccepted}
-              onChange={(event) => setConsentAccepted(event.target.checked)}
-            />
-            <span>
-              I understand this photo is used for MyFitPick preview and virtual try-on features.
-            </span>
-          </label>
-          <input
-            ref={modelFileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.currentTarget.value = "";
-              if (file) void handleModelPhoto(file);
-            }}
-          />
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] sm:items-stretch">
-            <div className="rounded-2xl border border-line bg-surface/70 p-3">
-              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">
-                <ImagePlus size={14} aria-hidden="true" />
-                Required image
-              </p>
-              {uploadedModelImageUrl ? (
-                <div
-                  role="img"
-                  aria-label="Uploaded full-body model photo"
-                  className="mt-3 aspect-[3/4] w-full rounded-xl bg-cover bg-center"
-                  style={previewBackground(uploadedModelImageUrl)}
-                />
-              ) : (
-                <div className="mt-3 flex aspect-[3/4] w-full items-center justify-center rounded-xl border border-dashed border-line bg-canvas/60 px-4 text-center text-xs font-semibold text-muted">
-                  No full-body photo uploaded yet
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-surface/70 p-3">
-              <div className="space-y-2">
-                <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">
-                  <ShieldCheck size={14} aria-hidden="true" />
-                  Photo guide
-                </p>
-                <p className="text-xs leading-5 text-muted">Use a full-body image where your head, torso, legs, and feet are visible. Good lighting helps MyFitPick create a cleaner preview.</p>
-                {!uploadedModelImageUrl ? (
-                  <p className="rounded-2xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">Required to finish setup.</p>
-                ) : null}
-              </div>
-              <Button type="button" variant="secondary" className="w-full" disabled={uploadingModel || saving || !consentAccepted} onClick={() => modelFileInputRef.current?.click()}>
-                {uploadingModel ? "Uploading..." : uploadedModelImageUrl ? "Replace full-body photo" : "Upload full-body photo"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <FieldGroup label="Shoe size" htmlFor="setup-shoe" help="Optional. This helps MyFitPick complete looks with footwear.">
-          <input id="setup-shoe" className={inputClass} value={shoeSize} onChange={(event) => setShoeSize(event.target.value)} placeholder="EU 43 / US 10" />
-        </FieldGroup>
-
-        <FieldGroup label="Style words" htmlFor="setup-style" help="Optional. Use a few words separated by commas.">
-          <input id="setup-style" className={inputClass} value={styleIdentity} onChange={(event) => setStyleIdentity(event.target.value)} placeholder="clean, polished, relaxed" />
-        </FieldGroup>
-
-        <div className="rounded-2xl border border-line bg-canvas/60 p-3">
+        <section className="rounded-2xl border border-line bg-canvas/60 p-3">
           <div className="mb-3">
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
               <MapPin size={14} aria-hidden="true" />
-              Dressing location
+              Usual dressing city
             </p>
-            <p className="mt-1 text-xs leading-5 text-muted">Choose your usual city and country for weather-aware suggestions. No address needed.</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Optional. A city helps MyFitPick make weather-aware suggestions when you ask for them.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <FieldGroup label="Country" htmlFor="setup-country" help="Used for weather-aware outfit suggestions.">
+            <FieldGroup label="Country" htmlFor="setup-country">
               <select id="setup-country" className={inputClass} value={selectedCountry} onChange={(event) => chooseCountry(event.target.value)}>
                 <option value="">Choose country</option>
                 {dressingLocationOptions.map((option) => (
@@ -480,8 +264,8 @@ export function EssentialModelSetup() {
                 <option value={otherLocation}>Other country</option>
               </select>
             </FieldGroup>
-            <FieldGroup label="City" htmlFor="setup-city" help="City is enough. No precise address needed.">
-              <select id="setup-city" className={inputClass} value={selectedCity} onChange={(event) => chooseCity(event.target.value)} disabled={!selectedCountry}>
+            <FieldGroup label="City" htmlFor="setup-city">
+              <select id="setup-city" className={inputClass} value={selectedCity} onChange={(event) => setSelectedCity(event.target.value)} disabled={!selectedCountry}>
                 <option value="">{selectedCountry ? "Choose city" : "Choose country first"}</option>
                 {cityOptions.map((city) => (
                   <option key={city} value={city}>{city}</option>
@@ -492,16 +276,27 @@ export function EssentialModelSetup() {
           </div>
           {usesCustomLocation ? (
             <FieldGroup label="City and country" htmlFor="setup-custom-location" help="Use this only if your city is not listed." className="mt-3">
-              <input id="setup-custom-location" className={inputClass} value={customLocation} onChange={(event) => updateCustomLocation(event.target.value)} placeholder="City, country" />
+              <input id="setup-custom-location" className={inputClass} value={customLocation} onChange={(event) => setCustomLocation(event.target.value)} placeholder="City, country" />
             </FieldGroup>
           ) : null}
-          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={useCurrentLocation} disabled={saving}>
-            <MapPin size={16} aria-hidden="true" />
-            Use current location
-          </Button>
+        </section>
+
+        <section className="rounded-2xl border border-olive/20 bg-olive/10 p-3">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
+            <CheckCircle2 size={14} aria-hidden="true" />
+            Later, when useful
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted">Virtual try-on will ask for a full-body model image inside Avatar Studio. Outfit recommendations work from your closet without that step.</p>
+        </section>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">Common moments</p>
+          <div className="flex flex-wrap gap-2">
+            {occasionChips.map((chip) => <Chip key={chip}>{chip}</Chip>)}
+          </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={saving || uploadingModel || !uploadedModelImageUrl || !consentAccepted}>
+        <Button type="submit" className="w-full" disabled={saving}>
           {saving ? "Saving..." : "Enter MyFitPick"}
         </Button>
       </form>

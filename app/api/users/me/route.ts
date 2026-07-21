@@ -6,7 +6,6 @@ import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
-import { getOrCreateAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { readJson, validateBody } from "@/lib/validation";
 import { updateUserSchema } from "@/schemas/user.schema";
 import { toSafeUser } from "@/models/User";
@@ -37,13 +36,7 @@ export async function PATCH(request: NextRequest) {
     ) {
       auth.user.weatherLocationUpdatedAt = new Date();
     }
-    if (parsed.data.modelSetupCompleted) {
-      const avatarProfile = await getOrCreateAvatarProfile(auth.user._id);
-      if (!avatarProfile.consentAccepted || !avatarProfile.uploadedModelImageUrl) {
-        return apiError("BAD_REQUEST", "Upload a full-body model photo before completing setup.");
-      }
-      auth.user.modelSetupCompletedAt = new Date();
-    }
+    if (parsed.data.modelSetupCompleted) auth.user.modelSetupCompletedAt = new Date();
 
     await auth.user.save();
     await recordAuditEvent({

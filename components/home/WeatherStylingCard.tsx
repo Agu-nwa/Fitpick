@@ -70,7 +70,7 @@ export function WeatherStylingCard() {
             <Button className="w-full rounded-full">Style me for today</Button>
           </Link>
           {!current ? (
-            <Link href="/onboarding?setup=model">
+            <Link href="/profile/preferences">
               <Button variant="secondary" className="w-full rounded-full">
                 <MapPin size={16} aria-hidden="true" />
                 Choose city

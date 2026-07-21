@@ -19,7 +19,28 @@ export const outfitRecommendationRequestSchema = z.object({
   weatherContext: z.string().trim().max(120).optional(),
   constraints: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
   allowNeedsCare: z.boolean().optional(),
-  styleDirection: z.enum(["simple", "polished", "bold", "statement", "weather-safe", "comfortable"]).optional()
+  styleDirection: z.enum(["simple", "polished", "bold", "statement", "weather-safe", "comfortable"]).optional(),
+  recommendationMode: z
+    .enum([
+      "todays_best",
+      "something_different",
+      "most_comfortable",
+      "luxury_edit",
+      "business_ready",
+      "smart_casual",
+      "date_night",
+      "weekend",
+      "travel_ready",
+      "rain_ready",
+      "minimal",
+      "statement_look",
+      "wedding_guest",
+      "interview",
+      "dinner",
+      "warm_weather",
+      "cold_weather"
+    ])
+    .optional()
 });
 
 export const outfitIdSchema = z.object({

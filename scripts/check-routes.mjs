@@ -21,6 +21,8 @@ const required = [
   "app/frontend-complete/page.tsx",
   "app/login/page.tsx",
   "app/register/page.tsx",
+  "app/terms/page.tsx",
+  "app/privacy/page.tsx",
   "app/admin/page.tsx",
 ];
 

@@ -1,15 +1,13 @@
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { EssentialModelSetup } from "@/components/onboarding/EssentialModelSetup";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 
 const steps = [
-  { title: "Create your model", body: "Set a simple profile so MyFitPick understands fit, style, and weather context." },
+  { title: "Set your style starting point", body: "Share a few preferences so MyFitPick has taste direction from day one." },
   { title: "Add a few pieces", body: "Start with the clothing, shoes, bags, and accessories you reach for often." },
-  { title: "Ask your Stylist", body: "Get outfit ideas shaped by your wardrobe, plans, and the weather." }
+  { title: "Ask your Stylist", body: "Get outfit ideas shaped by your closet, plans, and the context you choose to add." }
 ];
 
 const preferences = ["Clean", "Polished", "Comfort", "Minimal", "Neutrals", "Easy layers"];
@@ -22,9 +20,9 @@ export default function OnboardingPage() {
           <div className="flex h-full flex-col justify-end bg-[radial-gradient(circle_at_80%_10%,rgba(166,124,82,0.22),transparent_34%)]">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-cocoa">
             <CheckCircle2 size={14} aria-hidden="true" />
-              MyFitPick setup
+              Style start
           </p>
-            <h1 className="mt-3 max-w-[420px] font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl">Teach MyFitPick the essentials.</h1>
+            <h1 className="mt-3 max-w-[420px] font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl">Start with your style.</h1>
           </div>
         </div>
         <div className="space-y-3">
@@ -47,10 +45,6 @@ export default function OnboardingPage() {
           <EssentialModelSetup />
         </div>
       </section>
-      <div className="mt-8 grid gap-3">
-        <Link href="/wardrobe/add"><Button className="w-full">Add your first pieces</Button></Link>
-        <Link href="/home"><Button variant="secondary" className="w-full">Go to MyFitPick</Button></Link>
-      </div>
     </AppShell>
   );
 }

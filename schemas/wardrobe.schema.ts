@@ -129,6 +129,19 @@ export const wardrobeFiltersSchema = z.object({
 const allowedMimeTypes = DEFAULT_ALLOWED_IMAGE_MIME_TYPES;
 
 const imagePurposeSchema = z.enum(["front", "back", "fabricCloseUp", "label", "additional"]);
+const intakeGroupSchema = z.enum(["clothing", "shoes", "bags", "accessories"]);
+const labelPhotoKindSchema = z.enum(["care_label", "brand_label", "size_tag", "serial_label", "barcode", "price_tag", "hang_tag"]);
+
+const safeMetadataSchema = z.record(
+  z.union([
+    z.string().trim().max(500),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(z.string().trim().max(160)).max(40),
+    z.record(z.unknown())
+  ])
+).default({});
 
 const wardrobeImageVariantSchema = z
   .object({
@@ -188,6 +201,15 @@ export const uploadMetadataSchema = z.object({
   uploadStatus: z.enum(["pending", "uploaded", "failed"]).optional(),
   selectedCategory: wardrobeCategorySchema.optional(),
   selectedCategoryLabel: z.string().trim().max(80).optional(),
+  intakeCategoryId: z.string().trim().max(80).optional(),
+  intakeGroup: intakeGroupSchema.optional(),
+  labelPhotoKinds: z.array(labelPhotoKindSchema).max(7).optional(),
+  userInputMetadata: safeMetadataSchema.optional(),
+  categorySpecificMetadata: safeMetadataSchema.optional(),
+  ocrMetadata: safeMetadataSchema.optional(),
+  recommendationMetadata: safeMetadataSchema.optional(),
+  virtualTryOnMetadata: safeMetadataSchema.optional(),
+  searchMetadata: safeMetadataSchema.optional(),
   suggestedTags: z.record(z.unknown()).optional()
 });
 

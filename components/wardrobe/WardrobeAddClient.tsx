@@ -1,9 +1,26 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, ImagePlus, PencilLine, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  Camera,
+  CheckCircle2,
+  Gem,
+  ImagePlus,
+  Images,
+  PencilLine,
+  Shirt,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+  Trash2,
+  UploadCloud
+} from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -22,129 +39,20 @@ import {
   uploadImageViaServer,
   uploadWardrobeMetadata
 } from "@/lib/api-client";
+import {
+  findIntakeCategory,
+  intakeCategories,
+  intakeGroups,
+  labelPhotoKinds,
+  type IntakeGroupId,
+  type LabelPhotoKind,
+  type WardrobeIntakeCategory
+} from "@/lib/wardrobe/category-intelligence";
 import { MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB, isAllowedImageMimeType } from "@/lib/upload-limits";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
-import type { WardrobeCategory } from "@/types/wardrobe";
-
-type CategoryOption = {
-  label: string;
-  backendCategory: WardrobeCategory;
-  subcategory?: string;
-  helper: string;
-  slots: WardrobeImageSlotDefinition[];
-};
-
-const categoryOptions: CategoryOption[] = [
-  {
-    label: "Top",
-    backendCategory: "tops",
-    helper: "Shirts, tees, blouses, knits, and similar pieces.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full front view", required: true },
-      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
-      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, weave, or pattern" },
-      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
-    ]
-  },
-  {
-    label: "Bottom",
-    backendCategory: "bottoms",
-    helper: "Trousers, jeans, skirts, shorts, and similar pieces.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
-      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, weave, or stretch" },
-      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
-    ]
-  },
-  {
-    label: "Dress",
-    backendCategory: "dresses",
-    helper: "Dresses, gowns, jumpsuits, and one-piece outfits.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Back or side if useful" },
-      { key: "fabricCloseUp", label: "Fabric detail", helper: "Texture, drape, or pattern" },
-      { key: "label", label: "Label or product details", helper: "Size, care, brand, or code" }
-    ]
-  },
-  {
-    label: "Outerwear",
-    backendCategory: "outerwear",
-    helper: "Jackets, coats, blazers, cardigans, and layers.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Back or lining if useful" },
-      { key: "fabricCloseUp", label: "Material detail", helper: "Texture, hardware, or lining" },
-      { key: "label", label: "Label or product details", helper: "Care, brand, size, or code" }
-    ]
-  },
-  {
-    label: "Shoes",
-    backendCategory: "shoes",
-    helper: "Sneakers, loafers, heels, boots, sandals, and similar items.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Pair or single shoe view", required: true },
-      { key: "back", label: "Additional angle", helper: "Side, sole, or insole" },
-      { key: "label", label: "Label or product details", helper: "Tongue, insole, size, or sole marking" }
-    ]
-  },
-  {
-    label: "Bag",
-    backendCategory: "bags",
-    helper: "Handbags, totes, backpacks, luggage, and clutches.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full bag view", required: true },
-      { key: "back", label: "Additional angle", helper: "Interior or hardware" },
-      { key: "label", label: "Label or product details", helper: "Interior stamp, date code, or serial detail" }
-    ]
-  },
-  {
-    label: "Watch",
-    backendCategory: "accessories",
-    subcategory: "Watch",
-    helper: "Watches, straps, and timepieces.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Dial and strap", required: true },
-      { key: "back", label: "Additional angle", helper: "Case-back or clasp" },
-      { key: "label", label: "Label or product details", helper: "Serial, reference, box, or certificate" }
-    ]
-  },
-  {
-    label: "Jewellery",
-    backendCategory: "accessories",
-    subcategory: "Jewellery",
-    helper: "Rings, necklaces, bracelets, earrings, and fine jewellery.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Clasp, setting, or underside" },
-      { key: "label", label: "Label or product details", helper: "Hallmark, engraving, or certificate" }
-    ]
-  },
-  {
-    label: "Accessory",
-    backendCategory: "accessories",
-    helper: "Belts, scarves, eyewear, hats, and smaller pieces.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Back, clasp, or interior" },
-      { key: "label", label: "Label or product details", helper: "Stamp, code, size, or care detail" }
-    ]
-  },
-  {
-    label: "Other",
-    backendCategory: "accessories",
-    subcategory: "Other",
-    helper: "Use this when the item does not fit another category.",
-    slots: [
-      { key: "front", label: "Main photo", helper: "Clear full item view", required: true },
-      { key: "back", label: "Additional angle", helper: "Any useful second view" },
-      { key: "label", label: "Label or product details", helper: "Marking, code, or product detail" }
-    ]
-  }
-];
 
 type SlotFile = {
+  id: string;
   file: File;
   previewUrl: string;
 };
@@ -158,6 +66,20 @@ type UploadedSlot = WardrobeImageAsset & {
   thumbnailUrl: string;
 };
 
+type FileTarget = {
+  purpose: WardrobeImagePurpose;
+  multiple?: boolean;
+  camera?: boolean;
+};
+
+const draftKey = "myfitpick:wardrobe-intake-draft:v1";
+const groupIcons: Record<IntakeGroupId, typeof Shirt> = {
+  clothing: Shirt,
+  shoes: Images,
+  bags: ShoppingBag,
+  accessories: Gem
+};
+
 function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
   if (!uploaded) return undefined;
   return {
@@ -167,6 +89,10 @@ function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
     uploadedAt: uploaded.uploadedAt,
     purpose: uploaded.purpose
   };
+}
+
+function fileId(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`;
 }
 
 function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFile>>) {
@@ -202,6 +128,27 @@ function validateLocalImage(file: File) {
   return "";
 }
 
+async function readImageDimensions(file: File): Promise<{ width?: number; height?: number }> {
+  const mimeType = mimeTypeForFile(file);
+  if (/heic|heif/i.test(mimeType)) return {};
+
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      resolve(width > 0 && height > 0 ? { width, height } : {});
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({});
+    };
+    image.src = url;
+  });
+}
+
 function uploadFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (/failed to fetch|network|cors|direct_upload_failed|s3/i.test(message)) {
@@ -210,66 +157,180 @@ function uploadFailureMessage(error: unknown) {
   return message || "We could not upload these photos. Try again.";
 }
 
+function groupCategory(category: WardrobeIntakeCategory, selected: boolean, onClick: () => void) {
+  const Icon = groupIcons[category.group];
+  return (
+    <button
+      key={category.id}
+      type="button"
+      onClick={onClick}
+      className={`focus-ring group overflow-hidden rounded-[1.75rem] border text-left shadow-soft transition hover:-translate-y-0.5 ${selected ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-white/82 text-ink hover:border-cocoa/35"}`}
+    >
+      <div className="relative h-28 overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${category.image})` }} />
+        <div className={`absolute inset-0 ${selected ? "bg-cocoa/35" : "bg-ink/10"}`} />
+        <span className={`absolute left-3 top-3 flex size-10 items-center justify-center rounded-2xl ${selected ? "bg-canvas text-cocoa" : "bg-white/88 text-cocoa"}`}>
+          <Icon size={19} aria-hidden="true" />
+        </span>
+      </div>
+      <div className="p-4">
+        <p className="text-base font-black tracking-[-0.03em]">{category.title}</p>
+        <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected ? "text-canvas/75" : "text-muted"}`}>{category.description}</p>
+      </div>
+    </button>
+  );
+}
+
+function selectedGroupCategories(groupId: IntakeGroupId | null) {
+  if (!groupId) return [];
+  return intakeCategories.filter((category) => category.group === groupId);
+}
+
 export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedCategoryLabel, setSelectedCategoryLabel] = useState("");
-  const selectedCategory = categoryOptions.find((option) => option.label === selectedCategoryLabel);
-  const [activePurpose, setActivePurpose] = useState<WardrobeImagePurpose>("front");
+  const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const selectedCategory = findIntakeCategory(selectedCategoryId);
+  const [activeTarget, setActiveTarget] = useState<FileTarget>({ purpose: "front" });
   const [slotFiles, setSlotFiles] = useState<Partial<Record<WardrobeImagePurpose, SlotFile>>>({});
+  const [additionalFiles, setAdditionalFiles] = useState<SlotFile[]>([]);
+  const [labelEnabled, setLabelEnabled] = useState(false);
+  const [selectedLabelKinds, setSelectedLabelKinds] = useState<LabelPhotoKind[]>(["care_label", "brand_label", "size_tag"]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [draftNotice, setDraftNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [status, setStatus] = useState<"idle" | "unavailable" | "error">("idle");
   const [message, setMessage] = useState("");
 
-  const activeSlots = selectedCategory?.slots || [];
+  const groupOptions = intakeGroups;
+  const categoryOptions = selectedGroupCategories(selectedGroupId);
+  const activeSlots = useMemo(() => {
+    const slots = selectedCategory?.slots || [];
+    return labelEnabled ? slots : slots.filter((slot) => slot.key !== "label");
+  }, [labelEnabled, selectedCategory]);
   const requiredSlots = activeSlots.filter((slot) => slot.required);
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
-  const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length;
+  const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length + additionalFiles.length;
   const missingRequired = requiredSlots.filter((slot) => !slotFiles[slot.key]);
+  const canContinue = Boolean(selectedCategory && !missingRequired.length && !isSaving && !isAnalyzing);
   const uploadSteps = [
     { label: "Choose category", status: selectedCategory ? "complete" : "current" },
     { label: "Add photos", status: selectedCategory && !missingRequired.length ? "complete" : selectedCategory ? "current" : "pending" },
     { label: "Review details", status: isAnalyzing ? "current" : "pending" }
   ] as const;
 
-  function selectCategory(label: string) {
-    setSelectedCategoryLabel(label);
-    setActivePurpose("front");
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as { selectedGroupId?: IntakeGroupId; selectedCategoryId?: string; labelEnabled?: boolean; selectedLabelKinds?: LabelPhotoKind[] };
+      if (draft.selectedGroupId) setSelectedGroupId(draft.selectedGroupId);
+      if (draft.selectedCategoryId) setSelectedCategoryId(draft.selectedCategoryId);
+      if (typeof draft.labelEnabled === "boolean") setLabelEnabled(draft.labelEnabled);
+      if (Array.isArray(draft.selectedLabelKinds) && draft.selectedLabelKinds.length) setSelectedLabelKinds(draft.selectedLabelKinds);
+      setDraftNotice("Draft recovered. Add photos to continue.");
+    } catch {
+      window.localStorage.removeItem(draftKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        draftKey,
+        JSON.stringify({ selectedGroupId, selectedCategoryId, labelEnabled, selectedLabelKinds })
+      );
+    } catch {
+      // Draft recovery is helpful, not required for upload safety.
+    }
+  }, [labelEnabled, selectedCategoryId, selectedGroupId, selectedLabelKinds]);
+
+  function selectGroup(groupId: IntakeGroupId) {
+    setSelectedGroupId(groupId);
+    setSelectedCategoryId("");
     setMessage("");
     setStatus("idle");
   }
 
-  function handleSelectSlot(purpose: WardrobeImagePurpose) {
+  function selectCategory(category: WardrobeIntakeCategory) {
+    setSelectedGroupId(category.group);
+    setSelectedCategoryId(category.id);
+    setActiveTarget({ purpose: "front" });
+    setMessage("");
+    setStatus("idle");
+  }
+
+  function openFilePicker(target: FileTarget) {
     if (!selectedCategory) {
       setMessage("Choose what you are adding first.");
       return;
     }
-    setActivePurpose(purpose);
+    setActiveTarget(target);
     fileInputRef.current?.click();
   }
 
-  function handleFile(purpose: WardrobeImagePurpose, file: File) {
+  function handleSlotFile(purpose: WardrobeImagePurpose, file: File) {
     const validationMessage = validateLocalImage(file);
-    if (validationMessage) {
-      setMessage(validationMessage);
-      setStatus("idle");
-      return;
-    }
+    if (validationMessage) return validationMessage;
 
     setSlotFiles((current) => {
       if (current[purpose]?.previewUrl) URL.revokeObjectURL(current[purpose]?.previewUrl || "");
       return {
         ...current,
         [purpose]: {
+          id: fileId(file),
           file,
           previewUrl: URL.createObjectURL(file)
         }
       };
     });
+    return "";
+  }
+
+  function handleAdditionalFiles(files: File[]) {
+    const nextFiles: SlotFile[] = [];
+    for (const file of files) {
+      const validationMessage = validateLocalImage(file);
+      if (validationMessage) return validationMessage;
+      nextFiles.push({ id: fileId(file), file, previewUrl: URL.createObjectURL(file) });
+    }
+
+    setAdditionalFiles((current) => [...current, ...nextFiles].slice(0, 8));
+    return "";
+  }
+
+  function handleFiles(files: FileList | File[]) {
+    const selected = Array.from(files);
+    if (!selected.length) return;
+
+    let validationMessage = "";
+    if (activeTarget.multiple || activeTarget.purpose === "additional") {
+      const [first, ...rest] = selected;
+      if (first && !slotFiles.front) validationMessage = handleSlotFile("front", first);
+      if (!validationMessage && rest.length) validationMessage = handleAdditionalFiles(rest);
+      if (!validationMessage && first && slotFiles.front) validationMessage = handleAdditionalFiles(selected);
+    } else {
+      validationMessage = handleSlotFile(activeTarget.purpose, selected[0]);
+    }
+
+    if (validationMessage) {
+      setMessage(validationMessage);
+      setStatus("idle");
+      return;
+    }
+
     setMessage("");
     setStatus("idle");
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (!selectedCategory) return;
+    setActiveTarget({ purpose: "additional", multiple: true });
+    handleFiles(event.dataTransfer.files);
   }
 
   function removeSlot(purpose: WardrobeImagePurpose) {
@@ -281,10 +342,51 @@ export function WardrobeAddClient() {
     });
   }
 
+  function removeAdditional(id: string) {
+    setAdditionalFiles((current) => {
+      const match = current.find((file) => file.id === id);
+      if (match?.previewUrl) URL.revokeObjectURL(match.previewUrl);
+      return current.filter((file) => file.id !== id);
+    });
+  }
+
+  function moveAdditional(id: string, direction: -1 | 1) {
+    setAdditionalFiles((current) => {
+      const index = current.findIndex((file) => file.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
+  function makePrimaryFromAdditional(id: string) {
+    const selected = additionalFiles.find((file) => file.id === id);
+    if (!selected) return;
+    const previousFront = slotFiles.front;
+    setSlotFiles((current) => ({ ...current, front: selected }));
+    setAdditionalFiles((current) => {
+      const rest = current.filter((file) => file.id !== id);
+      return previousFront ? [previousFront, ...rest].slice(0, 8) : rest;
+    });
+  }
+
+  function toggleLabelKind(kind: LabelPhotoKind) {
+    setSelectedLabelKinds((current) => {
+      if (current.includes(kind)) return current.filter((item) => item !== kind);
+      return [...current, kind].slice(0, 7);
+    });
+  }
+
   async function uploadSlot(purpose: WardrobeImagePurpose, slot: SlotFile): Promise<UploadedSlot> {
+    const progressKey = `${purpose}:${slot.id}`;
     const mimeType = mimeTypeForFile(slot.file);
     const validationMessage = validateLocalImage(slot.file);
     if (validationMessage) throw new Error(validationMessage);
+    setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
+    const dimensions = await readImageDimensions(slot.file);
 
     const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string }): UploadedSlot => ({
       url: input.url,
@@ -295,8 +397,7 @@ export function WardrobeAddClient() {
       filename: slot.file.name,
       mimeType,
       sizeBytes: slot.file.size,
-      width: 1,
-      height: 1,
+      ...dimensions,
       thumbnailUrl: input.url
     });
 
@@ -306,10 +407,14 @@ export function WardrobeAddClient() {
       sizeBytes: slot.file.size,
       purpose: `wardrobe_${purpose}`
     });
+    setUploadProgress((current) => ({ ...current, [progressKey]: 45 }));
 
     if (!signed.ok) {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
-      if (fallback.ok) return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      if (fallback.ok) {
+        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+        return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      }
       throw new Error(signed.error.message || fallback.error.message);
     }
 
@@ -320,6 +425,7 @@ export function WardrobeAddClient() {
     }
 
     try {
+      setUploadProgress((current) => ({ ...current, [progressKey]: 72 }));
       const s3Response = await fetch(uploadUrl, {
         method: uploadAccess.method || "PUT",
         headers: uploadAccess.headers || { "content-type": mimeType },
@@ -329,10 +435,14 @@ export function WardrobeAddClient() {
       if (!s3Response.ok) throw new Error("direct_upload_failed");
 
       const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
+      setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
       return makeUploadedSlot({ url: publicUrl, storageKey: uploadAccess.storageKey });
     } catch {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
-      if (fallback.ok) return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      if (fallback.ok) {
+        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+        return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+      }
       throw new Error(fallback.error.message || "direct_upload_failed");
     }
   }
@@ -351,23 +461,28 @@ export function WardrobeAddClient() {
     setIsSaving(true);
     setStatus("idle");
     setMessage("");
+    setUploadProgress({});
 
     try {
-      const uploadableSlots = activeSlots
+      const slotEntries = activeSlots
         .map((slot) => ({ purpose: slot.key, slot: slotFiles[slot.key] }))
         .filter((entry): entry is { purpose: WardrobeImagePurpose; slot: SlotFile } => Boolean(entry.slot));
-      const uploaded = await Promise.all(uploadableSlots.map((entry) => uploadSlot(entry.purpose, entry.slot)));
-      const byPurpose = Object.fromEntries(uploaded.map((asset) => [asset.purpose, asset])) as Partial<Record<WardrobeImagePurpose, UploadedSlot>>;
+      const additionalEntries = additionalFiles.map((slot) => ({ purpose: "additional" as const, slot }));
+      const uploaded = await Promise.all([...slotEntries, ...additionalEntries].map((entry) => uploadSlot(entry.purpose, entry.slot)));
+      const standardUploads = uploaded.filter((asset) => asset.purpose !== "additional");
+      const additionalUploads = uploaded.filter((asset) => asset.purpose === "additional");
+      const byPurpose = Object.fromEntries(standardUploads.map((asset) => [asset.purpose, asset])) as Partial<Record<WardrobeImagePurpose, UploadedSlot>>;
       const primary = byPurpose.front || uploaded[0];
 
       if (!primary) throw new Error("Add a main photo before continuing.");
 
+      const labelKinds = labelEnabled ? selectedLabelKinds : [];
       const result = await uploadWardrobeMetadata({
         filename: primary.filename,
         mimeType: primary.mimeType,
         sizeBytes: primary.sizeBytes,
-        width: primary.width || 1,
-        height: primary.height || 1,
+        ...(primary.width ? { width: primary.width } : {}),
+        ...(primary.height ? { height: primary.height } : {}),
         provider: "s3",
         storageKey: primary.storageKey,
         publicId: primary.storageKey,
@@ -376,17 +491,49 @@ export function WardrobeAddClient() {
         thumbnailUrl: primary.thumbnailUrl,
         uploadStatus: "uploaded",
         selectedCategory: selectedCategory.backendCategory,
-        selectedCategoryLabel: selectedCategory.label,
+        selectedCategoryLabel: selectedCategory.subcategory,
+        intakeCategoryId: selectedCategory.id,
+        intakeGroup: selectedCategory.group,
+        labelPhotoKinds: labelKinds,
+        userInputMetadata: {
+          categoryGroup: selectedCategory.group,
+          categoryId: selectedCategory.id,
+          category: selectedCategory.backendCategory,
+          subcategory: selectedCategory.subcategory,
+          photoGuidance: selectedCategory.guidance,
+          labelIntelligenceRequested: labelEnabled,
+          labelPhotoKinds: labelKinds,
+          primaryImagePurpose: "front",
+          photoCount: uploaded.length
+        },
+        categorySpecificMetadata: {
+          title: selectedCategory.title,
+          guidance: selectedCategory.guidance,
+          visionFocus: selectedCategory.visionFocus,
+          allowedMeasurementKeys: selectedCategory.allowedMeasurementKeys
+        },
+        recommendationMetadata: {
+          outfitRoleHint: selectedCategory.backendCategory === "shoes" ? "footwear" : selectedCategory.backendCategory === "bags" || selectedCategory.backendCategory === "accessories" ? "finisher" : "garment"
+        },
+        virtualTryOnMetadata: {
+          eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
+          primaryImagePurpose: "front"
+        },
+        searchMetadata: {
+          seedTerms: [selectedCategory.title, selectedCategory.subcategory, selectedCategory.backendCategory, ...selectedCategory.visionFocus]
+        },
         suggestedTags: {
           category: selectedCategory.backendCategory,
-          subcategory: selectedCategory.subcategory || selectedCategory.label
+          subcategory: selectedCategory.subcategory,
+          intakeCategoryId: selectedCategory.id,
+          intakeGroup: selectedCategory.group
         },
         images: {
           ...(toImageAsset(byPurpose.front) ? { front: toImageAsset(byPurpose.front) } : {}),
           ...(toImageAsset(byPurpose.back) ? { back: toImageAsset(byPurpose.back) } : {}),
           ...(toImageAsset(byPurpose.fabricCloseUp) ? { fabricCloseUp: toImageAsset(byPurpose.fabricCloseUp) } : {}),
-          ...(toImageAsset(byPurpose.label) ? { label: toImageAsset(byPurpose.label) } : {}),
-          additional: []
+          ...(labelEnabled && toImageAsset(byPurpose.label) ? { label: toImageAsset(byPurpose.label) } : {}),
+          additional: additionalUploads.map((asset) => toImageAsset(asset)).filter(Boolean)
         }
       });
 
@@ -396,6 +543,7 @@ export function WardrobeAddClient() {
         return;
       }
 
+      window.localStorage.removeItem(draftKey);
       setIsSaving(false);
       setIsAnalyzing(true);
       const analysis = await analyzeWardrobeUpload(result.data.upload.id);
@@ -419,90 +567,156 @@ export function WardrobeAddClient() {
   if (session.status === "backend-unavailable") return <WardrobeBackendUnavailableState onRetry={session.refresh} />;
 
   return (
-    <div className="mt-4 space-y-5">
+    <div className="mt-4 space-y-6">
       {status === "unavailable" ? <WardrobeBackendUnavailableState /> : null}
       {status === "error" ? <WardrobeApiErrorState /> : null}
 
-      <section className="space-y-3">
+      {draftNotice ? (
+        <p className="rounded-2xl border border-cocoa/20 bg-cocoa/10 px-4 py-3 text-xs font-semibold leading-5 text-ink">
+          {draftNotice}
+        </p>
+      ) : null}
+
+      <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Start here</p>
-            <h2 className="mt-1 text-xl font-bold text-ink">What are you adding?</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Step 1</p>
+            <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Choose what you are adding</h2>
           </div>
-          <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? selectedCategory.label : "Choose"}</Badge>
+          <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? selectedCategory.title : "Choose"}</Badge>
         </div>
-        <div className="mobile-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:px-0 lg:grid-cols-5">
-            {categoryOptions.map((option) => (
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {groupOptions.map((group) => {
+            const Icon = groupIcons[group.id];
+            const selected = selectedGroupId === group.id;
+            return (
               <button
-                key={option.label}
+                key={group.id}
                 type="button"
-                className={`focus-ring min-w-fit rounded-full border px-4 py-2 text-left transition sm:min-h-20 sm:rounded-2xl sm:p-3 ${
-                  selectedCategoryLabel === option.label
-                    ? "border-cocoa bg-cocoa text-canvas shadow-glow"
-                    : "border-line bg-canvas/70 text-ink hover:border-cocoa/40"
-                }`}
-                onClick={() => selectCategory(option.label)}
+                onClick={() => selectGroup(group.id)}
+                className={`focus-ring group overflow-hidden rounded-[1.75rem] border text-left shadow-soft transition hover:-translate-y-0.5 ${selected ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-white/82 text-ink hover:border-cocoa/35"}`}
               >
-                <span className="block whitespace-nowrap text-sm font-bold">{option.label}</span>
-                <span className={`mt-2 hidden text-xs leading-5 sm:block ${selectedCategoryLabel === option.label ? "text-canvas/70" : "text-muted"}`}>
-                  {option.helper}
-                </span>
+                <div className="relative h-28 overflow-hidden">
+                  <div className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${group.image})` }} />
+                  <div className={`absolute inset-0 ${selected ? "bg-cocoa/35" : "bg-ink/10"}`} />
+                  <span className={`absolute left-3 top-3 flex size-10 items-center justify-center rounded-2xl ${selected ? "bg-canvas text-cocoa" : "bg-white/88 text-cocoa"}`}>
+                    <Icon size={19} aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="p-4">
+                  <p className="text-base font-black tracking-[-0.03em]">{group.title}</p>
+                  <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected ? "text-canvas/75" : "text-muted"}`}>{group.description}</p>
+                </div>
               </button>
-            ))}
+            );
+          })}
         </div>
+
+        {selectedGroupId ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {categoryOptions.map((category) => groupCategory(category, selectedCategoryId === category.id, () => selectCategory(category)))}
+          </div>
+        ) : null}
       </section>
 
       <section>
-        <Card className="space-y-4 overflow-hidden p-4 sm:p-5">
+        <Card className="space-y-5 overflow-hidden p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                 <ImagePlus size={14} aria-hidden="true" />
-                Photos
+                Step 2
               </p>
-              <h2 className="mt-1 text-xl font-bold text-ink">Add one clear main photo.</h2>
+              <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Upload photos</h2>
               <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                Optional detail photos help with size, fabric, care label, brand, or product code.
+                Add a clear main photo. Extra angles help MyFitPick understand shape, material, styling, and future try-on quality.
               </p>
             </div>
             <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>
-              {selectedCategory ? `${selectedCount}/${activeSlots.length} added` : "Pick category"}
+              {selectedCategory ? `${selectedCount} added` : "Pick category"}
             </Badge>
           </div>
+
           <div className="hidden sm:block">
             <ProgressSteps steps={[...uploadSteps]} />
           </div>
+
           {selectedCategory ? (
-            <WardrobeImageSlots images={slotImages} onSelect={handleSelectSlot} disabled={isSaving || isAnalyzing} slots={activeSlots} />
+            <div className="rounded-2xl border border-line bg-canvas/60 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo guide</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedCategory.guidance.map((guide) => <Badge key={guide} tone="neutral">{guide}</Badge>)}
+              </div>
+            </div>
+          ) : null}
+
+          {selectedCategory ? (
+            <div
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+              className="rounded-[1.75rem] border border-dashed border-cocoa/30 bg-gradient-to-br from-cocoa/8 via-white/70 to-olive/10 p-4"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="inline-flex items-center gap-2 text-sm font-bold text-ink">
+                    <UploadCloud size={17} className="text-cocoa" aria-hidden="true" />
+                    Camera, gallery, or drag and drop
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will organize them before review.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing}>
+                    <Camera size={15} aria-hidden="true" />
+                    Camera
+                  </Button>
+                  <Button type="button" className="rounded-full" onClick={() => openFilePicker({ purpose: "additional", multiple: true })} disabled={isSaving || isAnalyzing}>
+                    <Images size={15} aria-hidden="true" />
+                    Gallery
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {selectedCategory ? (
+            <WardrobeImageSlots images={slotImages} onSelect={(purpose) => openFilePicker({ purpose })} disabled={isSaving || isAnalyzing} slots={activeSlots as WardrobeImageSlotDefinition[]} />
           ) : (
             <div className="rounded-2xl border border-dashed border-line bg-canvas/60 px-4 py-8 text-center text-sm font-semibold text-muted">
               Choose a category to see the right photo slots.
             </div>
           )}
+
           <input
             ref={fileInputRef}
             className="sr-only"
             type="file"
             accept="image/*"
-            capture={activePurpose === "front" ? "environment" : undefined}
+            multiple={Boolean(activeTarget.multiple)}
+            capture={activeTarget.camera ? "environment" : undefined}
             onChange={(event) => {
-              const file = event.target.files?.[0] || null;
-              if (file) handleFile(activePurpose, file);
+              if (event.target.files) handleFiles(event.target.files);
               event.currentTarget.value = "";
             }}
           />
 
           {selectedCategory ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-3">
               {activeSlots.map((slot) => {
                 const selected = slotFiles[slot.key];
                 if (!selected) return null;
+                const progress = uploadProgress[`${slot.key}:${selected.id}`];
                 return (
                   <div key={slot.key} className="rounded-2xl border border-line bg-canvas/60 p-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}</p>
-                    <p className="mt-1 break-words text-[11px] leading-4 text-muted">{selected.file.name}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}{slot.key === "front" ? " · Primary" : ""}</p>
+                        <p className="mt-1 break-words text-[11px] leading-4 text-muted">{selected.file.name}</p>
+                      </div>
+                      {progress ? <Badge tone={progress >= 100 ? "success" : "warning"}>{progress >= 100 ? "Uploaded" : `${progress}%`}</Badge> : null}
+                    </div>
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => handleSelectSlot(slot.key)} disabled={isSaving || isAnalyzing}>
+                      <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => openFilePicker({ purpose: slot.key })} disabled={isSaving || isAnalyzing}>
                         <PencilLine size={13} aria-hidden="true" />
                         Replace
                       </Button>
@@ -513,25 +727,93 @@ export function WardrobeAddClient() {
                   </div>
                 );
               })}
+
+              {additionalFiles.length ? (
+                <div className="rounded-2xl border border-line bg-canvas/60 p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Extra photos</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {additionalFiles.map((file, index) => {
+                      const progress = uploadProgress[`additional:${file.id}`];
+                      return (
+                        <div key={file.id} className="flex items-center gap-3 rounded-2xl bg-white/70 p-2">
+                          <div className="size-16 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${file.previewUrl})` }} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-bold text-ink">{file.file.name}</p>
+                            <p className="text-[11px] text-muted">Extra angle {index + 1}{progress ? ` · ${progress >= 100 ? "Uploaded" : `${progress}%`}` : ""}</p>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-cocoa" onClick={() => makePrimaryFromAdditional(file.id)} disabled={isSaving || isAnalyzing}>Make primary</button>
+                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-muted" onClick={() => moveAdditional(file.id, -1)} disabled={index === 0 || isSaving || isAnalyzing} aria-label="Move photo up"><ArrowUp size={12} /></button>
+                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-muted" onClick={() => moveAdditional(file.id, 1)} disabled={index === additionalFiles.length - 1 || isSaving || isAnalyzing} aria-label="Move photo down"><ArrowDown size={12} /></button>
+                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-danger" onClick={() => removeAdditional(file.id)} disabled={isSaving || isAnalyzing} aria-label="Delete photo"><Trash2 size={12} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : null}
-
-          <Button type="button" className="w-full" onClick={() => void handlePhotoUpload()} disabled={isSaving || isAnalyzing}>
-            {isSaving || isAnalyzing ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-            {isSaving ? "Uploading photos..." : isAnalyzing ? "Checking details..." : "Upload and review details"}
-          </Button>
-
-          {message ? (
-            <p className="inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
-              <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-              {message}
-            </p>
           ) : null}
         </Card>
       </section>
 
-      <Link href="/wardrobe" className="block text-center text-sm font-semibold text-cocoa">
-        Back to wardrobe
+      {selectedCategory ? (
+        <section>
+          <Card className="space-y-4 border-cocoa/15 bg-gradient-to-br from-white via-canvas to-cocoa/8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
+                  <Tag size={14} aria-hidden="true" />
+                  Optional label intelligence
+                </p>
+                <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Would you like MyFitPick to read the item label?</h2>
+                <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
+                  This helps identify materials, care instructions, size, product details, serials, and manufacturing text automatically.
+                </p>
+              </div>
+              <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={() => setLabelEnabled((value) => !value)} disabled={isSaving || isAnalyzing}>
+                {labelEnabled ? "Label reading on" : "Add label photos"}
+              </Button>
+            </div>
+
+            {labelEnabled ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {labelPhotoKinds.map((kind) => (
+                    <button
+                      key={kind.id}
+                      type="button"
+                      title={kind.helper}
+                      onClick={() => toggleLabelKind(kind.id)}
+                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${selectedLabelKinds.includes(kind.id) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:text-ink"}`}
+                    >
+                      {kind.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs leading-5 text-muted">Use the Label slot above for the clearest label photo. Extra label photos can be added as extra photos.</p>
+              </div>
+            ) : null}
+          </Card>
+        </section>
+      ) : null}
+
+      <section className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 rounded-[1.75rem] border border-line bg-surface/90 p-3 shadow-glow backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
+        <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
+          {isSaving || isAnalyzing ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+          {isSaving ? "Uploading photos..." : isAnalyzing ? "Building garment intelligence..." : message && /could not|too large|try again/i.test(message) ? "Retry upload" : "Upload and review details"}
+        </Button>
+        {message ? (
+          <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
+            <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+            {message}
+          </p>
+        ) : null}
+      </section>
+
+      <Link href="/wardrobe" className="block pb-3 text-center text-sm font-semibold text-cocoa">
+        Back to closet
       </Link>
     </div>
   );

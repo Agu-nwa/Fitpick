@@ -2,6 +2,7 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const jobTypes = [
   "wardrobe_analysis",
+  "wardrobe_enrichment",
   "label_ocr",
   "outfit_preview_generation",
   "avatar_preview_generation",

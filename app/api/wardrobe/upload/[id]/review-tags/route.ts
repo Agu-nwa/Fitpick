@@ -8,6 +8,12 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem, serializeWardrobeUpload } from "@/lib/wardrobe";
+import { cleanGarmentMeasurements } from "@/lib/wardrobe/category-intelligence";
+import {
+  buildRecommendationMetadata,
+  buildVirtualTryOnMetadata,
+  buildWardrobeSearchMetadata
+} from "@/lib/wardrobe/enrichment";
 import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
@@ -77,6 +83,20 @@ function fitVerifiedFields(data: any) {
   };
 }
 
+function labelMetadataFromAnalysis(aiAnalysis: any) {
+  const fields = aiAnalysis?.fields || {};
+  return {
+    labelExtractionStatus: aiAnalysis?.labelExtractionStatus || "not_provided",
+    labelWarnings: aiAnalysis?.labelWarnings || [],
+    rawLabelText: fields.rawLabelText || null,
+    brand: fields.brand || null,
+    size: fields.size || null,
+    fabricComposition: fields.fabricComposition || null,
+    careInstructions: fields.careInstructions || null,
+    countryOfOrigin: fields.countryOfOrigin || null
+  };
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
   const limited = rateLimitRequest({ key: `wardrobe-upload-review:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
@@ -102,6 +122,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ...fitVerifiedFields(parsed.data)
     };
     const condition = inferCondition(parsed.data);
+    const garmentMeasurements = cleanGarmentMeasurements(
+      parsed.data.garmentMeasurements || {},
+      parsed.data.category,
+      parsed.data.subcategory || ""
+    );
     const item = await WardrobeItem.create({
       name: parsed.data.name,
       category: parsed.data.category,
@@ -113,7 +138,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       taggedSize: parsed.data.taggedSize || "unknown",
       sizeSystem: parsed.data.sizeSystem || "unknown",
       garmentFit: parsed.data.garmentFit || "unknown",
-      garmentMeasurements: parsed.data.garmentMeasurements || {},
+      garmentMeasurements,
       stretchLevel: parsed.data.stretchLevel || "unknown",
       fabricDrape: parsed.data.fabricDrape || "unknown",
       fitConfidence: parsed.data.fitConfidence ?? 0,
@@ -127,9 +152,31 @@ export async function POST(request: NextRequest, context: RouteContext) {
       imageUrl: upload.imageUrl || "",
       thumbnailUrl: upload.thumbnailUrl || "",
       images: upload.images || {},
+      userInputMetadata: upload.userInputMetadata || {},
+      categorySpecificMetadata: upload.categorySpecificMetadata || {},
+      ocrMetadata: {
+        ...(upload.ocrMetadata || {}),
+        ...labelMetadataFromAnalysis(upload.aiAnalysis),
+        labelPhotoKinds: upload.labelPhotoKinds || []
+      },
+      recommendationMetadata: upload.recommendationMetadata || {},
+      virtualTryOnMetadata: upload.virtualTryOnMetadata || {},
+      searchMetadata: upload.searchMetadata || {},
+      enrichmentStatus: backgroundJobsEnabled() ? "queued" : "completed",
       verifiedMetadata: verifiedMetadata(verifiedFields),
       aiAnalysis: buildConfirmedAnalysis(upload.aiAnalysis, verifiedFields)
     });
+
+    if (!backgroundJobsEnabled()) {
+      item.searchMetadata = buildWardrobeSearchMetadata(item);
+      item.recommendationMetadata = {
+        ...(item.recommendationMetadata || {}),
+        ...buildRecommendationMetadata(item)
+      };
+      item.virtualTryOnMetadata = buildVirtualTryOnMetadata(item);
+      item.enrichmentStatus = "completed";
+      await item.save();
+    }
 
     upload.createdItemId = item._id;
     upload.reviewedAt = new Date();
@@ -137,14 +184,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
     upload.taggedSize = parsed.data.taggedSize || "unknown";
     upload.sizeSystem = parsed.data.sizeSystem || "unknown";
     upload.garmentFit = parsed.data.garmentFit || "unknown";
-    upload.garmentMeasurements = parsed.data.garmentMeasurements || {};
+    upload.garmentMeasurements = garmentMeasurements;
     upload.stretchLevel = parsed.data.stretchLevel || "unknown";
     upload.fabricDrape = parsed.data.fabricDrape || "unknown";
     upload.fitConfidence = parsed.data.fitConfidence ?? 0;
     upload.measurementSource = parsed.data.measurementSource || "unknown";
+    upload.ocrMetadata = {
+      ...(upload.ocrMetadata || {}),
+      ...labelMetadataFromAnalysis(upload.aiAnalysis),
+      labelPhotoKinds: upload.labelPhotoKinds || []
+    };
+    upload.enrichmentStatus = backgroundJobsEnabled() ? "queued" : "completed";
     await upload.save();
 
     if (backgroundJobsEnabled()) {
+      await enqueueJob(
+        "wardrobe_enrichment",
+        { wardrobeItemId: String(item._id) },
+        { userId: auth.user._id, maxAttempts: 2 }
+      );
       await enqueueJob(
         "garment_asset_generation",
         { wardrobeItemId: String(item._id) },

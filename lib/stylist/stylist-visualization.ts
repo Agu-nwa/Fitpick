@@ -15,6 +15,7 @@ import { ensureCreditsForFeature, InsufficientCreditsError, spendCreditsAfterSuc
 import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
+import { serializeProgressiveTrigger, triggerForVirtualTryOn } from "@/lib/progressive-intelligence/triggers";
 import { runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import {
   buildPreviewCacheKeyFromItems,
@@ -57,6 +58,8 @@ type AvatarPreviewSummary = {
   visualizationWarnings?: string[];
   footwearIncluded?: boolean;
   visualGroundingStatus?: string;
+  progressiveTrigger?: ReturnType<typeof serializeProgressiveTrigger> | null;
+  setupPath?: string | null;
 };
 
 export type StylistVisualizationResult = {
@@ -272,6 +275,16 @@ export async function createOrReuseStylistOutfitRecommendation(
         stylingTips: Array.isArray(recommendationResult?.stylingTips)
           ? recommendationResult.stylingTips.map((tip: unknown) => cleanText(tip, 180)).filter(Boolean).slice(0, 8)
           : [],
+        recommendationMode: cleanText(recommendationResult?.recommendationMode || "todays_best", 80) || "todays_best",
+        styleIntent: cleanText(recommendationResult?.styleIntent || "", 120),
+        freshnessCue: cleanText(recommendationResult?.freshnessCue || "", 180),
+        wardrobeReadiness: recommendationResult?.wardrobeReadiness || null,
+        gapInsights: Array.isArray(recommendationResult?.gapInsights) ? recommendationResult.gapInsights.slice(0, 6) : [],
+        scoreBreakdown: recommendationResult?.scoreBreakdown || {},
+        similarityMetadata: recommendationResult?.similarityMetadata || {},
+        candidateCount: Number(recommendationResult?.candidateCount || 0),
+        diverseCandidateCount: Number(recommendationResult?.diverseCandidateCount || 0),
+        alternatives: Array.isArray(recommendationResult?.alternatives) ? recommendationResult.alternatives.slice(0, 4) : [],
         confidenceScore: Math.max(0, Math.min(1, Number(recommendationResult?.confidenceScore || 0))),
         completenessStatus: recommendationResult?.completenessStatus || "missing_core_item",
         missingCategories: Array.isArray(recommendationResult?.missingCategories) ? recommendationResult.missingCategories.slice(0, 8) : [],
@@ -287,6 +300,16 @@ export async function createOrReuseStylistOutfitRecommendation(
           generatedBy: "stylist_visualization_orchestrator",
           visualSource: "stylist_chat",
           deterministicConfidence: recommendationResult?.confidenceScore || 0,
+          recommendationMode: recommendationResult?.recommendationMode || "todays_best",
+          styleIntent: recommendationResult?.styleIntent || "",
+          freshnessCue: recommendationResult?.freshnessCue || "",
+          wardrobeReadiness: recommendationResult?.wardrobeReadiness || null,
+          gapInsights: recommendationResult?.gapInsights || [],
+          scoreBreakdown: recommendationResult?.scoreBreakdown || {},
+          similarityMetadata: recommendationResult?.similarityMetadata || {},
+          candidateCount: recommendationResult?.candidateCount || 0,
+          diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
+          alternatives: recommendationResult?.alternatives || [],
           itemCount: itemIds.length
         }
       }
@@ -510,12 +533,16 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
   }
 
-  if (!loaded.avatarProfile.consentAccepted) {
+  const tryOnSetupTrigger = triggerForVirtualTryOn(loaded.avatarProfile);
+  if (tryOnSetupTrigger) {
     return serializeStylistVisualization({
       visualMode,
       outfitRecommendationId,
       avatarPreview: defaultAvatarPreview({
-        errorMessage: "Please review and save your avatar settings before showing the outfit."
+        status: "failed",
+        errorMessage: "Set up your try-on model before generating this preview.",
+        progressiveTrigger: serializeProgressiveTrigger(tryOnSetupTrigger),
+        setupPath: "/avatar"
       })
     });
   }

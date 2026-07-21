@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, CreditCard, Gift, Rocket, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
@@ -41,61 +41,16 @@ function statusTone(status: string): Parameters<typeof Badge>[0]["tone"] {
   return "neutral";
 }
 
-function PaymentMethodPanel({
-  pack,
-  data,
-  onClose,
-  onReload
+function PaymentMethodSummary({
+  onCryptoClick
 }: {
-  pack: CreditPackSummary;
-  data: CreditWalletData;
-  onClose: () => void;
-  onReload: () => Promise<void>;
+  onCryptoClick: () => void;
 }) {
-  const [busy, setBusy] = useState<"stripe" | null>(null);
-  const [message, setMessage] = useState("");
-  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
-
-  const stripeConfigured = Boolean(data.providers?.stripe?.configured);
-
-  const startCardPayment = async () => {
-    setBusy("stripe");
-    setMessage("");
-    const result = await startStripeCheckout({ packId: pack.id });
-    if (result.ok && result.data.checkout.checkoutUrl) {
-      window.location.href = result.data.checkout.checkoutUrl;
-      return;
-    }
-    setMessage(result.ok ? "Card checkout is not available right now." : result.error.message);
-    setBusy(null);
-    await onReload();
-  };
-
-  const showCryptoSoon = () => {
-    setMessage("");
-    setCryptoModalOpen(true);
-  };
-
   return (
-    <Card className="space-y-4 border-cocoa/30 bg-cocoa/5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Choose how to pay</p>
-          <h3 className="mt-2 text-xl font-bold text-ink">{pack.label} Credits</h3>
-          <p className="mt-1 text-sm text-muted">{pack.credits} Credits for {pack.amountLabel}</p>
-        </div>
-        <button type="button" onClick={onClose} className="focus-ring rounded-full px-3 py-2 text-xs font-bold text-muted hover:bg-canvas">
-          Close
-        </button>
-      </div>
-
+    <Card className="space-y-3 border-cocoa/20 bg-gradient-to-br from-white via-canvas to-cocoa/5">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Payment methods</p>
       <div className="grid gap-3 md:grid-cols-2">
-        <button
-          type="button"
-          disabled={!stripeConfigured || busy !== null}
-          onClick={startCardPayment}
-          className="focus-ring rounded-2xl border border-success/25 bg-gradient-to-br from-white via-canvas to-success/10 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-cocoa/40 disabled:cursor-not-allowed disabled:opacity-55"
-        >
+        <div className="rounded-2xl border border-success/25 bg-white/80 p-4 shadow-soft">
           <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
             <span className="inline-flex items-center gap-2">
               <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
@@ -104,16 +59,15 @@ function PaymentMethodPanel({
             <Badge tone="success">Available</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
-            Pay securely with card, Apple Pay, Google Pay, Link, or another available method when eligible.
+            Tap any Credit pack to start secure Stripe checkout immediately.
           </span>
-          <span className="mt-3 inline-flex text-xs font-bold text-cocoa">{busy === "stripe" ? "Opening checkout" : "Continue"}</span>
-        </button>
+        </div>
 
         <button
           type="button"
           title="Crypto payments will be available soon."
           aria-label="USDT payments coming soon"
-          onClick={showCryptoSoon}
+          onClick={onCryptoClick}
           className="focus-ring group rounded-2xl border border-cocoa/15 bg-gradient-to-br from-cocoa/10 via-white/75 to-olive/10 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-cocoa/35"
         >
           <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
@@ -126,25 +80,8 @@ function PaymentMethodPanel({
           <span className="mt-2 block text-xs leading-5 text-muted">
             Secure crypto payments are on the way. USDT purchases will support TRC20, BEP20, and ERC20.
           </span>
-          <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-cocoa/15 bg-white/70 px-3 py-1.5 text-xs font-bold text-cocoa">
-            <ShieldCheck size={13} aria-hidden="true" />
-            Launching soon
-          </span>
         </button>
       </div>
-
-      {message ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-xs leading-5 text-danger">{message}</p> : null}
-      {cryptoModalOpen ? (
-        <CryptoComingSoonModal
-          onClose={() => setCryptoModalOpen(false)}
-          onContinueWithCard={() => {
-            setCryptoModalOpen(false);
-            void startCardPayment();
-          }}
-          cardBusy={busy === "stripe"}
-          cardReady={stripeConfigured}
-        />
-      ) : null}
     </Card>
   );
 }
@@ -203,7 +140,9 @@ export function WalletClient() {
   const session = useSession();
   const [data, setData] = useState<CreditWalletData | null>(null);
   const [state, setState] = useState<"loading" | "idle" | "unavailable">("loading");
-  const [selectedPackId, setSelectedPackId] = useState<string>("");
+  const [checkoutPackId, setCheckoutPackId] = useState<string>("");
+  const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
   const [routeNotice, setRouteNotice] = useState("");
 
   const loadWallet = useCallback(async () => {
@@ -233,10 +172,21 @@ export function WalletClient() {
     setRouteNotice(cryptoComingSoonCopy);
   }, []);
 
-  const selectedPack = useMemo(
-    () => data?.packs.find((pack) => pack.id === selectedPackId) || null,
-    [data?.packs, selectedPackId]
-  );
+  const stripeConfigured = Boolean(data?.providers?.stripe?.configured);
+
+  const startCardPayment = async (pack: CreditPackSummary) => {
+    setCheckoutPackId(pack.id);
+    setCheckoutMessage("");
+    const result = await startStripeCheckout({ packId: pack.id });
+    if (result.ok && result.data.checkout.checkoutUrl) {
+      window.location.href = result.data.checkout.checkoutUrl;
+      return;
+    }
+
+    setCheckoutMessage(result.ok ? "Card checkout is not available right now." : result.error.message);
+    setCheckoutPackId("");
+    await loadWallet();
+  };
 
   if (session.status === "loading" || state === "loading") return <LoadingCard title="Loading wallet" />;
   if (session.status === "logged-out") return <AuthRequiredState />;
@@ -294,7 +244,7 @@ export function WalletClient() {
         </Card>
       </div>
 
-      <section className="space-y-4">
+      <section id="credit-packs" className="scroll-mt-6 space-y-4">
         <SectionHeader title="Top Up Credits" />
         {routeNotice ? (
           <div className="flex items-start gap-3 rounded-2xl border border-cocoa/20 bg-gradient-to-r from-cocoa/10 via-white/70 to-olive/10 p-4 text-sm leading-6 text-ink">
@@ -307,25 +257,31 @@ export function WalletClient() {
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {data.packs.map((pack) => (
-            <Card key={pack.id} className={`space-y-3 ${selectedPackId === pack.id ? "border-cocoa/40 bg-cocoa/5" : ""}`}>
+            <Card key={pack.id} className={`space-y-3 ${checkoutPackId === pack.id ? "border-cocoa/40 bg-cocoa/5" : ""}`}>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-ink">{pack.label}</p>
                 {pack.id === "popular" ? <Badge tone="premium">Popular</Badge> : <Badge tone="neutral">{pack.amountLabel}</Badge>}
               </div>
               <p className="text-3xl font-black tracking-[-0.05em] text-ink">{pack.credits}</p>
               <p className="text-xs leading-5 text-muted">{pack.amountLabel} one-time purchase. Purchased Credits do not expire.</p>
-              <Button className="w-full" variant={selectedPackId === pack.id ? "primary" : "secondary"} onClick={() => setSelectedPackId(pack.id)}>
-                Top Up Credits
+              <Button className="w-full" disabled={!stripeConfigured || Boolean(checkoutPackId)} variant={pack.id === "popular" ? "primary" : "secondary"} onClick={() => void startCardPayment(pack)}>
+                <CreditCard size={16} aria-hidden="true" />
+                {checkoutPackId === pack.id ? "Opening checkout" : "Top Up Credits"}
               </Button>
             </Card>
           ))}
         </div>
-        {selectedPack ? (
-          <PaymentMethodPanel
-            pack={selectedPack}
-            data={data}
-            onClose={() => setSelectedPackId("")}
-            onReload={loadWallet}
+        {checkoutMessage ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-xs leading-5 text-danger">{checkoutMessage}</p> : null}
+        <PaymentMethodSummary onCryptoClick={() => setCryptoModalOpen(true)} />
+        {cryptoModalOpen ? (
+          <CryptoComingSoonModal
+            onClose={() => setCryptoModalOpen(false)}
+            onContinueWithCard={() => {
+              setCryptoModalOpen(false);
+              document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            cardBusy={Boolean(checkoutPackId)}
+            cardReady={stripeConfigured}
           />
         ) : null}
       </section>

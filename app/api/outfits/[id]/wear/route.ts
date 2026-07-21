@@ -11,6 +11,7 @@ import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
+import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { wearOutfitSchema } from "@/schemas/outfit.schema";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -55,8 +56,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     await WardrobeItem.updateMany(
       { _id: { $in: outfit.itemIds }, userId: auth.user._id },
-      { $set: { lastWornAt: wornAt } }
+      { $set: { lastWornAt: wornAt }, $inc: { timesWorn: 1 } }
     );
+
+    await recordOutfitHistory({
+      userId: auth.user._id,
+      outfitId: outfit._id,
+      itemIds: outfit.itemIds,
+      eventType: "worn",
+      source: outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
+      recommendationMode: (outfit as any).recommendationMode || (outfit as any).reasoningMetadata?.recommendationMode || "todays_best",
+      occasion: outfit.occasion,
+      feedbackReason: parsed.data.rating || "",
+      feedbackRating: parsed.data.rating === "Perfect" ? 5 : parsed.data.rating === "Good" ? 4 : parsed.data.rating === "Okay" ? 3 : parsed.data.rating ? 2 : null
+    });
 
     await recordAuditEvent({
       request,

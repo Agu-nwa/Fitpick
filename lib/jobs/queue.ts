@@ -4,6 +4,7 @@ import { logJobEvent } from "@/lib/ai/observability/ai-logger";
 
 export type BackgroundJobType =
   | "wardrobe_analysis"
+  | "wardrobe_enrichment"
   | "label_ocr"
   | "outfit_preview_generation"
   | "avatar_preview_generation"

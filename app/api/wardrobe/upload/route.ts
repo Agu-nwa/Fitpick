@@ -10,6 +10,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
 import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
+import { findIntakeCategory } from "@/lib/wardrobe/category-intelligence";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
 
@@ -119,6 +120,43 @@ export async function POST(request: NextRequest) {
       });
     const imageUrl = parsed.data.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
     const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
+    const intakeCategory = findIntakeCategory(parsed.data.intakeCategoryId || "");
+    const labelPhotoKinds = Array.from(new Set(parsed.data.labelPhotoKinds || [])).slice(0, 7);
+    const imageBundle = parsed.data.images || {};
+    const photoCount = [imageBundle.front, imageBundle.back, imageBundle.fabricCloseUp, imageBundle.label].filter(Boolean).length +
+      (imageBundle.additional?.length || 0);
+    const userInputMetadata = {
+      ...(parsed.data.userInputMetadata || {}),
+      category: parsed.data.selectedCategory || intakeCategory?.backendCategory || "",
+      subcategory: parsed.data.selectedCategoryLabel || intakeCategory?.subcategory || "",
+      intakeCategoryId: parsed.data.intakeCategoryId || intakeCategory?.id || "",
+      intakeGroup: parsed.data.intakeGroup || intakeCategory?.group || "",
+      primaryImagePurpose: "front",
+      photoCount,
+      labelPhotoKinds
+    };
+    const categorySpecificMetadata = {
+      ...(parsed.data.categorySpecificMetadata || {}),
+      guidance: intakeCategory?.guidance || [],
+      visionFocus: intakeCategory?.visionFocus || [],
+      allowedMeasurementKeys: intakeCategory?.allowedMeasurementKeys || []
+    };
+    const searchMetadata = {
+      ...(parsed.data.searchMetadata || {}),
+      searchableText: [
+        parsed.data.selectedCategoryLabel,
+        intakeCategory?.title,
+        intakeCategory?.description,
+        ...(intakeCategory?.guidance || [])
+      ].filter(Boolean).join(" ").slice(0, 1000),
+      tokens: Array.from(new Set([
+        parsed.data.selectedCategory,
+        parsed.data.selectedCategoryLabel,
+        parsed.data.intakeCategoryId,
+        intakeCategory?.group,
+        ...(intakeCategory?.visionFocus || [])
+      ].filter(Boolean).map((value) => String(value).toLowerCase()))).slice(0, 50)
+    };
     const images = sanitizedImages.images || (imageUrl
       ? {
           front: {
@@ -157,6 +195,16 @@ export async function POST(request: NextRequest) {
       thumbnailUrl,
       selectedCategory: parsed.data.selectedCategory || "",
       selectedCategoryLabel: parsed.data.selectedCategoryLabel || "",
+      intakeCategoryId: parsed.data.intakeCategoryId || intakeCategory?.id || "",
+      intakeGroup: parsed.data.intakeGroup || intakeCategory?.group || "",
+      userInputMetadata,
+      categorySpecificMetadata,
+      ocrMetadata: parsed.data.ocrMetadata || {},
+      labelPhotoKinds,
+      recommendationMetadata: parsed.data.recommendationMetadata || {},
+      virtualTryOnMetadata: parsed.data.virtualTryOnMetadata || {},
+      searchMetadata,
+      enrichmentStatus: "not_started",
       images,
       uploadStatus: parsed.data.uploadStatus || (imageUrl ? "uploaded" : storage.ready ? "pending" : "uploaded"),
       aiTagStatus: parsed.data.suggestedTags ? "suggested" : "not_started",

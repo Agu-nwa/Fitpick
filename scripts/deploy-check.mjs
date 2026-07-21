@@ -21,7 +21,11 @@ const requiredFiles = [
   "app/profile/page.tsx",
   "app/plus/page.tsx",
   "app/backend-ready/page.tsx",
-  "app/frontend-complete/page.tsx"
+  "app/frontend-complete/page.tsx",
+  "app/login/page.tsx",
+  "app/register/page.tsx",
+  "app/terms/page.tsx",
+  "app/privacy/page.tsx"
 ];
 
 const requiredEnvNames = [

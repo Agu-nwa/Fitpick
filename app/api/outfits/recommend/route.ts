@@ -13,6 +13,7 @@ import {
   buildRecommendation,
   serializeOutfit
 } from "@/lib/recommendation/engine";
+import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { incrementDailyPickUsage } from "@/lib/usage-limits";
 import {
   readJson,
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       preferences,
       styleProfile,
       memorySummary,
+      outfitHistory,
       wardrobeItems,
       wornLooks,
       occasion
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
       getOrCreateStyleProfile(auth.user._id),
 
       getMemorySummary(auth.user._id),
+
+      getRecentOutfitHistory(auth.user._id, 60),
 
       WardrobeItem.find({
         userId: auth.user._id,
@@ -127,6 +131,7 @@ export async function POST(request: NextRequest) {
       parsed.data.occasionName ||
       occasion?.name ||
       "Today";
+    const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
 
     const built = buildRecommendation({
       occasionName,
@@ -156,6 +161,8 @@ export async function POST(request: NextRequest) {
       preferences,
       styleProfile: serializeStyleProfile(styleProfile),
       memorySummary: serializeMemorySummary(memorySummary),
+      outfitHistorySummary,
+      recommendationMode: parsed.data.recommendationMode,
       wardrobeItems,
       wornLooks
     });
@@ -213,6 +220,26 @@ export async function POST(request: NextRequest) {
         stylingTips:
           built.stylingTips,
 
+        recommendationMode: built.recommendationMode,
+
+        styleIntent: built.styleIntent,
+
+        freshnessCue: built.freshnessCue,
+
+        wardrobeReadiness: built.wardrobeReadiness,
+
+        gapInsights: built.gapInsights,
+
+        scoreBreakdown: built.scoreBreakdown,
+
+        similarityMetadata: built.similarityMetadata,
+
+        candidateCount: built.candidateCount,
+
+        diverseCandidateCount: built.diverseCandidateCount,
+
+        alternatives: built.alternatives,
+
         confidenceScore:
           built.confidenceScore,
 
@@ -233,6 +260,36 @@ export async function POST(request: NextRequest) {
 
         source: "outfit_page"
       });
+
+    if (built.items.length) {
+      await Promise.all([
+        WardrobeItem.updateMany(
+          { _id: { $in: built.items.map((item: any) => item._id) }, userId: auth.user._id },
+          {
+            $set: { lastRecommendedAt: new Date() },
+            $inc: { recommendationCount: 1 }
+          }
+        ),
+        recordOutfitHistory({
+          userId: auth.user._id,
+          outfitId: recommendation._id,
+          itemIds: built.items.map((item: any) => item._id),
+          eventType: "generated",
+          source: "outfit_page",
+          recommendationMode: built.recommendationMode,
+          occasion: built.occasion,
+          context: {
+            occasionName,
+            occasionGroup: parsed.data.customOccasion?.group || occasion?.group || null,
+            weatherContext: built.weatherContext || "",
+            formality: parsed.data.formality || parsed.data.customOccasion?.formality || occasion?.formality || preferences?.formality || "",
+            wardrobeItemCount: wardrobeItems.length
+          },
+          scoreBreakdown: built.scoreBreakdown,
+          similarityMetadata: built.similarityMetadata
+        })
+      ]);
+    }
 
     await recordAuditEvent({
       request,

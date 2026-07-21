@@ -5,6 +5,7 @@ import { spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
 import { getTryOnProvider, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
+import { runWardrobeEnrichmentJob } from "@/lib/wardrobe/enrichment";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: string }) {
@@ -116,6 +117,13 @@ export async function runBackgroundJobByType(job: any) {
     return runWardrobeAnalysisJob({
       userId,
       uploadId: String(payload.uploadId || "")
+    });
+  }
+
+  if (job.type === "wardrobe_enrichment") {
+    return runWardrobeEnrichmentJob({
+      userId,
+      wardrobeItemId: String(payload.wardrobeItemId || "")
     });
   }
 
