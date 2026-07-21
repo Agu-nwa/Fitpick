@@ -10,12 +10,10 @@ import {
   ArrowUp,
   Camera,
   CheckCircle2,
-  Gem,
+  ChevronRight,
   ImagePlus,
   Images,
   PencilLine,
-  Shirt,
-  ShoppingBag,
   Sparkles,
   Tag,
   Trash2,
@@ -73,12 +71,6 @@ type FileTarget = {
 };
 
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
-const groupIcons: Record<IntakeGroupId, typeof Shirt> = {
-  clothing: Shirt,
-  shoes: Images,
-  bags: ShoppingBag,
-  accessories: Gem
-};
 
 function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
   if (!uploaded) return undefined;
@@ -157,39 +149,20 @@ function uploadFailureMessage(error: unknown) {
   return message || "We could not upload these photos. Try again.";
 }
 
-function groupCategory(category: WardrobeIntakeCategory, selected: boolean, onClick: () => void) {
-  const Icon = groupIcons[category.group];
-  return (
-    <button
-      key={category.id}
-      type="button"
-      onClick={onClick}
-      className={`focus-ring group overflow-hidden rounded-[1.75rem] border text-left shadow-soft transition hover:-translate-y-0.5 ${selected ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-white/82 text-ink hover:border-cocoa/35"}`}
-    >
-      <div className="relative h-28 overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${category.image})` }} />
-        <div className={`absolute inset-0 ${selected ? "bg-cocoa/35" : "bg-ink/10"}`} />
-        <span className={`absolute left-3 top-3 flex size-10 items-center justify-center rounded-2xl ${selected ? "bg-canvas text-cocoa" : "bg-white/88 text-cocoa"}`}>
-          <Icon size={19} aria-hidden="true" />
-        </span>
-      </div>
-      <div className="p-4">
-        <p className="text-base font-black tracking-[-0.03em]">{category.title}</p>
-        <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected ? "text-canvas/75" : "text-muted"}`}>{category.description}</p>
-      </div>
-    </button>
-  );
-}
-
 function selectedGroupCategories(groupId: IntakeGroupId | null) {
   if (!groupId) return [];
   return intakeCategories.filter((category) => category.group === groupId);
+}
+
+function selectClass(active = false) {
+  return `focus-ring min-h-14 w-full appearance-none rounded-[1.35rem] border bg-white/85 px-4 py-3 pr-11 text-base font-semibold text-ink shadow-soft outline-none transition disabled:cursor-not-allowed disabled:opacity-55 ${active ? "border-cocoa/45" : "border-line hover:border-cocoa/30"}`;
 }
 
 export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSectionRef = useRef<HTMLElement>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const selectedCategory = findIntakeCategory(selectedCategoryId);
@@ -206,6 +179,7 @@ export function WardrobeAddClient() {
   const [message, setMessage] = useState("");
 
   const groupOptions = intakeGroups;
+  const selectedGroup = groupOptions.find((group) => group.id === selectedGroupId);
   const categoryOptions = selectedGroupCategories(selectedGroupId);
   const activeSlots = useMemo(() => {
     const slots = selectedCategory?.slots || [];
@@ -255,12 +229,37 @@ export function WardrobeAddClient() {
     setStatus("idle");
   }
 
+  function selectGroupById(groupId: string) {
+    if (!groupId) {
+      setSelectedGroupId(null);
+      setSelectedCategoryId("");
+      setMessage("");
+      setStatus("idle");
+      return;
+    }
+    selectGroup(groupId as IntakeGroupId);
+  }
+
   function selectCategory(category: WardrobeIntakeCategory) {
     setSelectedGroupId(category.group);
     setSelectedCategoryId(category.id);
     setActiveTarget({ purpose: "front" });
     setMessage("");
     setStatus("idle");
+  }
+
+  function selectCategoryById(categoryId: string) {
+    const category = findIntakeCategory(categoryId);
+    if (!category) {
+      setSelectedCategoryId("");
+      return;
+    }
+    selectCategory(category);
+  }
+
+  function continueToPhotos() {
+    if (!selectedCategory) return;
+    uploadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function openFilePicker(target: FileTarget) {
@@ -577,50 +576,83 @@ export function WardrobeAddClient() {
         </p>
       ) : null}
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Step 1</p>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Choose what you are adding</h2>
+      <section className="mx-auto max-w-[520px]">
+        <Card className="border-cocoa/15 bg-gradient-to-br from-white via-surface to-cocoa/5 p-5 shadow-card sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Step 1</p>
+              <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">What are you adding today?</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">Choose the category and subtype. MyFitPick will open only the photo slots needed for this item.</p>
+            </div>
+            <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? "Ready" : "Choose"}</Badge>
           </div>
-          <Badge tone={selectedCategory ? "success" : "warning"}>{selectedCategory ? selectedCategory.title : "Choose"}</Badge>
-        </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {groupOptions.map((group) => {
-            const Icon = groupIcons[group.id];
-            const selected = selectedGroupId === group.id;
-            return (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => selectGroup(group.id)}
-                className={`focus-ring group overflow-hidden rounded-[1.75rem] border text-left shadow-soft transition hover:-translate-y-0.5 ${selected ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-white/82 text-ink hover:border-cocoa/35"}`}
-              >
-                <div className="relative h-28 overflow-hidden">
-                  <div className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${group.image})` }} />
-                  <div className={`absolute inset-0 ${selected ? "bg-cocoa/35" : "bg-ink/10"}`} />
-                  <span className={`absolute left-3 top-3 flex size-10 items-center justify-center rounded-2xl ${selected ? "bg-canvas text-cocoa" : "bg-white/88 text-cocoa"}`}>
-                    <Icon size={19} aria-hidden="true" />
-                  </span>
-                </div>
-                <div className="p-4">
-                  <p className="text-base font-black tracking-[-0.03em]">{group.title}</p>
-                  <p className={`mt-1 line-clamp-2 text-xs leading-5 ${selected ? "text-canvas/75" : "text-muted"}`}>{group.description}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+          <div className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="wardrobe-intake-group" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Category</label>
+              <div className="relative mt-2">
+                <select
+                  id="wardrobe-intake-group"
+                  aria-label="Wardrobe category"
+                  className={selectClass(Boolean(selectedGroupId))}
+                  value={selectedGroupId || ""}
+                  onChange={(event) => selectGroupById(event.target.value)}
+                  disabled={isSaving || isAnalyzing}
+                >
+                  <option value="">Select category</option>
+                  {groupOptions.map((group) => (
+                    <option key={group.id} value={group.id}>{group.title}</option>
+                  ))}
+                </select>
+                <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+              </div>
+            </div>
 
-        {selectedGroupId ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {categoryOptions.map((category) => groupCategory(category, selectedCategoryId === category.id, () => selectCategory(category)))}
+            <div className="transition duration-200 ease-out">
+              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Subtype</label>
+              <div className="relative mt-2">
+                <select
+                  id="wardrobe-intake-subtype"
+                  aria-label="Wardrobe subtype"
+                  aria-describedby="wardrobe-intake-help"
+                  className={selectClass(Boolean(selectedCategoryId))}
+                  value={selectedCategoryId}
+                  onChange={(event) => selectCategoryById(event.target.value)}
+                  disabled={!selectedGroupId || isSaving || isAnalyzing}
+                >
+                  <option value="">{selectedGroupId ? "Select subtype" : "Choose category first"}</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.id}>{category.title}</option>
+                  ))}
+                </select>
+                <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+              </div>
+            </div>
           </div>
-        ) : null}
+
+          <div id="wardrobe-intake-help" className="mt-5 rounded-2xl border border-line bg-canvas/65 px-4 py-3">
+            {selectedCategory ? (
+              <div>
+                <p className="text-sm font-semibold text-ink">{selectedGroup?.title} · {selectedCategory.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted">{selectedCategory.description}</p>
+              </div>
+            ) : selectedGroup ? (
+              <p className="text-xs leading-5 text-muted">Now choose the subtype that best matches the item.</p>
+            ) : (
+              <p className="text-xs leading-5 text-muted">Start with one simple choice. Clothing, shoes, bags, and accessories each unlock their own photo guidance.</p>
+            )}
+          </div>
+
+          <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-5 rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+            <Button type="button" className="w-full rounded-full" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
+              Continue to photos
+              <ChevronRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+        </Card>
       </section>
 
-      <section>
+      <section ref={uploadSectionRef}>
         <Card className="space-y-5 overflow-hidden p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
