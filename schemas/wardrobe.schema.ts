@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText } from "@/lib/upload-limits";
+import { sanitizeGarmentMeasurementsForCategory as sanitizeMeasurementObjectForCategory } from "@/lib/wardrobe/category-intelligence";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier.");
 
@@ -73,49 +74,82 @@ const wardrobeFields = {
   condition: wardrobeConditionSchema.optional()
 };
 
-export const createWardrobeItemSchema = z.object(wardrobeFields);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-export const updateWardrobeItemSchema = z
-  .object({
-    ...wardrobeFields,
-    name: wardrobeFields.name.optional(),
-    category: wardrobeFields.category.optional(),
-    taggedSize: taggedSizeSchema.optional(),
-    sizeSystem: sizeSystemSchema.optional(),
-    garmentFit: garmentFitSchema.optional(),
-    garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
-    stretchLevel: stretchLevelSchema.optional(),
-    fabricDrape: fabricDrapeSchema.optional(),
-    fitConfidence: z.number().min(0).max(1).optional(),
-    measurementSource: measurementSourceSchema.optional(),
-    formality: tagList.optional(),
-    occasions: tagList.optional(),
-    weather: tagList.optional()
-  })
-  .strict();
+function sanitizeWardrobePayloadMeasurements(input: unknown) {
+  if (!isRecord(input)) return input;
 
-export const wardrobeTagReviewSchema = z
-  .object({
-    category: wardrobeCategorySchema.optional(),
-    subcategory: z.string().trim().max(80).optional().or(z.literal("")),
-    color: z.string().trim().max(60).optional().or(z.literal("")),
-    pattern: z.string().trim().max(60).optional().or(z.literal("")),
-    fabric: z.string().trim().max(60).optional().or(z.literal("")),
-    fit: z.string().trim().max(60).optional().or(z.literal("")),
-    taggedSize: taggedSizeSchema.optional(),
-    sizeSystem: sizeSystemSchema.optional(),
-    garmentFit: garmentFitSchema.optional(),
-    garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
-    stretchLevel: stretchLevelSchema.optional(),
-    fabricDrape: fabricDrapeSchema.optional(),
-    fitConfidence: z.number().min(0).max(1).optional(),
-    measurementSource: measurementSourceSchema.optional(),
-    formality: tagList.optional(),
-    occasions: tagList.optional(),
-    weather: tagList.optional(),
-    condition: wardrobeConditionSchema.optional()
-  })
-  .strict();
+  const payload = { ...input };
+  const sanitizedMeasurements = sanitizeMeasurementObjectForCategory(
+    payload.garmentMeasurements,
+    String(payload.category || ""),
+    String(payload.subcategory || "")
+  );
+
+  if (Object.keys(sanitizedMeasurements).length) {
+    payload.garmentMeasurements = sanitizedMeasurements;
+  } else {
+    delete payload.garmentMeasurements;
+  }
+
+  return payload;
+}
+
+function withCategoryAwareGarmentMeasurements<TSchema extends z.ZodTypeAny>(schema: TSchema) {
+  return z.preprocess(sanitizeWardrobePayloadMeasurements, schema) as z.ZodEffects<TSchema, z.output<TSchema>, unknown>;
+}
+
+const createWardrobeItemObjectSchema = z.object(wardrobeFields);
+
+export const createWardrobeItemSchema = withCategoryAwareGarmentMeasurements(createWardrobeItemObjectSchema);
+
+export const updateWardrobeItemSchema = withCategoryAwareGarmentMeasurements(
+  z
+    .object({
+      ...wardrobeFields,
+      name: wardrobeFields.name.optional(),
+      category: wardrobeFields.category.optional(),
+      taggedSize: taggedSizeSchema.optional(),
+      sizeSystem: sizeSystemSchema.optional(),
+      garmentFit: garmentFitSchema.optional(),
+      garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
+      stretchLevel: stretchLevelSchema.optional(),
+      fabricDrape: fabricDrapeSchema.optional(),
+      fitConfidence: z.number().min(0).max(1).optional(),
+      measurementSource: measurementSourceSchema.optional(),
+      formality: tagList.optional(),
+      occasions: tagList.optional(),
+      weather: tagList.optional()
+    })
+    .strict()
+);
+
+export const wardrobeTagReviewSchema = withCategoryAwareGarmentMeasurements(
+  z
+    .object({
+      category: wardrobeCategorySchema.optional(),
+      subcategory: z.string().trim().max(80).optional().or(z.literal("")),
+      color: z.string().trim().max(60).optional().or(z.literal("")),
+      pattern: z.string().trim().max(60).optional().or(z.literal("")),
+      fabric: z.string().trim().max(60).optional().or(z.literal("")),
+      fit: z.string().trim().max(60).optional().or(z.literal("")),
+      taggedSize: taggedSizeSchema.optional(),
+      sizeSystem: sizeSystemSchema.optional(),
+      garmentFit: garmentFitSchema.optional(),
+      garmentMeasurements: wardrobeFields.garmentMeasurements.optional(),
+      stretchLevel: stretchLevelSchema.optional(),
+      fabricDrape: fabricDrapeSchema.optional(),
+      fitConfidence: z.number().min(0).max(1).optional(),
+      measurementSource: measurementSourceSchema.optional(),
+      formality: tagList.optional(),
+      occasions: tagList.optional(),
+      weather: tagList.optional(),
+      condition: wardrobeConditionSchema.optional()
+    })
+    .strict()
+);
 
 export const wardrobeFiltersSchema = z.object({
   category: wardrobeCategorySchema.optional(),
@@ -213,7 +247,9 @@ export const uploadMetadataSchema = z.object({
   suggestedTags: z.record(z.unknown()).optional()
 });
 
-export const uploadTagReviewSchema = createWardrobeItemSchema.extend({
-  uploadId: objectId.optional(),
-  verifiedFields: z.record(confirmedFieldSchema).optional()
-});
+export const uploadTagReviewSchema = withCategoryAwareGarmentMeasurements(
+  createWardrobeItemObjectSchema.extend({
+    uploadId: objectId.optional(),
+    verifiedFields: z.record(confirmedFieldSchema).optional()
+  })
+);

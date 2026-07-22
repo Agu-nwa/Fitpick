@@ -122,9 +122,9 @@ export async function POST(request: NextRequest) {
     const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
     const intakeCategory = findIntakeCategory(parsed.data.intakeCategoryId || "");
     const labelPhotoKinds = Array.from(new Set(parsed.data.labelPhotoKinds || [])).slice(0, 7);
-    const imageBundle = parsed.data.images || {};
-    const photoCount = [imageBundle.front, imageBundle.back, imageBundle.fabricCloseUp, imageBundle.label].filter(Boolean).length +
-      (imageBundle.additional?.length || 0);
+    const imageBundle = parsed.data.images;
+    const photoCount = [imageBundle?.front, imageBundle?.back, imageBundle?.fabricCloseUp, imageBundle?.label].filter(Boolean).length +
+      (imageBundle?.additional?.length || 0);
     const userInputMetadata = {
       ...(parsed.data.userInputMetadata || {}),
       category: parsed.data.selectedCategory || intakeCategory?.backendCategory || "",

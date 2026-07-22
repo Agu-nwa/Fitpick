@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
-import { confidenceLabel, measurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
+import { confidenceLabel, garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory } from "@/types/wardrobe";
 
 type FieldKind = "text" | "list" | "category";
@@ -147,6 +147,7 @@ function normalizeOption<T extends string>(value: unknown, options: readonly T[]
 }
 
 function measurementNumber(value: string) {
+  if (!value.trim()) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 10) / 10 : null;
 }
@@ -195,9 +196,10 @@ export function AITagConfirmationForm({
     return essentialFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
   }, [aiAnalysis]);
   const visibleMeasurementFields = useMemo(() => {
-    const allowed = new Set(measurementKeysForCategory(values.category || "tops", values.subcategory || ""));
+    const allowed = new Set(garmentMeasurementKeysForCategory(values.category || "tops", values.subcategory || ""));
     return garmentMeasurementFields.filter((field) => allowed.has(field.key));
   }, [values.category, values.subcategory]);
+  const visibleMeasurementKeys = useMemo(() => visibleMeasurementFields.map((field) => field.key), [visibleMeasurementFields]);
 
   useEffect(() => {
     const next = initialValues;
@@ -214,6 +216,13 @@ export function AITagConfirmationForm({
     setFitConfidence(String(Math.max(fieldFromAnalysis(aiAnalysis, "fit")?.confidence ?? 0, fieldFromAnalysis(aiAnalysis, "garmentFit")?.confidence ?? 0).toFixed(2)));
     setGarmentMeasurements({});
   }, [aiAnalysis, initialValues]);
+
+  useEffect(() => {
+    const allowed = new Set(visibleMeasurementKeys);
+    setGarmentMeasurements((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => allowed.has(key as keyof GarmentMeasurements)))
+    );
+  }, [visibleMeasurementKeys]);
 
   function buildVerifiedFields() {
     const verifiedFields = Object.fromEntries(

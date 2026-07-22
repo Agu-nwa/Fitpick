@@ -16,6 +16,7 @@
     "test:safety-copy": "node scripts/safety-copy-scan.mjs",
     "test:secret-scan": "node scripts/secret-scan.mjs",
     "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
+    "test:wardrobe-validation": "tsx scripts/wardrobe-upload-validation-test.ts",
     "test:payments": "node scripts/payment-credit-system-test.mjs",
     "migrate:credit-wallets": "node scripts/migrate-credit-wallets.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
@@ -25,6 +26,7 @@
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@sentry/nextjs": "^10.67.0",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

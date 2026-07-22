@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
 
 export type WardrobeTagFormValues = {
@@ -47,7 +48,16 @@ const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed"
 const stretchOptions: StretchLevel[] = ["unknown", "none", "low", "medium", "high"];
 const drapeOptions: FabricDrape[] = ["unknown", "structured", "soft", "flowing", "heavy", "stiff"];
 const measurementSourceOptions: MeasurementSource[] = ["unknown", "label_ocr", "user_confirmed", "ai_estimated", "manual"];
-const measurementKeys: Array<keyof GarmentMeasurements> = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm", "waistCm", "hipsCm", "inseamCm", "outseamCm"];
+const measurementFields: Array<{ key: keyof GarmentMeasurements; label: string }> = [
+  { key: "chestWidthCm", label: "Chest width" },
+  { key: "shoulderWidthCm", label: "Shoulder width" },
+  { key: "sleeveLengthCm", label: "Sleeve length" },
+  { key: "bodyLengthCm", label: "Body length" },
+  { key: "waistCm", label: "Waist" },
+  { key: "hipsCm", label: "Hips" },
+  { key: "inseamCm", label: "Inseam" },
+  { key: "outseamCm", label: "Outseam" }
+];
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -88,10 +98,11 @@ function initialValues(item?: Partial<WardrobeItem>): WardrobeTagFormValues {
 }
 
 function measurementState(measurements?: GarmentMeasurements) {
-  return Object.fromEntries(measurementKeys.map((key) => [key, measurements?.[key] == null ? "" : String(measurements[key])])) as Record<string, string>;
+  return Object.fromEntries(measurementFields.map((field) => [field.key, measurements?.[field.key] == null ? "" : String(measurements[field.key])])) as Record<string, string>;
 }
 
 function measurementNumber(value: string) {
+  if (!value.trim()) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 10) / 10 : null;
 }
@@ -129,6 +140,11 @@ export function WardrobeTagReviewForm({
   const [fitConfidence, setFitConfidence] = useState(String(defaults.fitConfidence));
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>(measurementState(defaults.garmentMeasurements));
   const [condition, setCondition] = useState<WardrobeCondition>(defaults.condition);
+  const visibleMeasurementFields = useMemo(() => {
+    const allowed = new Set(garmentMeasurementKeysForCategory(category, subcategory));
+    return measurementFields.filter((field) => allowed.has(field.key));
+  }, [category, subcategory]);
+  const visibleMeasurementKeys = useMemo(() => visibleMeasurementFields.map((field) => field.key), [visibleMeasurementFields]);
 
   useEffect(() => {
     setName(defaults.name || "");
@@ -152,6 +168,13 @@ export function WardrobeTagReviewForm({
     setCondition(defaults.condition);
   }, [defaults]);
 
+  useEffect(() => {
+    const allowed = new Set(visibleMeasurementKeys);
+    setGarmentMeasurements((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => allowed.has(key as keyof GarmentMeasurements)))
+    );
+  }, [visibleMeasurementKeys]);
+
   return (
     <form
       className="space-y-3"
@@ -171,7 +194,11 @@ export function WardrobeTagReviewForm({
           taggedSize,
           sizeSystem,
           garmentFit,
-          garmentMeasurements: Object.fromEntries(measurementKeys.map((key) => [key, measurementNumber(garmentMeasurements[key] || "")])),
+          garmentMeasurements: Object.fromEntries(
+            visibleMeasurementFields
+              .map((field) => [field.key, measurementNumber(garmentMeasurements[field.key] || "")])
+              .filter(([, value]) => value !== null)
+          ) as GarmentMeasurements,
           stretchLevel,
           fabricDrape,
           fitConfidence: Math.max(0, Math.min(1, Number(fitConfidence) || 0)),
@@ -281,12 +308,16 @@ export function WardrobeTagReviewForm({
           </label>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          {measurementKeys.map((key) => (
-            <label key={key} className="block text-xs font-semibold text-ink">
-              {key.replace("Cm", "").replace(/([A-Z])/g, " $1")} cm
-              <input type="number" min="0" step="0.1" className={inputClass} value={garmentMeasurements[key] || ""} onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [key]: event.target.value }))} placeholder="Unknown" />
+          {visibleMeasurementFields.length ? visibleMeasurementFields.map((field) => (
+            <label key={field.key} className="block text-xs font-semibold text-ink">
+              {field.label} cm
+              <input type="number" min="0" step="0.1" className={inputClass} value={garmentMeasurements[field.key] || ""} onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [field.key]: event.target.value }))} placeholder="Unknown" />
             </label>
-          ))}
+          )) : (
+            <p className="rounded-2xl border border-line bg-white/70 p-3 text-xs font-semibold leading-5 text-muted sm:col-span-2">
+              No garment body measurements are needed for this category.
+            </p>
+          )}
         </div>
       </div>
 

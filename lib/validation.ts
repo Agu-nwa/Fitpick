@@ -1,4 +1,4 @@
-import { ZodError, type ZodSchema } from "zod";
+import { z, ZodError, type ZodTypeAny } from "zod";
 import { apiError } from "@/lib/api-response";
 
 export async function readJson(request: Request) {
@@ -9,7 +9,7 @@ export async function readJson(request: Request) {
   }
 }
 
-export function validateBody<T>(schema: ZodSchema<T>, body: unknown) {
+export function validateBody<TSchema extends ZodTypeAny>(schema: TSchema, body: unknown) {
   const parsed = schema.safeParse(body);
 
   if (!parsed.success) {
@@ -21,7 +21,7 @@ export function validateBody<T>(schema: ZodSchema<T>, body: unknown) {
     };
   }
 
-  return { ok: true as const, data: parsed.data };
+  return { ok: true as const, data: parsed.data as z.output<TSchema> };
 }
 
 export function formatZodError(error: ZodError) {

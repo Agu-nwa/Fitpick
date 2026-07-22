@@ -17,6 +17,10 @@ type RouteContext = {
   }>;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
   const limited = rateLimitRequest({ key: `wardrobe-tags:${meta.ip}`, limit: 40, windowMs: 60 * 1000 });
@@ -28,11 +32,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!auth.ok) return auth.response;
     if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
-    const parsed = validateBody(wardrobeTagReviewSchema, await readJson(request));
-    if (!parsed.ok) return parsed.response;
-
     const item = await WardrobeItem.findOne({ _id: id, userId: auth.user._id });
     if (!item) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+
+    const body = await readJson(request);
+    const parsed = validateBody(
+      wardrobeTagReviewSchema,
+      isRecord(body) ? { category: item.category, subcategory: item.subcategory || "", ...body } : body
+    );
+    if (!parsed.ok) return parsed.response;
 
     Object.assign(item, parsed.data);
     item.condition = inferCondition({

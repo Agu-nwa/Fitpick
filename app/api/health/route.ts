@@ -48,6 +48,7 @@ export async function GET() {
     ok: true,
     service: "fitpick",
     version: packageJson.version || "0.0.0",
+    deploymentId: process.env.NEXT_DEPLOYMENT_ID || "unknown",
     time: now,
     status: database === "degraded" ? "degraded" : "ok",
     databaseConfigured: hasMongoUri(),
@@ -56,7 +57,7 @@ export async function GET() {
       app: "ok" as const,
       database,
       storage,
-      worker: "not_checked" as const
-    }
+      worker: "not_checked" as const,
+    },
   });
 }

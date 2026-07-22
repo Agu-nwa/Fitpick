@@ -95,6 +95,25 @@ const bottomMeasurements: MeasurementKey[] = ["waistCm", "hipsCm", "inseamCm", "
 const dressMeasurements: MeasurementKey[] = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm", "waistCm", "hipsCm"];
 const shoeMeasurements: MeasurementKey[] = ["shoeLengthCm", "heelHeightCm"];
 
+export type WardrobeCategoryRule = {
+  allowedMeasurementKeys: MeasurementKey[];
+  garmentMeasurementKeys: MeasurementKey[];
+};
+
+export const wardrobeCategoryRules: Record<WardrobeCategory, WardrobeCategoryRule> = {
+  tops: { allowedMeasurementKeys: topMeasurements, garmentMeasurementKeys: topMeasurements },
+  bottoms: { allowedMeasurementKeys: bottomMeasurements, garmentMeasurementKeys: bottomMeasurements },
+  dresses: { allowedMeasurementKeys: dressMeasurements, garmentMeasurementKeys: dressMeasurements },
+  outerwear: { allowedMeasurementKeys: topMeasurements, garmentMeasurementKeys: topMeasurements },
+  shoes: { allowedMeasurementKeys: shoeMeasurements, garmentMeasurementKeys: [] },
+  bags: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] },
+  accessories: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] }
+};
+
+function categoryRuleFor(category?: WardrobeCategory | string): WardrobeCategoryRule {
+  return wardrobeCategoryRules[String(category || "") as WardrobeCategory] || wardrobeCategoryRules.tops;
+}
+
 export const intakeCategories: WardrobeIntakeCategory[] = [
   {
     id: "shirts",
@@ -423,11 +442,32 @@ export function categoryFromBackend(category?: WardrobeCategory | string, subcat
 export function measurementKeysForCategory(category?: WardrobeCategory | string, subcategory?: string): MeasurementKey[] {
   const intakeCategory = categoryFromBackend(category, subcategory);
   if (intakeCategory) return intakeCategory.allowedMeasurementKeys;
-  if (category === "shoes") return shoeMeasurements;
-  if (category === "bags" || category === "accessories") return [];
-  if (category === "bottoms") return bottomMeasurements;
-  if (category === "dresses") return dressMeasurements;
-  return topMeasurements;
+  return categoryRuleFor(category).allowedMeasurementKeys;
+}
+
+export function garmentMeasurementKeysForCategory(category?: WardrobeCategory | string, subcategory?: string): MeasurementKey[] {
+  const intakeCategory = categoryFromBackend(category, subcategory);
+  if (intakeCategory) return intakeCategory.group === "clothing" ? intakeCategory.allowedMeasurementKeys : [];
+  return categoryRuleFor(category).garmentMeasurementKeys;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function sanitizeGarmentMeasurementsForCategory(
+  measurements: unknown,
+  category?: WardrobeCategory | string,
+  subcategory?: string
+) {
+  if (!isRecord(measurements)) return {};
+
+  const allowed = new Set(garmentMeasurementKeysForCategory(category, subcategory));
+  return Object.fromEntries(
+    Object.entries(measurements).filter(
+      ([key, value]) => allowed.has(key as MeasurementKey) && value !== "" && value !== null && value !== undefined
+    )
+  ) as Partial<Record<MeasurementKey, unknown>>;
 }
 
 export function cleanGarmentMeasurements(
@@ -435,10 +475,10 @@ export function cleanGarmentMeasurements(
   category?: WardrobeCategory | string,
   subcategory?: string
 ) {
-  const allowed = new Set(measurementKeysForCategory(category, subcategory));
+  const sanitized = sanitizeGarmentMeasurementsForCategory(measurements, category, subcategory);
   return Object.fromEntries(
-    Object.entries(measurements)
-      .filter(([key, value]) => allowed.has(key as MeasurementKey) && typeof value === "number" && Number.isFinite(value) && value > 0)
+    Object.entries(sanitized)
+      .filter(([, value]) => typeof value === "number" && Number.isFinite(value) && value > 0)
       .map(([key, value]) => [key, Math.round(Number(value) * 10) / 10])
   ) as GarmentMeasurements;
 }

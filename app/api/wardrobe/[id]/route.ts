@@ -17,6 +17,10 @@ type RouteContext = {
   }>;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
@@ -45,11 +49,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!auth.ok) return auth.response;
     if (!isObjectId(id)) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
-    const parsed = validateBody(updateWardrobeItemSchema, await readJson(request));
-    if (!parsed.ok) return parsed.response;
-
     const existing = await WardrobeItem.findOne({ _id: id, userId: auth.user._id });
     if (!existing) return apiError("NOT_FOUND", "Wardrobe item was not found.");
+
+    const body = await readJson(request);
+    const parsed = validateBody(
+      updateWardrobeItemSchema,
+      isRecord(body) ? { category: existing.category, subcategory: existing.subcategory || "", ...body } : body
+    );
+    if (!parsed.ok) return parsed.response;
 
     Object.assign(existing, parsed.data);
     existing.condition = inferCondition({
