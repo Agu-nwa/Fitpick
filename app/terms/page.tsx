@@ -10,7 +10,7 @@ export default function TermsPage() {
         <div className="mt-5 space-y-4 text-sm leading-7 text-muted">
           <p>MyFitPick helps you manage your wardrobe, receive outfit suggestions, and use AI-powered fashion previews. Recommendations are guidance only and may not be perfect.</p>
           <p>You are responsible for the photos and information you upload. Only upload content you have the right to use, and do not upload sensitive documents or private information that is not needed for styling.</p>
-          <p>Paid AI actions use Credits. Credits are deducted only after successful provider execution according to the wallet rules shown in the app.</p>
+          <p>Paid AI actions use Credits. Credits are deducted only after the requested result is completed according to the wallet rules shown in the app.</p>
           <p>These launch terms are provided for product testing and should be reviewed by legal counsel before a wider public launch.</p>
         </div>
       </section>

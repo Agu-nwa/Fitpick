@@ -20,8 +20,12 @@ export type SafeUser = {
   complimentaryCreditsUsed?: number;
   modelSetupCompletedAt?: string;
   weatherLocationName?: string;
+  weatherCountryCode?: string;
+  weatherCountryName?: string;
+  weatherCityName?: string;
   weatherLatitude?: number;
   weatherLongitude?: number;
+  weatherTimezone?: string;
   weatherLocationUpdatedAt?: string;
   createdAt?: string;
   updatedAt?: string;

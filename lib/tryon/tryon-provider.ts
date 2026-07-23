@@ -11,6 +11,7 @@ import { createDedicatedVtonTryOnProvider } from "@/lib/tryon/providers/dedicate
 import { createFashnTryOnProvider } from "@/lib/tryon/providers/fashn-tryon";
 import { createOpenAiTryOnProvider } from "@/lib/tryon/providers/openai-tryon";
 import type { TryOnProvider, TryOnProviderOutput, TryOnProviderType, TryOnDesiredView } from "@/lib/tryon/types";
+import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { AvatarProfile } from "@/models/AvatarProfile";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -80,6 +81,8 @@ async function saveProviderPreview(input: {
   });
   const imageUrl = output.previewUrls[0] || "";
   const storageKey = output.previewStorageKeys?.[0] || "";
+  const outputWarnings = safeUserMessages(output.warnings);
+  const failureMessage = safeTryOnErrorMessage(output.warnings[0]);
   const cacheKey = input.cacheKey || buildAvatarCacheKeyFromItems(input.userId, input.outfitId, loaded.items, avatarProfile, {
     posePreset: input.desiredView === "walking" ? "walking" : input.desiredView === "side" ? "side" : input.desiredView === "back" ? "back" : avatarProfile.posePreset,
     visualizationStyle: avatarProfile.visualizationStyle
@@ -107,15 +110,15 @@ async function saveProviderPreview(input: {
         accuracyLevel: output.accuracyLevel.id || "true_3d_simulation",
         fitStatus: fitEvaluation.fitStatus,
         fitConfidence: fitEvaluation.fitConfidence,
-        fitWarnings: [...fitEvaluation.warnings, ...output.warnings].slice(0, 12),
+        fitWarnings: [...fitEvaluation.warnings, ...outputWarnings].slice(0, 12),
         fitLockInstructions: fitEvaluation.lockedFitInstructions,
         groundedItemIds: grounding.groundedItemIds,
         missingVisualItemIds: grounding.missingVisualItemIds,
-        visualizationWarnings: [...grounding.visualizationWarnings, ...output.warnings].slice(0, 12),
+        visualizationWarnings: [...grounding.visualizationWarnings, ...outputWarnings].slice(0, 12),
         footwearIncluded: grounding.footwearIncluded,
         visualGroundingStatus: grounding.visualGroundingStatus,
         generatedAt: ready ? new Date() : null,
-        errorMessage: failed ? (output.warnings[0] || "Virtual try-on provider failed.") : "",
+        errorMessage: failed ? failureMessage : "",
         lastAttemptAt: new Date()
       }
     },
@@ -135,11 +138,11 @@ async function saveProviderPreview(input: {
         "preview.model": output.provider === "fashn" ? "fashn-tryon-max" : output.provider === "custom" ? "custom-vton" : "openai-tryon",
         "preview.groundedItemIds": grounding.groundedItemIds,
         "preview.missingVisualItemIds": grounding.missingVisualItemIds,
-        "preview.visualizationWarnings": [...grounding.visualizationWarnings, ...output.warnings].slice(0, 12),
+        "preview.visualizationWarnings": [...grounding.visualizationWarnings, ...outputWarnings].slice(0, 12),
         "preview.footwearIncluded": grounding.footwearIncluded,
         "preview.visualGroundingStatus": grounding.visualGroundingStatus,
         "preview.generatedAt": ready ? new Date() : null,
-        "preview.errorMessage": failed ? (output.warnings[0] || "Virtual try-on provider failed.") : ""
+        "preview.errorMessage": failed ? failureMessage : ""
       }
     }
   );
@@ -180,14 +183,14 @@ export async function runConfiguredVirtualTryOnJob(input: {
         })
       : "");
     const preview = await AvatarOutfitPreview.findOne({ userId: input.userId, outfitId: input.outfitId, cacheKey }).lean();
-    if (!preview && output.status === "failed") throw new Error(output.warnings[0] || "OpenAI virtual try-on fallback failed.");
+    if (!preview && output.status === "failed") throw new Error(safeTryOnErrorMessage(output.warnings[0]));
     if (preview && !assertUsablePreviewRecord(preview)) throw new Error("Virtual try-on preview was not persisted correctly.");
     return { preview, cached: Boolean(output.cached), providerOutput: output };
   }
 
   const saved = await saveProviderPreview(input, output);
-  if (!saved && output.status === "failed") throw new Error(output.warnings[0] || "Virtual try-on provider failed.");
-  if (!saved && output.status === "provider_unavailable") throw new Error(output.warnings[0] || "Virtual try-on provider unavailable.");
-  if (!saved || !assertUsablePreviewRecord(saved)) throw new Error(output.warnings[0] || "Virtual try-on preview was not persisted correctly.");
+  if (!saved && output.status === "failed") throw new Error(safeTryOnErrorMessage(output.warnings[0]));
+  if (!saved && output.status === "provider_unavailable") throw new Error(safeTryOnErrorMessage(output.warnings[0]));
+  if (!saved || !assertUsablePreviewRecord(saved)) throw new Error("Virtual Try-On couldn't be completed. Your credit was not deducted.");
   return { preview: saved, cached: false, providerOutput: output };
 }

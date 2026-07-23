@@ -74,7 +74,7 @@ export function DesktopNav() {
         <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-canvas/60">AI edit</p>
         <p className="font-editorial mt-3 text-2xl font-semibold leading-none">What should I wear?</p>
         <span className="mt-5 flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-          Create a look
+          Pick outfit
           <ArrowUpRight size={16} className="transition group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
         </span>
       </Link>

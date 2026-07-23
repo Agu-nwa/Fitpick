@@ -45,11 +45,11 @@ export default function GlobalError({
               </button>
             </div>
 
-            {process.env.NODE_ENV === "development" && (
-              <pre className="mt-6 overflow-auto text-left text-xs">
-                {error.message}
-              </pre>
-            )}
+            {process.env.NODE_ENV === "development" ? (
+              <p className="mt-6 rounded-2xl bg-gray-100 px-4 py-3 text-xs text-gray-600">
+                Details were captured in the development console.
+              </p>
+            ) : null}
           </section>
         </main>
       </body>

@@ -9,25 +9,10 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
-import { SavedLook } from "@/models/SavedLook";
 import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { saveOutfitSchema } from "@/schemas/outfit.schema";
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-function serializeSavedLook(look: any) {
-  return {
-    id: String(look._id),
-    outfitId: look.outfitId ? String(look.outfitId) : null,
-    source: look.source || "ai_saved",
-    title: look.title,
-    occasion: look.occasion,
-    itemIds: (look.itemIds || []).map(String),
-    favorite: Boolean(look.favorite),
-    notes: look.notes || "",
-    savedAt: look.savedAt ? new Date(look.savedAt).toISOString() : null
-  };
-}
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
@@ -43,34 +28,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const parsed = validateBody(saveOutfitSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const outfit = await OutfitRecommendation.findOne({ _id: id, userId: auth.user._id }).lean();
+    const outfit = await OutfitRecommendation.findOne({ _id: id, userId: auth.user._id });
     if (!outfit) return apiError("NOT_FOUND", "Outfit was not found.");
 
-    const look = await SavedLook.findOneAndUpdate(
-      { userId: auth.user._id, outfitId: outfit._id },
-      {
-        $setOnInsert: {
-          userId: auth.user._id,
-          outfitId: outfit._id,
-          source: "ai_saved",
-          itemIds: outfit.itemIds,
-          occasion: outfit.occasion,
-          savedAt: new Date()
-        },
-        $set: {
-          title: parsed.data.title || outfit.title || `${outfit.occasion} outfit`,
-          favorite: parsed.data.favorite ?? false
-        }
-      },
-      { new: true, upsert: true }
-    );
+    outfit.title = parsed.data.title || outfit.title || `${outfit.occasion || "Saved"} outfit`;
+    outfit.favorite = parsed.data.favorite ?? Boolean(outfit.favorite);
+    outfit.savedAt = outfit.savedAt || new Date();
+    await outfit.save();
 
     await recordAuditEvent({
       request,
       userId: String(auth.user._id),
       action: "outfit.save",
-      entityType: "SavedLook",
-      entityId: String(look._id)
+      entityType: "OutfitRecommendation",
+      entityId: String(outfit._id)
     });
 
     await recordOutfitHistory({
@@ -84,7 +55,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       feedbackRating: parsed.data.favorite ? 5 : 4
     });
 
-    return apiSuccess({ look: serializeSavedLook(look) }, { message: "Outfit saved." });
+    return apiSuccess(
+      {
+        outfit: {
+          id: String(outfit._id),
+          title: outfit.title,
+          favorite: Boolean(outfit.favorite),
+          savedAt: outfit.savedAt ? new Date(outfit.savedAt).toISOString() : null
+        }
+      },
+      { message: "Outfit saved." }
+    );
   } catch (error) {
     logSafeError("outfit.save", error);
     return apiError("INTERNAL_ERROR", "Unable to save outfit right now.");

@@ -26,7 +26,15 @@ export async function PATCH(request: NextRequest) {
     if (parsed.data.avatarUrl !== undefined) auth.user.avatarUrl = parsed.data.avatarUrl;
     if (parsed.data.timezone !== undefined) auth.user.timezone = parsed.data.timezone;
     if (parsed.data.locale !== undefined) auth.user.locale = parsed.data.locale;
-    if (parsed.data.weatherLocationName !== undefined) auth.user.weatherLocationName = parsed.data.weatherLocationName;
+    if (parsed.data.weatherLocationName !== undefined) {
+      auth.user.weatherLocationName = parsed.data.weatherLocationName;
+      auth.user.weatherCountryCode = "";
+      auth.user.weatherCountryName = "";
+      auth.user.weatherCityName = "";
+      auth.user.weatherTimezone = "";
+      auth.user.weatherLatitude = null;
+      auth.user.weatherLongitude = null;
+    }
     if (parsed.data.weatherLatitude !== undefined) auth.user.weatherLatitude = parsed.data.weatherLatitude;
     if (parsed.data.weatherLongitude !== undefined) auth.user.weatherLongitude = parsed.data.weatherLongitude;
     if (

@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { apiContracts } from "@/lib/api-contract";
 
 const integrationSteps = [
-  "Integration complete: auth, wardrobe, uploads, AI tag review, outfits, looks, preferences, and Credit wallet",
+  "Integration complete: auth, wardrobe, uploads, AI tag review, outfits, previews, preferences, and Credit wallet",
   "Testing complete: route checks, safety copy scan, secret scan, build, and backend smoke are ready",
   "Deployment path: EC2, PM2, Nginx reverse proxy, and HTTPS-ready production notes"
 ];
@@ -41,7 +41,7 @@ export default function BackendReadyPage() {
         </div>
         <h2 className="mt-4 font-editorial text-4xl font-semibold leading-none tracking-editorial">MyFitPick is ready for deployment hardening.</h2>
         <p className="mt-3 text-sm leading-6 text-canvas/75">
-          Live auth, wardrobe, outfits, looks, preferences, Credits, storage, and AI tagging flows use production routes and fail closed when credentials are missing.
+          Live auth, wardrobe, outfits, previews, preferences, Credits, storage, and AI tagging flows use production routes and fail closed when credentials are missing.
         </p>
       </Card>
 
@@ -60,12 +60,12 @@ export default function BackendReadyPage() {
             ["Frontend complete", "Mobile app shell, routes, components, states, and production error handling are preserved.", "complete"],
             ["Backend complete", "Auth, wardrobe, outfits, Credits, uploads, admin seed, audit, and smoke checks are available.", "complete"],
             ["API client available", "Safe requests include credentials and mobile-friendly fallback messages.", "complete"],
-            ["Health endpoint connected", "GET /api/health is checked from the readiness screen.", "complete"],
-            ["Session check connected", "GET /api/auth/me is checked without forcing route protection yet.", "complete"],
-            ["S3 storage integrated", "Signed upload, wardrobe image metadata, and generated previews use S3.", "complete"],
+            ["Health check connected", "The readiness screen can verify core app health.", "complete"],
+            ["Session check connected", "The readiness screen can verify sign-in state safely.", "complete"],
+            ["Image storage integrated", "Signed upload, wardrobe image metadata, and generated previews use durable storage.", "complete"],
             ["AI tagging foundation integrated", "Uploaded clothing photos can request suggested tags before user review.", "complete"],
             ["Testing complete", "Route, safety, secret, build, and smoke-test scripts are available.", "complete"],
-            ["Deployment started", "PM2, Nginx, security group, HTTPS, and production checklist docs are available.", "next"]
+            ["Deployment started", "Production operations, network security, HTTPS, and launch checklist docs are available.", "next"]
           ].map(([title, detail, status]) => (
             <Card key={title} className="p-4">
               <div className="flex items-start justify-between gap-3">

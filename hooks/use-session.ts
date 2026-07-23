@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getCurrentUser, type CurrentUserSummary } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 export type SessionState = {
   status: "loading" | "authenticated" | "logged-out" | "backend-unavailable";
@@ -30,7 +31,7 @@ export function useSession(): SessionState {
     }
 
     setUser(undefined);
-    setMessage(result.error.message);
+    setMessage(safeUserMessage(result.error, "Please sign in again to continue."));
     setStatus(result.error.code === "UNAUTHORIZED" ? "logged-out" : "backend-unavailable");
   }, []);
 
@@ -55,7 +56,6 @@ const protectedClientPrefixes = [
   "/backend-ready",
   "/frontend-complete",
   "/home",
-  "/looks",
   "/occasion",
   "/onboarding",
   "/outfit",

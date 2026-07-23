@@ -79,8 +79,8 @@ export function safeTryOnFailureMessage(error: unknown) {
   if (error && typeof error === "object" && "name" in error && String((error as { name?: unknown }).name) === "InsufficientCreditsError") {
     return "You need more Credits before this try-on can be completed.";
   }
-  if (error instanceof Error && /provider|FASHN|OpenAI|try-on/i.test(error.message)) return "The AI provider could not complete this try-on.";
-  if (error instanceof Error && /S3|storage|upload|image/i.test(error.message)) return "The generated image could not be safely saved.";
+  if (error instanceof Error && /provider|FASHN|OpenAI|try-on/i.test(error.message)) return "The preview could not be completed right now.";
+  if (error instanceof Error && /S3|storage|upload|image/i.test(error.message)) return "The generated image could not be saved safely.";
   return "Virtual Try-On could not be completed. Your credit was not deducted.";
 }
 

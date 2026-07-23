@@ -6,6 +6,7 @@ import { buildImagePreviewPrompt } from "@/lib/ai/prompts";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -203,9 +204,9 @@ export function serializeOutfitPreview(preview: any) {
     promptVersion: preview?.promptVersion || "",
     model: preview?.model || "",
     accuracyLevel,
-    fitWarnings: preview?.fitWarnings || [],
+    fitWarnings: safeUserMessages(preview?.fitWarnings || []),
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
-    errorMessage: preview?.errorMessage || "",
+    errorMessage: preview?.errorMessage ? safeUserMessage(preview.errorMessage, "Unable to generate preview right now.") : "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
     visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} This is a preview, not a perfect fitting.`

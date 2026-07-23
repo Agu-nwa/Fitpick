@@ -446,7 +446,7 @@ export function serializeOutfit(
     accuracyLevel: {
       id: "inspired_visualization",
       label: "AI Visualization",
-      meaning: "Looks inspired by selected items but may not match exact garment fit.",
+      meaning: "Preview inspired by selected items but may not match exact garment fit.",
       rank: 1
     },
     fitWarnings: [],
@@ -510,6 +510,10 @@ export function serializeOutfit(
     swapGroups:
       outfit.swapGroups ||
       buildSwapGroups(items, items),
+    savedAt: outfit.savedAt
+      ? new Date(outfit.savedAt).toISOString()
+      : null,
+    favorite: Boolean(outfit.favorite),
     createdAt: outfit.createdAt
       ? new Date(outfit.createdAt).toISOString()
       : undefined

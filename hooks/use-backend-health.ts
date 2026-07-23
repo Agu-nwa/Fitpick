@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getBackendHealth, type BackendHealth } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 export function useBackendHealth() {
   const [status, setStatus] = useState<"loading" | "reachable" | "setup-needed" | "unavailable">("loading");
@@ -20,7 +21,7 @@ export function useBackendHealth() {
     }
 
     setHealth(undefined);
-    setMessage(result.error.message);
+    setMessage(safeUserMessage(result.error, "MyFitPick is temporarily unavailable."));
     setStatus("unavailable");
   }, []);
 

@@ -12,7 +12,7 @@ export function BackendReadyCard({ contract }: { contract: ApiContract }) {
         </div>
         <StatusBadge tone={contract.status === "ready" ? "success" : "warning"}>{contract.status}</StatusBadge>
       </div>
-      <p className="mt-3 rounded-2xl bg-canvas px-3 py-2 font-mono text-[11px] text-muted">{contract.method} {contract.path}</p>
+      <p className="mt-3 rounded-2xl bg-canvas px-3 py-2 text-xs font-semibold text-muted">Integration check ready</p>
     </Card>
   );
 }

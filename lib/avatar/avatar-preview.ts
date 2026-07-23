@@ -11,6 +11,7 @@ import { buildFitLockPromptConstraints, evaluateOutfitFitOnAvatar } from "@/lib/
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl, summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { AvatarProfile } from "@/models/AvatarProfile";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -502,15 +503,15 @@ export function serializeAvatarPreview(preview: any) {
     accuracyLevel,
     fitStatus: preview?.fitStatus || "unknown",
     fitConfidence: typeof preview?.fitConfidence === "number" ? preview.fitConfidence : 0,
-    fitWarnings: preview?.fitWarnings || [],
+    fitWarnings: safeUserMessages(preview?.fitWarnings || []),
     fitLockInstructions: preview?.fitLockInstructions || [],
     groundedItemIds: (preview?.groundedItemIds || []).map(String),
     missingVisualItemIds: (preview?.missingVisualItemIds || []).map(String),
-    visualizationWarnings: preview?.visualizationWarnings || [],
+    visualizationWarnings: safeUserMessages(preview?.visualizationWarnings || []),
     footwearIncluded: Boolean(preview?.footwearIncluded),
     visualGroundingStatus: preview?.visualGroundingStatus || "partially_grounded",
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
-    errorMessage: preview?.errorMessage || "",
+    errorMessage: preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),
     visualizationNote: `${accuracyLevel.label}: ${accuracyLevel.meaning} This is a preview, not a perfect fitting.`

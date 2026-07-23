@@ -10,9 +10,9 @@ import { apiContracts } from "@/lib/api-contract";
 import { frontendReadiness } from "@/lib/frontend-readiness";
 
 const nextIntegrations = [
-  "Deployment Phase 8: EC2, PM2, Nginx, security groups, HTTPS readiness, and release checks",
-  "Production credit-purchase activation for Stripe and CoinPayments",
-  "Production AI provider tuning",
+  "Production hosting, network security, HTTPS readiness, and release checks",
+  "Production credit-purchase activation",
+  "Production AI tuning",
   "Push notification delivery",
   "App store packaging"
 ];
@@ -43,7 +43,7 @@ export default function FrontendCompletePage() {
         </div>
         <h2 className="mt-4 font-editorial text-4xl font-semibold leading-none tracking-editorial">Ready for production deployment setup.</h2>
         <p className="mt-3 text-sm leading-6 text-canvas/75">
-          Auth, wardrobe, uploads, AI tagging, outfits, looks, preferences, Credits, and one-time payment foundation are connected with safe fallbacks and QA scripts.
+          Auth, wardrobe, uploads, AI tagging, outfits, previews, preferences, Credits, and one-time payment foundation are connected with safe fallbacks and QA scripts.
         </p>
       </Card>
 

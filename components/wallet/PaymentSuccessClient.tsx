@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/Badge";
 import { getPaymentPurchase, getWallet, type CreditPurchaseSummary, type CreditWalletSummary } from "@/lib/api-client";
 
 function statusCopy(status?: string) {
-  if (!status) return { title: "Confirming payment", detail: "We are checking the provider confirmation.", tone: "warning" as const, icon: Clock3 };
+  if (!status) return { title: "Confirming payment", detail: "We are checking your payment confirmation.", tone: "warning" as const, icon: Clock3 };
   if (status === "credited") return { title: "Credits added", detail: "Your MyFitPick Credits are now available.", tone: "success" as const, icon: CheckCircle2 };
   if (status === "paid") return { title: "Payment complete", detail: "The payment is confirmed and Credits are being added.", tone: "success" as const, icon: CheckCircle2 };
-  if (status === "pending" || status === "confirming") return { title: "Payment still processing", detail: "This can take longer for delayed methods and blockchain confirmations.", tone: "warning" as const, icon: Loader2 };
+  if (status === "pending" || status === "confirming") return { title: "Payment still processing", detail: "This can take a little longer for some payment methods.", tone: "warning" as const, icon: Loader2 };
   if (status === "failed" || status === "expired" || status === "cancelled" || status === "underpaid") return { title: "Payment not completed", detail: "No Credits were added for this payment.", tone: "danger" as const, icon: XCircle };
   if (status === "review_required" || status === "overpaid" || status === "disputed") return { title: "Review required", detail: "Support needs to review this payment before changing your Credits.", tone: "warning" as const, icon: Clock3 };
   return { title: "Payment status", detail: "Your payment status is being updated.", tone: "neutral" as const, icon: Clock3 };
@@ -109,7 +109,7 @@ export function PaymentSuccessClient({ purchaseId }: { purchaseId?: string }) {
             <p className="mt-2 text-sm font-bold text-ink">{formatCredits(purchase.credits)}</p>
           </div>
           <div className="rounded-2xl border border-line bg-canvas/70 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Provider</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Payment method</p>
             <p className="mt-2 text-sm font-bold text-ink">{purchase.provider === "stripe" ? "Card or digital wallet" : "USDT"}</p>
           </div>
         </div>

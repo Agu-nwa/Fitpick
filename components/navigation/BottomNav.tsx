@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Images, Shirt, Sparkles, UserRound, type LucideIcon } from "lucide-react";
+import { Home, Shirt, Sparkles, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const primaryNavItems: Array<{ label: string; href: string; icon: LucideIcon }> = [
   { label: "Home", href: "/home", icon: Home },
   { label: "Closet", href: "/wardrobe", icon: Shirt },
   { label: "Stylist", href: "/stylist", icon: Sparkles },
-  { label: "Avatar", href: "/avatar", icon: UserRound },
-  { label: "Looks", href: "/looks", icon: Images }
+  { label: "Avatar", href: "/avatar", icon: UserRound }
 ];
 
 export function BottomNav() {

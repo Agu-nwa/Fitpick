@@ -7,7 +7,6 @@ const protectedPagePrefixes = [
   "/backend-ready",
   "/frontend-complete",
   "/home",
-  "/looks",
   "/occasion",
   "/onboarding",
   "/outfit",

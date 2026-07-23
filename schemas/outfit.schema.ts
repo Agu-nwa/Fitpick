@@ -86,28 +86,3 @@ export const outfitFeedbackSchema = z.object({
     .optional(),
   note: z.string().trim().max(500).optional()
 });
-
-export const looksQuerySchema = z.object({
-  tab: z.enum(["saved", "worn", "favorites", "all"]).optional(),
-  occasion: z.string().trim().max(80).optional(),
-  limit: z.coerce.number().int().min(1).max(50).optional(),
-  cursor: objectId.optional()
-});
-
-export const manualLookSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  occasion: z.string().trim().max(80).optional().or(z.literal("")),
-  itemIds: z.array(objectId).min(1).max(20),
-  favorite: z.boolean().optional(),
-  notes: z.string().trim().max(500).optional().or(z.literal(""))
-});
-
-export const updateManualLookSchema = z
-  .object({
-    title: z.string().trim().min(1).max(120).optional(),
-    occasion: z.string().trim().max(80).optional().or(z.literal("")),
-    itemIds: z.array(objectId).min(1).max(20).optional(),
-    favorite: z.boolean().optional(),
-    notes: z.string().trim().max(500).optional().or(z.literal(""))
-  })
-  .strict();

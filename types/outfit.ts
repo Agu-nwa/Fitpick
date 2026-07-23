@@ -43,6 +43,8 @@ export type OutfitRecommendation = {
   repeatNote: string;
   careNote: string;
   source?: "rule_based" | "manual" | "ai" | "outfit_page" | "stylist_chat" | "system" | string;
+  savedAt?: string | null;
+  favorite?: boolean;
   createdAt?: string;
   preview?: {
     status: "not_started" | "generating" | "ready" | "failed" | string;

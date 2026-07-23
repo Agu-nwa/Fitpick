@@ -15,7 +15,7 @@ export const previewAccuracyLevels: Record<PreviewAccuracyLevelId, PreviewAccura
   inspired_visualization: {
     id: "inspired_visualization",
     label: "AI Visualization",
-    meaning: "Looks inspired by selected items but may not match exact garment fit.",
+    meaning: "Preview inspired by selected items but may not match exact garment fit.",
     rank: 1
   },
   garment_referenced: {

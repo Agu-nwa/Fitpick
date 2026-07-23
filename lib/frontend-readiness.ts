@@ -16,7 +16,7 @@ export const frontendReadiness: ReadinessItem[] = [
     id: "core-routes",
     area: "Core routes",
     status: "complete",
-    detail: "Onboarding, Home, Occasion, Wardrobe, Add Clothes, Item Detail, Outfit, Outfit Detail, Looks, Wallet, Profile, Preferences, States, and Backend Ready routes are present.",
+    detail: "Onboarding, Home, Occasion, Wardrobe, Add Clothes, Item Detail, Outfit, Outfit Detail, Outfit Preview, Wallet, Profile, Preferences, States, and Backend Ready routes are present.",
   },
   {
     id: "design-system",
@@ -40,7 +40,7 @@ export const frontendReadiness: ReadinessItem[] = [
     id: "upload-flow",
     area: "Wardrobe upload flow",
     status: "complete",
-    detail: "Upload UI, photo guidance, S3 upload access, AI tag review, manual correction, and item detail patterns are wired to production routes.",
+    detail: "Upload UI, photo guidance, secure image upload access, AI tag review, manual correction, and item detail patterns are wired to production routes.",
   },
   {
     id: "states",
@@ -68,7 +68,7 @@ export const backendHandoffAreas = [
   "AI/manual clothing tag extraction",
   "Occasion and style preference persistence",
   "Outfit recommendation engine",
-  "Worn history, saved looks, and ratings",
+  "Outfit history, worn tracking, and ratings",
   "MyFitPick Credit wallet and usage status",
   "Notifications, privacy settings, and audit-safe data handling",
 ];

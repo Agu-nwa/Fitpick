@@ -8,10 +8,11 @@ import { requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { validateBody } from "@/lib/validation";
-import { getWeatherForecast } from "@/lib/weather/weather-service";
+import { getWeatherForecast, weatherErrorMetadata } from "@/lib/weather/weather-service";
 
 const weatherQuerySchema = z.object({
   city: z.string().trim().max(120).optional(),
+  countryCode: z.string().trim().length(2).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
   days: z.coerce.number().int().min(1).max(7).optional()
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
     const parsed = validateBody(weatherQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!parsed.ok) return parsed.response;
 
-    const city = parsed.data.city || auth.user.weatherLocationName || "";
+    const city = parsed.data.city || auth.user.weatherCityName || auth.user.weatherLocationName || "";
+    const countryCode = parsed.data.countryCode || auth.user.weatherCountryCode || "";
     const latitude = parsed.data.latitude ?? auth.user.weatherLatitude ?? null;
     const longitude = parsed.data.longitude ?? auth.user.weatherLongitude ?? null;
 
@@ -44,6 +46,9 @@ export async function GET(request: NextRequest) {
     try {
       const forecast = await getWeatherForecast({
         city,
+        countryCode,
+        countryName: auth.user.weatherCountryName || undefined,
+        locationName: auth.user.weatherLocationName || undefined,
         latitude,
         longitude,
         days: parsed.data.days || 7
@@ -55,11 +60,11 @@ export async function GET(request: NextRequest) {
         safeMessage: ""
       });
     } catch (error) {
-      logSafeError("weather.forecast.provider", error);
+      logSafeError("weather.forecast.provider", error, weatherErrorMetadata(error, { city, countryCode }));
       return apiSuccess({
         status: "unavailable",
         forecast: null,
-        safeMessage: "Weather guidance is not available right now."
+        safeMessage: "Weather is temporarily unavailable. Your location is still saved."
       });
     }
   } catch (error) {

@@ -40,6 +40,7 @@ import {
 } from "@/lib/api-client";
 import { imageUploadErrorMessage, normalizeImageForUpload, type NormalizedImageUpload } from "@/lib/image-upload/browser-normalize";
 import { IMAGE_UPLOAD_POLICY, messageForImageUploadError, type ImageUploadSource, type ImageUploadStage } from "@/lib/image-upload-policy";
+import { safeUploadErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 import {
   findIntakeCategory,
   intakeCategories,
@@ -108,11 +109,7 @@ function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFil
 }
 
 function uploadFailureMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : "";
-  if (/failed to fetch|network|cors|direct_upload_failed|s3/i.test(message)) {
-    return "We could not send the photo to storage. Try again, or use a smaller JPG/PNG image.";
-  }
-  return message || "We could not upload these photos. Try again.";
+  return safeUploadErrorMessage(imageUploadErrorMessage(error) || error, "We could not upload these photos. Try again.");
 }
 
 function selectedGroupCategories(groupId: IntakeGroupId | null) {
@@ -427,14 +424,14 @@ export function WardrobeAddClient() {
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
         return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
       }
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: signed.error.message || fallback.error.message } });
-      throw new Error(signed.error.message || fallback.error.message);
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "upload_access_failed" } });
+      throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again.")));
     }
 
     const uploadAccess = signed.data.upload;
     const uploadUrl = uploadAccess.uploadUrl;
     if (!uploadAccess.ready || !uploadUrl) {
-      throw new Error(uploadAccess.message || "Image upload is not configured yet.");
+      throw new Error(safeUploadErrorMessage(uploadAccess.message, "We could not upload these photos. Try again."));
     }
 
     try {
@@ -458,8 +455,8 @@ export function WardrobeAddClient() {
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
         return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
       }
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: fallback.error.message || "direct_upload_failed" } });
-      throw new Error(fallback.error.message || "direct_upload_failed");
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "direct_upload_failed" } });
+      throw new Error(safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again."));
     }
   }
 
@@ -556,7 +553,7 @@ export function WardrobeAddClient() {
 
       if (!result.ok) {
         setStatus("idle");
-        setMessage(result.error.message || "MyFitPick could not save the upload. Try again.");
+        setMessage(safeUserMessage(result.error, "MyFitPick could not save the upload. Try again."));
         return;
       }
 

@@ -16,6 +16,7 @@ import {
   type CreditPackSummary,
   type CreditWalletData
 } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 const cryptoComingSoonCopy = "Crypto payments are coming soon.";
 
@@ -69,7 +70,7 @@ function PaymentMethodSummary({
             <Badge tone="success">Available</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
-            Tap any Credit pack to start secure Stripe checkout immediately.
+            Tap any Credit pack to start secure card checkout immediately.
           </span>
         </div>
 
@@ -132,7 +133,7 @@ function CryptoComingSoonModal({
               {['TRC20', 'BEP20', 'ERC20'].map((network) => <Badge key={network} tone="premium">{network}</Badge>)}
             </div>
           </div>
-          <p className="mt-4 text-sm font-semibold leading-6 text-ink">For now you can securely purchase credits using Stripe.</p>
+          <p className="mt-4 text-sm font-semibold leading-6 text-ink">For now you can securely purchase Credits with a card.</p>
         </div>
         <div className="grid gap-2 border-t border-line bg-canvas/80 p-4 sm:grid-cols-2">
           <Button type="button" onClick={onContinueWithCard} disabled={!cardReady || cardBusy}>
@@ -193,7 +194,7 @@ export function WalletClient() {
       return;
     }
 
-    setCheckoutMessage(result.ok ? "Card checkout is not available right now." : result.error.message);
+    setCheckoutMessage(result.ok ? "Card checkout is not available right now." : safeUserMessage(result.error, "Card checkout is not available right now."));
     setCheckoutPackId("");
     await loadWallet();
   };

@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import {
-  getWeatherForecast
+  getWeatherForecast,
+  weatherErrorMetadata
 } from "@/lib/weather/weather-service";
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
@@ -117,11 +118,17 @@ export async function POST(request: NextRequest) {
         weatherForecast = await getWeatherForecast({
           latitude: typeof parsed.data.latitude === "number" ? parsed.data.latitude : savedLatitude,
           longitude: typeof parsed.data.longitude === "number" ? parsed.data.longitude : savedLongitude,
-          city: typeof parsed.data.latitude === "number" && typeof parsed.data.longitude === "number" ? undefined : parsed.data.weatherLocation || auth.user.weatherLocationName || undefined,
+          city: typeof parsed.data.latitude === "number" && typeof parsed.data.longitude === "number" ? undefined : parsed.data.weatherLocation || auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
+          countryCode: auth.user.weatherCountryCode || undefined,
+          countryName: auth.user.weatherCountryName || undefined,
+          locationName: auth.user.weatherLocationName || undefined,
           days: 3
         });
       } catch (error) {
-        logSafeError("outfit.recommend.weather", error);
+        logSafeError("outfit.recommend.weather", error, weatherErrorMetadata(error, {
+          city: parsed.data.weatherLocation || auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
+          countryCode: auth.user.weatherCountryCode || undefined
+        }));
       }
     }
 

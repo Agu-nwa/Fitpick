@@ -26,8 +26,8 @@ export default function HomePage() {
         <section>
           <SectionHeader title="Continue" />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/looks">
-              <Button variant="secondary" className="w-full rounded-full">Open saved looks</Button>
+            <Link href="/outfit">
+              <Button variant="secondary" className="w-full rounded-full">Pick an outfit</Button>
             </Link>
             <Link href="/wallet">
               <Button variant="secondary" className="w-full rounded-full">Check credits</Button>

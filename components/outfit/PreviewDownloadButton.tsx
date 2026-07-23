@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { downloadAvatarPreview } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 type PreviewDownloadButtonProps = {
   outfitId: string;
@@ -28,7 +29,7 @@ export function PreviewDownloadButton({ outfitId, className, variant = "secondar
     setDownloading(false);
 
     if (!result.ok) {
-      setError(result.error.message || "Unable to download this preview right now.");
+      setError(safeUserMessage(result.error, "Unable to download this preview right now."));
       return;
     }
 

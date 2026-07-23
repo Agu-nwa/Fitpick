@@ -8,11 +8,6 @@ export const emptyStates = {
     title: "No shoes added",
     body: "Shoes help MyFitPick finish your look and match the occasion.",
     cta: "Add shoes"
-  },
-  looks: {
-    title: "No saved looks yet",
-    body: "Save outfits you like so you can wear them again later.",
-    cta: "Pick outfit"
   }
 };
 

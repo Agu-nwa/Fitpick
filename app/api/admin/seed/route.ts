@@ -148,8 +148,7 @@ const contentRules = [
       ["weather_change", "Weather changed. Review today’s outfit options."],
       ["event_prep", "You have an event coming up. Plan a look ahead."],
       ["wardrobe_completion", "Add a few more items to improve recommendations."],
-      ["repeat_warning", "You wore this recently. Try a fresh option."],
-      ["saved_look_reminder", "A saved look may work for today."]
+      ["repeat_warning", "You wore this recently. Try a fresh option."]
     ]
   },
   {
@@ -157,7 +156,6 @@ const contentRules = [
     entries: [
       ["wardrobe_empty", "Add wardrobe items to start getting outfit picks."],
       ["no_shoes", "Add shoes to improve outfit completion."],
-      ["no_saved_looks", "Saved looks will appear here."],
       ["upload_failed", "Upload did not complete. Please try again."],
       ["image_unclear", "This image may need manual tag review."],
       ["recommendation_failed", "We could not create a recommendation right now."],

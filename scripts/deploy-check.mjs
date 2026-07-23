@@ -17,7 +17,7 @@ const requiredFiles = [
   "app/wardrobe/[id]/page.tsx",
   "app/outfit/page.tsx",
   "app/outfit/[id]/page.tsx",
-  "app/looks/page.tsx",
+  "app/outfit/[id]/preview/page.tsx",
   "app/profile/page.tsx",
   "app/plus/page.tsx",
   "app/backend-ready/page.tsx",

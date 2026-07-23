@@ -2,6 +2,7 @@ import type { Types } from "mongoose";
 import { BackgroundJob } from "@/models/BackgroundJob";
 import { logJobEvent } from "@/lib/ai/observability/ai-logger";
 import { logTryOnMetric, tryOnBackoffDelay } from "@/lib/tryon/reliability";
+import { safeUserMessage, sanitizeUserFacingPayload } from "@/lib/user-facing-errors";
 
 export type BackgroundJobType =
   | "wardrobe_analysis"
@@ -273,8 +274,8 @@ export function serializeJob(job: any) {
     status: job.status,
     attempts: job.attempts || 0,
     maxAttempts: job.maxAttempts || 0,
-    result: job.result || {},
-    errorMessage: job.errorMessage || "",
+    result: sanitizeUserFacingPayload(job.result || {}),
+    errorMessage: job.errorMessage ? safeUserMessage(job.errorMessage, "Something went wrong. Please try again shortly.") : "",
     claimedBy: job.claimedBy || "",
     queueWaitMs: job.queueWaitMs || 0,
     processingDurationMs: job.processingDurationMs || 0,

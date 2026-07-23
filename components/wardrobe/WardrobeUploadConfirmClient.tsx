@@ -20,6 +20,7 @@ import {
 import { AITagConfirmationForm, type AITagConfirmationDefaults, type AITagConfirmationValues } from "@/components/wardrobe/AITagConfirmationForm";
 import { useSession } from "@/hooks/use-session";
 import { analyzeWardrobeUpload, confirmWardrobeUploadTags, getJobStatus, getWardrobeUpload, type WardrobeUploadRecord } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 import type { WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
 function cleanItemPayload(values: AITagConfirmationValues) {
@@ -144,7 +145,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
           if (jobResult.data.job.status === "failed" || jobResult.data.job.status === "cancelled") {
             setAnalysisJobId("");
             setIsAnalyzing(false);
-            setMessage(jobResult.data.job.errorMessage || "Analysis failed. Add tags manually.");
+            setMessage(safeUserMessage(jobResult.data.job.errorMessage, "Analysis failed. Add tags manually."));
             return await loadUpload();
           }
         }
@@ -156,7 +157,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
 
       setIsAnalyzing(false);
       const refreshed = await loadUpload();
-      setMessage(result.data.aiTagStatus === "failed" ? result.data.safeMessage || "Clothing check failed. Add details manually." : "Your clothing details are ready to check.");
+      setMessage(result.data.aiTagStatus === "failed" ? safeUserMessage(result.data.safeMessage, "Clothing check failed. Add details manually.") : "Your clothing details are ready to check.");
       return refreshed;
     }
 

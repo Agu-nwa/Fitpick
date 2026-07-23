@@ -8,13 +8,13 @@ import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { CTABar } from "@/components/ui/CTABar";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { Toast } from "@/components/ui/Toast";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
+import { safeTryOnErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 import type { OutfitRecommendation } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
 
@@ -28,6 +28,18 @@ function isFootwear(item: WardrobeItem) {
 
 function itemImage(item: WardrobeItem) {
   return item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
+}
+
+function isPreviewReady(preview: AvatarPreviewData["preview"] | null, imageUrl: string) {
+  return preview?.status === "ready" && Boolean(imageUrl);
+}
+
+function isPreviewProcessing(preview: AvatarPreviewData["preview"] | null, generating: boolean) {
+  return generating || preview?.status === "generating";
+}
+
+function isPreviewFailed(preview: AvatarPreviewData["preview"] | null, error: string) {
+  return Boolean(error) || preview?.status === "failed";
 }
 
 function createClientIdempotencyKey(prefix: string) {
@@ -48,16 +60,6 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
   const footwear = useMemo(() => outfit?.items.find(isFootwear) || null, [outfit]);
   const missingShoes = Boolean(outfit && !footwear);
-  const warnings = useMemo(() => {
-    const messages = [
-      ...(outfit?.completenessWarnings || []),
-      ...(preview?.visualizationWarnings || []),
-      ...(preview?.fitWarnings || [])
-    ];
-    if (missingShoes) messages.unshift("Shoes are missing from this look.");
-    messages.unshift("This is a preview, not a perfect fitting.");
-    return Array.from(new Set(messages.filter(Boolean))).slice(0, 8);
-  }, [missingShoes, outfit?.completenessWarnings, preview?.fitWarnings, preview?.visualizationWarnings]);
 
   const loadLook = useCallback(async () => {
     setStatus("loading");
@@ -101,7 +103,9 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
       }
 
       if (result.data.job.status === "failed" || result.data.job.status === "cancelled" || result.data.job.status === "dead_letter") {
-        setError(result.data.job.errorMessage || "Unable to show it on your avatar right now.");
+        const message = safeTryOnErrorMessage(result.data.job.errorMessage);
+        setError(message);
+        setPreview((current) => current ? { ...current, status: "failed", errorMessage: message } : current);
         setGenerating(false);
         return;
       }
@@ -119,7 +123,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     setGenerating(false);
 
     if (!result.ok) {
-      setError(result.error.message || "Unable to show it on your avatar right now.");
+      setError(safeUserMessage(result.error, "Unable to show it on your avatar right now."));
       return;
     }
 
@@ -146,7 +150,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     return (
       <Card className="p-5">
         <p className="text-base font-semibold text-ink">Look not found</p>
-        <p className="mt-2 text-sm leading-6 text-muted">This saved look is not available.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">This outfit preview is not available.</p>
         <Link href="/outfit"><Button className="mt-4 w-full">Pick another outfit</Button></Link>
       </Card>
     );
@@ -162,6 +166,10 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   }
 
   const imageUrl = preview?.imageUrl || preview?.previewUrl || outfit.preview?.imageUrl || "";
+  const previewReady = isPreviewReady(preview, imageUrl);
+  const previewProcessing = isPreviewProcessing(preview, generating);
+  const previewFailed = !previewProcessing && isPreviewFailed(preview, error);
+  const hasPreviewStarted = Boolean(preview && preview.status !== "not_started");
 
   return (
     <div className="space-y-6">
@@ -183,9 +191,8 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
                 <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                  Generate a photorealistic model wearing the exact selected closet items.
+                  Create a preview with the selected closet items.
                 </p>
-                <Button className="mt-5" onClick={() => void handleGenerate(false)} disabled={generating}>{generating ? "Preparing..." : "Generate virtual try-on"}</Button>
               </div>
             )}
           </Card>
@@ -195,19 +202,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           <Card className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
-              <Badge tone={preview?.visualGroundingStatus === "grounded" ? "success" : "warning"}>{preview?.visualGroundingStatus === "grounded" ? "Grounded preview" : "Preview needs review"}</Badge>
             </div>
             <p className="text-sm leading-6 text-muted">
-              This look uses the selected closet item IDs. The generated image is an on-model virtual try-on, not a perfect fitting.
+              This is a preview, not a perfect fitting.
             </p>
           </Card>
-
-          {warnings.length ? (
-            <Card className="space-y-2 border-warning/25 bg-warning/10">
-              <p className="text-sm font-semibold text-ink">Fit note</p>
-              {warnings.slice(0, 5).map((warning) => <p key={warning} className="text-sm leading-6 text-ink">{warning}</p>)}
-            </Card>
-          ) : null}
 
           <Card className="space-y-3">
             <p className="text-sm font-semibold text-ink">Closet items in this look</p>
@@ -231,26 +230,37 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             <Card className="space-y-3 border-warning/25 bg-warning/10">
               <p className="text-sm font-semibold text-ink">Shoes are missing</p>
               <p className="text-sm leading-6 text-ink">Add shoes for a complete outfit.</p>
-              <Link href="/wardrobe/add"><Button className="w-full" variant="secondary">Add missing shoes</Button></Link>
             </Card>
           )}
 
           <Card className="space-y-3">
-            <p className="text-sm font-semibold text-ink">Why it works</p>
-            <p className="text-sm leading-6 text-muted">{outfit.whyItWorks || outfit.summary}</p>
-            {outfit.materialNote ? <p className="text-sm leading-6 text-muted">{outfit.materialNote}</p> : null}
-            {outfit.silhouetteNote ? <p className="text-sm leading-6 text-muted">{outfit.silhouetteNote}</p> : null}
+            {previewReady ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                <Button onClick={() => void handleSave()}>Save Look</Button>
+                <PreviewDownloadButton outfitId={outfit.id} />
+              </div>
+            ) : null}
+
+            {previewProcessing ? (
+              <div className="rounded-2xl border border-line bg-canvas/70 px-4 py-5 text-center">
+                <div className="mx-auto size-8 animate-spin rounded-full border-2 border-cocoa/20 border-t-cocoa" aria-hidden="true" />
+                <p className="mt-3 text-sm font-semibold text-ink">Creating your preview...</p>
+              </div>
+            ) : null}
+
+            {previewFailed ? (
+              <div className="space-y-3">
+                <p className="rounded-2xl bg-danger/10 px-3 py-3 text-sm font-semibold text-ink">
+                  {"Virtual Try-On couldn't be completed."}
+                </p>
+                {!generating ? <Button onClick={() => void handleGenerate(true)}>Retry Try-On</Button> : null}
+              </div>
+            ) : null}
+
+            {!hasPreviewStarted && !previewProcessing && !previewFailed ? (
+              <Button onClick={() => void handleGenerate(false)}>Generate Virtual Try-On</Button>
+            ) : null}
           </Card>
-
-          {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-sm font-semibold text-ink">{error}</p> : null}
-
-          <CTABar className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-            <Button onClick={() => void handleSave()}>Save look</Button>
-            {imageUrl && preview?.status === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
-            <Link href="/outfit"><Button variant="secondary" className="w-full">Try another look</Button></Link>
-            <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={generating}>{generating ? "Preparing..." : "Regenerate try-on"}</Button>
-            <Link href="/avatar"><Button variant="ghost" className="w-full">Edit avatar</Button></Link>
-          </CTABar>
         </aside>
       </div>
       <Toast show={Boolean(toast)} message={toast} />

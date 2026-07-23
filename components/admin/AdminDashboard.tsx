@@ -17,6 +17,7 @@ import {
   type BackendHealth,
   type CurrentUserSummary
 } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 import type { ApiFailure } from "@/types/api";
 
 type TabId = "overview" | "audit" | "content";
@@ -76,7 +77,7 @@ function FailurePanel({ failure, onRetry }: { failure?: ApiFailure; onRetry: () 
   return (
     <ApiErrorState
       title="Admin data unavailable"
-      message={failure?.error.message || "Unable to load the admin console right now."}
+      message={failure ? safeUserMessage(failure.error, "Unable to load the admin console right now.") : "Unable to load the admin console right now."}
       onRetry={onRetry}
     />
   );
@@ -135,7 +136,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     const result = await runAdminSeed();
     if (!result.ok) {
       setSeedStatus("failed");
-      setSeedMessage(result.error.message);
+      setSeedMessage(safeUserMessage(result.error, "Unable to run this support action right now."));
       return;
     }
 
@@ -203,8 +204,8 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
               />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard label="App" value={health?.checks?.app || "loading"} detail={health?.service || "MyFitPick"} tone={statusTone(health?.checks?.app)} />
-                <StatCard label="Database" value={health?.checks?.database || "loading"} detail={health?.databaseConfigured ? "MongoDB configured" : "MongoDB not configured"} tone={statusTone(health?.checks?.database)} />
-                <StatCard label="Storage" value={health?.checks?.storage || "loading"} detail="S3/CloudFront readiness" tone={statusTone(health?.checks?.storage)} />
+                <StatCard label="Data service" value={health?.checks?.database || "loading"} detail={health?.databaseConfigured ? "Ready" : "Needs setup"} tone={statusTone(health?.checks?.database)} />
+                <StatCard label="Image storage" value={health?.checks?.storage || "loading"} detail="Upload and preview readiness" tone={statusTone(health?.checks?.storage)} />
                 <StatCard label="Worker" value={health?.checks?.worker || "loading"} detail="Background worker health signal" tone={statusTone(health?.checks?.worker)} />
               </div>
             </section>

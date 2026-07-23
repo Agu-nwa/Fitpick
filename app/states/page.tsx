@@ -36,7 +36,7 @@ export default function StatesPage() {
         <SectionHeader title="Empty" />
         <div className="space-y-3">
           <EmptyState {...emptyStates.wardrobe} />
-          <EmptyState {...emptyStates.looks} />
+          <EmptyState {...emptyStates.shoes} />
         </div>
       </section>
 

@@ -8,8 +8,9 @@ import { Card } from "@/components/ui/Card";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import { completenessLabel } from "@/lib/recommendation/completeness";
+import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import type { AvatarProfileData } from "@/lib/api-client";
-import type { OutfitRecommendation, PreviewAccuracySummary, VisualGroundingStatus } from "@/types/outfit";
+import type { OutfitRecommendation, PreviewAccuracySummary } from "@/types/outfit";
 
 type DigitalHumanTryOnPanelProps = {
   outfit: OutfitRecommendation;
@@ -17,14 +18,11 @@ type DigitalHumanTryOnPanelProps = {
   previewUrl?: string;
   previewStatus?: string;
   previewError?: string;
-  previewJobId?: string;
   isGenerating?: boolean;
   accuracyLevel?: PreviewAccuracySummary;
   fitStatus?: string;
-  fitConfidence?: number;
   fitWarnings?: string[];
   visualizationWarnings?: string[];
-  visualGroundingStatus?: VisualGroundingStatus;
   onOpenPreview?: () => void;
   onGenerateFitLocked?: () => void;
   onRegenerate?: () => void;
@@ -44,32 +42,24 @@ const tryOnProgressSteps = [
   "Complete"
 ];
 
-function billingSafeError(message?: string) {
-  const safe = message || "Virtual Try-On could not be completed.";
-  return /credit was not deducted|credit is available/i.test(safe)
-    ? safe
-    : `${safe} Your credit was not deducted.`;
-}
-
 export function DigitalHumanTryOnPanel({
   outfit,
   avatarProfile,
   previewUrl,
   previewStatus = "not_started",
   previewError = "",
-  previewJobId = "",
   isGenerating = false,
   accuracyLevel,
   fitStatus,
-  fitConfidence = 0,
   fitWarnings = [],
   visualizationWarnings = [],
-  visualGroundingStatus,
   onOpenPreview,
   onGenerateFitLocked,
   onRegenerate
 }: DigitalHumanTryOnPanelProps) {
   const setupRequired = /try-on model|avatar settings|full-body|model image/i.test(previewError || "");
+  const safeFitWarnings = safeUserMessages(fitWarnings);
+  const safeCompletenessWarnings = safeUserMessages([...(outfit.completenessWarnings || []), ...visualizationWarnings]);
 
   return (
     <div className="space-y-4">
@@ -135,17 +125,17 @@ export function DigitalHumanTryOnPanel({
           ))}
         </div>
 
-        {fitWarnings.length ? (
+        {safeFitWarnings.length ? (
           <div className="space-y-2 rounded-2xl border border-warning/20 bg-warning/10 p-3">
-            {fitWarnings.slice(0, 4).map((warning) => (
+            {safeFitWarnings.slice(0, 4).map((warning) => (
               <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
             ))}
           </div>
         ) : null}
 
-        {outfit.completenessWarnings?.length || visualizationWarnings.length ? (
+        {safeCompletenessWarnings.length ? (
           <div className="space-y-2 rounded-2xl border border-warning/20 bg-warning/10 p-3">
-            {[...(outfit.completenessWarnings || []), ...visualizationWarnings].slice(0, 4).map((warning) => (
+            {safeCompletenessWarnings.slice(0, 4).map((warning) => (
               <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
             ))}
           </div>
@@ -163,17 +153,7 @@ export function DigitalHumanTryOnPanel({
             </div>
           </div>
         ) : null}
-        {previewError ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-sm font-semibold text-red-600">{billingSafeError(previewError)}</p> : null}
-
-        <details className="rounded-2xl border border-line bg-canvas/60 p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Badge tone="neutral">Preview type: {simplePreviewType(accuracyLevel)}</Badge>
-            <Badge tone="neutral">Size accuracy {Math.round((fitConfidence || 0) * 100)}%</Badge>
-            {visualGroundingStatus ? <Badge tone={visualGroundingStatus === "grounded" ? "success" : "warning"}>{visualGroundingStatus === "grounded" ? "Grounded" : "Needs review"}</Badge> : null}
-            {previewJobId ? <Badge tone="neutral">Job {previewJobId.slice(-8)}</Badge> : null}
-          </div>
-        </details>
+        {previewError ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-sm font-semibold text-red-600">{safeTryOnErrorMessage(previewError)}</p> : null}
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>

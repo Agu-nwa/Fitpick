@@ -78,7 +78,9 @@ const OutfitRecommendationSchema = new Schema(
     },
     requestText: { type: String, default: "", maxlength: 220 },
     reuseKey: { type: String, default: "", maxlength: 96, index: true },
-    reasoningMetadata: { type: Schema.Types.Mixed, default: {} }
+    reasoningMetadata: { type: Schema.Types.Mixed, default: {} },
+    savedAt: { type: Date, default: null, index: true },
+    favorite: { type: Boolean, default: false, index: true }
   },
   { timestamps: true }
 );
@@ -87,6 +89,7 @@ OutfitRecommendationSchema.index({ userId: 1, occasion: 1 });
 OutfitRecommendationSchema.index({ userId: 1, createdAt: -1 });
 OutfitRecommendationSchema.index({ userId: 1, source: 1, reuseKey: 1 });
 OutfitRecommendationSchema.index({ userId: 1, recommendationMode: 1, createdAt: -1 });
+OutfitRecommendationSchema.index({ userId: 1, savedAt: -1 });
 
 export type OutfitRecommendationDocument = InferSchemaType<typeof OutfitRecommendationSchema> & {
   _id: mongoose.Types.ObjectId;

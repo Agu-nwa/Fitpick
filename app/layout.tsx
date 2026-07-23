@@ -4,7 +4,7 @@ import ClientRecovery from "@/components/system/ClientRecovery";
 
 export const metadata: Metadata = {
   title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
-  description: "Your wardrobe, styled intelligently. Build looks, preview outfits, and dress with confidence.",
+  description: "Your wardrobe, styled intelligently. Preview outfits and dress with confidence.",
   appleWebApp: {
     capable: true,
     title: "MyFitPick",

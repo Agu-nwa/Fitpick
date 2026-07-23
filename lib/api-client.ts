@@ -1,6 +1,7 @@
 import type { ApiFailure, ApiResponse } from "@/types/api";
 import type { AiSuggestedWardrobeTags, WardrobeImageAsset } from "@/types/ai-tagging";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
+import { safeApiFailure } from "@/lib/user-facing-errors";
 import type { Occasion } from "@/types/occasion";
 import type { FitLockSummary, OutfitRecommendation, PreviewAccuracySummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
@@ -41,7 +42,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     if (!contentType.includes("application/json")) return invalidResponse;
 
     const payload = (await response.json()) as ApiResponse<T>;
-    if (payload && typeof payload === "object" && "ok" in payload) return payload;
+    if (payload && typeof payload === "object" && "ok" in payload) {
+      return payload.ok ? payload : safeApiFailure(payload);
+    }
 
     return invalidResponse;
   } catch {
@@ -89,8 +92,12 @@ export type CurrentUserSummary = {
     complimentaryCreditsUsed?: number;
     modelSetupCompletedAt?: string;
     weatherLocationName?: string;
+    weatherCountryCode?: string;
+    weatherCountryName?: string;
+    weatherCityName?: string;
     weatherLatitude?: number;
     weatherLongitude?: number;
+    weatherTimezone?: string;
     weatherLocationUpdatedAt?: string;
   };
   wallet?: CreditWalletSummary;
@@ -315,39 +322,6 @@ export type TryOnGenerationSummary = {
   startedAt: string | null;
   completedAt: string | null;
   updatedAt: string | null;
-};
-
-export type SavedLookSummary = {
-  id: string;
-  outfitId: string | null;
-  source: "manual" | "ai_saved" | string;
-  title: string;
-  occasion: string;
-  itemIds: string[];
-  favorite: boolean;
-  notes?: string;
-  savedAt: string | null;
-};
-
-export type WornLookSummary = {
-  id: string;
-  outfitId: string;
-  occasion: string;
-  itemIds: string[];
-  wornAt: string | null;
-  rating: string;
-  repeatWarning?: string;
-};
-
-export type LooksData = {
-  saved: SavedLookSummary[];
-  worn: WornLookSummary[];
-  favorites: SavedLookSummary[];
-  counts: {
-    saved: number;
-    worn: number;
-    favorites: number;
-  };
 };
 
 export type PreferencesData = {
@@ -648,6 +622,36 @@ export type WeatherForecastData = {
   safeMessage: string;
 };
 
+export type LocationCountry = {
+  code: string;
+  name: string;
+};
+
+export type LocationCity = {
+  id: string;
+  countryCode: string;
+  countryName: string;
+  cityName: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+};
+
+export type LocationCountriesData = {
+  countries: LocationCountry[];
+};
+
+export type LocationCitiesData = {
+  country: LocationCountry;
+  query: string;
+  cities: LocationCity[];
+};
+
+export type WeatherLocationUpdateData = {
+  user: CurrentUserSummary["user"];
+  location: LocationCity;
+};
+
 export type CheckoutData = {
   checkout: {
     ready: boolean;
@@ -752,10 +756,6 @@ export const getJobStatus = (id: string) => apiRequest<JobStatusData>(`/api/jobs
 export const saveOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/save`, { method: "POST", body });
 export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/wear`, { method: "POST", body });
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });
-export const getLooks = () => apiRequest<LooksData>("/api/looks", { cache: "no-store" });
-export const createManualLook = (body: unknown) => apiRequest<{ look: SavedLookSummary }>("/api/looks", { method: "POST", body });
-export const updateLook = (id: string, body: unknown) => apiRequest<{ look: SavedLookSummary }>(`/api/looks/${id}`, { method: "PATCH", body });
-export const deleteLook = (id: string) => apiRequest<{ deleted: boolean }>(`/api/looks/${id}`, { method: "DELETE" });
 export const getFashionMemorySummary = () => apiRequest<FashionMemoryData>("/api/fashion-memory", { cache: "no-store" });
 export const recordFashionMemory = (event: unknown) => apiRequest<FashionMemoryData>("/api/fashion-memory", { method: "POST", body: event });
 export const getWallet = () => apiRequest<CreditWalletData>("/api/wallet", { cache: "no-store" });
@@ -765,9 +765,20 @@ export const getPaymentPurchase = (purchaseId: string) => apiRequest<PaymentPurc
 export const getUsdtNetworks = () => apiRequest<{ networks: UsdtNetworkSummary[] }>("/api/payments/usdt/networks", { cache: "no-store" });
 export const startStripeCheckout = (body: { packId: string }) => apiRequest<CheckoutData>("/api/payments/stripe/checkout", { method: "POST", body });
 export const startUsdtCheckout = (body: { packId: string; network: string }) => apiRequest<CheckoutData>("/api/payments/usdt/checkout", { method: "POST", body });
-export const getWeatherForecast = (params: { city?: string; latitude?: number; longitude?: number; days?: number } = {}) => {
+export const getLocationCountries = () => apiRequest<LocationCountriesData>("/api/locations/countries", { cache: "no-store" });
+export const getLocationCities = (params: { countryCode: string; query?: string; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  searchParams.set("countryCode", params.countryCode);
+  if (params.query) searchParams.set("query", params.query);
+  if (typeof params.limit === "number") searchParams.set("limit", String(params.limit));
+  return apiRequest<LocationCitiesData>(`/api/locations/cities?${searchParams.toString()}`, { cache: "no-store" });
+};
+export const updateWeatherLocation = (body: { countryCode: string; cityId: string }) =>
+  apiRequest<WeatherLocationUpdateData>("/api/users/me/location", { method: "PATCH", body });
+export const getWeatherForecast = (params: { city?: string; countryCode?: string; latitude?: number; longitude?: number; days?: number } = {}) => {
   const searchParams = new URLSearchParams();
   if (params.city) searchParams.set("city", params.city);
+  if (params.countryCode) searchParams.set("countryCode", params.countryCode);
   if (typeof params.latitude === "number") searchParams.set("latitude", String(params.latitude));
   if (typeof params.longitude === "number") searchParams.set("longitude", String(params.longitude));
   if (typeof params.days === "number") searchParams.set("days", String(params.days));
@@ -836,7 +847,9 @@ export async function downloadAvatarPreview(id: string): Promise<ApiResponse<{ b
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const payload = (await response.json()) as ApiResponse<{ blob: Blob; filename: string }>;
-        if (payload && typeof payload === "object" && "ok" in payload) return payload;
+        if (payload && typeof payload === "object" && "ok" in payload) {
+          return payload.ok ? payload : safeApiFailure(payload);
+        }
       }
       return invalidResponse;
     }

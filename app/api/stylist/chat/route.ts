@@ -17,7 +17,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
-import { getWeatherForecast, isWeatherSensitiveMessage } from "@/lib/weather/weather-service";
+import { getWeatherForecast, isWeatherSensitiveMessage, weatherErrorMetadata } from "@/lib/weather/weather-service";
 import {
   createOrReuseStylistOutfitRecommendation,
   serializeStylistVisualization,
@@ -122,14 +122,20 @@ export async function POST(request: NextRequest) {
     if (isWeatherSensitiveMessage(sanitizedMessage)) {
       try {
         const forecast = await getWeatherForecast({
-          city: auth.user.weatherLocationName || undefined,
+          city: auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
+          countryCode: auth.user.weatherCountryCode || undefined,
+          countryName: auth.user.weatherCountryName || undefined,
+          locationName: auth.user.weatherLocationName || undefined,
           latitude: typeof auth.user.weatherLatitude === "number" ? auth.user.weatherLatitude : undefined,
           longitude: typeof auth.user.weatherLongitude === "number" ? auth.user.weatherLongitude : undefined,
           days: 3
         });
         weatherContext = forecast.summary;
       } catch (error) {
-        logSafeError("stylist.chat.weather", error);
+        logSafeError("stylist.chat.weather", error, weatherErrorMetadata(error, {
+          city: auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
+          countryCode: auth.user.weatherCountryCode || undefined
+        }));
       }
     }
     const deterministicRecommendation = buildRecommendation({

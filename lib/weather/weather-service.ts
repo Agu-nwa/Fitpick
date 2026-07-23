@@ -45,6 +45,9 @@ export type WeatherForecast = {
 
 type ForecastInput = {
   city?: string;
+  countryCode?: string;
+  countryName?: string;
+  locationName?: string;
   latitude?: number | null;
   longitude?: number | null;
   days?: number;
@@ -57,6 +60,68 @@ type CachedWeather = {
 
 const memoryCache = new Map<string, CachedWeather>();
 const defaultCacheTtlMs = 30 * 60 * 1000;
+const openWeatherProvider = "openweather";
+const providerTimeoutMs = 6500;
+const retryDelayBaseMs = 350;
+
+type WeatherProviderErrorInput = {
+  operation: string;
+  statusCode?: number;
+  errorCode: string;
+  retryable: boolean;
+  city?: string;
+  countryCode?: string;
+  durationMs?: number;
+  cause?: unknown;
+};
+
+export class WeatherProviderError extends Error {
+  provider = openWeatherProvider;
+  operation: string;
+  statusCode?: number;
+  errorCode: string;
+  retryable: boolean;
+  city?: string;
+  countryCode?: string;
+  durationMs?: number;
+
+  constructor(input: WeatherProviderErrorInput) {
+    super(input.errorCode);
+    this.name = "WeatherProviderError";
+    this.operation = input.operation;
+    this.statusCode = input.statusCode;
+    this.errorCode = input.errorCode;
+    this.retryable = input.retryable;
+    this.city = input.city;
+    this.countryCode = input.countryCode;
+    this.durationMs = input.durationMs;
+    if (input.cause !== undefined) this.cause = input.cause;
+  }
+}
+
+export function weatherErrorMetadata(error: unknown, fallback: { city?: string; countryCode?: string } = {}) {
+  if (error instanceof WeatherProviderError) {
+    return {
+      provider: error.provider,
+      operation: error.operation,
+      statusCode: error.statusCode,
+      errorCode: error.errorCode,
+      retryable: error.retryable,
+      city: error.city || fallback.city,
+      countryCode: error.countryCode || fallback.countryCode,
+      durationMs: error.durationMs
+    };
+  }
+
+  return {
+    provider: openWeatherProvider,
+    operation: "forecast",
+    errorCode: error instanceof Error ? error.message : "unknown_weather_error",
+    retryable: false,
+    city: fallback.city,
+    countryCode: fallback.countryCode
+  };
+}
 
 function weatherCacheTtlMs() {
   const value = Number(process.env.WEATHER_CACHE_TTL_SECONDS || 1800);
@@ -67,6 +132,11 @@ function normalizeCity(city?: string) {
   return (city || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
+function normalizeCountryCode(countryCode?: string) {
+  const clean = (countryCode || "").replace(/[^a-z]/gi, "").toUpperCase();
+  return clean.length === 2 ? clean : "";
+}
+
 function roundCoord(value?: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? Math.round(value * 1000) / 1000 : null;
 }
@@ -75,7 +145,8 @@ function cacheKey(input: ForecastInput) {
   const lat = roundCoord(input.latitude);
   const lon = roundCoord(input.longitude);
   if (lat !== null && lon !== null) return `coords:${lat},${lon}`;
-  return `city:${normalizeCity(input.city).toLowerCase()}`;
+  const countryCode = normalizeCountryCode(input.countryCode);
+  return `city:${countryCode}:${normalizeCity(input.city).toLowerCase()}`;
 }
 
 function conditionFrom(value: string, temp: number, windKph = 0): WeatherCondition {
@@ -144,25 +215,99 @@ function compactSummary(current: WeatherData, locationName: string) {
   return `${parts.join(", ")}. ${current.stylingAdvice || buildWeatherStylingAdvice(current)}`;
 }
 
-async function fetchOpenWeather(path: string) {
+function isRetryableStatus(status: number) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+function delayWithJitter(attempt: number) {
+  const jitter = Math.floor(Math.random() * 150);
+  return retryDelayBaseMs * 2 ** attempt + jitter;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchOpenWeather(path: string, metadata: { operation: string; city?: string; countryCode?: string }) {
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
   if (!apiKey) {
-    throw new Error("weather_provider_not_configured");
+    throw new WeatherProviderError({
+      operation: metadata.operation,
+      errorCode: "weather_provider_not_configured",
+      retryable: false,
+      city: metadata.city,
+      countryCode: metadata.countryCode
+    });
   }
 
-  const response = await fetch(`https://api.openweathermap.org/data/2.5/${path}&appid=${apiKey}&units=metric`, {
-    next: { revalidate: 1800 }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const startedAt = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), providerTimeoutMs);
+
+    try {
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/${path}&appid=${apiKey}&units=metric`, {
+        next: { revalidate: 1800 },
+        signal: controller.signal
+      });
+      const durationMs = Date.now() - startedAt;
+
+      if (!response.ok) {
+        const retryable = isRetryableStatus(response.status);
+        const providerError = new WeatherProviderError({
+          operation: metadata.operation,
+          statusCode: response.status,
+          errorCode: `http_${response.status}`,
+          retryable,
+          city: metadata.city,
+          countryCode: metadata.countryCode,
+          durationMs
+        });
+
+        if (retryable && attempt < 2) {
+          await sleep(delayWithJitter(attempt));
+          continue;
+        }
+        throw providerError;
+      }
+
+      return response.json();
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      if (error instanceof WeatherProviderError) throw error;
+
+      const retryable = (error instanceof DOMException && error.name === "AbortError") || error instanceof TypeError;
+      const providerError = new WeatherProviderError({
+        operation: metadata.operation,
+        errorCode: retryable ? "provider_timeout" : "provider_fetch_failed",
+        retryable,
+        city: metadata.city,
+        countryCode: metadata.countryCode,
+        durationMs,
+        cause: error
+      });
+
+      if (retryable && attempt < 2) {
+        await sleep(delayWithJitter(attempt));
+        continue;
+      }
+      throw providerError;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new WeatherProviderError({
+    operation: metadata.operation,
+    errorCode: "provider_retry_exhausted",
+    retryable: false,
+    city: metadata.city,
+    countryCode: metadata.countryCode
   });
-
-  if (!response.ok) {
-    throw new Error("weather_provider_failed");
-  }
-
-  return response.json();
 }
 
-function normalizeCurrent(data: any, locationName?: string): WeatherData {
+function normalizeCurrent(data: any, locationName?: string, countryName?: string): WeatherData {
   const temp = Number(data.main?.temp ?? 0);
   const feelsLike = Number(data.main?.feels_like ?? temp);
   const windKph = Math.round(Number(data.wind?.speed || 0) * 3.6);
@@ -177,7 +322,7 @@ function normalizeCurrent(data: any, locationName?: string): WeatherData {
     windKph,
     uvIndex: null,
     city: locationName || data.name || "",
-    country: data.sys?.country || "",
+    country: countryName || data.sys?.country || "",
     condition
   };
 
@@ -243,19 +388,30 @@ export async function getWeatherForecast(input: ForecastInput): Promise<WeatherF
   if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cached: true };
 
   const city = normalizeCity(input.city);
+  const countryCode = normalizeCountryCode(input.countryCode);
+  const countryName = normalizeCity(input.countryName);
+  const displayName = normalizeCity(input.locationName);
   const lat = roundCoord(input.latitude);
   const lon = roundCoord(input.longitude);
   if (!city && (lat === null || lon === null)) throw new Error("weather_location_missing");
 
   const locationQuery = lat !== null && lon !== null
     ? `lat=${lat}&lon=${lon}`
-    : `q=${encodeURIComponent(city)}`;
+    : `q=${encodeURIComponent(countryCode ? `${city},${countryCode}` : city)}`;
 
-  const currentRaw = await fetchOpenWeather(`weather?${locationQuery}`);
-  const current = normalizeCurrent(currentRaw, city || currentRaw.name);
-  const forecastRaw = await fetchOpenWeather(`forecast?${locationQuery}`);
+  const currentRaw = await fetchOpenWeather(`weather?${locationQuery}`, {
+    operation: "current_weather",
+    city,
+    countryCode
+  });
+  const current = normalizeCurrent(currentRaw, city || currentRaw.name, countryName);
+  const forecastRaw = await fetchOpenWeather(`forecast?${locationQuery}`, {
+    operation: "forecast",
+    city,
+    countryCode
+  });
   const days = normalizeForecastDays(forecastRaw, current, Math.min(Math.max(input.days || 7, 1), 7));
-  const locationName = [current.city || city || "Saved location", current.country].filter(Boolean).join(", ");
+  const locationName = displayName || [current.city || city || "Saved location", countryName || current.country].filter(Boolean).join(", ");
   const forecast = {
     location: {
       name: locationName,

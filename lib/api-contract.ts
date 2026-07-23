@@ -58,11 +58,11 @@ export const apiContracts: ApiContract[] = [
   },
   {
     id: "stripe-credit-checkout",
-    name: "Stripe credit checkout",
+    name: "Card credit checkout",
     method: "POST",
     path: "/api/payments/stripe/checkout",
     status: "ready",
-    description: "Creates a one-time Stripe Checkout Session for a trusted server-side Credit pack.",
+    description: "Creates a one-time card checkout for a trusted server-side Credit pack.",
   },
   {
     id: "usdt-credit-checkout",
@@ -70,6 +70,6 @@ export const apiContracts: ApiContract[] = [
     method: "POST",
     path: "/api/payments/usdt/checkout",
     status: "ready",
-    description: "Creates a CoinPayments hosted USDT invoice for a trusted server-side Credit pack and selected approved network.",
+    description: "Prepares a future hosted USDT checkout for a trusted server-side Credit pack and selected approved network.",
   },
 ];

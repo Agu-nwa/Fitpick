@@ -39,7 +39,6 @@ async function run() {
     ["wardrobe", () => request("/api/wardrobe")],
     ["wallet", () => request("/api/wallet")],
     ["purchases", () => request("/api/payments/purchases")],
-    ["looks", () => request("/api/looks")],
     ["notifications", () => request("/api/notifications/preferences")]
   ];
 

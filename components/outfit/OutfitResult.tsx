@@ -25,8 +25,8 @@ import {
   swapOutfitItem,
   wearOutfit
 } from "@/lib/api-client";
-import { simplePreviewType } from "@/lib/copy/simple-copy";
 import { completenessLabel } from "@/lib/recommendation/completeness";
+import { safeTryOnErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
@@ -125,23 +125,18 @@ export function OutfitResult({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(outfit.preview?.imageUrl || "");
   const [previewStatus, setPreviewStatus] = useState(outfit.preview?.status || "not_started");
-  const [previewAccuracyLevel, setPreviewAccuracyLevel] = useState(outfit.preview?.accuracyLevel);
   const [previewError, setPreviewError] = useState("");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-  const [previewJobId, setPreviewJobId] = useState("");
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("");
   const [avatarPreviewStatus, setAvatarPreviewStatus] = useState("not_started");
   const [avatarPreviewError, setAvatarPreviewError] = useState("");
   const [isGeneratingAvatarPreview, setIsGeneratingAvatarPreview] = useState(false);
-  const [avatarPreviewJobId, setAvatarPreviewJobId] = useState("");
   const [avatarProfile, setAvatarProfile] = useState<AvatarProfileData["profile"] | null>(null);
   const [avatarAccuracyLevel, setAvatarAccuracyLevel] = useState<any>();
   const [avatarFitStatus, setAvatarFitStatus] = useState("");
-  const [avatarFitConfidence, setAvatarFitConfidence] = useState(0);
   const [avatarFitWarnings, setAvatarFitWarnings] = useState<string[]>([]);
   const [avatarVisualizationWarnings, setAvatarVisualizationWarnings] = useState<string[]>([]);
-  const [avatarVisualGroundingStatus, setAvatarVisualGroundingStatus] = useState<any>();
   const outfitItemIds = outfit.items.map((item) => item.id).filter(Boolean);
 
   function applyAvatarPreview(preview: any, profile?: AvatarProfileData["profile"] | null) {
@@ -149,10 +144,8 @@ export function OutfitResult({
     setAvatarPreviewUrl(preview.imageUrl || preview.previewUrl || "");
     setAvatarAccuracyLevel(preview.accuracyLevel);
     setAvatarFitStatus(preview.fitStatus || "");
-    setAvatarFitConfidence(typeof preview.fitConfidence === "number" ? preview.fitConfidence : 0);
     setAvatarFitWarnings(Array.isArray(preview.fitWarnings) ? preview.fitWarnings : []);
     setAvatarVisualizationWarnings(Array.isArray(preview.visualizationWarnings) ? preview.visualizationWarnings : []);
-    setAvatarVisualGroundingStatus(preview.visualGroundingStatus || "");
     if (profile !== undefined) setAvatarProfile(profile);
   }
 
@@ -271,8 +264,6 @@ export function OutfitResult({
       const preview = result.data.preview;
       setPreviewStatus(preview.status);
       setPreviewUrl(preview.imageUrl || preview.previewUrl || "");
-      setPreviewAccuracyLevel(preview.accuracyLevel);
-      setPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
         setToast("Your preview is being styled.");
@@ -285,7 +276,7 @@ export function OutfitResult({
     }
 
     setPreviewStatus("failed");
-    setPreviewError(result.error.message || "Unable to generate preview right now.");
+    setPreviewError(safeUserMessage(result.error, "Unable to generate preview right now."));
   }
 
   async function pollPreviewJob(jobId: string) {
@@ -300,20 +291,17 @@ export function OutfitResult({
       if (job.status === "completed") {
         const preview = job.result?.preview || {};
         const url = preview.imageUrl || preview.previewUrl || "";
-        setPreviewAccuracyLevel(preview.accuracyLevel);
         if (url) {
           setPreviewUrl(url);
           setPreviewOpen(true);
         }
-        setPreviewJobId("");
         setToast("Preview ready.");
         window.setTimeout(() => setToast(""), 1800);
         return;
       }
 
       if (job.status === "failed" || job.status === "cancelled") {
-        setPreviewError(job.errorMessage || "Unable to generate preview right now.");
-        setPreviewJobId("");
+        setPreviewError(safeUserMessage(job.errorMessage, "Unable to generate preview right now."));
         return;
       }
     }
@@ -323,7 +311,6 @@ export function OutfitResult({
 
   async function handleGenerateAvatarPreview(regenerate = false) {
     setAvatarPreviewError("");
-    setAvatarPreviewJobId("");
     setIsGeneratingAvatarPreview(true);
     setAvatarPreviewStatus("generating");
 
@@ -337,7 +324,6 @@ export function OutfitResult({
     if (result.ok) {
       const preview = result.data.preview;
       applyAvatarPreview(preview, result.data.avatarProfile || null);
-      setAvatarPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setAvatarPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
         setToast("Creating virtual try-on.");
@@ -354,7 +340,7 @@ export function OutfitResult({
     const setupMessage = details?.progressiveTrigger
       ? [details.progressiveTrigger.title, details.progressiveTrigger.body].filter(Boolean).join(". ")
       : "";
-    setAvatarPreviewError(setupMessage || result.error.message || "Unable to create virtual try-on right now.");
+    setAvatarPreviewError(safeUserMessage(setupMessage || result.error, "Unable to create virtual try-on right now."));
   }
 
   async function pollAvatarPreviewJob(jobId: string) {
@@ -375,7 +361,6 @@ export function OutfitResult({
           setAvatarPreviewUrl(url);
           setAvatarPreviewOpen(true);
         }
-        setAvatarPreviewJobId("");
         setToast("Avatar preview ready.");
         window.setTimeout(() => setToast(""), 1800);
         return;
@@ -383,8 +368,7 @@ export function OutfitResult({
 
       if (job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter") {
         setAvatarPreviewStatus("failed");
-        setAvatarPreviewError(job.errorMessage || "Unable to create virtual try-on right now.");
-        setAvatarPreviewJobId("");
+        setAvatarPreviewError(safeTryOnErrorMessage(job.errorMessage, "Unable to create virtual try-on right now."));
         return;
       }
     }
@@ -402,9 +386,9 @@ export function OutfitResult({
           </Badge>
           {outfit.footwearIncluded === false ? <Badge tone="warning">Shoes missing</Badge> : null}
         </div>
-        {outfit.completenessWarnings?.length ? (
+        {safeUserMessages(outfit.completenessWarnings || []).length ? (
           <Card className="mb-4 space-y-1 border-warning/25 bg-warning/10">
-            {outfit.completenessWarnings.slice(0, 3).map((warning) => <p key={warning} className="text-sm leading-6 text-ink">{warning}</p>)}
+            {safeUserMessages(outfit.completenessWarnings || []).slice(0, 3).map((warning) => <p key={warning} className="text-sm leading-6 text-ink">{warning}</p>)}
           </Card>
         ) : null}
         <OutfitCard outfit={outfit} />
@@ -437,15 +421,7 @@ export function OutfitResult({
           {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
             <p className="mt-3 text-sm font-semibold text-cocoa">Your preview is being prepared. This may take a moment.</p>
           ) : null}
-          {previewError ? <p className="mt-3 text-sm font-semibold text-red-600">{previewError}</p> : null}
-
-          <details className="mt-3 rounded-2xl border border-line bg-canvas/60 p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {previewAccuracyLevel ? <Badge tone="premium">Preview type: {simplePreviewType(previewAccuracyLevel)}</Badge> : null}
-              {previewJobId ? <Badge tone="neutral">Job {previewJobId.slice(-8)}</Badge> : null}
-            </div>
-          </details>
+          {previewError ? <p className="mt-3 text-sm font-semibold text-red-600">{safeUserMessage(previewError, "Unable to generate preview right now.")}</p> : null}
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button onClick={() => void handleGeneratePreview(false)} disabled={isGeneratingPreview || previewStatus === "generating"}>
@@ -480,14 +456,11 @@ export function OutfitResult({
             previewUrl={avatarPreviewUrl}
             previewStatus={avatarPreviewStatus}
             previewError={avatarPreviewError}
-            previewJobId={avatarPreviewJobId}
             isGenerating={isGeneratingAvatarPreview}
             accuracyLevel={avatarAccuracyLevel}
             fitStatus={avatarFitStatus}
-            fitConfidence={avatarFitConfidence}
             fitWarnings={avatarFitWarnings}
             visualizationWarnings={avatarVisualizationWarnings}
-            visualGroundingStatus={avatarVisualGroundingStatus}
             onOpenPreview={() => setAvatarPreviewOpen(true)}
             onGenerateFitLocked={() => void handleGenerateAvatarPreview(Boolean(avatarPreviewUrl))}
             onRegenerate={() => void handleGenerateAvatarPreview(true)}

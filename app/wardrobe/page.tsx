@@ -1,12 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { WardrobeListClient } from "@/components/wardrobe/WardrobeListClient";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
-
-const categories = ["All", "Tops", "Bottoms", "Shoes", "Outerwear", "Accessories"];
-const filters = ["Color", "Occasion", "Weather", "Recently worn", "Needs care"];
 
 export default function WardrobePage() {
   return (
@@ -36,14 +33,9 @@ export default function WardrobePage() {
         </div>
       </header>
 
-      <div className="mobile-scrollbar mt-6 flex gap-2 overflow-x-auto pb-1">
-        {categories.map((category, index) => <Chip key={category} active={index === 0}>{category}</Chip>)}
-      </div>
-      <div className="mobile-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
-        {filters.map((filter) => <Chip key={filter}>{filter}</Chip>)}
-      </div>
-
-      <WardrobeListClient />
+      <Suspense fallback={null}>
+        <WardrobeListClient />
+      </Suspense>
     </AppShell>
   );
 }

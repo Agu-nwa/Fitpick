@@ -10,7 +10,7 @@ const required = [
   "app/wardrobe/[id]/page.tsx",
   "app/outfit/page.tsx",
   "app/outfit/[id]/page.tsx",
-  "app/looks/page.tsx",
+  "app/outfit/[id]/preview/page.tsx",
   "app/wallet/page.tsx",
   "app/wallet/payment/success/page.tsx",
   "app/profile/page.tsx",

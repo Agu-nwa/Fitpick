@@ -5,17 +5,23 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { requestAuthOtp, verifyAuthOtp } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 type Step = "email" | "code";
 type AuthMode = "signin" | "signup";
 
-function friendlyAuthError(message?: string) {
+function friendlyAuthError(error?: unknown) {
+  const message = typeof error === "string"
+    ? error
+    : error && typeof error === "object" && "message" in error && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message
+      : "";
   if (!message) return "Something went wrong. Please try again.";
   if (/expired/i.test(message)) return "That code has expired. Request a new one and try again.";
   if (/too many/i.test(message)) return "Too many incorrect attempts. Request a new code.";
   if (/invalid|code/i.test(message)) return "That code does not look right. Check it and try again.";
   if (/unable to send/i.test(message)) return "We could not send a code right now. Please try again shortly.";
-  return message;
+  return safeUserMessage(error instanceof Error ? error : message, "Something went wrong. Please try again.");
 }
 
 function safeNextPath(value?: string | null) {
@@ -57,7 +63,7 @@ export function AuthEntryForm({
     setLoading(false);
 
     if (!result.ok) {
-      setMessage(friendlyAuthError(result.error.message));
+      setMessage(friendlyAuthError(result.error));
       return;
     }
 
@@ -77,7 +83,7 @@ export function AuthEntryForm({
     setLoading(false);
 
     if (!result.ok) {
-      setMessage(friendlyAuthError(result.error.message));
+      setMessage(friendlyAuthError(result.error));
       return;
     }
 

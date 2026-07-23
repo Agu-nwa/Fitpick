@@ -14,8 +14,8 @@ import {
   saveOutfit,
   sendStylistMessage
 } from "@/lib/api-client";
-import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import { completenessLabel } from "@/lib/recommendation/completeness";
+import { safeTryOnErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 
@@ -76,7 +76,7 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
     previewId: preview?.previewId ?? null,
     imageUrl: preview?.imageUrl ?? null,
     cacheKey: preview?.cacheKey ?? null,
-    errorMessage: preview?.errorMessage ?? null,
+    errorMessage: preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : null,
     accuracyLevel: preview?.accuracyLevel,
     fitStatus: preview?.fitStatus,
     fitConfidence: preview?.fitConfidence,
@@ -176,7 +176,7 @@ export function StylistChat() {
         patchMessage(messageIdToPatch, {
           avatarPreview: compactPreview({
             status: "failed",
-            errorMessage: job.errorMessage || "Unable to show it on your avatar right now."
+            errorMessage: safeTryOnErrorMessage(job.errorMessage, "Unable to show it on your avatar right now.")
           }),
           jobId: null
         });
@@ -229,7 +229,7 @@ export function StylistChat() {
     setLoading(false);
 
     if (!response.ok) {
-      const safeMessage = response.error.message || "Unable to reach MyFitPick Stylist right now.";
+      const safeMessage = safeUserMessage(response.error, "Unable to reach MyFitPick Stylist right now.");
       setError(safeMessage);
       patchMessage(assistantId, { content: safeMessage });
       return;
@@ -283,7 +283,7 @@ export function StylistChat() {
       patchMessage(entry.id, {
         avatarPreview: compactPreview({
           status: "failed",
-          errorMessage: result.error.message || "Unable to show it on your avatar right now."
+          errorMessage: safeTryOnErrorMessage(result.error, "Unable to show it on your avatar right now.")
         })
       });
       return;
@@ -298,7 +298,7 @@ export function StylistChat() {
         previewId: preview.id || null,
         imageUrl: preview.imageUrl || preview.previewUrl || null,
         cacheKey: preview.cacheKey || null,
-        errorMessage: preview.errorMessage || null,
+        errorMessage: preview.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : null,
         accuracyLevel: preview.accuracyLevel,
         fitStatus: preview.fitStatus,
         fitConfidence: preview.fitConfidence,
@@ -317,6 +317,9 @@ export function StylistChat() {
     const preview = entry.avatarPreview;
     const status = preview?.status || "not_started";
     const hasVisualization = entry.visualMode === "digital_human" || Boolean(entry.outfitRecommendationId);
+    const rawFitWarnings = entry.fitLock?.warnings?.length ? entry.fitLock.warnings : preview?.fitWarnings || [];
+    const fitWarnings = safeUserMessages(rawFitWarnings);
+    const completenessWarnings = safeUserMessages(outfit?.completenessWarnings || []);
 
     return (
       <>
@@ -326,7 +329,6 @@ export function StylistChat() {
           <div className="rounded-2xl border border-line bg-canvas/60 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
-              {entry.outfitRecommendationId ? <Badge tone="neutral">Look {entry.outfitRecommendationId.slice(-6)}</Badge> : null}
               {outfit?.completenessStatus ? <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge> : null}
             </div>
 
@@ -341,35 +343,26 @@ export function StylistChat() {
             ) : (
               <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-5 text-center">
                 <p className="text-sm leading-6 text-muted">
-                  {preview?.errorMessage || "Your avatar preview will appear here when available."}
+                  {preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : "Your avatar preview will appear here when available."}
                 </p>
               </div>
             )}
 
             <p className="mt-3 text-xs leading-5 text-muted">Preview accuracy depends on the saved item photos and avatar details.</p>
-            {(entry.fitLock?.warnings?.length || preview?.fitWarnings?.length) ? (
+            {fitWarnings.length ? (
               <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
-                {(entry.fitLock?.warnings || preview?.fitWarnings || []).slice(0, 3).map((warning) => (
+                {fitWarnings.slice(0, 3).map((warning) => (
                   <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
                 ))}
               </div>
             ) : null}
-            {outfit?.completenessWarnings?.length ? (
+            {completenessWarnings.length ? (
               <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
-                {outfit.completenessWarnings.slice(0, 2).map((warning) => (
+                {completenessWarnings.slice(0, 2).map((warning) => (
                   <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
                 ))}
               </div>
             ) : null}
-            <details className="mt-3 rounded-xl border border-line bg-surface/70 p-3">
-              <summary className="cursor-pointer text-xs font-semibold text-ink">Preview details</summary>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {preview?.accuracyLevel ? <Badge tone={preview.accuracyLevel.id === "fit_locked" ? "success" : "premium"}>Preview type: {simplePreviewType(preview.accuracyLevel)}</Badge> : null}
-                {entry.fitLock?.fitStatus ? <Badge tone={entry.fitLock.fitStatus === "likely_fits" ? "success" : "warning"}>Fit: {simpleFitStatus(entry.fitLock.fitStatus)}</Badge> : null}
-                {preview?.visualGroundingStatus ? <Badge tone={preview.visualGroundingStatus === "grounded" ? "success" : "warning"}>{preview.visualGroundingStatus === "grounded" ? "Grounded" : "Needs review"}</Badge> : null}
-                {entry.jobId ? <Badge tone="neutral">Job {entry.jobId.slice(-8)}</Badge> : null}
-              </div>
-            </details>
 
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {entry.outfitRecommendationId ? (

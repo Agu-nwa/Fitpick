@@ -10,6 +10,7 @@ import { FieldGroup } from "@/components/ui/FieldGroup";
 import { generateAvatarModelImage, requestSignedUploadUrl, updateAvatarProfile, uploadImageViaServer, type AvatarProfileData } from "@/lib/api-client";
 import { imageUploadErrorMessage, normalizeImageForUpload } from "@/lib/image-upload/browser-normalize";
 import { IMAGE_UPLOAD_POLICY } from "@/lib/image-upload-policy";
+import { safeUploadErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 
 type AvatarProfile = AvatarProfileData["profile"];
 
@@ -130,7 +131,7 @@ export function AvatarProfileForm({
 
     setSaving(false);
     if (!result.ok) {
-      setError(result.error.message || "Unable to save your avatar.");
+      setError(safeUserMessage(result.error, "Unable to save your avatar."));
       return;
     }
 
@@ -160,7 +161,7 @@ export function AvatarProfileForm({
       });
       if (!signed.ok) {
         const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error(signed.error.message || fallback.error.message);
+        if (!fallback.ok) throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "Unable to upload your model photo.")));
 
         const result = await updateAvatarProfile({
           tryOnModelSource: "uploaded",
@@ -168,7 +169,7 @@ export function AvatarProfileForm({
           uploadedModelImageStorageKey: fallback.data.upload.storageKey,
           consentAccepted
         });
-        if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+        if (!result.ok) throw new Error(safeUserMessage(result.error, "Unable to save your model photo."));
 
         URL.revokeObjectURL(normalized.previewUrl);
         onSaved(result.data.profile);
@@ -180,7 +181,7 @@ export function AvatarProfileForm({
       }
       const uploadAccess = signed.data.upload;
       if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
-        throw new Error(uploadAccess.message || "Image upload is not configured yet.");
+        throw new Error(safeUploadErrorMessage(uploadAccess.message, "Unable to upload your model photo."));
       }
 
       const uploadResponse = await fetch(uploadAccess.uploadUrl, {
@@ -198,7 +199,7 @@ export function AvatarProfileForm({
           uploadedModelImageStorageKey: fallback.data.upload.storageKey,
           consentAccepted
         });
-        if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+        if (!result.ok) throw new Error(safeUserMessage(result.error, "Unable to save your model photo."));
 
         URL.revokeObjectURL(normalized.previewUrl);
         onSaved(result.data.profile);
@@ -216,7 +217,7 @@ export function AvatarProfileForm({
         uploadedModelImageStorageKey: uploadAccess.storageKey,
         consentAccepted
       });
-      if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+      if (!result.ok) throw new Error(safeUserMessage(result.error, "Unable to save your model photo."));
 
       onSaved(result.data.profile);
       setTryOnModelSource("uploaded");
@@ -225,7 +226,7 @@ export function AvatarProfileForm({
       URL.revokeObjectURL(normalized.previewUrl);
       setNotice("Model photo saved.");
     } catch (uploadError) {
-      setError(imageUploadErrorMessage(uploadError) || (uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo."));
+      setError(safeUploadErrorMessage(imageUploadErrorMessage(uploadError) || uploadError, "Unable to upload your model photo."));
     } finally {
       setUploadingModel(false);
     }
@@ -239,7 +240,7 @@ export function AvatarProfileForm({
     const result = await generateAvatarModelImage();
     setGeneratingModel(false);
     if (!result.ok) {
-      setError(result.error.message || "Unable to create your model image.");
+      setError(safeUserMessage(result.error, "Unable to create your model image."));
       return;
     }
 
@@ -321,9 +322,9 @@ export function AvatarProfileForm({
         </FieldGroup>
         <FieldGroup label="Avatar type" htmlFor="avatar-provider">
           <select id="avatar-provider" className={inputClass} value={avatarProvider} onChange={(event) => setAvatarProvider(event.target.value as AvatarProfile["avatarProvider"])}>
-            <option value="fitpick_preset">MyFitPick preset</option>
-            <option value="ready_player_me">Ready Player Me</option>
-            <option value="custom_glb">Custom GLB</option>
+            <option value="fitpick_preset">MyFitPick model</option>
+            <option value="ready_player_me">Connected model</option>
+            <option value="custom_glb">Custom 3D model</option>
           </select>
         </FieldGroup>
       </section>
@@ -333,14 +334,14 @@ export function AvatarProfileForm({
           <ShieldCheck size={14} aria-hidden="true" />
           Advanced source
         </p>
-        <FieldGroup label="Custom avatar link" htmlFor="avatar-url" help="Optional. Use this only if you already have a secure avatar file link.">
+        <FieldGroup label="Custom model link" htmlFor="avatar-url" help="Optional. Use this only if you already have a secure model file link.">
           <input
             id="avatar-url"
             className={inputClass}
             value={avatarUrl}
             onChange={(event) => setAvatarUrl(event.target.value)}
             disabled={avatarProvider === "fitpick_preset"}
-            placeholder="https://models.readyplayer.me/avatar-id.glb"
+            placeholder="Paste secure model link"
           />
         </FieldGroup>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
