@@ -3,6 +3,53 @@ import type { WardrobeItem } from "./wardrobe";
 export type OutfitConfidence = "Strong match" | "Good match" | "Needs review";
 export type OutfitCompletenessStatus = "complete" | "missing_footwear" | "missing_bottom" | "missing_core_item";
 export type VisualGroundingStatus = "grounded" | "partially_grounded" | "missing_references" | "failed";
+export type OutfitPieceSource = "wardrobe" | "reference-upload";
+
+export type ReferenceFashionItemSummary = {
+  id: string;
+  conversationId?: string;
+  imageUrl: string;
+  source: "camera" | "upload";
+  status: "uploaded" | "analyzing" | "needs-selection" | "ready" | "failed" | string;
+  category?: string;
+  subcategory?: string;
+  primaryColor?: string;
+  secondaryColors?: string[];
+  pattern?: string;
+  fabric?: string;
+  silhouette?: string;
+  fit?: string;
+  formality?: string;
+  styles?: string[];
+  occasions?: string[];
+  weather?: string[];
+  seasons?: string[];
+  detectedItems?: Array<{
+    id: string;
+    label: string;
+    category?: string;
+    subcategory?: string;
+    primaryColor?: string;
+    confidence?: number;
+  }>;
+  selectedDetectedItemId?: string;
+  usableForMatching?: boolean;
+  usableForTryOn?: boolean;
+  warnings?: string[];
+  analysisSummary?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  expiresAt?: string | null;
+};
+
+export type OutfitPiece = {
+  source: OutfitPieceSource;
+  role: string;
+  wardrobeItemId?: string;
+  referenceItemId?: string;
+  category?: string;
+  label?: string;
+};
 
 export type OutfitRecommendation = {
   id: string;
@@ -10,6 +57,8 @@ export type OutfitRecommendation = {
   occasion: string;
   confidence: OutfitConfidence;
   items: WardrobeItem[];
+  outfitPieces?: OutfitPiece[];
+  referenceItems?: ReferenceFashionItemSummary[];
   reasonChips: string[];
   summary: string;
   weatherFit: string;

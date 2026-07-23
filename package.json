@@ -18,6 +18,7 @@
     "test:image-upload": "tsx scripts/image-upload-policy-test.ts",
     "test:home-location": "tsx scripts/home-location-selector-test.ts",
     "test:wardrobe-filters": "tsx scripts/wardrobe-filtering-test.ts",
+    "test:stylist-reference": "tsx scripts/stylist-reference-item-test.ts",
     "test:looks-removal": "tsx scripts/looks-removal-test.ts",
     "test:tryon-preview-ui": "tsx scripts/tryon-preview-ui-test.ts",
     "test:tryon-billing": "tsx scripts/tryon-billing-integrity-test.ts",

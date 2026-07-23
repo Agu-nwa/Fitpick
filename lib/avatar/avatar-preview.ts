@@ -12,9 +12,11 @@ import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl, summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
+import { referenceItemToPseudoWardrobeItem } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { AvatarProfile } from "@/models/AvatarProfile";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
+import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
 export const avatarPreviewPromptVersion = "fitpick-virtual-tryon-v3";
@@ -249,13 +251,47 @@ export async function loadOwnedAvatarPreviewSubject(userId: string, outfitId: st
   if (!outfit) return null;
 
   const itemIds = (outfit.itemIds || []).map(String);
-  const loadedItems = await WardrobeItem.find({
-    _id: { $in: itemIds },
-    userId,
-    archivedAt: null
-  }).lean();
+  const referenceItemIds = Array.from(new Set([
+    ...(outfit.referenceItemIds || []).map(String),
+    ...((outfit.outfitPieces || []) as any[])
+      .filter((piece: any) => piece?.source === "reference-upload")
+      .map((piece: any) => String(piece.referenceItemId || ""))
+      .filter(Boolean)
+  ])).slice(0, 4);
+  const [loadedItems, referenceItems] = await Promise.all([
+    WardrobeItem.find({
+      _id: { $in: itemIds },
+      userId,
+      archivedAt: null
+    }).lean(),
+    referenceItemIds.length
+      ? ReferenceFashionItem.find({ _id: { $in: referenceItemIds }, userId, status: "ready" }).lean()
+      : Promise.resolve([])
+  ]);
   const itemsById = new Map(loadedItems.map((item: any) => [String(item._id), item]));
-  const items = itemIds.map((id) => itemsById.get(id)).filter(Boolean);
+  const wardrobeItems = itemIds.map((id) => itemsById.get(id)).filter(Boolean);
+  const referenceById = new Map((referenceItems as any[]).map((item: any) => [String(item._id), referenceItemToPseudoWardrobeItem(item)]));
+  const combinedById = new Map<string, any>([
+    ...wardrobeItems.map((item: any) => [String(item._id), item] as const),
+    ...Array.from(referenceById.entries())
+  ]);
+  const orderedPieces = Array.isArray(outfit.outfitPieces) ? outfit.outfitPieces as any[] : [];
+  const orderedItems = orderedPieces
+    .map((piece) => {
+      if (piece?.source === "reference-upload") return combinedById.get(String(piece.referenceItemId || ""));
+      return combinedById.get(String(piece.wardrobeItemId || ""));
+    })
+    .filter(Boolean);
+  const seen = new Set(orderedItems.map((item: any) => String(item._id || item.id)));
+  const items = [
+    ...orderedItems,
+    ...Array.from(combinedById.values()).filter((item: any) => {
+      const id = String(item._id || item.id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+  ];
 
   const avatarProfile = await getOrCreateAvatarProfile(userId);
 
@@ -264,7 +300,8 @@ export async function loadOwnedAvatarPreviewSubject(userId: string, outfitId: st
     items,
     avatarProfile,
     itemIds,
-    missingItems: items.length !== itemIds.length || !items.length
+    referenceItemIds,
+    missingItems: wardrobeItems.length !== itemIds.length || (referenceItems as any[]).length !== referenceItemIds.length || !items.length
   };
 }
 

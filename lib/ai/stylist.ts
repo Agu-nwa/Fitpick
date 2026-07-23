@@ -102,7 +102,8 @@ export async function askStylist({
   ownedItemIds = [],
   recentMessages = [],
   weatherContext,
-  deterministicRecommendation
+  deterministicRecommendation,
+  referenceContext
 }: {
   message: string;
   wardrobeSummary: string;
@@ -115,6 +116,7 @@ export async function askStylist({
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
   weatherContext?: string;
   deterministicRecommendation?: unknown;
+  referenceContext?: unknown;
 }) {
   const model = getAiModel("stylistChat");
   const sanitizedMessage = sanitizeUserPrompt(message);
@@ -149,6 +151,7 @@ export async function askStylist({
     styleProfile,
     memorySummary,
     weatherContext,
+    referenceContext,
     deterministicItemIds: (deterministicRecommendation as any)?.items?.map((item: any) => String(item._id || item.id)) || []
   });
   const cached = await aiCache.get<StylistResponse>(cacheKey);
@@ -170,7 +173,8 @@ export async function askStylist({
         fallback,
         recentMessages: sanitizedRecentMessages,
         weatherContext,
-        deterministicRecommendation
+        deterministicRecommendation,
+        referenceContext
       })
     });
 

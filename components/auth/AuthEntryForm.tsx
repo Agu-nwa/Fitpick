@@ -191,9 +191,9 @@ export function AuthEntryForm({
 
       <p className="mt-4 text-center text-[11px] leading-5 text-muted">
         By continuing, you agree to MyFitPick&apos;s{" "}
-        <Link href="/terms" className="font-semibold text-cocoa">Terms of Service</Link>{" "}
+        <Link href="/legal/terms" className="font-semibold text-cocoa">Terms of Service</Link>{" "}
         and{" "}
-        <Link href="/privacy" className="font-semibold text-cocoa">Privacy Policy</Link>.
+        <Link href="/legal/privacy" className="font-semibold text-cocoa">Privacy Policy</Link>.
       </p>
 
       {showContextLink ? (

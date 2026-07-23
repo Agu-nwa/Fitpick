@@ -178,13 +178,27 @@ function itemId(item: any) {
   return String(item?._id || item?.id || "");
 }
 
-function reuseKeyFor(userId: string, itemIds: string[], occasion: string) {
+function referenceItemIdsFromRecommendation(recommendationResult: any) {
+  const fromItems = Array.isArray(recommendationResult?.referenceItems)
+    ? recommendationResult.referenceItems.map((item: any) => String(item?.id || item?._id || "")).filter(Boolean)
+    : [];
+  const fromPieces = Array.isArray(recommendationResult?.outfitPieces)
+    ? recommendationResult.outfitPieces
+        .filter((piece: any) => piece?.source === "reference-upload")
+        .map((piece: any) => String(piece.referenceItemId || ""))
+        .filter(Boolean)
+    : [];
+  return Array.from(new Set([...fromItems, ...fromPieces])).slice(0, 4);
+}
+
+function reuseKeyFor(userId: string, itemIds: string[], occasion: string, referenceItemIds: string[] = []) {
   return crypto
     .createHash("sha256")
     .update(JSON.stringify({
       userId,
       itemIds: itemIds.map(String).sort(),
-      occasion: cleanText(occasion, 80).toLowerCase()
+      occasion: cleanText(occasion, 80).toLowerCase(),
+      referenceItemIds: referenceItemIds.map(String).sort()
     }))
     .digest("hex")
     .slice(0, 64);
@@ -257,7 +271,8 @@ export async function createOrReuseStylistOutfitRecommendation(
   if (!itemIds.length) return null;
 
   const occasion = cleanText(recommendationResult?.occasion || "Today", 80) || "Today";
-  const reuseKey = reuseKeyFor(userId, itemIds, occasion);
+  const referenceItemIds = referenceItemIdsFromRecommendation(recommendationResult);
+  const reuseKey = reuseKeyFor(userId, itemIds, occasion, referenceItemIds);
   const requestText = cleanText(stylistContext.requestText, 220);
   const source = stylistContext.source || "stylist_chat";
 
@@ -269,6 +284,9 @@ export async function createOrReuseStylistOutfitRecommendation(
         title: cleanText(recommendationResult?.title || `${occasion} outfit`, 120),
         occasion,
         itemIds,
+        referenceItemIds,
+        outfitPieces: Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces.slice(0, 12) : [],
+        referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : [],
         confidence: recommendationResult?.confidence || "Needs review",
         reasonChips: recommendationResult?.reasonChips || [],
         summary: cleanText(recommendationResult?.summary || "", 900),
@@ -320,7 +338,10 @@ export async function createOrReuseStylistOutfitRecommendation(
           candidateCount: recommendationResult?.candidateCount || 0,
           diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
           alternatives: recommendationResult?.alternatives || [],
-          itemCount: itemIds.length
+          itemCount: itemIds.length,
+          referenceItemIds,
+          outfitPieces: Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces.slice(0, 12) : [],
+          referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
         }
       }
     },

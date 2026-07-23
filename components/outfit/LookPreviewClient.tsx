@@ -15,7 +15,7 @@ import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import { safeTryOnErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
-import type { OutfitRecommendation } from "@/types/outfit";
+import type { OutfitRecommendation, ReferenceFashionItemSummary } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
 
 function wait(ms: number) {
@@ -26,8 +26,16 @@ function isFootwear(item: WardrobeItem) {
   return item.category === "shoes" || /shoe|sneaker|loafer|sandal|boot|heel|slipper/i.test(`${item.name} ${item.subcategory}`);
 }
 
+function isReferenceFootwear(item: ReferenceFashionItemSummary) {
+  return item.category === "shoes" || /shoe|sneaker|loafer|sandal|boot|heel|slipper/i.test(`${item.subcategory || ""} ${item.analysisSummary || ""}`);
+}
+
 function itemImage(item: WardrobeItem) {
   return item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
+}
+
+function referenceLabel(item: ReferenceFashionItemSummary) {
+  return [item.primaryColor, item.subcategory || item.category].filter(Boolean).join(" ").trim() || "Uploaded fashion item";
 }
 
 function isPreviewReady(preview: AvatarPreviewData["preview"] | null, imageUrl: string) {
@@ -58,8 +66,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
 
+  const referenceItems = useMemo(() => outfit?.referenceItems?.filter((item) => item?.imageUrl) || [], [outfit]);
+  const referenceFootwear = useMemo(() => referenceItems.find(isReferenceFootwear) || null, [referenceItems]);
   const footwear = useMemo(() => outfit?.items.find(isFootwear) || null, [outfit]);
-  const missingShoes = Boolean(outfit && !footwear);
+  const footwearLabel = footwear?.name || (referenceFootwear ? referenceLabel(referenceFootwear) : "");
+  const missingShoes = Boolean(outfit && !footwearLabel);
 
   const loadLook = useCallback(async () => {
     setStatus("loading");
@@ -186,7 +197,13 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         <section className="space-y-4">
           <Card className="overflow-hidden p-0">
             {imageUrl ? (
-              <img src={imageUrl} alt={`${outfit.title} avatar preview`} className="min-h-[420px] w-full bg-canvas object-cover sm:min-h-[560px]" />
+              <ImageFrame
+                src={imageUrl}
+                alt={`${outfit.title} avatar preview`}
+                aspect="portrait"
+                placeholder="Avatar preview"
+                className="min-h-[420px] rounded-none border-0 bg-canvas sm:min-h-[560px]"
+              />
             ) : (
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
                 <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
@@ -202,11 +219,27 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           <Card className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
+              {referenceItems.length ? <Badge tone="premium">Photo match</Badge> : null}
             </div>
             <p className="text-sm leading-6 text-muted">
               This is a preview, not a perfect fitting.
             </p>
           </Card>
+
+          {referenceItems.length ? (
+            <Card className="space-y-3">
+              <p className="text-sm font-semibold text-ink">Uploaded photo anchor</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+                {referenceItems.map((item) => (
+                  <article key={item.id} className="rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2">
+                    <ImageFrame src={item.imageUrl} alt={referenceLabel(item)} aspect="square" placeholder={item.category || "Uploaded item"} className="mb-2" />
+                    <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{referenceLabel(item)}</p>
+                    <p className="mt-1 truncate text-[11px] text-muted">{[item.primaryColor, item.category].filter(Boolean).join(" · ") || "Photo upload"}</p>
+                  </article>
+                ))}
+              </div>
+            </Card>
+          ) : null}
 
           <Card className="space-y-3">
             <p className="text-sm font-semibold text-ink">Closet items in this look</p>
@@ -221,10 +254,10 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             </div>
           </Card>
 
-          {footwear ? (
+          {footwearLabel ? (
             <Card className="space-y-2 border-success/20 bg-success/10">
               <p className="text-sm font-semibold text-ink">Footwear included</p>
-              <p className="text-sm leading-6 text-muted">{footwear.name}</p>
+              <p className="text-sm leading-6 text-muted">{footwearLabel}</p>
             </Card>
           ) : (
             <Card className="space-y-3 border-warning/25 bg-warning/10">

@@ -11,6 +11,7 @@ import { askStylist } from "@/lib/ai/stylist";
 import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/context/stylist-context";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
+import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { rateLimitRequest } from "@/lib/rate-limit";
@@ -24,13 +25,18 @@ import {
   shouldGenerateVisualization,
   triggerDigitalHumanPreviewForStylist
 } from "@/lib/stylist/stylist-visualization";
+import { logReferenceItemEvent, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
+import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
+
+const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 
 const stylistChatSchema = z.object({
   message: z.string().trim().min(1).max(800),
   allowShoppingAdvice: z.boolean().default(false),
   includeVisualization: z.boolean().optional(),
   visualMode: z.enum(["digital_human", "premium_preview", "none"]).optional(),
+  referenceItemId: objectId.nullable().optional(),
   recentMessages: z
     .array(
       z.object({
@@ -65,6 +71,8 @@ function compactRecommendationForStylist(recommendation: any) {
     candidateCount: recommendation.candidateCount || 0,
     diverseCandidateCount: recommendation.diverseCandidateCount || 0,
     stylingTips: recommendation.stylingTips || [],
+    outfitPieces: recommendation.outfitPieces || [],
+    referenceItems: recommendation.referenceItems || [],
     items: (recommendation.items || []).map((item: any) => ({
       id: String(item._id),
       name: item.name,
@@ -73,6 +81,38 @@ function compactRecommendationForStylist(recommendation: any) {
       fabric: item.fabric,
       fit: item.fit
     }))
+  };
+}
+
+function selectionRequiredStylist(referenceItem: any) {
+  const visualization = serializeStylistVisualization();
+  return {
+    reply: "This photo contains several fashion items. Choose the one you want MyFitPick to style.",
+    stylist: {
+      message: "This photo contains several fashion items. Choose the one you want MyFitPick to style.",
+      intent: "outfit_request" as const,
+      recommendedOutfitIds: [],
+      recommendedItemIds: [],
+      alternativeItemIds: [],
+      missingWardrobeCategories: [],
+      occasionDetected: null,
+      confidenceScore: 0,
+      stylingTips: [],
+      followUpQuestions: ["Which item should I style from this photo?"],
+      addLaterSuggestions: [],
+      safetyWarnings: [],
+      visualMode: "none" as const,
+      outfitRecommendationId: null,
+      avatarPreview: visualization.avatarPreview,
+      visualizationDisclaimer: visualization.visualizationDisclaimer
+    },
+    referenceItem: serializeReferenceFashionItem(referenceItem),
+    referenceSelectionRequired: true,
+    outfitRecommendationId: null,
+    avatarPreview: visualization.avatarPreview,
+    visualization,
+    outfit: null,
+    groundedItemCount: 0
   };
 }
 
@@ -90,6 +130,18 @@ export async function POST(request: NextRequest) {
 
     const parsed = stylistChatSchema.safeParse(await request.json());
     if (!parsed.success) return apiError("BAD_REQUEST", "Message is required.");
+
+    let referenceItem: any = null;
+    if (parsed.data.referenceItemId) {
+      referenceItem = await ReferenceFashionItem.findOne({ _id: parsed.data.referenceItemId, userId: auth.user._id }).lean();
+      if (!referenceItem) return apiError("NOT_FOUND", "That photo is no longer available.");
+      if (referenceItem.status === "needs-selection") {
+        return apiSuccess(selectionRequiredStylist(referenceItem));
+      }
+      if (referenceItem.status !== "ready" || !referenceItem.usableForMatching) {
+        return apiError("BAD_REQUEST", "I couldn’t identify a clear fashion item. Try another photo.");
+      }
+    }
 
     try {
       await ensureCreditsForFeature(auth.user._id, "ai_stylist_chat");
@@ -138,16 +190,41 @@ export async function POST(request: NextRequest) {
         }));
       }
     }
-    const deterministicRecommendation = buildRecommendation({
-      occasionName: sanitizedMessage,
-      weatherContext,
-      preferences: {},
-      styleProfile: serializedStyleProfile,
-      memorySummary: serializedMemorySummary,
-      outfitHistorySummary,
-      wardrobeItems: wardrobe,
-      wornLooks: []
-    });
+    let referenceRecommendations: any[] = [];
+    let deterministicRecommendation: any;
+    if (referenceItem) {
+      logReferenceItemEvent({ event: "wardrobe_match_started", userId: String(auth.user._id), referenceItemId: String(referenceItem._id), status: referenceItem.status, category: referenceItem.category });
+      try {
+        referenceRecommendations = buildReferenceOutfitRecommendations({
+          referenceItem,
+          wardrobeItems: wardrobe,
+          message: sanitizedMessage,
+          occasionName: sanitizedMessage,
+          weatherContext,
+          styleProfile: serializedStyleProfile,
+          memorySummary: serializedMemorySummary,
+          outfitHistorySummary,
+          limit: 3
+        });
+        deterministicRecommendation = referenceRecommendations[0];
+        logReferenceItemEvent({ event: "wardrobe_match_completed", userId: String(auth.user._id), referenceItemId: String(referenceItem._id), status: referenceItem.status, category: referenceItem.category });
+      } catch (error) {
+        logSafeError("stylist.reference.match", error, { referenceItemId: String(referenceItem._id), userId: String(auth.user._id) });
+        logReferenceItemEvent({ event: "wardrobe_match_failed", userId: String(auth.user._id), referenceItemId: String(referenceItem._id), status: referenceItem.status, category: referenceItem.category });
+        throw error;
+      }
+    } else {
+      deterministicRecommendation = buildRecommendation({
+        occasionName: sanitizedMessage,
+        weatherContext,
+        preferences: {},
+        styleProfile: serializedStyleProfile,
+        memorySummary: serializedMemorySummary,
+        outfitHistorySummary,
+        wardrobeItems: wardrobe,
+        wornLooks: []
+      });
+    }
     const stylistRecommendation = compactRecommendationForStylist(deterministicRecommendation);
     const wardrobeSummary = wardrobe
       .slice(0, 50)
@@ -186,7 +263,8 @@ export async function POST(request: NextRequest) {
       ownedItemIds: stylistContext.ownedItemIds,
       recentMessages,
       weatherContext,
-      deterministicRecommendation: stylistRecommendation
+      deterministicRecommendation: stylistRecommendation,
+      referenceContext: referenceItem ? serializeReferenceFashionItem(referenceItem) : null
     });
 
     let chatCreditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>>;
@@ -197,7 +275,8 @@ export async function POST(request: NextRequest) {
         referenceId: `stylist-chat:${crypto.randomUUID()}`,
         metadata: {
           source: "stylist_chat",
-          visualMode: parsed.data.visualMode || "digital_human"
+          visualMode: parsed.data.visualMode || "digital_human",
+          referenceItemId: referenceItem ? String(referenceItem._id) : ""
         }
       });
     } catch (error) {
@@ -271,7 +350,8 @@ export async function POST(request: NextRequest) {
                 context: {
                   requestText: sanitizedMessage.slice(0, 220),
                   weatherContext,
-                  wardrobeItemCount: wardrobe.length
+                  wardrobeItemCount: wardrobe.length,
+                  referenceItemId: referenceItem ? String(referenceItem._id) : ""
                 },
                 scoreBreakdown: deterministicRecommendation.scoreBreakdown,
                 similarityMetadata: deterministicRecommendation.similarityMetadata
@@ -322,6 +402,27 @@ export async function POST(request: NextRequest) {
     return apiSuccess({
       reply: response.reply,
       stylist,
+      referenceItem: referenceItem ? serializeReferenceFashionItem(referenceItem) : null,
+      referenceRecommendations: referenceRecommendations.map((recommendation) => ({
+        ...recommendation,
+        items: (recommendation.items || []).map((item: any) => ({
+          id: String(item._id || item.id),
+          name: item.name,
+          category: item.category,
+          subcategory: item.subcategory || "",
+          color: item.color || "",
+          pattern: item.pattern || "",
+          fabric: item.fabric || "",
+          fit: item.fit || "",
+          formality: item.formality || [],
+          occasions: item.occasions || [],
+          weather: item.weather || [],
+          condition: item.condition || "ready",
+          imageUrl: item.imageUrl || "",
+          thumbnailUrl: item.thumbnailUrl || item.imageUrl || ""
+        }))
+      })),
+      referenceSelectionRequired: false,
       outfitRecommendationId: visualization.outfitRecommendationId,
       avatarPreview: visualization.avatarPreview,
       visualization,

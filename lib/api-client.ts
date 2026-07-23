@@ -3,7 +3,7 @@ import type { AiSuggestedWardrobeTags, WardrobeImageAsset } from "@/types/ai-tag
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeApiFailure } from "@/lib/user-facing-errors";
 import type { Occasion } from "@/types/occasion";
-import type { FitLockSummary, OutfitRecommendation, PreviewAccuracySummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
+import type { FitLockSummary, OutfitRecommendation, PreviewAccuracySummary, ReferenceFashionItemSummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -447,6 +447,9 @@ export type AvatarPreviewData = {
 export type StylistChatData = {
   reply: string;
   stylist: StylistResponse;
+  referenceItem?: ReferenceFashionItemSummary | null;
+  referenceRecommendations?: OutfitRecommendation[];
+  referenceSelectionRequired?: boolean;
   outfitRecommendationId: string | null;
   avatarPreview: StylistAvatarPreview;
   visualization: {
@@ -466,7 +469,24 @@ export type SendStylistMessageOptions = {
   allowShoppingAdvice?: boolean;
   includeVisualization?: boolean;
   visualMode?: StylistVisualMode;
+  referenceItemId?: string | null;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+};
+
+export type ReferenceFashionItemData = {
+  referenceItem: ReferenceFashionItemSummary | null;
+  safeMessage?: string;
+};
+
+export type ReferenceRecommendationsData = {
+  referenceItem: ReferenceFashionItemSummary | null;
+  recommendations: OutfitRecommendation[];
+};
+
+export type ReferenceAddToClosetData = {
+  referenceItem: ReferenceFashionItemSummary | null;
+  upload: WardrobeUploadRecord;
+  nextAction: string;
 };
 
 export type FashionMemorySummary = {
@@ -872,6 +892,20 @@ export const sendStylistMessage = (message: string, options: SendStylistMessageO
       ...options
     }
   });
+export const createReferenceFashionItem = (body: unknown) =>
+  apiRequest<ReferenceFashionItemData>("/api/stylist/reference-items", { method: "POST", body });
+export const getReferenceFashionItem = (id: string) =>
+  apiRequest<ReferenceFashionItemData>(`/api/stylist/reference-items/${id}`, { cache: "no-store" });
+export const analyzeReferenceFashionItem = (id: string) =>
+  apiRequest<ReferenceFashionItemData>(`/api/stylist/reference-items/${id}/analyze`, { method: "POST" });
+export const selectReferenceFashionItem = (id: string, detectedItemId: string) =>
+  apiRequest<ReferenceFashionItemData>(`/api/stylist/reference-items/${id}/selection`, { method: "PATCH", body: { detectedItemId } });
+export const getReferenceFashionRecommendations = (id: string, body: unknown = {}) =>
+  apiRequest<ReferenceRecommendationsData>(`/api/stylist/reference-items/${id}/recommendations`, { method: "POST", body });
+export const addReferenceFashionItemToCloset = (id: string) =>
+  apiRequest<ReferenceAddToClosetData>(`/api/stylist/reference-items/${id}/add-to-closet`, { method: "POST" });
+export const clearReferenceFashionItem = (id: string) =>
+  apiRequest<{ cleared: boolean }>(`/api/stylist/reference-items/${id}`, { method: "DELETE" });
 export const pollStylistVisualization = (input: { jobId?: string | null; outfitRecommendationId?: string | null }) => {
   if (input.jobId) return getJobStatus(input.jobId);
   if (input.outfitRecommendationId) return getAvatarPreview(input.outfitRecommendationId);

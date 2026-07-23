@@ -468,6 +468,8 @@ export function serializeOutfit(
     confidence: outfit.confidence,
     summary: outfit.summary || "",
     items: items.map(serializeWardrobeItem),
+    outfitPieces: outfit.outfitPieces || outfit.reasoningMetadata?.outfitPieces || [],
+    referenceItems: outfit.referenceItems || outfit.reasoningMetadata?.referenceItems || [],
     reasonChips: outfit.reasonChips || [],
     weatherContext: outfit.weatherContext || "",
     weatherFit:

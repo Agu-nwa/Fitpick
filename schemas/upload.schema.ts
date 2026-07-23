@@ -12,6 +12,7 @@ export const uploadPurposeSchema = z
     "wardrobe_fabricCloseUp",
     "wardrobe_label",
     "wardrobe_additional",
+    "stylist_reference",
     "avatar",
     "avatar_model"
   ]);

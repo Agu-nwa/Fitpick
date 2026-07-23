@@ -23,6 +23,15 @@ const required = [
   "app/register/page.tsx",
   "app/terms/page.tsx",
   "app/privacy/page.tsx",
+  "app/legal/page.tsx",
+  "app/legal/privacy/page.tsx",
+  "app/legal/terms/page.tsx",
+  "app/legal/cookie-policy/page.tsx",
+  "app/legal/acceptable-use/page.tsx",
+  "app/legal/ai-virtual-try-on-disclosure/page.tsx",
+  "app/legal/subscription-and-credits-policy/page.tsx",
+  "app/legal/refund-policy/page.tsx",
+  "app/legal/copyright-ip-policy/page.tsx",
   "app/admin/page.tsx",
 ];
 

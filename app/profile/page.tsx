@@ -10,7 +10,8 @@ const links = [
   { label: "Your Style DNA", href: "/style-profile", helper: "Teach MyFitPick how you like to dress." },
   { label: "Preferences", href: "/profile/preferences", helper: "Manage outfit, weather, and privacy preferences." },
   { label: "Credits", href: "/wallet", helper: "Review your balance, ledger, and one-time Credit purchases." },
-  { label: "Avatar model", href: "/avatar", helper: "Edit your model photo, fit details, and try-on settings." }
+  { label: "Avatar model", href: "/avatar", helper: "Edit your model photo, fit details, and try-on settings." },
+  { label: "Legal center", href: "/legal", helper: "Review privacy, terms, Credits, refunds, and AI preview policies." }
 ];
 
 export default function ProfilePage() {
