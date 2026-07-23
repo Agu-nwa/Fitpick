@@ -18,6 +18,15 @@ function statusCopy(status?: string) {
   return { title: "Payment status", detail: "Your payment status is being updated.", tone: "neutral" as const, icon: Clock3 };
 }
 
+function formatCredits(value: number | null | undefined) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount)) return "0";
+  return amount.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2
+  });
+}
+
 export function PaymentSuccessClient({ purchaseId }: { purchaseId?: string }) {
   const [purchase, setPurchase] = useState<CreditPurchaseSummary | null>(null);
   const [wallet, setWallet] = useState<CreditWalletSummary | null>(null);
@@ -97,7 +106,7 @@ export function PaymentSuccessClient({ purchaseId }: { purchaseId?: string }) {
           </div>
           <div className="rounded-2xl border border-line bg-canvas/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Credits</p>
-            <p className="mt-2 text-sm font-bold text-ink">{purchase.credits}</p>
+            <p className="mt-2 text-sm font-bold text-ink">{formatCredits(purchase.credits)}</p>
           </div>
           <div className="rounded-2xl border border-line bg-canvas/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Provider</p>
@@ -112,7 +121,7 @@ export function PaymentSuccessClient({ purchaseId }: { purchaseId?: string }) {
             <WalletCards size={16} className="text-cocoa" aria-hidden="true" />
             Current Credits
           </span>
-          <span className="text-2xl font-black text-ink">{wallet.balance}</span>
+          <span className="text-2xl font-black text-ink">{formatCredits(wallet.balance)}</span>
         </div>
       ) : null}
 

@@ -17,7 +17,7 @@ import { serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
 import { type CreditFeature } from "@/lib/credits/credit-costs";
-import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
+import { insufficientCreditsPayload, InsufficientCreditsError } from "@/lib/credits/credit-engine";
 import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
@@ -25,6 +25,20 @@ import { serializeProgressiveTrigger, triggerForVirtualTryOn } from "@/lib/progr
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { logSafeError } from "@/lib/security/safe-log";
+import {
+  commitTryOnGenerationCredits,
+  createTryOnIdempotencyKey,
+  failTryOnGeneration,
+  findActiveTryOnGeneration,
+  getOrCreateTryOnGeneration,
+  isActiveTryOnGenerationStatus,
+  isInsufficientCreditsError,
+  logTryOnGenerationEvent,
+  markTryOnGenerationStage,
+  reserveTryOnGenerationCredits,
+  safeTryOnFailureMessage,
+  serializeTryOnGeneration
+} from "@/lib/tryon/tryon-generation";
 import { getConfiguredTryOnProviderType, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
@@ -39,7 +53,8 @@ type RouteContext = {
 const avatarPreviewRequestSchema = z.object({
   visualizationStyle: z.enum(["minimal", "luxury", "streetwear", "editorial"]).optional(),
   posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual"]).optional(),
-  regenerate: z.boolean().default(false)
+  regenerate: z.boolean().default(false),
+  idempotencyKey: z.string().trim().min(8).max(120).optional()
 });
 
 function groundingPatch(items: any[], preview?: any) {
@@ -99,6 +114,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   let activeUserId = "";
   let activeAvatarProfileId = "";
   let activeOutfitId = "";
+  let activeGeneration: any = null;
 
   try {
     const { id } = await context.params;
@@ -158,30 +174,95 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const creditFeature: CreditFeature = parsed.data.regenerate ? "regenerate_try_on" : "virtual_try_on";
-    try {
-      await ensureCreditsForFeature(auth.user._id, creditFeature);
-    } catch (error) {
-      if (error instanceof InsufficientCreditsError) {
-        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
-          details: insufficientCreditsPayload(error)
-        });
-      }
-      throw error;
-    }
 
-    const inFlight = await AvatarOutfitPreview.findOne({
+    logTryOnGenerationEvent({ event: "credit_checked", userId: activeUserId, outfitId: id, provider: getConfiguredTryOnProviderType(), stage: "credit_check" });
+
+    const activeExistingGeneration = await findActiveTryOnGeneration({
       userId: auth.user._id,
       outfitId: id,
       cacheKey,
-      status: "generating",
-      lastAttemptAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) }
+      creditFeature
     }).lean() as any;
 
-    if (inFlight && !parsed.data.regenerate) {
+    if (activeExistingGeneration) {
+      const inFlight = await AvatarOutfitPreview.findOne({
+        userId: auth.user._id,
+        outfitId: id,
+        cacheKey,
+        status: "generating"
+      }).lean() as any;
       return apiSuccess({
-        preview: serializeAvatarPreview({ ...inFlight, ...groundingPatch(loaded.items, inFlight) }),
-        avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
+        preview: serializeAvatarPreview({ ...(inFlight || { status: "generating", provider: "s3", cacheKey }), ...groundingPatch(loaded.items, inFlight) }),
+        avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+        generation: serializeTryOnGeneration(activeExistingGeneration)
       }, { message: "Avatar preview is already being prepared." });
+    }
+
+    const clientIdempotencyKey = request.headers.get("idempotency-key") || parsed.data.idempotencyKey || "";
+    const idempotencyKey = createTryOnIdempotencyKey({
+      source: "avatar-preview",
+      userId: activeUserId,
+      outfitId: id,
+      cacheKey,
+      regenerate: parsed.data.regenerate,
+      clientKey: clientIdempotencyKey
+    });
+    let generationResult = await getOrCreateTryOnGeneration({
+      userId: auth.user._id,
+      outfitId: loaded.outfit._id,
+      avatarProfileId: loaded.avatarProfile._id,
+      cacheKey,
+      creditFeature,
+      idempotencyKey,
+      provider: getConfiguredTryOnProviderType(),
+      metadata: { source: "avatar_preview_route", posePreset: options.posePreset, visualizationStyle: options.visualizationStyle }
+    });
+    activeGeneration = generationResult.generation;
+
+    if (generationResult.reused && activeGeneration.status === "failed" && !clientIdempotencyKey) {
+      generationResult = await getOrCreateTryOnGeneration({
+        userId: auth.user._id,
+        outfitId: loaded.outfit._id,
+        avatarProfileId: loaded.avatarProfile._id,
+        cacheKey,
+        creditFeature,
+        idempotencyKey: createTryOnIdempotencyKey({ source: "avatar-preview", userId: activeUserId, outfitId: id, cacheKey, regenerate: true }),
+        provider: getConfiguredTryOnProviderType(),
+        metadata: { source: "avatar_preview_route", posePreset: options.posePreset, visualizationStyle: options.visualizationStyle, retryOf: activeGeneration.generationId }
+      });
+      activeGeneration = generationResult.generation;
+    }
+
+    if (generationResult.reused && activeGeneration.status === "completed") {
+      const completedPreview = await AvatarOutfitPreview.findOne({
+        userId: auth.user._id,
+        outfitId: id,
+        cacheKey,
+        status: "ready",
+        imageUrl: { $ne: "" },
+        storageKey: { $ne: "" }
+      }).lean() as any;
+      if (completedPreview?.imageUrl) {
+        return apiSuccess({
+          preview: serializeAvatarPreview({ ...completedPreview, ...groundingPatch(loaded.items, completedPreview), cached: true }),
+          avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+          generation: serializeTryOnGeneration(activeGeneration)
+        });
+      }
+    }
+
+    if (generationResult.reused && isActiveTryOnGenerationStatus(activeGeneration.status)) {
+      return apiSuccess({
+        preview: serializeAvatarPreview({ status: "generating", provider: "s3", cacheKey, generationId: activeGeneration.generationId, ...visualGrounding }),
+        avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+        generation: serializeTryOnGeneration(activeGeneration)
+      }, { message: "Avatar preview is already being prepared." });
+    }
+
+    if (generationResult.reused && activeGeneration.status === "failed") {
+      return apiError("INTERNAL_ERROR", activeGeneration.failureMessage || "Virtual Try-On could not be completed. Your credit was not deducted.", {
+        details: { generation: serializeTryOnGeneration(activeGeneration) }
+      });
     }
 
     const latestAttempt = await AvatarOutfitPreview.findOne({
@@ -191,7 +272,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }).lean() as any;
 
     if ((latestAttempt?.attempts || 0) >= 5 && !parsed.data.regenerate) {
+      await failTryOnGeneration({ generation: activeGeneration, stage: "validation", code: "retry_limit" });
       return apiError("RATE_LIMITED", "Avatar preview has been retried several times. Please try again later.");
+    }
+
+    try {
+      await reserveTryOnGenerationCredits(activeGeneration);
+    } catch (error) {
+      await failTryOnGeneration({ generation: activeGeneration, stage: "credit_check", code: "insufficient_credits", error });
+      if (error instanceof InsufficientCreditsError) {
+        return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
+          details: insufficientCreditsPayload(error)
+        });
+      }
+      throw error;
     }
 
     await markAvatarPreviewStatus(
@@ -205,6 +299,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         avatarProfileId: loaded.avatarProfile._id,
         itemIds: loaded.itemIds,
         cacheKey,
+        generationId: activeGeneration.generationId,
+        idempotencyKey,
+        creditReferenceId: activeGeneration.creditReferenceId,
+        billingStatus: "reserved",
         status: "generating",
         provider: "s3",
         promptVersion: avatarPreviewPromptVersion,
@@ -228,6 +326,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
 
     if (backgroundJobsEnabled()) {
+      await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, { status: "generating", billingStatus: "reserved", generationId: activeGeneration.generationId });
+      activeGeneration = await markTryOnGenerationStage(activeGeneration.generationId, "queued") || activeGeneration;
       const job = await enqueueJob(
         "avatar_preview_generation",
         {
@@ -238,6 +338,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           wardrobeItemIds: loaded.itemIds,
           cacheKey,
           creditFeature,
+          generationId: activeGeneration.generationId,
+          idempotencyKey,
+          creditReferenceId: activeGeneration.creditReferenceId,
           source: "avatar_preview_route"
         },
         {
@@ -275,12 +378,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
             ...visualGrounding
           }),
           avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+          generation: serializeTryOnGeneration(activeGeneration),
           job: serializeJob(job)
         },
         { message: "Your avatar preview is being prepared.", status: 202 }
       );
     }
 
+    activeGeneration = await markTryOnGenerationStage(activeGeneration.generationId, "submitting") || activeGeneration;
     const result = await runConfiguredVirtualTryOnJob({
       userId: activeUserId,
       outfitId: id,
@@ -292,7 +397,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       cacheKey
     });
     const saved = (result.preview as any)?.toObject?.() ?? result.preview;
-    if (!saved) return apiError("INTERNAL_ERROR", "Virtual try-on is not ready yet.");
+    if (!saved) throw new Error("Virtual try-on is not ready yet.");
+    activeGeneration = await markTryOnGenerationStage(activeGeneration.generationId, "provider_completed", {
+      providerJobId: result.providerOutput?.jobId || "",
+      providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
+    }) || activeGeneration;
     await recordOutfitHistory({
       userId: auth.user._id,
       outfitId: loaded.outfit._id,
@@ -303,17 +412,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       occasion: loaded.outfit.occasion,
       context: { visualMode: "digital_human", cached: Boolean(result.cached) }
     });
-    let creditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>> | null = null;
+    let creditCharge: Awaited<ReturnType<typeof commitTryOnGenerationCredits>>["creditCharge"] | null = null;
     if (!result.cached) {
       try {
-        creditCharge = await spendCreditsAfterSuccess({
-          userId: auth.user._id,
-          feature: creditFeature,
-          referenceId: `avatar-preview:${id}:${cacheKey}`,
+        const committed = await commitTryOnGenerationCredits({
+          generation: activeGeneration,
+          preview: saved,
           metadata: { source: "avatar_preview_route", posePreset: options.posePreset, visualizationStyle: options.visualizationStyle }
         });
+        creditCharge = committed.creditCharge;
+        activeGeneration = committed.generation;
+        await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, { billingStatus: "committed", generationId: activeGeneration.generationId });
       } catch (error) {
-        if (error instanceof InsufficientCreditsError) {
+        await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, {
+          status: "failed",
+          billingStatus: "released",
+          errorMessage: "Virtual Try-On could not be completed. Your credit was not deducted.",
+          lastAttemptAt: new Date()
+        });
+        await failTryOnGeneration({ generation: activeGeneration, stage: "credit_commit", code: "credit_commit_failed", error });
+        if (isInsufficientCreditsError(error)) {
           return apiError("INSUFFICIENT_CREDITS", "You're out of Credits. Purchase more Credits to continue.", {
             details: insufficientCreditsPayload(error)
           });
@@ -325,6 +443,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return apiSuccess({
       preview: serializeAvatarPreview(saved),
       avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+      generation: serializeTryOnGeneration(activeGeneration),
       ...(creditCharge ? {
         wallet: creditCharge.wallet,
         creditCharge: { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance }
@@ -341,10 +460,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
           {
             cacheKey: activeCacheKey || `failed:${activeOutfitId}`,
             status: "failed",
-            errorMessage: "Unable to show it on your avatar right now.",
+            billingStatus: "released",
+            errorMessage: "Virtual Try-On could not be completed. Your credit was not deducted.",
             lastAttemptAt: new Date()
           }
         );
+      }
+      if (activeGeneration) {
+        await failTryOnGeneration({ generation: activeGeneration, stage: "exception", code: errorCategory(error), error });
       }
     } catch {
       // Keep failure bookkeeping from leaking raw provider errors.
@@ -360,6 +483,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       errorCategory: errorCategory(error)
     });
 
-    return apiError("INTERNAL_ERROR", "Unable to show it on your avatar right now.");
+    return apiError("INTERNAL_ERROR", safeTryOnFailureMessage(error));
   }
 }

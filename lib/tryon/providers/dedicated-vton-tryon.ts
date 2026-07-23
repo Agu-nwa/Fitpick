@@ -3,7 +3,7 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { loadOwnedAvatarPreviewSubject } from "@/lib/avatar/avatar-preview";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
-import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
 import { AvatarProfile } from "@/models/AvatarProfile";
 
@@ -46,12 +46,13 @@ function config() {
   };
 }
 
-function normalizeStatus(value?: string): TryOnProviderOutput["status"] {
+function normalizeStatus(value?: string, hasPersistedOutput = false): TryOnProviderOutput["status"] {
+  if (!value) return hasPersistedOutput ? "ready" : "processing";
   if (value === "ready" || value === "completed" || value === "succeeded" || value === "success") return "ready";
   if (value === "queued" || value === "pending") return "queued";
   if (value === "processing" || value === "running" || value === "generating") return "processing";
   if (value === "failed" || value === "error" || value === "cancelled") return "failed";
-  return "ready";
+  return "processing";
 }
 
 function previewUrlsFromResponse(data: CustomTryOnResponse) {
@@ -97,6 +98,7 @@ async function toProviderOutput(input: TryOnPreviewInput, data: CustomTryOnRespo
   const urls = previewUrlsFromResponse(data);
   const base64 = data.previewBase64 || data.base64 || "";
   let uploadedUrl = "";
+  const storageKeys: string[] = [];
 
   if (base64 && input.outfitRecommendationId) {
     const uploaded = await uploadGeneratedImage(base64, {
@@ -109,13 +111,31 @@ async function toProviderOutput(input: TryOnPreviewInput, data: CustomTryOnRespo
       height: data.height || 1024
     });
     uploadedUrl = uploaded.url;
+    storageKeys.push(uploaded.storageKey);
   }
 
-  const status = normalizeStatus(data.status);
+  const persistedUrls: string[] = [];
+  if (input.outfitRecommendationId) {
+    for (const url of urls) {
+      if (!/^https:\/\//i.test(url)) continue;
+      const uploaded = await uploadGeneratedImageFromUrl(url, {
+        userId: input.userId,
+        outfitId: input.outfitRecommendationId,
+        cacheKey: input.cacheKey || data.jobId || `custom-${Date.now()}`,
+        width: data.width || 1024,
+        height: data.height || 1024
+      });
+      persistedUrls.push(uploaded.url);
+      storageKeys.push(uploaded.storageKey);
+    }
+  }
+
+  const status = normalizeStatus(data.status, Boolean(uploadedUrl || persistedUrls.length));
   return {
-    status: status === "ready" && !urls.length && !uploadedUrl && data.jobId ? "processing" : status,
+    status: status === "ready" && !persistedUrls.length && !uploadedUrl && data.jobId ? "processing" : status,
     provider: "custom",
-    previewUrls: uploadedUrl ? [uploadedUrl, ...urls] : urls,
+    previewUrls: uploadedUrl ? [uploadedUrl, ...persistedUrls] : persistedUrls,
+    previewStorageKeys: storageKeys,
     animationUrl: data.animationUrl || null,
     modelUrl: data.modelUrl || null,
     accuracyLevel: getPreviewAccuracyLevel(data.accuracyLevel || input.accuracyLevelRequested || "true_3d_simulation"),

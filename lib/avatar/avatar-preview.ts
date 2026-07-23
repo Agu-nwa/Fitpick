@@ -238,7 +238,8 @@ export async function getCachedAvatarPreview(userId: string, outfitId: string, c
     outfitId,
     cacheKey,
     status: "ready",
-    imageUrl: { $ne: "" }
+    imageUrl: { $ne: "" },
+    storageKey: { $ne: "" }
   }).lean();
 }
 
@@ -492,6 +493,8 @@ export function serializeAvatarPreview(preview: any) {
     imageUrl: preview?.imageUrl || "",
     previewUrl: preview?.imageUrl || "",
     cacheKey: preview?.cacheKey || "",
+    generationId: preview?.generationId || "",
+    billingStatus: preview?.billingStatus || "pending",
     promptVersion: preview?.promptVersion || "",
     model: preview?.model || "",
     visualizationStyle: preview?.visualizationStyle || "luxury",

@@ -275,6 +275,30 @@ export type JobStatusData = {
   };
 };
 
+export type TryOnGenerationSummary = {
+  generationId: string;
+  idempotencyKey: string;
+  outfitId: string;
+  avatarProfileId: string;
+  previewId: string | null;
+  provider: string;
+  providerJobId: string;
+  status: string;
+  failureStage: string;
+  failureCode: string;
+  failureMessage: string;
+  previewUrl: string;
+  storageKey: string;
+  creditsReserved: number;
+  creditsCommitted: number;
+  creditsReleased: number;
+  retryCount: number;
+  durationMs: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string | null;
+};
+
 export type SavedLookSummary = {
   id: string;
   outfitId: string | null;
@@ -399,6 +423,8 @@ export type AvatarPreviewData = {
     imageUrl: string;
     previewUrl: string;
     cacheKey: string;
+    generationId?: string;
+    billingStatus?: string;
     promptVersion: string;
     model: string;
     visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial" | string;
@@ -422,6 +448,7 @@ export type AvatarPreviewData = {
     visualizationNote: string;
   };
   avatarProfile?: AvatarProfileData["profile"];
+  generation?: TryOnGenerationSummary | null;
   job?: JobStatusData["job"];
 };
 

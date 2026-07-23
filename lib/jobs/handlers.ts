@@ -4,8 +4,17 @@ import { isCreditFeature, type CreditFeature } from "@/lib/credits/credit-costs"
 import { spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
 import { runOutfitPreviewGenerationJob, serializeOutfitPreview } from "@/lib/outfit-preview/outfit-preview";
+import {
+  commitTryOnGenerationCredits,
+  createTryOnIdempotencyKey,
+  failTryOnGeneration,
+  getOrCreateTryOnGeneration,
+  markTryOnGenerationStage,
+  reserveTryOnGenerationCredits
+} from "@/lib/tryon/tryon-generation";
 import { getTryOnProvider, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import { runWardrobeEnrichmentJob } from "@/lib/wardrobe/enrichment";
+import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 
 export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: string }) {
@@ -81,23 +90,77 @@ export async function runBackgroundJobByType(job: any) {
   }
 
   if (job.type === "avatar_preview_generation") {
-    const result = await runConfiguredVirtualTryOnJob({
+    const feature = isCreditFeature(payload.creditFeature) ? payload.creditFeature : "virtual_try_on";
+    const outfitId = String(payload.outfitId || "");
+    const avatarProfileId = String(payload.avatarProfileId || "");
+    const cacheKey = String(payload.cacheKey || "");
+    const generationResult = await getOrCreateTryOnGeneration({
       userId,
-      outfitId: String(payload.outfitId || ""),
-      avatarProfileId: String(payload.avatarProfileId || ""),
-      wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
-      desiredView: payload.posePreset === "walking" ? "walking" : undefined,
-      visualizationStyle: payload.visualizationStyle || undefined,
-      posePreset: payload.posePreset || undefined,
-      cacheKey: payload.cacheKey
+      outfitId,
+      avatarProfileId,
+      cacheKey,
+      creditFeature: feature,
+      idempotencyKey: String(payload.idempotencyKey || createTryOnIdempotencyKey({ source: "avatar-preview-job", userId, outfitId, cacheKey, clientKey: String(job._id) })),
+      provider: String(process.env.TRYON_PROVIDER || "internal_preview"),
+      metadata: {
+        source: typeof payload.source === "string" ? payload.source : "background_job",
+        jobId: String(job._id)
+      }
     });
-    const preview = (result.preview as any)?.toObject?.() ?? result.preview;
-    const creditCharge = await chargeSuccessfulJob("virtual_try_on", result.cached);
+    let generation: any = generationResult.generation;
+    if (!generation.creditsReserved && !generation.creditsCommitted) await reserveTryOnGenerationCredits(generation);
+    generation = await markTryOnGenerationStage(generation.generationId, "submitting") || generation;
 
-    return {
-      preview: serializeAvatarPreview({ ...preview, cached: result.cached }),
-      creditCharge: creditCharge ? { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance } : null
-    };
+    try {
+      const result = await runConfiguredVirtualTryOnJob({
+        userId,
+        outfitId,
+        avatarProfileId,
+        wardrobeItemIds: Array.isArray(payload.wardrobeItemIds) ? payload.wardrobeItemIds.map(String) : [],
+        desiredView: payload.posePreset === "walking" ? "walking" : undefined,
+        visualizationStyle: payload.visualizationStyle || undefined,
+        posePreset: payload.posePreset || undefined,
+        cacheKey
+      });
+      const preview = (result.preview as any)?.toObject?.() ?? result.preview;
+      generation = await markTryOnGenerationStage(generation.generationId, "provider_completed", {
+        providerJobId: result.providerOutput?.jobId || "",
+        providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
+      }) || generation;
+      let creditCharge: Awaited<ReturnType<typeof commitTryOnGenerationCredits>>["creditCharge"] | null = null;
+      if (!result.cached) {
+        const committed = await commitTryOnGenerationCredits({
+          generation,
+          preview,
+          metadata: {
+            jobType: job.type,
+            jobId: String(job._id),
+            outfitId,
+            source: typeof payload.source === "string" ? payload.source : "background_job"
+          }
+        });
+        creditCharge = committed.creditCharge;
+        generation = committed.generation;
+        await AvatarOutfitPreview.findOneAndUpdate({ userId, outfitId, cacheKey }, { $set: { billingStatus: "committed", generationId: generation.generationId } });
+      }
+
+      return {
+        preview: serializeAvatarPreview({ ...preview, cached: result.cached }),
+        generationId: generation.generationId,
+        creditCharge: creditCharge ? { feature: creditCharge.transaction.feature, credits: creditCharge.transaction.credits, balance: creditCharge.wallet.balance } : null
+      };
+    } catch (error) {
+      await AvatarOutfitPreview.findOneAndUpdate({ userId, outfitId, cacheKey }, {
+        $set: {
+          status: "failed",
+          billingStatus: "released",
+          errorMessage: "Virtual Try-On could not be completed. Your credit was not deducted.",
+          lastAttemptAt: new Date()
+        }
+      });
+      await failTryOnGeneration({ generation, stage: "worker_generation", code: "background_tryon_failed", error });
+      throw error;
+    }
   }
 
   if (job.type === "fit_locked_preview_generation") {

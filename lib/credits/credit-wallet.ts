@@ -17,13 +17,17 @@ function numberOrDefault(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function roundCredits(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
 export function serializeCreditWallet(user: any): CreditWallet {
-  const balance = Math.max(0, numberOrDefault(user?.credits, INITIAL_COMPLIMENTARY_CREDITS));
-  const totalCreditsPurchased = Math.max(0, numberOrDefault(user?.totalCreditsPurchased));
-  const totalCreditsRefunded = Math.max(0, numberOrDefault(user?.totalCreditsRefunded));
-  const totalCreditsSpent = Math.max(0, numberOrDefault(user?.totalCreditsSpent));
-  const complimentaryCreditsUsed = Math.max(0, Math.min(INITIAL_COMPLIMENTARY_CREDITS, numberOrDefault(user?.complimentaryCreditsUsed)));
-  const complimentaryCreditsRemaining = Math.max(0, INITIAL_COMPLIMENTARY_CREDITS - complimentaryCreditsUsed);
+  const balance = roundCredits(Math.max(0, numberOrDefault(user?.credits, INITIAL_COMPLIMENTARY_CREDITS)));
+  const totalCreditsPurchased = roundCredits(Math.max(0, numberOrDefault(user?.totalCreditsPurchased)));
+  const totalCreditsRefunded = roundCredits(Math.max(0, numberOrDefault(user?.totalCreditsRefunded)));
+  const totalCreditsSpent = roundCredits(Math.max(0, numberOrDefault(user?.totalCreditsSpent)));
+  const complimentaryCreditsUsed = roundCredits(Math.max(0, Math.min(INITIAL_COMPLIMENTARY_CREDITS, numberOrDefault(user?.complimentaryCreditsUsed))));
+  const complimentaryCreditsRemaining = roundCredits(Math.max(0, INITIAL_COMPLIMENTARY_CREDITS - complimentaryCreditsUsed));
 
   return {
     balance,
@@ -32,7 +36,7 @@ export function serializeCreditWallet(user: any): CreditWallet {
     totalCreditsSpent,
     complimentaryCreditsUsed,
     complimentaryCreditsRemaining,
-    purchasedCreditsRemaining: Math.max(0, balance - complimentaryCreditsRemaining)
+    purchasedCreditsRemaining: roundCredits(Math.max(0, balance - complimentaryCreditsRemaining))
   };
 }
 

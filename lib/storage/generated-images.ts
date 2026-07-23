@@ -3,6 +3,7 @@ import { assertEnvReady } from "@/lib/config/env";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
 import { getPublicStorageUrl, normalizeStorageKey, s3PublicObjectUrl } from "@/lib/storage/url";
+import { assertGeneratedImageBuffer } from "@/lib/tryon/tryon-image-validation";
 
 type UploadOptions = {
   userId: string;
@@ -15,7 +16,7 @@ type UploadOptions = {
   height?: number;
 };
 
-type UploadedGeneratedImage = {
+export type UploadedGeneratedImage = {
   provider: "s3";
   storageKey: string;
   url: string;
@@ -97,10 +98,11 @@ export async function uploadGeneratedImage(bufferOrBase64: Buffer | string, opti
   const config = assertReady();
   const credentials = await resolveAwsCredentials();
   const body = bufferFromImage(bufferOrBase64);
-  const contentType = options.contentType || `image/${options.format || "png"}`;
+  const detected = assertGeneratedImageBuffer(body, options.contentType || `image/${options.format || "png"}`);
+  const contentType = detected.contentType;
+  const format = detected.format;
   if (!allowedGeneratedContentTypes.has(contentType)) throw new Error("Unsupported generated image content type.");
-  if (!body.byteLength || body.byteLength > 12 * 1024 * 1024) throw new Error("Generated image size is invalid.");
-  const storageKey = makeStorageKey(options);
+  const storageKey = makeStorageKey({ ...options, format });
   const host = config.region === "us-east-1" ? `${config.bucket}.s3.amazonaws.com` : `${config.bucket}.s3.${config.region}.amazonaws.com`;
   const now = amzDate();
   const stamp = dateStamp(now);
@@ -157,15 +159,41 @@ export async function uploadGeneratedImage(bufferOrBase64: Buffer | string, opti
     bytes: body.byteLength
   });
 
+  const publicUrl = await getGeneratedImageUrl(storageKey);
+  if (!/^https:\/\//i.test(publicUrl)) throw new Error("Generated image public URL is invalid.");
+
   return {
     provider: "s3",
     storageKey,
-    url: await getGeneratedImageUrl(storageKey),
-    format: options.format || "png",
+    url: publicUrl,
+    format,
     width: options.width || 1024,
     height: options.height || 1024,
     bytes: body.byteLength
   };
+}
+
+export async function uploadGeneratedImageFromUrl(url: string, options: UploadOptions): Promise<UploadedGeneratedImage> {
+  const safeUrl = String(url || "").trim();
+  if (!/^https:\/\//i.test(safeUrl)) throw new Error("Generated image URL must be HTTPS.");
+
+  const response = await fetch(safeUrl, {
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error(`Generated image download failed with status ${response.status}.`);
+
+  const declaredContentType = response.headers.get("content-type") || "";
+  if (declaredContentType && /text\/html|application\/json|text\/plain/i.test(declaredContentType)) {
+    throw new Error("Generated image URL returned a non-image response.");
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  const detected = assertGeneratedImageBuffer(body, declaredContentType);
+  return uploadGeneratedImage(body, {
+    ...options,
+    contentType: detected.contentType,
+    format: detected.format
+  });
 }
 
 export async function getGeneratedImageUrl(storageKey: string) {

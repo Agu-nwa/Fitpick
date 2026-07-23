@@ -63,7 +63,9 @@ async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>) {
     });
     runtime.logJobEvent({ event: "job_completed", jobId: String(job._id), type: job.type, status: "completed", attempts: job.attempts });
   } catch (error) {
-    const message = "Background job failed safely.";
+    const message = job.type === "avatar_preview_generation"
+      ? "Virtual Try-On could not be completed. Your credit was not deducted."
+      : "Background job failed safely.";
     runtime.logJobEvent({
       event: "job_failed",
       jobId: String(job._id),

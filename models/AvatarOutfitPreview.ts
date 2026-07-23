@@ -16,6 +16,10 @@ const AvatarOutfitPreviewSchema = new Schema(
     storageKey: { type: String, default: "" },
     imageUrl: { type: String, default: "" },
     cacheKey: { type: String, required: true, index: true },
+    generationId: { type: String, default: "", trim: true, maxlength: 80, index: true },
+    idempotencyKey: { type: String, default: "", trim: true, maxlength: 180 },
+    creditReferenceId: { type: String, default: "", trim: true, maxlength: 180 },
+    billingStatus: { type: String, enum: ["not_required", "pending", "reserved", "committed", "released", "refunded"], default: "pending", index: true },
     promptVersion: { type: String, default: "" },
     model: { type: String, default: "" },
     visualizationStyle: { type: String, enum: ["minimal", "luxury", "streetwear", "editorial"], default: "luxury" },
@@ -52,6 +56,7 @@ const AvatarOutfitPreviewSchema = new Schema(
 
 AvatarOutfitPreviewSchema.index({ userId: 1, outfitId: 1 });
 AvatarOutfitPreviewSchema.index({ userId: 1, cacheKey: 1 }, { unique: true });
+AvatarOutfitPreviewSchema.index({ userId: 1, generationId: 1 });
 AvatarOutfitPreviewSchema.index({ status: 1, updatedAt: 1 });
 
 export type AvatarOutfitPreviewDocument = InferSchemaType<typeof AvatarOutfitPreviewSchema> & {

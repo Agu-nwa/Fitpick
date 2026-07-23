@@ -3,7 +3,7 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { loadOwnedAvatarPreviewSubject } from "@/lib/avatar/avatar-preview";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
-import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
 import { AvatarProfile } from "@/models/AvatarProfile";
 
@@ -57,6 +57,12 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function backoffDelay(baseMs: number, attempt: number) {
+  const exponential = Math.min(12000, baseMs * Math.pow(1.6, attempt));
+  const jitter = Math.floor(Math.random() * Math.min(1000, baseMs));
+  return exponential + jitter;
+}
+
 function normalizeStatus(status?: FashnStatus): TryOnProviderOutput["status"] {
   if (status === "completed") return "ready";
   if (status === "starting" || status === "in_queue") return "queued";
@@ -83,8 +89,9 @@ function rankedProductImages(items: any[]) {
   return ranked.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).filter((entry) => entry.url);
 }
 
-async function outputToUrls(input: TryOnPreviewInput, output: string[] = []) {
+async function outputToPersistedImages(input: TryOnPreviewInput, output: string[] = []) {
   const urls: string[] = [];
+  const storageKeys: string[] = [];
   for (const value of output) {
     if (!value) continue;
     if (/^data:image\/|^[A-Za-z0-9+/]+=*$/i.test(value.slice(0, 80)) && input.outfitRecommendationId) {
@@ -98,11 +105,22 @@ async function outputToUrls(input: TryOnPreviewInput, output: string[] = []) {
         height: 1024
       });
       urls.push(uploaded.url);
+      storageKeys.push(uploaded.storageKey);
       continue;
     }
-    urls.push(value);
+    if (/^https:\/\//i.test(value) && input.outfitRecommendationId) {
+      const uploaded = await uploadGeneratedImageFromUrl(value, {
+        userId: input.userId,
+        outfitId: input.outfitRecommendationId,
+        cacheKey: input.cacheKey || `fashn-${Date.now()}`,
+        width: 1024,
+        height: 1024
+      });
+      urls.push(uploaded.url);
+      storageKeys.push(uploaded.storageKey);
+    }
   }
-  return urls;
+  return { urls, storageKeys };
 }
 
 async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
@@ -151,14 +169,21 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
     },
     signal: AbortSignal.timeout(providerConfig.timeoutMs)
   });
-  if (!response.ok) return { ...unavailable(`FASHN status returned HTTP ${response.status}.`), status: "failed" };
+  if (!response.ok) {
+    const retryable = response.status === 429 || response.status >= 500;
+    return { ...unavailable(`FASHN status returned HTTP ${response.status}.`), status: retryable ? "processing" : "failed", jobId };
+  }
   const data = await response.json() as FashnStatusResponse;
   const normalized = normalizeStatus(data.status);
   const warnings = errorMessage(data.error) ? [errorMessage(data.error)] : [];
+  const persisted = normalized === "ready"
+    ? await outputToPersistedImages(input || { userId: "", wardrobeItemIds: [] }, data.output || [])
+    : { urls: [], storageKeys: [] };
   return {
     status: normalized,
     provider: "fashn",
-    previewUrls: normalized === "ready" ? await outputToUrls(input || { userId: "", wardrobeItemIds: [] }, data.output || []) : [],
+    previewUrls: persisted.urls,
+    previewStorageKeys: persisted.storageKeys,
     animationUrl: null,
     modelUrl: null,
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
@@ -170,10 +195,16 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
 async function pollUntilReady(jobId: string, input: TryOnPreviewInput): Promise<TryOnProviderOutput> {
   const providerConfig = config();
   const deadline = Date.now() + providerConfig.timeoutMs;
+  let attempt = 0;
   while (Date.now() < deadline) {
-    const result = await status(jobId, input);
-    if (result.status === "ready" || result.status === "failed") return result;
-    await wait(providerConfig.pollMs);
+    try {
+      const result = await status(jobId, input);
+      if (result.status === "ready" || result.status === "failed") return result;
+    } catch {
+      // Retry transient polling transport failures until the overall deadline.
+    }
+    await wait(backoffDelay(providerConfig.pollMs, attempt));
+    attempt += 1;
   }
   return {
     status: "processing",

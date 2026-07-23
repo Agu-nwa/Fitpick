@@ -33,6 +33,7 @@ export type TryOnProviderOutput = {
   status: "queued" | "processing" | "ready" | "failed" | "provider_unavailable";
   provider: TryOnProviderType;
   previewUrls: string[];
+  previewStorageKeys?: string[];
   animationUrl?: string | null;
   modelUrl?: string | null;
   accuracyLevel: ReturnType<typeof getPreviewAccuracyLevel>;

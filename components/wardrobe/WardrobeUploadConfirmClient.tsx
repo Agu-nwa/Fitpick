@@ -17,10 +17,10 @@ import {
   WardrobeLoadingState,
   WardrobeSaveSuccessState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
-import { AITagConfirmationForm, type AITagConfirmationValues } from "@/components/wardrobe/AITagConfirmationForm";
+import { AITagConfirmationForm, type AITagConfirmationDefaults, type AITagConfirmationValues } from "@/components/wardrobe/AITagConfirmationForm";
 import { useSession } from "@/hooks/use-session";
 import { analyzeWardrobeUpload, confirmWardrobeUploadTags, getJobStatus, getWardrobeUpload, type WardrobeUploadRecord } from "@/lib/api-client";
-import type { WardrobeItem } from "@/types/wardrobe";
+import type { WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
 function cleanItemPayload(values: AITagConfirmationValues) {
   return {
@@ -47,6 +47,35 @@ function cleanItemPayload(values: AITagConfirmationValues) {
   };
 }
 
+const wardrobeCategories: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function categoryValue(value: unknown): WardrobeCategory | "" {
+  const category = stringValue(value) as WardrobeCategory;
+  return wardrobeCategories.includes(category) ? category : "";
+}
+
+function selectedDefaultsFromUpload(upload: WardrobeUploadRecord | null): AITagConfirmationDefaults | undefined {
+  if (!upload) return undefined;
+
+  const category =
+    categoryValue(upload.selectedCategory) ||
+    categoryValue(upload.userInputMetadata?.category) ||
+    categoryValue(upload.suggestedTags?.category);
+  const subcategory =
+    stringValue(upload.selectedCategoryLabel) ||
+    stringValue(upload.userInputMetadata?.subcategory) ||
+    stringValue(upload.suggestedTags?.subcategory) ||
+    stringValue(upload.categorySpecificMetadata?.title);
+  const itemLabel = stringValue(upload.categorySpecificMetadata?.title) || subcategory;
+
+  if (!category && !subcategory && !itemLabel) return undefined;
+  return { category, subcategory, itemLabel };
+}
+
 export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) {
   const session = useSession();
   const router = useRouter();
@@ -57,6 +86,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   const [createdItem, setCreatedItem] = useState<WardrobeItem | null>(null);
   const [message, setMessage] = useState("");
   const [analysisJobId, setAnalysisJobId] = useState("");
+  const selectedDefaults = useMemo(() => selectedDefaultsFromUpload(upload), [upload]);
 
   const warnings = useMemo(() => upload?.aiAnalysis?.labelWarnings || [], [upload]);
   const lowConfidenceCount = useMemo(() => {
@@ -247,6 +277,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
         <Card>
           <AITagConfirmationForm
             aiAnalysis={upload.aiAnalysis}
+            selectedDefaults={selectedDefaults}
             disabled={isAnalyzing || isSaving}
             onSubmit={handleConfirm}
           />

@@ -6,6 +6,7 @@ import {
 import { evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
+import { assertUsablePreviewRecord } from "@/lib/tryon/tryon-image-validation";
 import { createDedicatedVtonTryOnProvider } from "@/lib/tryon/providers/dedicated-vton-tryon";
 import { createFashnTryOnProvider } from "@/lib/tryon/providers/fashn-tryon";
 import { createOpenAiTryOnProvider } from "@/lib/tryon/providers/openai-tryon";
@@ -78,11 +79,12 @@ async function saveProviderPreview(input: {
     outfitDescription: loaded.items.map((item) => `Wardrobe item ID: ${String(item._id)} Category: ${item.category || "unknown"}`).join("\n")
   });
   const imageUrl = output.previewUrls[0] || "";
+  const storageKey = output.previewStorageKeys?.[0] || "";
   const cacheKey = input.cacheKey || buildAvatarCacheKeyFromItems(input.userId, input.outfitId, loaded.items, avatarProfile, {
     posePreset: input.desiredView === "walking" ? "walking" : input.desiredView === "side" ? "side" : input.desiredView === "back" ? "back" : avatarProfile.posePreset,
     visualizationStyle: avatarProfile.visualizationStyle
   });
-  const ready = output.status === "ready" && Boolean(imageUrl);
+  const ready = output.status === "ready" && Boolean(imageUrl) && Boolean(storageKey);
   const failed = output.status === "failed" || output.status === "provider_unavailable";
 
   const preview = await AvatarOutfitPreview.findOneAndUpdate(
@@ -95,7 +97,7 @@ async function saveProviderPreview(input: {
         itemIds: loaded.itemIds,
         cacheKey,
         imageUrl,
-        storageKey: "",
+        storageKey,
         provider: output.provider === "fashn" ? "fashn" : output.provider === "custom" ? "custom_tryon" : "s3",
         status: ready ? "ready" : failed ? "failed" : "generating",
         promptVersion: avatarPreviewPromptVersion,
@@ -126,6 +128,7 @@ async function saveProviderPreview(input: {
       $set: {
         "preview.status": ready ? "ready" : failed ? "failed" : "generating",
         "preview.provider": output.provider === "fashn" ? "fashn" : output.provider === "custom" ? "custom_tryon" : "s3",
+        "preview.storageKey": storageKey,
         "preview.imageUrl": imageUrl,
         "preview.cacheKey": cacheKey,
         "preview.promptVersion": avatarPreviewPromptVersion,
@@ -178,11 +181,13 @@ export async function runConfiguredVirtualTryOnJob(input: {
       : "");
     const preview = await AvatarOutfitPreview.findOne({ userId: input.userId, outfitId: input.outfitId, cacheKey }).lean();
     if (!preview && output.status === "failed") throw new Error(output.warnings[0] || "OpenAI virtual try-on fallback failed.");
+    if (preview && !assertUsablePreviewRecord(preview)) throw new Error("Virtual try-on preview was not persisted correctly.");
     return { preview, cached: Boolean(output.cached), providerOutput: output };
   }
 
   const saved = await saveProviderPreview(input, output);
   if (!saved && output.status === "failed") throw new Error(output.warnings[0] || "Virtual try-on provider failed.");
   if (!saved && output.status === "provider_unavailable") throw new Error(output.warnings[0] || "Virtual try-on provider unavailable.");
+  if (!saved || !assertUsablePreviewRecord(saved)) throw new Error(output.warnings[0] || "Virtual try-on preview was not persisted correctly.");
   return { preview: saved, cached: false, providerOutput: output };
 }

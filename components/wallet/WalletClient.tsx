@@ -29,9 +29,19 @@ function friendlyFeature(feature: string) {
 }
 
 function signedCredits(value: number) {
-  if (value > 0) return `+${value}`;
-  if (value < 0) return String(value);
+  const formatted = formatCredits(value);
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `-${formatCredits(Math.abs(value))}`;
   return "0";
+}
+
+function formatCredits(value: number | null | undefined) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount)) return "0";
+  return amount.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2
+  });
 }
 
 function statusTone(status: string): Parameters<typeof Badge>[0]["tone"] {
@@ -54,7 +64,7 @@ function PaymentMethodSummary({
           <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
             <span className="inline-flex items-center gap-2">
               <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
-              Card
+              Card or digital wallet
             </span>
             <Badge tone="success">Available</Badge>
           </span>
@@ -202,7 +212,7 @@ export function WalletClient() {
                 <WalletCards size={14} aria-hidden="true" />
                 Credits
               </p>
-              <p className="mt-3 text-6xl font-black leading-none tracking-[-0.08em] text-ink">{data.wallet.balance}</p>
+              <p className="mt-3 text-6xl font-black leading-none tracking-[-0.08em] text-ink">{formatCredits(data.wallet.balance)}</p>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Your first 20 Credits are complimentary. Credits are spent only after premium actions succeed.</p>
             </div>
             <Badge tone="premium">Credit wallet active</Badge>
@@ -210,19 +220,19 @@ export function WalletClient() {
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-line bg-canvas/70 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Complimentary</p>
-              <p className="mt-2 text-xl font-bold text-ink">{data.wallet.complimentaryCreditsRemaining}</p>
+              <p className="mt-2 text-xl font-bold text-ink">{formatCredits(data.wallet.complimentaryCreditsRemaining)}</p>
             </div>
             <div className="rounded-2xl border border-line bg-canvas/70 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Purchased</p>
-              <p className="mt-2 text-xl font-bold text-ink">{data.wallet.purchasedCreditsRemaining}</p>
+              <p className="mt-2 text-xl font-bold text-ink">{formatCredits(data.wallet.purchasedCreditsRemaining)}</p>
             </div>
             <div className="rounded-2xl border border-line bg-canvas/70 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Spent</p>
-              <p className="mt-2 text-xl font-bold text-ink">{data.wallet.totalCreditsSpent}</p>
+              <p className="mt-2 text-xl font-bold text-ink">{formatCredits(data.wallet.totalCreditsSpent)}</p>
             </div>
             <div className="rounded-2xl border border-line bg-canvas/70 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Bought</p>
-              <p className="mt-2 text-xl font-bold text-ink">{data.wallet.totalCreditsPurchased}</p>
+              <p className="mt-2 text-xl font-bold text-ink">{formatCredits(data.wallet.totalCreditsPurchased)}</p>
             </div>
           </div>
         </Card>
@@ -238,7 +248,7 @@ export function WalletClient() {
                 <span className="block text-sm font-semibold text-ink">{cost.label}</span>
                 <span className="mt-1 block text-xs leading-5 text-muted">{cost.description}</span>
               </span>
-              <Badge tone="premium">{cost.credits}</Badge>
+              <Badge tone="premium">{formatCredits(cost.credits)}</Badge>
             </div>
           ))}
         </Card>

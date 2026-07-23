@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import {
   AlertCircle,
   ArrowDown,
@@ -37,6 +38,8 @@ import {
   uploadImageViaServer,
   uploadWardrobeMetadata
 } from "@/lib/api-client";
+import { imageUploadErrorMessage, normalizeImageForUpload, type NormalizedImageUpload } from "@/lib/image-upload/browser-normalize";
+import { IMAGE_UPLOAD_POLICY, messageForImageUploadError, type ImageUploadSource, type ImageUploadStage } from "@/lib/image-upload-policy";
 import {
   findIntakeCategory,
   intakeCategories,
@@ -46,13 +49,16 @@ import {
   type LabelPhotoKind,
   type WardrobeIntakeCategory
 } from "@/lib/wardrobe/category-intelligence";
-import { MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB, isAllowedImageMimeType } from "@/lib/upload-limits";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
 
 type SlotFile = {
   id: string;
   file: File;
   previewUrl: string;
+  width?: number;
+  height?: number;
+  original?: NormalizedImageUpload["original"];
+  source: ImageUploadSource;
 };
 
 type UploadedSlot = WardrobeImageAsset & {
@@ -101,46 +107,6 @@ function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFil
   ) as Partial<Record<WardrobeImagePurpose, WardrobeImageAsset>>;
 }
 
-function mimeTypeForFile(file: File) {
-  const type = file.type?.toLowerCase();
-  if (type) return type;
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".png")) return "image/png";
-  if (name.endsWith(".webp")) return "image/webp";
-  if (name.endsWith(".heic")) return "image/heic";
-  if (name.endsWith(".heif")) return "image/heif";
-  return "image/jpeg";
-}
-
-function validateLocalImage(file: File) {
-  const mimeType = mimeTypeForFile(file);
-  if (!isAllowedImageMimeType(mimeType)) return "Choose a JPG, PNG, WebP, or HEIC image.";
-  if (file.size > MAX_IMAGE_UPLOAD_BYTES) return `This photo is too large. Choose an image under ${MAX_IMAGE_UPLOAD_MB} MB.`;
-  if (file.size <= 0) return "Choose a valid image file.";
-  return "";
-}
-
-async function readImageDimensions(file: File): Promise<{ width?: number; height?: number }> {
-  const mimeType = mimeTypeForFile(file);
-  if (/heic|heif/i.test(mimeType)) return {};
-
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      const width = image.naturalWidth || image.width;
-      const height = image.naturalHeight || image.height;
-      resolve(width > 0 && height > 0 ? { width, height } : {});
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve({});
-    };
-    image.src = url;
-  });
-}
-
 function uploadFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (/failed to fetch|network|cors|direct_upload_failed|s3/i.test(message)) {
@@ -177,6 +143,7 @@ export function WardrobeAddClient() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [status, setStatus] = useState<"idle" | "unavailable" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [uploadStage, setUploadStage] = useState<ImageUploadStage>("selected");
 
   const groupOptions = intakeGroups;
   const selectedGroup = groupOptions.find((group) => group.id === selectedGroupId);
@@ -189,7 +156,8 @@ export function WardrobeAddClient() {
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
   const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length + additionalFiles.length;
   const missingRequired = requiredSlots.filter((slot) => !slotFiles[slot.key]);
-  const canContinue = Boolean(selectedCategory && !missingRequired.length && !isSaving && !isAnalyzing);
+  const isPreparingImage = ["validating", "preparing", "converting", "generating-preview"].includes(uploadStage) && !isSaving && !isAnalyzing;
+  const canContinue = Boolean(selectedCategory && !missingRequired.length && !isSaving && !isAnalyzing && !isPreparingImage);
   const uploadSteps = [
     { label: "Choose category", status: selectedCategory ? "complete" : "current" },
     { label: "Add photos", status: selectedCategory && !missingRequired.length ? "complete" : selectedCategory ? "current" : "pending" },
@@ -271,65 +239,97 @@ export function WardrobeAddClient() {
     fileInputRef.current?.click();
   }
 
-  function handleSlotFile(purpose: WardrobeImagePurpose, file: File) {
-    const validationMessage = validateLocalImage(file);
-    if (validationMessage) return validationMessage;
+  function sourceForTarget(target: FileTarget): ImageUploadSource {
+    if (target.camera) return "camera";
+    return target.multiple || target.purpose === "additional" ? "gallery" : "gallery";
+  }
+
+  async function normalizeSelectedFile(file: File, source: ImageUploadSource) {
+    return await normalizeImageForUpload(file, {
+      source,
+      onStage: (stage) => {
+        setUploadStage(stage);
+        if (stage === "selected") setMessage("Photo selected. Preparing it for MyFitPick...");
+        if (stage === "validating") setMessage("Checking photo format...");
+        if (stage === "preparing") setMessage("Preparing photo...");
+        if (stage === "converting") setMessage("Converting iPhone photo for upload...");
+        if (stage === "generating-preview") setMessage("Creating preview...");
+      }
+    });
+  }
+
+  async function handleSlotFile(purpose: WardrobeImagePurpose, file: File, source: ImageUploadSource) {
+    const normalized = await normalizeSelectedFile(file, source);
 
     setSlotFiles((current) => {
       if (current[purpose]?.previewUrl) URL.revokeObjectURL(current[purpose]?.previewUrl || "");
       return {
         ...current,
         [purpose]: {
-          id: fileId(file),
-          file,
-          previewUrl: URL.createObjectURL(file)
+          id: fileId(normalized.file),
+          file: normalized.file,
+          previewUrl: normalized.previewUrl,
+          width: normalized.width,
+          height: normalized.height,
+          original: normalized.original,
+          source
         }
       };
     });
-    return "";
   }
 
-  function handleAdditionalFiles(files: File[]) {
+  async function handleAdditionalFiles(files: File[], source: ImageUploadSource) {
     const nextFiles: SlotFile[] = [];
     for (const file of files) {
-      const validationMessage = validateLocalImage(file);
-      if (validationMessage) return validationMessage;
-      nextFiles.push({ id: fileId(file), file, previewUrl: URL.createObjectURL(file) });
+      const normalized = await normalizeSelectedFile(file, source);
+      nextFiles.push({
+        id: fileId(normalized.file),
+        file: normalized.file,
+        previewUrl: normalized.previewUrl,
+        width: normalized.width,
+        height: normalized.height,
+        original: normalized.original,
+        source
+      });
     }
 
     setAdditionalFiles((current) => [...current, ...nextFiles].slice(0, 8));
-    return "";
   }
 
-  function handleFiles(files: FileList | File[]) {
+  async function handleFiles(files: FileList | File[]) {
     const selected = Array.from(files);
-    if (!selected.length) return;
-
-    let validationMessage = "";
-    if (activeTarget.multiple || activeTarget.purpose === "additional") {
-      const [first, ...rest] = selected;
-      if (first && !slotFiles.front) validationMessage = handleSlotFile("front", first);
-      if (!validationMessage && rest.length) validationMessage = handleAdditionalFiles(rest);
-      if (!validationMessage && first && slotFiles.front) validationMessage = handleAdditionalFiles(selected);
-    } else {
-      validationMessage = handleSlotFile(activeTarget.purpose, selected[0]);
-    }
-
-    if (validationMessage) {
-      setMessage(validationMessage);
-      setStatus("idle");
+    if (!selected.length) {
+      setMessage(messageForImageUploadError("IMAGE_NOT_SELECTED"));
+      setUploadStage("failed");
       return;
     }
 
-    setMessage("");
-    setStatus("idle");
+    try {
+      const source = sourceForTarget(activeTarget);
+      if (activeTarget.multiple || activeTarget.purpose === "additional") {
+        const [first, ...rest] = selected;
+        if (first && !slotFiles.front) await handleSlotFile("front", first, source);
+        if (rest.length) await handleAdditionalFiles(rest, source);
+        if (first && slotFiles.front) await handleAdditionalFiles(selected, source);
+      } else {
+        await handleSlotFile(activeTarget.purpose, selected[0], source);
+      }
+
+      setMessage("Photo ready.");
+      setUploadStage("completed");
+      setStatus("idle");
+    } catch (error) {
+      setMessage(imageUploadErrorMessage(error));
+      setUploadStage("failed");
+      setStatus("idle");
+    }
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     if (!selectedCategory) return;
     setActiveTarget({ purpose: "additional", multiple: true });
-    handleFiles(event.dataTransfer.files);
+    void handleFiles(event.dataTransfer.files);
   }
 
   function removeSlot(purpose: WardrobeImagePurpose) {
@@ -381,11 +381,23 @@ export function WardrobeAddClient() {
 
   async function uploadSlot(purpose: WardrobeImagePurpose, slot: SlotFile): Promise<UploadedSlot> {
     const progressKey = `${purpose}:${slot.id}`;
-    const mimeType = mimeTypeForFile(slot.file);
-    const validationMessage = validateLocalImage(slot.file);
-    if (validationMessage) throw new Error(validationMessage);
+    const mimeType = slot.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType;
+    setUploadStage("uploading");
+    Sentry.addBreadcrumb({
+      category: "wardrobe.image_upload",
+      message: "wardrobe_image_upload_started",
+      level: "info",
+      data: {
+        purpose,
+        source: slot.source,
+        mimeType,
+        sizeBytes: slot.file.size,
+        originalMimeType: slot.original?.mimeType,
+        originalExtension: slot.original?.extension
+      }
+    });
     setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
-    const dimensions = await readImageDimensions(slot.file);
+    const dimensions = { width: slot.width, height: slot.height };
 
     const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string }): UploadedSlot => ({
       url: input.url,
@@ -412,8 +424,10 @@ export function WardrobeAddClient() {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
         return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
       }
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: signed.error.message || fallback.error.message } });
       throw new Error(signed.error.message || fallback.error.message);
     }
 
@@ -435,13 +449,16 @@ export function WardrobeAddClient() {
 
       const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
       setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: false } });
       return makeUploadedSlot({ url: publicUrl, storageKey: uploadAccess.storageKey });
     } catch {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
         return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
       }
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: fallback.error.message || "direct_upload_failed" } });
       throw new Error(fallback.error.message || "direct_upload_failed");
     }
   }
@@ -460,6 +477,7 @@ export function WardrobeAddClient() {
     setIsSaving(true);
     setStatus("idle");
     setMessage("");
+    setUploadStage("uploading");
     setUploadProgress({});
 
     try {
@@ -545,6 +563,7 @@ export function WardrobeAddClient() {
       window.localStorage.removeItem(draftKey);
       setIsSaving(false);
       setIsAnalyzing(true);
+      setUploadStage("analyzing");
       const analysis = await analyzeWardrobeUpload(result.data.upload.id);
       setIsAnalyzing(false);
 
@@ -552,11 +571,14 @@ export function WardrobeAddClient() {
         setMessage("Upload saved, but the detail check did not finish. You can review the item on the next screen.");
       }
 
+      setUploadStage("completed");
+
       router.push(`/wardrobe/${result.data.upload.id}/confirm`);
     } catch (error) {
       setIsSaving(false);
       setIsAnalyzing(false);
       setStatus("idle");
+      setUploadStage("failed");
       setMessage(uploadFailureMessage(error));
     }
   }
@@ -694,11 +716,11 @@ export function WardrobeAddClient() {
                   <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will organize them before review.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
-                  <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing}>
+                  <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
                     <Camera size={15} aria-hidden="true" />
                     Camera
                   </Button>
-                  <Button type="button" className="rounded-full" onClick={() => openFilePicker({ purpose: "additional", multiple: true })} disabled={isSaving || isAnalyzing}>
+                  <Button type="button" className="rounded-full" onClick={() => openFilePicker({ purpose: "additional", multiple: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
                     <Images size={15} aria-hidden="true" />
                     Gallery
                   </Button>
@@ -708,7 +730,7 @@ export function WardrobeAddClient() {
           ) : null}
 
           {selectedCategory ? (
-            <WardrobeImageSlots images={slotImages} onSelect={(purpose) => openFilePicker({ purpose })} disabled={isSaving || isAnalyzing} slots={activeSlots as WardrobeImageSlotDefinition[]} />
+            <WardrobeImageSlots images={slotImages} onSelect={(purpose) => openFilePicker({ purpose })} disabled={isSaving || isAnalyzing || isPreparingImage} slots={activeSlots as WardrobeImageSlotDefinition[]} />
           ) : (
             <div className="rounded-2xl border border-dashed border-line bg-canvas/60 px-4 py-8 text-center text-sm font-semibold text-muted">
               Choose a category to see the right photo slots.
@@ -719,12 +741,13 @@ export function WardrobeAddClient() {
             ref={fileInputRef}
             className="sr-only"
             type="file"
-            accept="image/*"
+            accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
             multiple={Boolean(activeTarget.multiple)}
             capture={activeTarget.camera ? "environment" : undefined}
             onChange={(event) => {
-              if (event.target.files) handleFiles(event.target.files);
+              const selected = Array.from(event.target.files || []);
               event.currentTarget.value = "";
+              if (selected.length) void handleFiles(selected);
             }}
           />
 
@@ -744,11 +767,11 @@ export function WardrobeAddClient() {
                       {progress ? <Badge tone={progress >= 100 ? "success" : "warning"}>{progress >= 100 ? "Uploaded" : `${progress}%`}</Badge> : null}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => openFilePicker({ purpose: slot.key })} disabled={isSaving || isAnalyzing}>
+                      <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => openFilePicker({ purpose: slot.key })} disabled={isSaving || isAnalyzing || isPreparingImage}>
                         <PencilLine size={13} aria-hidden="true" />
                         Replace
                       </Button>
-                      <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(slot.key)} disabled={!selected || isSaving || isAnalyzing}>
+                      <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(slot.key)} disabled={!selected || isSaving || isAnalyzing || isPreparingImage}>
                         Clear
                       </Button>
                     </div>
@@ -829,8 +852,8 @@ export function WardrobeAddClient() {
 
       <section className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 rounded-[1.75rem] border border-line bg-surface/90 p-3 shadow-glow backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
         <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
-          {isSaving || isAnalyzing ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-          {isSaving ? "Uploading photos..." : isAnalyzing ? "Building garment intelligence..." : message && /could not|too large|try again/i.test(message) ? "Retry upload" : "Upload and review details"}
+          {isSaving || isAnalyzing || isPreparingImage ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+          {isPreparingImage ? "Preparing photo..." : isSaving ? "Uploading photos..." : isAnalyzing ? "Building garment intelligence..." : message && /could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Upload and review details"}
         </Button>
         {message ? (
           <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">

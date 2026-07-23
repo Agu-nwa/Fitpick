@@ -16,6 +16,16 @@ import { evaluateOutfitFitOnAvatar, type FitEvaluation } from "@/lib/fit/fit-loc
 import { backgroundJobsEnabled, enqueueJob, serializeJob } from "@/lib/jobs/queue";
 import { summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
 import { serializeProgressiveTrigger, triggerForVirtualTryOn } from "@/lib/progressive-intelligence/triggers";
+import {
+  commitTryOnGenerationCredits,
+  createTryOnIdempotencyKey,
+  failTryOnGeneration,
+  findActiveTryOnGeneration,
+  getOrCreateTryOnGeneration,
+  isActiveTryOnGenerationStatus,
+  markTryOnGenerationStage,
+  reserveTryOnGenerationCredits
+} from "@/lib/tryon/tryon-generation";
 import { runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
 import {
   buildPreviewCacheKeyFromItems,
@@ -606,6 +616,85 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
   }
 
+  const activeGeneration = await findActiveTryOnGeneration({ userId, outfitId: outfitRecommendationId, cacheKey, creditFeature }).lean() as any;
+  if (activeGeneration && isActiveTryOnGenerationStatus(activeGeneration.status)) {
+    return serializeStylistVisualization({
+      visualMode,
+      outfitRecommendationId,
+      avatarPreview: defaultAvatarPreview({
+        status: activeGeneration.status === "queued" ? "queued" : "generating",
+        previewId: activeGeneration.previewId ? String(activeGeneration.previewId) : null,
+        cacheKey,
+        ...previewFitPatch(fitEvaluation),
+        ...groundingPatch
+      }),
+      fitLock: fitLockSummary(fitEvaluation)
+    });
+  }
+
+  const idempotencyKey = createTryOnIdempotencyKey({
+    source: "stylist-tryon",
+    userId,
+    outfitId: outfitRecommendationId,
+    cacheKey,
+    regenerate: options.regenerate
+  });
+  let generationResult = await getOrCreateTryOnGeneration({
+    userId,
+    outfitId: loaded.outfit._id,
+    avatarProfileId: loaded.avatarProfile._id,
+    cacheKey,
+    creditFeature,
+    idempotencyKey,
+    provider: process.env.TRYON_PROVIDER || "internal_preview",
+    metadata: { source: "stylist_chat", visualMode }
+  });
+  let generation: any = generationResult.generation;
+
+  if (generationResult.reused && generation.status === "failed") {
+    generationResult = await getOrCreateTryOnGeneration({
+      userId,
+      outfitId: loaded.outfit._id,
+      avatarProfileId: loaded.avatarProfile._id,
+      cacheKey,
+      creditFeature,
+      idempotencyKey: createTryOnIdempotencyKey({ source: "stylist-tryon", userId, outfitId: outfitRecommendationId, cacheKey, regenerate: true }),
+      provider: process.env.TRYON_PROVIDER || "internal_preview",
+      metadata: { source: "stylist_chat", visualMode, retryOf: generation.generationId }
+    });
+    generation = generationResult.generation;
+  }
+
+  if (generationResult.reused && generation.status === "completed") {
+    const completedPreview = await AvatarOutfitPreview.findOne({ userId, outfitId: outfitRecommendationId, cacheKey, status: "ready", imageUrl: { $ne: "" }, storageKey: { $ne: "" } }).lean() as any;
+    if (completedPreview?.imageUrl) {
+      const preview = serializeAvatarPreview({ ...completedPreview, cached: true });
+      return serializeStylistVisualization({
+        visualMode,
+        outfitRecommendationId,
+        avatarPreview: defaultAvatarPreview({
+          status: "ready",
+          previewId: preview.id || null,
+          imageUrl: preview.imageUrl || preview.previewUrl || null,
+          cacheKey,
+          ...previewFitPatch(fitEvaluation),
+          ...previewGroundingPatch(loaded.items, preview)
+        }),
+        fitLock: fitLockSummary(fitEvaluation)
+      });
+    }
+  }
+
+  try {
+    await reserveTryOnGenerationCredits(generation);
+  } catch {
+    return outOfCreditsVisualization(visualMode, outfitRecommendationId, {
+      cacheKey,
+      ...previewFitPatch(fitEvaluation),
+      ...groundingPatch
+    });
+  }
+
   const previewRecord = await markAvatarPreviewStatus(
     userId,
     outfitRecommendationId,
@@ -617,6 +706,10 @@ export async function triggerDigitalHumanPreviewForStylist(
       avatarProfileId: loaded.avatarProfile._id,
       itemIds: loaded.itemIds,
       cacheKey,
+      generationId: generation.generationId,
+      idempotencyKey,
+      creditReferenceId: generation.creditReferenceId,
+      billingStatus: "reserved",
       status: "generating",
       provider: "s3",
       promptVersion: avatarPreviewPromptVersion,
@@ -641,6 +734,7 @@ export async function triggerDigitalHumanPreviewForStylist(
   const previewRecordId = (previewRecord as any)?._id ? String((previewRecord as any)._id) : null;
 
   if (backgroundJobsEnabled()) {
+    generation = await markTryOnGenerationStage(generation.generationId, "queued", { previewId: (previewRecord as any)?._id || null }) || generation;
     const job = await enqueueJob(
       "avatar_preview_generation",
       {
@@ -651,6 +745,9 @@ export async function triggerDigitalHumanPreviewForStylist(
         wardrobeItemIds: loaded.itemIds,
         cacheKey,
         creditFeature,
+        generationId: generation.generationId,
+        idempotencyKey,
+        creditReferenceId: generation.creditReferenceId,
         source: "stylist_chat",
         visualMode
       },
@@ -677,6 +774,7 @@ export async function triggerDigitalHumanPreviewForStylist(
   }
 
   try {
+    generation = await markTryOnGenerationStage(generation.generationId, "submitting", { previewId: (previewRecord as any)?._id || null }) || generation;
     const result = await runConfiguredVirtualTryOnJob({
       userId,
       outfitId: outfitRecommendationId,
@@ -689,13 +787,18 @@ export async function triggerDigitalHumanPreviewForStylist(
     });
     const saved = (result.preview as any)?.toObject?.() ?? result.preview;
     if (!saved) throw new Error("Virtual try-on is not ready yet.");
+    generation = await markTryOnGenerationStage(generation.generationId, "provider_completed", {
+      providerJobId: result.providerOutput?.jobId || "",
+      providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
+    }) || generation;
     if (!result.cached) {
-      await spendCreditsAfterSuccess({
-        userId,
-        feature: creditFeature,
-        referenceId: `stylist-tryon:${outfitRecommendationId}:${cacheKey}`,
+      const committed = await commitTryOnGenerationCredits({
+        generation,
+        preview: saved,
         metadata: { source: "stylist_chat", visualMode }
       });
+      generation = committed.generation;
+      await markAvatarPreviewStatus(userId, outfitRecommendationId, String(loaded.avatarProfile._id), cacheKey, { billingStatus: "committed", generationId: generation.generationId });
     }
     const preview = serializeAvatarPreview(saved);
 
@@ -712,7 +815,7 @@ export async function triggerDigitalHumanPreviewForStylist(
       }),
       fitLock: fitLockSummary(fitEvaluation)
     });
-  } catch {
+  } catch (error) {
     await markAvatarPreviewStatus(
       userId,
       outfitRecommendationId,
@@ -720,10 +823,12 @@ export async function triggerDigitalHumanPreviewForStylist(
       cacheKey,
       {
         status: "failed",
-        errorMessage: "Unable to show it on your avatar right now.",
+        billingStatus: "released",
+        errorMessage: "Virtual Try-On could not be completed. Your credit was not deducted.",
         lastAttemptAt: new Date()
       }
     );
+    await failTryOnGeneration({ generation, stage: "stylist_tryon", code: "stylist_tryon_failed", error });
 
     return serializeStylistVisualization({
       visualMode,
@@ -732,7 +837,7 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "failed",
         previewId: previewRecordId,
         cacheKey,
-        errorMessage: "Unable to show it on your avatar right now.",
+        errorMessage: "Virtual Try-On could not be completed. Your credit was not deducted.",
         ...previewFitPatch(fitEvaluation),
         ...groundingPatch
       }),

@@ -40,6 +40,12 @@ export type AITagConfirmationValues = {
   verifiedFields: Record<string, { value: string | string[] | number | null; confidence: number; originalConfidence: number; source: "user_confirmed" }>;
 };
 
+export type AITagConfirmationDefaults = {
+  category?: WardrobeCategory | "";
+  subcategory?: string;
+  itemLabel?: string;
+};
+
 const essentialFields: FieldConfig[] = [
   { key: "category", label: "Category", kind: "category", required: true },
   { key: "subcategory", label: "Subcategory" },
@@ -166,19 +172,27 @@ function sourceLabel(source?: string) {
 
 export function AITagConfirmationForm({
   aiAnalysis,
+  selectedDefaults,
   disabled = false,
   onSubmit
 }: {
   aiAnalysis?: WardrobeAiAnalysis | null;
+  selectedDefaults?: AITagConfirmationDefaults;
   disabled?: boolean;
   onSubmit: (values: AITagConfirmationValues) => void | Promise<void>;
 }) {
-  const initialValues = useMemo(
-    () =>
-      Object.fromEntries(
+  const initialValues = useMemo<Record<string, string>>(
+    () => {
+      const detected = Object.fromEntries(
         allFields.map((field) => [field.key, stringifyValue(fieldFromAnalysis(aiAnalysis, field.key)?.value)])
-      ) as Record<string, string>,
-    [aiAnalysis]
+      ) as Record<string, string>;
+
+      if (selectedDefaults?.category) detected.category = selectedDefaults.category;
+      if (selectedDefaults?.subcategory) detected.subcategory = selectedDefaults.subcategory;
+
+      return detected;
+    },
+    [aiAnalysis, selectedDefaults?.category, selectedDefaults?.subcategory]
   );
   const [name, setName] = useState("");
   const [values, setValues] = useState<Record<string, string>>(initialValues);
@@ -204,7 +218,7 @@ export function AITagConfirmationForm({
   useEffect(() => {
     const next = initialValues;
     setValues(next);
-    setName([next.brand, next.primaryColor, next.garmentType || next.subcategory].filter(Boolean).join(" ").trim());
+    setName([next.brand, next.primaryColor, next.garmentType || next.subcategory].filter(Boolean).join(" ").trim() || selectedDefaults?.itemLabel || selectedDefaults?.subcategory || "");
     const sizeField = fieldFromAnalysis(aiAnalysis, "taggedSize")?.value || fieldFromAnalysis(aiAnalysis, "size")?.value;
     const fitField = fieldFromAnalysis(aiAnalysis, "garmentFit")?.value || fieldFromAnalysis(aiAnalysis, "fit")?.value;
     setTaggedSize(normalizeTaggedSize(sizeField));
@@ -215,7 +229,7 @@ export function AITagConfirmationForm({
     setMeasurementSource(fieldFromAnalysis(aiAnalysis, "size")?.source === "ocr" ? "label_ocr" : normalizeOption(fieldFromAnalysis(aiAnalysis, "measurementSource")?.value, measurementSourceOptions, "ai_estimated"));
     setFitConfidence(String(Math.max(fieldFromAnalysis(aiAnalysis, "fit")?.confidence ?? 0, fieldFromAnalysis(aiAnalysis, "garmentFit")?.confidence ?? 0).toFixed(2)));
     setGarmentMeasurements({});
-  }, [aiAnalysis, initialValues]);
+  }, [aiAnalysis, initialValues, selectedDefaults?.itemLabel, selectedDefaults?.subcategory]);
 
   useEffect(() => {
     const allowed = new Set(visibleMeasurementKeys);

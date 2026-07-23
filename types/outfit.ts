@@ -50,6 +50,8 @@ export type OutfitRecommendation = {
     storageKey?: string;
     imageUrl?: string;
     cacheKey?: string;
+    generationId?: string;
+    billingStatus?: string;
     promptVersion?: string;
     model?: string;
     accuracyLevel?: PreviewAccuracySummary;

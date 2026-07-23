@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldGroup } from "@/components/ui/FieldGroup";
-import { generateAvatarModelImage, requestSignedUploadUrl, updateAvatarProfile, type AvatarProfileData } from "@/lib/api-client";
+import { generateAvatarModelImage, requestSignedUploadUrl, updateAvatarProfile, uploadImageViaServer, type AvatarProfileData } from "@/lib/api-client";
+import { imageUploadErrorMessage, normalizeImageForUpload } from "@/lib/image-upload/browser-normalize";
+import { IMAGE_UPLOAD_POLICY } from "@/lib/image-upload-policy";
 
 type AvatarProfile = AvatarProfileData["profile"];
 
@@ -142,13 +144,40 @@ export function AvatarProfileForm({
     setError("");
 
     try {
+      const normalized = await normalizeImageForUpload(file, {
+        source: "avatar_model",
+        onStage: (stage) => {
+          if (stage === "converting") setNotice("Converting iPhone photo for upload...");
+          if (stage === "generating-preview") setNotice("Preparing full-body photo...");
+        }
+      });
+
       const signed = await requestSignedUploadUrl({
-        filename: file.name,
-        mimeType: file.type || "image/jpeg",
-        sizeBytes: file.size,
+        filename: normalized.file.name,
+        mimeType: normalized.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType,
+        sizeBytes: normalized.file.size,
         purpose: "avatar_model"
       });
-      if (!signed.ok) throw new Error(signed.error.message);
+      if (!signed.ok) {
+        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
+        if (!fallback.ok) throw new Error(signed.error.message || fallback.error.message);
+
+        const result = await updateAvatarProfile({
+          tryOnModelSource: "uploaded",
+          uploadedModelImageUrl: fallback.data.upload.publicUrl,
+          uploadedModelImageStorageKey: fallback.data.upload.storageKey,
+          consentAccepted
+        });
+        if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+
+        URL.revokeObjectURL(normalized.previewUrl);
+        onSaved(result.data.profile);
+        setTryOnModelSource("uploaded");
+        setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || fallback.data.upload.publicUrl);
+        setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || fallback.data.upload.storageKey);
+        setNotice("Model photo saved.");
+        return;
+      }
       const uploadAccess = signed.data.upload;
       if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
         throw new Error(uploadAccess.message || "Image upload is not configured yet.");
@@ -156,10 +185,29 @@ export function AvatarProfileForm({
 
       const uploadResponse = await fetch(uploadAccess.uploadUrl, {
         method: uploadAccess.method || "PUT",
-        headers: uploadAccess.headers || { "content-type": file.type || "image/jpeg" },
-        body: file
+        headers: uploadAccess.headers || { "content-type": normalized.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType },
+        body: normalized.file
       });
-      if (!uploadResponse.ok) throw new Error("We could not upload your model photo.");
+      if (!uploadResponse.ok) {
+        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
+        if (!fallback.ok) throw new Error("We could not upload your model photo.");
+
+        const result = await updateAvatarProfile({
+          tryOnModelSource: "uploaded",
+          uploadedModelImageUrl: fallback.data.upload.publicUrl,
+          uploadedModelImageStorageKey: fallback.data.upload.storageKey,
+          consentAccepted
+        });
+        if (!result.ok) throw new Error(result.error.message || "Unable to save your model photo.");
+
+        URL.revokeObjectURL(normalized.previewUrl);
+        onSaved(result.data.profile);
+        setTryOnModelSource("uploaded");
+        setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || fallback.data.upload.publicUrl);
+        setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || fallback.data.upload.storageKey);
+        setNotice("Model photo saved.");
+        return;
+      }
 
       const imageUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl.split("?")[0] || "";
       const result = await updateAvatarProfile({
@@ -174,9 +222,10 @@ export function AvatarProfileForm({
       setTryOnModelSource("uploaded");
       setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || imageUrl);
       setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || uploadAccess.storageKey);
+      URL.revokeObjectURL(normalized.previewUrl);
       setNotice("Model photo saved.");
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo.");
+      setError(imageUploadErrorMessage(uploadError) || (uploadError instanceof Error ? uploadError.message : "Unable to upload your model photo."));
     } finally {
       setUploadingModel(false);
     }
@@ -322,7 +371,7 @@ export function AvatarProfileForm({
         <input
           ref={modelFileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];

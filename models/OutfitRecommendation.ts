@@ -51,6 +51,8 @@ const OutfitRecommendationSchema = new Schema(
       storageKey: { type: String, default: "" },
       imageUrl: { type: String, default: "" },
       cacheKey: { type: String, default: "" },
+      generationId: { type: String, default: "" },
+      billingStatus: { type: String, default: "pending" },
       promptVersion: { type: String, default: "" },
       model: { type: String, default: "" },
       groundedItemIds: { type: [String], default: [] },

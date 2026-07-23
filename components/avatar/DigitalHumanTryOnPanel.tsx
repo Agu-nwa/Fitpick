@@ -33,6 +33,23 @@ function fitStatusLabel(status?: string) {
   return simpleFitStatus(status);
 }
 
+const tryOnProgressSteps = [
+  "Checking outfit",
+  "Checking Credits",
+  "Preparing images",
+  "Submitting try-on",
+  "Generating preview",
+  "Saving preview",
+  "Complete"
+];
+
+function billingSafeError(message?: string) {
+  const safe = message || "Virtual Try-On could not be completed.";
+  return /credit was not deducted|credit is available/i.test(safe)
+    ? safe
+    : `${safe} Your credit was not deducted.`;
+}
+
 export function DigitalHumanTryOnPanel({
   outfit,
   avatarProfile,
@@ -134,9 +151,18 @@ export function DigitalHumanTryOnPanel({
         ) : null}
 
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
-          <p className="text-sm font-semibold text-cocoa">Creating the on-model try-on. This may take a moment.</p>
+          <div className="space-y-3 rounded-2xl border border-cocoa/15 bg-cocoa/5 p-3">
+            <p className="text-sm font-semibold text-cocoa">Creating the on-model try-on. Your Credit is only spent after the saved preview is ready.</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {tryOnProgressSteps.map((step, index) => (
+                <span key={step} className={`rounded-full px-2 py-1 text-center text-[11px] font-semibold ${index < 6 ? "bg-white/70 text-ink" : "bg-cocoa text-white"}`}>
+                  {step}
+                </span>
+              ))}
+            </div>
+          </div>
         ) : null}
-        {previewError ? <p className="text-sm font-semibold text-red-600">{previewError}</p> : null}
+        {previewError ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-sm font-semibold text-red-600">{billingSafeError(previewError)}</p> : null}
 
         <details className="rounded-2xl border border-line bg-canvas/60 p-3">
           <summary className="cursor-pointer text-sm font-semibold text-ink">Preview details</summary>

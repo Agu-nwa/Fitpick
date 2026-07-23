@@ -1,6 +1,16 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
-export const creditTransactionStatuses = ["pending", "processing", "spent", "credited", "reversed", "failed", "refunded"] as const;
+export const creditTransactionStatuses = [
+  "pending",
+  "reserved",
+  "processing",
+  "spent",
+  "credited",
+  "released",
+  "reversed",
+  "failed",
+  "refunded"
+] as const;
 
 const CreditTransactionSchema = new Schema(
   {
