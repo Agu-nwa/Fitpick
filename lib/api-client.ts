@@ -62,7 +62,18 @@ export type BackendHealth = {
     database: "ok" | "skipped" | "degraded" | "not_checked" | string;
     storage: "ok" | "skipped" | "degraded" | "not_checked" | string;
     worker: "ok" | "skipped" | "degraded" | "not_checked" | string;
+    queue?: "ok" | "skipped" | "degraded" | "not_checked" | string;
   };
+  queue?: {
+    byStatus: Record<string, number>;
+    queued: number;
+    processing: number;
+    completed: number;
+    failed: number;
+    deadLetter: number;
+    oldestQueueWaitMs: number;
+    latestHeartbeatMsAgo: number | null;
+  } | null;
 };
 
 export type CurrentUserSummary = {
@@ -261,15 +272,22 @@ export type JobStatusData = {
   job: {
     id: string;
     type: string;
-    status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+    status: "queued" | "processing" | "completed" | "failed" | "cancelled" | "dead_letter";
     attempts: number;
     maxAttempts: number;
     result: Record<string, any>;
     errorMessage: string;
+    claimedBy?: string;
+    queueWaitMs?: number;
+    processingDurationMs?: number;
     availableAt: string | null;
     startedAt: string | null;
+    lockedAt?: string | null;
+    lockExpiresAt?: string | null;
+    lastHeartbeatAt?: string | null;
     completedAt: string | null;
     failedAt: string | null;
+    deadLetteredAt?: string | null;
     createdAt: string | null;
     updatedAt: string | null;
   };
@@ -793,6 +811,46 @@ export const generateAvatarModelImage = () => apiRequest<AvatarProfileData>("/ap
 export const getAvatarPreview = (id: string) => apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { cache: "no-store" });
 export const generateAvatarPreview = (id: string, options: unknown = {}) =>
   apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { method: "POST", body: options });
+function filenameFromContentDisposition(header = "") {
+  const encoded = header.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded).replace(/[/\\]/g, "-");
+    } catch {
+      return encoded.replace(/[/\\]/g, "-");
+    }
+  }
+  const quoted = header.match(/filename="([^"]+)"/i)?.[1] || header.match(/filename=([^;]+)/i)?.[1];
+  return quoted ? quoted.trim().replace(/[/\\]/g, "-") : "";
+}
+
+export async function downloadAvatarPreview(id: string): Promise<ApiResponse<{ blob: Blob; filename: string }>> {
+  try {
+    const response = await fetch(`/api/outfits/${encodeURIComponent(id)}/avatar-preview/download`, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as ApiResponse<{ blob: Blob; filename: string }>;
+        if (payload && typeof payload === "object" && "ok" in payload) return payload;
+      }
+      return invalidResponse;
+    }
+
+    const blob = await response.blob();
+    const filename = filenameFromContentDisposition(response.headers.get("content-disposition") || "") || "fitpick-virtual-tryon-preview.jpg";
+    return {
+      ok: true,
+      data: { blob, filename }
+    };
+  } catch {
+    return backendUnavailable;
+  }
+}
 export const sendStylistMessage = (message: string, options: SendStylistMessageOptions = {}) =>
   apiRequest<StylistChatData>("/api/stylist/chat", {
     method: "POST",

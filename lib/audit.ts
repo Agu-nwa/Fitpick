@@ -26,6 +26,7 @@ export type AuditAction =
   | "outfit.save"
   | "outfit.wear"
   | "outfit.feedback"
+  | "avatar_preview.download"
   | "looks.create"
   | "looks.update"
   | "looks.delete"

@@ -3,6 +3,7 @@ import path from "node:path";
 import dotenv from "dotenv";
 
 let stopping = false;
+const workerId = `fitpick-worker:${process.pid}:${Date.now().toString(36)}`;
 
 function loadWorkerEnv() {
   const mode = process.env.NODE_ENV || "development";
@@ -43,6 +44,11 @@ function parsePollMs() {
   return Number.isFinite(value) && value >= 1000 ? value : 5000;
 }
 
+function parseLeaseMs() {
+  const value = Number(process.env.WORKER_LEASE_MS || 5 * 60_000);
+  return Number.isFinite(value) && value >= 30_000 ? Math.min(value, 30 * 60_000) : 5 * 60_000;
+}
+
 process.on("SIGINT", () => {
   stopping = true;
 });
@@ -52,8 +58,13 @@ process.on("SIGTERM", () => {
 });
 
 async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>) {
-  const job = await runtime.claimNextJob();
+  const leaseMs = parseLeaseMs();
+  const job = await runtime.claimNextJob({ workerId, leaseMs });
   if (!job) return false;
+
+  const heartbeat = setInterval(() => {
+    void runtime.heartbeatJob(String(job._id), workerId, leaseMs);
+  }, Math.max(10_000, Math.floor(leaseMs / 3)));
 
   try {
     const result = await runtime.runBackgroundJobByType(job);
@@ -74,7 +85,16 @@ async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>) {
       attempts: job.attempts,
       errorCategory: runtime.errorCategory(error)
     });
-    await runtime.scheduleJobRetry(job, message);
+    const retryable = runtime.isRetryableBackgroundJobFailure(job, error);
+    const updated = await runtime.scheduleJobRetry(job, message, {
+      retryable,
+      errorCategory: runtime.errorCategory(error)
+    });
+    if (updated?.status === "dead_letter") {
+      await runtime.handleTerminalBackgroundJobFailure(updated, "dead_letter", message);
+    }
+  } finally {
+    clearInterval(heartbeat);
   }
 
   return true;
@@ -98,9 +118,14 @@ async function loadRuntime() {
   return {
     connectDB,
     claimNextJob: queue.claimNextJob,
+    heartbeatJob: queue.heartbeatJob,
+    recoverStaleProcessingJobs: queue.recoverStaleProcessingJobs,
     scheduleJobRetry: queue.scheduleJobRetry,
     updateJobStatus: queue.updateJobStatus,
     runBackgroundJobByType: handlers.runBackgroundJobByType,
+    isRetryableBackgroundJobFailure: handlers.isRetryableBackgroundJobFailure,
+    handleTerminalBackgroundJobFailure: handlers.handleTerminalBackgroundJobFailure,
+    expireStaleTryOnGenerations: (await import("../lib/tryon/tryon-generation")).expireStaleTryOnGenerations,
     errorCategory: logger.errorCategory,
     logJobEvent: logger.logJobEvent
   };
@@ -121,9 +146,28 @@ async function main() {
   const pollMs = parsePollMs();
   const runtime = await loadRuntime();
   await runtime.connectDB();
-  console.info("fitpick.worker", { status: "started", pollMs, timestamp: new Date().toISOString() });
+  console.info("fitpick.worker", { status: "started", pollMs, workerId, leaseMs: parseLeaseMs(), timestamp: new Date().toISOString() });
+
+  let lastMaintenanceAt = 0;
 
   while (!stopping) {
+    if (Date.now() - lastMaintenanceAt > 60_000) {
+      lastMaintenanceAt = Date.now();
+      const recovered = await runtime.recoverStaleProcessingJobs({ olderThanMs: parseLeaseMs(), limit: 25 });
+      for (const job of recovered.deadLettered || []) {
+        await runtime.handleTerminalBackgroundJobFailure(job, "stale_processing_dead_letter", "Background job expired before completion.");
+      }
+      const expired = await runtime.expireStaleTryOnGenerations({ olderThanMs: 90 * 60_000, limit: 50 });
+      if (recovered.scanned || expired.expiredCount) {
+        console.info("fitpick.worker", {
+          status: "maintenance",
+          recovered,
+          expired,
+          workerId,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
     const worked = await processOneJob(runtime);
     if (!worked) {
       await new Promise((resolve) => setTimeout(resolve, pollMs));

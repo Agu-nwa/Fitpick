@@ -118,7 +118,7 @@ export function createStorageKey(input: { userId: string; filename: string; purp
   return normalizeStorageKey(`wardrobe/${input.userId}/${input.purpose || "original"}-${Date.now()}-${crypto.randomUUID()}-${safeFilename || `upload.${extension || "jpg"}`}`);
 }
 
-export function storageKeyBelongsToUser(input: { userId: string; storageKey?: string; prefix?: "wardrobe" | "generated-previews" }) {
+export function storageKeyBelongsToUser(input: { userId: string; storageKey?: string; prefix?: "wardrobe" | "generated-previews" | "avatar-previews" }) {
   const key = normalizeStorageKey(input.storageKey || "");
   if (!key) return false;
   const prefix = input.prefix || "wardrobe";

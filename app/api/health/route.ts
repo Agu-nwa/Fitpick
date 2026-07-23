@@ -1,5 +1,6 @@
 import { apiSuccess } from "@/lib/api-response";
 import { connectDB, hasMongoUri } from "@/lib/db";
+import { backgroundJobsEnabled, queueHealthSummary } from "@/lib/jobs/queue";
 import packageJson from "@/package.json";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +40,29 @@ async function databaseStatus(): Promise<CheckStatus> {
   }
 }
 
+async function queueStatus(): Promise<{ worker: CheckStatus; queue: CheckStatus; summary: Awaited<ReturnType<typeof queueHealthSummary>> | null }> {
+  if (!backgroundJobsEnabled()) return { worker: "skipped", queue: "skipped", summary: null };
+  if (!hasMongoUri()) return { worker: "skipped", queue: "skipped", summary: null };
+
+  try {
+    const summary = await timeout(queueHealthSummary(), 1500);
+    const staleHeartbeat = summary.processing > 0 && summary.latestHeartbeatMsAgo !== null && summary.latestHeartbeatMsAgo > 10 * 60_000;
+    return {
+      worker: staleHeartbeat ? "degraded" : "ok",
+      queue: summary.deadLetter > 0 ? "degraded" : "ok",
+      summary
+    };
+  } catch {
+    return { worker: "degraded", queue: "degraded", summary: null };
+  }
+}
+
 export async function GET() {
   const database = await databaseStatus();
+  const jobs = await queueStatus();
   const storage: CheckStatus = hasStorageConfig() ? "ok" : "skipped";
   const now = new Date().toISOString();
+  const status = database === "degraded" || jobs.worker === "degraded" || jobs.queue === "degraded" ? "degraded" : "ok";
 
   return apiSuccess({
     ok: true,
@@ -50,14 +70,16 @@ export async function GET() {
     version: packageJson.version || "0.0.0",
     deploymentId: process.env.NEXT_DEPLOYMENT_ID || "unknown",
     time: now,
-    status: database === "degraded" ? "degraded" : "ok",
+    status,
     databaseConfigured: hasMongoUri(),
     timestamp: now,
     checks: {
       app: "ok" as const,
       database,
       storage,
-      worker: "not_checked" as const,
+      worker: jobs.worker,
+      queue: jobs.queue,
     },
+    queue: jobs.summary,
   });
 }

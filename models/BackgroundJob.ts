@@ -13,7 +13,7 @@ const jobTypes = [
   "memory_rollup"
 ] as const;
 
-const jobStatuses = ["queued", "processing", "completed", "failed", "cancelled"] as const;
+const jobStatuses = ["queued", "processing", "completed", "failed", "cancelled", "dead_letter"] as const;
 
 const BackgroundJobSchema = new Schema(
   {
@@ -26,14 +26,22 @@ const BackgroundJobSchema = new Schema(
     attempts: { type: Number, default: 0 },
     maxAttempts: { type: Number, default: 3 },
     availableAt: { type: Date, default: Date.now, index: true },
+    claimedBy: { type: String, default: "", trim: true, maxlength: 120, index: true },
+    lockedAt: { type: Date, default: null },
+    lockExpiresAt: { type: Date, default: null, index: true },
+    lastHeartbeatAt: { type: Date, default: null },
+    queueWaitMs: { type: Number, default: 0, min: 0 },
+    processingDurationMs: { type: Number, default: 0, min: 0 },
     startedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
-    failedAt: { type: Date, default: null }
+    failedAt: { type: Date, default: null },
+    deadLetteredAt: { type: Date, default: null }
   },
   { timestamps: true }
 );
 
 BackgroundJobSchema.index({ status: 1, availableAt: 1 });
+BackgroundJobSchema.index({ status: 1, lockExpiresAt: 1 });
 BackgroundJobSchema.index({ userId: 1, createdAt: -1 });
 BackgroundJobSchema.index({ type: 1, status: 1 });
 

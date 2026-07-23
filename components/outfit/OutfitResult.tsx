@@ -96,6 +96,13 @@ function Notes({ outfit }: { outfit: OutfitRecommendation }) {
   );
 }
 
+function createClientIdempotencyKey(prefix: string) {
+  const randomPart = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${randomPart}`.slice(0, 120);
+}
+
 export function OutfitResult({
   outfit,
   canSwap = false,
@@ -316,11 +323,13 @@ export function OutfitResult({
 
   async function handleGenerateAvatarPreview(regenerate = false) {
     setAvatarPreviewError("");
+    setAvatarPreviewJobId("");
     setIsGeneratingAvatarPreview(true);
     setAvatarPreviewStatus("generating");
 
     const result = await generateAvatarPreview(outfit.id, {
-      regenerate
+      regenerate,
+      idempotencyKey: createClientIdempotencyKey("avatar-preview")
     });
 
     setIsGeneratingAvatarPreview(false);
@@ -331,7 +340,7 @@ export function OutfitResult({
       setAvatarPreviewJobId(result.data.job?.id || "");
       if (preview.imageUrl || preview.previewUrl) setAvatarPreviewOpen(true);
       if (result.data.job?.id && preview.status !== "ready") {
-      setToast("Creating virtual try-on.");
+        setToast("Creating virtual try-on.");
         void pollAvatarPreviewJob(result.data.job.id);
         return;
       }
@@ -358,9 +367,10 @@ export function OutfitResult({
       setAvatarPreviewStatus(job.status === "completed" ? "ready" : job.status);
 
       if (job.status === "completed") {
-        const preview = job.result?.preview || {};
+        const refreshed = await getAvatarPreview(outfit.id);
+        const preview = refreshed.ok ? refreshed.data.preview : job.result?.preview || {};
         const url = preview.imageUrl || preview.previewUrl || "";
-        applyAvatarPreview({ ...preview, status: "ready" });
+        applyAvatarPreview({ ...preview, status: "ready" }, refreshed.ok ? refreshed.data.avatarProfile || null : undefined);
         if (url) {
           setAvatarPreviewUrl(url);
           setAvatarPreviewOpen(true);
@@ -371,7 +381,8 @@ export function OutfitResult({
         return;
       }
 
-      if (job.status === "failed" || job.status === "cancelled") {
+      if (job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter") {
+        setAvatarPreviewStatus("failed");
         setAvatarPreviewError(job.errorMessage || "Unable to create virtual try-on right now.");
         setAvatarPreviewJobId("");
         return;
@@ -478,7 +489,7 @@ export function OutfitResult({
             visualizationWarnings={avatarVisualizationWarnings}
             visualGroundingStatus={avatarVisualGroundingStatus}
             onOpenPreview={() => setAvatarPreviewOpen(true)}
-            onGenerateFitLocked={() => void handleGenerateAvatarPreview(false)}
+            onGenerateFitLocked={() => void handleGenerateAvatarPreview(Boolean(avatarPreviewUrl))}
             onRegenerate={() => void handleGenerateAvatarPreview(true)}
           />
         </div>

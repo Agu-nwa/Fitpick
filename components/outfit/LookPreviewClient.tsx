@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { CTABar } from "@/components/ui/CTABar";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { Toast } from "@/components/ui/Toast";
+import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
@@ -27,6 +28,13 @@ function isFootwear(item: WardrobeItem) {
 
 function itemImage(item: WardrobeItem) {
   return item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
+}
+
+function createClientIdempotencyKey(prefix: string) {
+  const randomPart = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${randomPart}`.slice(0, 120);
 }
 
 export function LookPreviewClient({ outfitId }: { outfitId: string }) {
@@ -92,8 +100,9 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         return;
       }
 
-      if (result.data.job.status === "failed" || result.data.job.status === "cancelled") {
+      if (result.data.job.status === "failed" || result.data.job.status === "cancelled" || result.data.job.status === "dead_letter") {
         setError(result.data.job.errorMessage || "Unable to show it on your avatar right now.");
+        setGenerating(false);
         return;
       }
     }
@@ -103,7 +112,10 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   async function handleGenerate(regenerate = false) {
     setGenerating(true);
     setError("");
-    const result = await generateAvatarPreview(outfitId, { regenerate });
+    const result = await generateAvatarPreview(outfitId, {
+      regenerate,
+      idempotencyKey: createClientIdempotencyKey("avatar-preview")
+    });
     setGenerating(false);
 
     if (!result.ok) {
@@ -234,6 +246,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
           <CTABar className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
             <Button onClick={() => void handleSave()}>Save look</Button>
+            {imageUrl && preview?.status === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
             <Link href="/outfit"><Button variant="secondary" className="w-full">Try another look</Button></Link>
             <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={generating}>{generating ? "Preparing..." : "Regenerate try-on"}</Button>
             <Link href="/avatar"><Button variant="ghost" className="w-full">Edit avatar</Button></Link>

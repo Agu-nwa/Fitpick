@@ -5,6 +5,7 @@ import { Eye, Sparkles, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import type { AvatarProfileData } from "@/lib/api-client";
@@ -178,6 +179,7 @@ export function DigitalHumanTryOnPanel({
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
             {isGenerating ? "Creating try-on..." : previewUrl ? "Regenerate try-on" : "Generate virtual try-on"}
           </Button>
+          {previewUrl && previewStatus === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
           <Link href={`/outfit/${outfit.id}/preview`}>
             <Button type="button" variant="secondary" className="w-full">
               <Eye size={16} aria-hidden="true" />

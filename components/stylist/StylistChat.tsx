@@ -7,6 +7,7 @@ import { ArrowUpRight, CalendarDays, CloudRain, HeartHandshake, MessageCircle, S
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import {
   generateAvatarPreview,
   getJobStatus,
@@ -382,6 +383,9 @@ export function StylistChat() {
                     View full look
                   </Button>
                 </Link>
+              ) : null}
+              {entry.outfitRecommendationId && preview?.imageUrl && status === "ready" ? (
+                <PreviewDownloadButton outfitId={entry.outfitRecommendationId} />
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Button type="button" variant="secondary" onClick={() => void submitStylistMessage(`Try another ${outfit?.occasion || "look"} from my wardrobe`, { includeVisualization: true })}>
