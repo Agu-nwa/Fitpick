@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldGroup } from "@/components/ui/FieldGroup";
@@ -114,14 +113,9 @@ export function StyleProfileForm() {
 
   return (
     <Card className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-ink">Teach MyFitPick how you like to dress</p>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            These preferences help your AI stylist refine every recommendation. You can change them anytime.
-          </p>
-        </div>
-        <Badge tone="premium">User controlled</Badge>
+      <div>
+        <p className="text-sm font-semibold text-ink">Teach MyFitPick how you like to dress</p>
+        <p className="mt-1 text-sm leading-6 text-muted">Choose the details that make your recommendations feel like you.</p>
       </div>
 
       <div ref={statusRef} aria-live="polite">
@@ -132,7 +126,6 @@ export function StyleProfileForm() {
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
         <div>
           <h3 className="text-sm font-semibold text-ink">Preferences</h3>
-          <p className="mt-1 text-xs leading-5 text-muted">Comma-separated values work best.</p>
         </div>
         <FieldGroup label="Favorite colors" htmlFor="favorite-colors">
           <input id="favorite-colors" className={inputClass} value={favoriteColors} onChange={(event) => setFavoriteColors(event.target.value)} placeholder="navy, white, olive" />
@@ -153,8 +146,7 @@ export function StyleProfileForm() {
 
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink">Fine tuning</h3>
-          <p className="mt-1 text-xs leading-5 text-muted">These signals are used gently and never override the occasion.</p>
+          <h3 className="text-sm font-semibold text-ink">Style details</h3>
         </div>
         <FieldGroup label="Favorite brands" htmlFor="favorite-brands">
           <input id="favorite-brands" className={inputClass} value={favoriteBrands} onChange={(event) => setFavoriteBrands(event.target.value)} placeholder="COS, Uniqlo, Zara" />
@@ -197,12 +189,12 @@ export function StyleProfileForm() {
         </FieldGroup>
       </section>
 
-      <FieldGroup label="Notes" htmlFor="style-notes" help="Keep this to visible style preferences and clothing comfort.">
+      <FieldGroup label="Notes" htmlFor="style-notes">
         <textarea id="style-notes" className={`${inputClass} min-h-24`} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="I like clean lines, breathable fabrics, and polished shoes." />
       </FieldGroup>
 
       {profile?.inferredFrom?.length ? (
-        <p className="text-xs leading-5 text-muted">Inferred gently from: {profile.inferredFrom.join(", ")}. You stay in control of what MyFitPick remembers.</p>
+        <p className="text-xs leading-5 text-muted">Style notes from your closet: {profile.inferredFrom.join(", ")}.</p>
       ) : null}
 
       <Button type="button" className="w-full" onClick={() => void saveProfile()} disabled={saving}>

@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, LogOut, MapPin, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, ScanFace, type LucideIcon } from "lucide-react";
+import { LogOut, MapPin, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, ScanFace, type LucideIcon } from "lucide-react";
 import { AvatarStudioClient } from "@/components/avatar/AvatarStudioClient";
 import { LocationSelector } from "@/components/home/LocationSelector";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
 import { StyleProfileForm } from "@/components/style-profile/StyleProfileForm";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { WalletSummaryCard } from "@/components/wallet/WalletSummaryCard";
@@ -78,7 +77,7 @@ export function UnifiedProfileClient() {
       <Card className="p-3 xl:sticky xl:top-8">
         <div className="px-2 py-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Profile menu</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Everything MyFitPick uses to personalize your experience.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Your style, fit, and account.</p>
         </div>
         <div className="mt-3 grid gap-2" role="tablist" aria-label="Profile sections">
           {sections.map((section) => {
@@ -115,7 +114,6 @@ export function UnifiedProfileClient() {
               {sectionTitle === "Personal" ? "Your details." : sectionTitle}
             </h2>
           </div>
-          <Badge tone="premium">User controlled</Badge>
         </div>
 
         {selectedSection === "personal" ? <PersonalDetailsSection session={session} /> : null}
@@ -369,16 +367,6 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
             {requestingDeletion ? "Sending..." : "Request deletion"}
           </Button>
         </div>
-      </Card>
-
-      <Card className="border-olive/20 bg-olive/5">
-        <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-          <CheckCircle2 size={16} aria-hidden="true" />
-          Profile stays editable
-        </p>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          MyFitPick keeps style, appearance, location, Credits, and account actions transparent in this one place.
-        </p>
       </Card>
     </div>
   );

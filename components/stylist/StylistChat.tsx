@@ -11,7 +11,6 @@ import { ImageFrame } from "@/components/ui/ImageFrame";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import {
-  addReferenceFashionItemToCloset,
   analyzeReferenceFashionItem,
   clearReferenceFashionItem,
   createReferenceFashionItem,
@@ -123,15 +122,15 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
 }
 
 function referenceLabel(reference?: ReferenceFashionItemSummary | null) {
-  if (!reference) return "Uploaded item";
-  return [reference.primaryColor, reference.subcategory || reference.category].filter(Boolean).join(" ").trim() || "Uploaded item";
+  if (!reference) return "Selected piece";
+  return [reference.primaryColor, reference.subcategory || reference.category].filter(Boolean).join(" ").trim() || "Selected piece";
 }
 
 function referenceStatusCopy(reference?: ReferenceFashionItemSummary | null) {
   if (!reference) return "";
   if (reference.status === "analyzing") return "Reading photo...";
   if (reference.status === "needs-selection") return "Choose which item to style.";
-  if (reference.status === "ready") return "Ready to match with your closet.";
+  if (reference.status === "ready") return "Ready for your stylist.";
   if (reference.status === "failed") return "Try a clearer photo.";
   return "Photo added.";
 }
@@ -183,7 +182,7 @@ function StylistProductCard({
 }
 
 function MatchFlowVisual() {
-  const steps = ["Reference look", "Closet matches", "FitPick version"];
+  const steps = ["Photo", "Closet options", "Styled look"];
   return (
     <div className="grid grid-cols-3 gap-2" aria-label="Match Outfit flow">
       {steps.map((step, index) => (
@@ -239,9 +238,9 @@ function DetectedPiecesPanel({
   return (
     <div className="rounded-2xl border border-line bg-canvas/65 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Detected pieces</p>
+        <p className="text-sm font-semibold text-ink">Pieces in the photo</p>
         <Badge tone={reference?.status === "ready" ? "success" : busy ? "premium" : "neutral"}>
-          {busy ? "Studying" : reference?.status === "ready" ? "Ready" : "In progress"}
+          {busy ? "Studying" : reference?.status === "ready" ? "Ready" : "Reviewing"}
         </Badge>
       </div>
       {busy && !pieces.length ? (
@@ -270,46 +269,42 @@ function WardrobeMatchPanel({
   reference?: ReferenceFashionItemSummary | null;
   recommendations?: OutfitRecommendation[];
 }) {
-  if (!reference && !recommendations?.length) return null;
   const primaryRecommendation = recommendations?.[0] || null;
+  if (!primaryRecommendation) return null;
   const matchedItems = primaryRecommendation?.items || [];
 
   return (
     <div className="rounded-2xl border border-line bg-canvas/65 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Wardrobe matches</p>
-        {primaryRecommendation ? <Badge tone="premium">FitPick version</Badge> : <Badge tone="neutral">Pending</Badge>}
+        <p className="text-sm font-semibold text-ink">Closet pairings</p>
+        <Badge tone="premium">FitPick version</Badge>
       </div>
-      {primaryRecommendation ? (
-        <div className="mt-3 grid gap-2">
-          {matchedItems.slice(0, 5).map((item) => {
-            const label = itemMatchesReference(item, reference);
-            return (
-              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface/80 p-2">
-                <ImageFrame
-                  src={item.thumbnailUrl || item.imageUrl}
-                  alt={item.name}
-                  placeholder={item.category}
-                  className="h-14 w-14 shrink-0 rounded-lg"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
-                  <p className="truncate text-xs text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
-                </div>
-                <Badge tone={matchTone(label)}>{label}</Badge>
+      <div className="mt-3 grid gap-2">
+        {matchedItems.slice(0, 5).map((item) => {
+          const label = itemMatchesReference(item, reference);
+          return (
+            <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface/80 p-2">
+              <ImageFrame
+                src={item.thumbnailUrl || item.imageUrl}
+                alt={item.name}
+                placeholder={item.category}
+                className="h-14 w-14 shrink-0 rounded-lg"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+                <p className="truncate text-xs text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
               </div>
-            );
-          })}
-          {primaryRecommendation.missingCategories?.slice(0, 3).map((category) => (
-            <div key={category} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2">
-              <span className="text-sm font-semibold text-ink">{category}</span>
-              <Badge tone="warning">Missing</Badge>
+              <Badge tone={matchTone(label)}>{label}</Badge>
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-muted">Upload a reference, then MyFitPick will find the closest pieces in your closet.</p>
-      )}
+          );
+        })}
+        {primaryRecommendation.missingCategories?.slice(0, 3).map((category) => (
+          <div key={category} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2">
+            <span className="text-sm font-semibold text-ink">{category}</span>
+            <Badge tone="warning">Missing</Badge>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -317,12 +312,10 @@ function WardrobeMatchPanel({
 function ReferenceImageCard({
   reference,
   onClear,
-  onAddToCloset,
   busy
 }: {
   reference: ReferenceFashionItemSummary;
   onClear?: () => void;
-  onAddToCloset?: () => void;
   busy?: boolean;
 }) {
   return (
@@ -335,13 +328,13 @@ function ReferenceImageCard({
           className="h-20 w-20 shrink-0 rounded-xl"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo anchor</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Inspiration photo</p>
           <p className="mt-1 truncate text-sm font-semibold text-ink">{referenceLabel(reference)}</p>
           <p className="mt-1 text-xs leading-5 text-muted">{referenceStatusCopy(reference)}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {reference.category ? <Badge tone="neutral">{reference.category}</Badge> : null}
             {reference.formality ? <Badge tone="neutral">{reference.formality}</Badge> : null}
-            {reference.usableForTryOn ? <Badge tone="success">Try-on ready</Badge> : null}
+            {reference.usableForTryOn ? <Badge tone="success">Ready</Badge> : null}
           </div>
         </div>
         {onClear ? (
@@ -349,7 +342,7 @@ function ReferenceImageCard({
             type="button"
             className="focus-ring inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-muted hover:text-ink"
             onClick={onClear}
-            aria-label="Remove reference photo"
+            aria-label="Remove photo"
             disabled={busy}
           >
             <X size={15} aria-hidden="true" />
@@ -362,11 +355,6 @@ function ReferenceImageCard({
             <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
           ))}
         </div>
-      ) : null}
-      {onAddToCloset && reference.status === "ready" ? (
-        <Button type="button" variant="secondary" className="mt-3 w-full" onClick={onAddToCloset} disabled={busy}>
-          Add item to Closet
-        </Button>
       ) : null}
     </div>
   );
@@ -645,7 +633,7 @@ export function StylistChat() {
   async function chooseDetectedReference(detectedItemId: string) {
     if (!activeReference?.id) return;
     setReferenceBusy(true);
-    setReferenceMessage("Setting photo anchor...");
+    setReferenceMessage("Updating photo...");
     const result = await selectReferenceFashionItem(activeReference.id, detectedItemId);
     setReferenceBusy(false);
     if (!result.ok) {
@@ -655,18 +643,6 @@ export function StylistChat() {
     setActiveReference(result.data.referenceItem);
     setReferenceMessage("Photo ready.");
     focusWorkspace();
-  }
-
-  async function addActiveReferenceToCloset(reference = activeReference) {
-    if (!reference?.id) return;
-    setReferenceBusy(true);
-    const result = await addReferenceFashionItemToCloset(reference.id);
-    setReferenceBusy(false);
-    if (!result.ok) {
-      showToast(safeUserMessage(result.error, "Unable to prepare this item right now."));
-      return;
-    }
-    router.push(result.data.nextAction);
   }
 
   async function pollAvatarJob(messageIdToPatch: string, jobId: string) {
@@ -740,7 +716,7 @@ export function StylistChat() {
       return;
     }
 
-    const promptText = trimmed || "Match this photo with my closet.";
+    const promptText = trimmed || "Style this photo with my closet.";
     const userEntry: ChatMessage = {
       id: messageId(),
       role: "user",
@@ -880,7 +856,6 @@ export function StylistChat() {
         {reference ? (
           <ReferenceImageCard
             reference={reference}
-            onAddToCloset={() => void addActiveReferenceToCloset(reference)}
             busy={referenceBusy}
           />
         ) : null}
@@ -1029,7 +1004,7 @@ export function StylistChat() {
         accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
         capture={filePickerSource === "camera" ? "environment" : undefined}
         className="sr-only"
-        aria-label="Upload a fashion reference"
+        aria-label="Choose a fashion photo"
         onChange={(event) => void handleReferenceFiles(event.currentTarget.files)}
       />
 
@@ -1039,7 +1014,7 @@ export function StylistChat() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-ink">Match an Outfit</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Upload a full-outfit reference or a clear fashion screenshot.</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Choose a full-outfit photo or a clear fashion screenshot.</p>
               </div>
               <button
                 type="button"
@@ -1057,7 +1032,7 @@ export function StylistChat() {
               </Button>
               <Button type="button" variant="secondary" onClick={() => openReferencePicker("upload")}>
                 <UploadCloud size={16} aria-hidden="true" />
-                Upload reference
+                Choose image
               </Button>
             </div>
           </div>
@@ -1076,9 +1051,9 @@ export function StylistChat() {
         />
         <StylistProductCard
           title="Match an Outfit"
-          body="Upload or share a fashion reference. MyFitPick identifies the pieces, finds closet matches, and recreates the look."
+          body="Bring in a look you admire and MyFitPick will style it with your closet."
           action="Match an outfit"
-          note="Photo, screenshot, or fashion reference"
+          note="Photo or screenshot"
           icon={ImagePlus}
           featured
           active={activeFlow === "match"}
@@ -1174,14 +1149,14 @@ export function StylistChat() {
                     <ImagePlus size={14} aria-hidden="true" />
                     Match an Outfit
                   </p>
-                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Recreate a reference look.</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">Upload a look you want to recreate. MyFitPick will match it with pieces you already own.</p>
+                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style a look you admire.</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">Add a photo and let MyFitPick make it work with your closet.</p>
                 </div>
                 <MatchFlowVisual />
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy}>
                     <UploadCloud size={16} aria-hidden="true" />
-                    Upload reference
+                    Choose image
                   </Button>
                   {activeReference || referencePreviewUrl ? (
                     <Button type="button" variant="secondary" onClick={() => void clearActiveReference()} disabled={referenceBusy}>
@@ -1197,7 +1172,6 @@ export function StylistChat() {
                     <ReferenceImageCard
                       reference={activeReference}
                       onClear={() => void clearActiveReference()}
-                      onAddToCloset={() => void addActiveReferenceToCloset(activeReference)}
                       busy={referenceBusy}
                     />
                     {activeReference.status === "needs-selection" ? (
@@ -1215,12 +1189,12 @@ export function StylistChat() {
                     <div className="flex items-center gap-3">
                       <ImageFrame
                         src={referencePreviewUrl}
-                        alt="Selected fashion reference preview"
+                        alt="Selected fashion photo preview"
                         placeholder="Photo"
                         className="h-20 w-20 shrink-0 rounded-xl"
                       />
                       <div>
-                        <p className="text-sm font-semibold text-ink">Reference selected</p>
+                        <p className="text-sm font-semibold text-ink">Photo selected</p>
                         <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Studying the look..."}</p>
                       </div>
                     </div>
@@ -1229,8 +1203,8 @@ export function StylistChat() {
                   <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/70 px-5 text-center">
                     <div>
                       <ImagePlus size={26} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-                      <p className="font-editorial text-3xl font-semibold leading-none text-ink">Upload a look you want to recreate.</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">Photo, screenshot, or fashion reference.</p>
+                      <p className="font-editorial text-3xl font-semibold leading-none text-ink">Add a look you love.</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">A photo or screenshot is enough.</p>
                     </div>
                   </div>
                 )}
@@ -1253,12 +1227,13 @@ export function StylistChat() {
                     void submitStylistMessage();
                   }}
                 >
+                  <p className="text-sm font-semibold text-ink">Ask your stylist how to wear it.</p>
                   <label className="sr-only" htmlFor="stylist-match-prompt">Add optional direction for this match</label>
                   <textarea
                     id="stylist-match-prompt"
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Optional: dinner, work, more casual..."
+                    placeholder="Ask your stylist..."
                     className="focus-ring min-h-20 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1350,7 +1325,7 @@ export function StylistChat() {
                       {entry.attachment?.imageUrl ? (
                         <ImageFrame
                           src={entry.attachment.imageUrl}
-                          alt="Reference photo from this styling request"
+                          alt="Photo from this styling request"
                           placeholder="Photo"
                           className="mb-2 h-20 rounded-xl"
                         />
@@ -1389,10 +1364,9 @@ export function StylistChat() {
 
             {latestAssistant?.referenceItem && !latestLook ? (
               <Card className="space-y-3">
-                <p className="text-sm font-semibold text-ink">Reference</p>
+                <p className="text-sm font-semibold text-ink">Inspiration photo</p>
                 <ReferenceImageCard
                   reference={latestAssistant.referenceItem}
-                  onAddToCloset={() => void addActiveReferenceToCloset(latestAssistant.referenceItem)}
                   busy={referenceBusy}
                 />
               </Card>

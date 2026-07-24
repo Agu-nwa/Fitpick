@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { requestSignedUploadUrl, updateAvatarProfile, uploadImageViaServer, type AvatarProfileData } from "@/lib/api-client";
@@ -179,7 +178,6 @@ export function AvatarProfileForm({
             MyFitPick uses this image as your Virtual Try-On model. Choose a clear full-body image where your head, outfit area, and feet are visible.
           </p>
         </div>
-        <Badge tone="premium">User controlled</Badge>
       </div>
 
       {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}

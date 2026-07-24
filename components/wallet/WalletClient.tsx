@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, CreditCard, Gift, Rocket, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
+import { CheckCircle2, CreditCard, Gift, Rocket, Sparkles, WalletCards, X } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -71,7 +71,7 @@ function PaymentMethodSummary({
             <Badge tone="success">Available</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
-            Tap any Credit pack to start secure card checkout immediately.
+            Secure card checkout is available now.
           </span>
         </div>
 
@@ -90,7 +90,7 @@ function PaymentMethodSummary({
             <Badge tone="premium">Coming Soon</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
-            Secure crypto payments are on the way. USDT purchases will support TRC20, BEP20, and ERC20.
+            USDT purchases are coming soon for TRC20, BEP20, and ERC20.
           </span>
         </button>
       </div>
@@ -123,7 +123,7 @@ function CryptoComingSoonModal({
           </div>
           <h3 id="crypto-coming-soon-title" className="mt-4 text-2xl font-black tracking-[-0.03em] text-ink">Crypto Payments Coming Soon</h3>
           <p className="mt-3 text-sm leading-6 text-muted">
-            We&apos;re completing our secure cryptocurrency payment integration.
+            Secure cryptocurrency payments are launching soon.
           </p>
           <p className="mt-3 text-sm leading-6 text-muted">
             Soon you&apos;ll be able to purchase FitPick Credits using USDT.
@@ -220,7 +220,6 @@ export function WalletClient() {
               <p className="mt-3 text-6xl font-black leading-none tracking-[-0.08em] text-ink">{formatCredits(data.wallet.balance)}</p>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Your first 20 Credits are complimentary. Credits are spent only after premium actions succeed.</p>
             </div>
-            <Badge tone="premium">Credit wallet active</Badge>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-line bg-canvas/70 p-4">
@@ -339,7 +338,7 @@ export function WalletClient() {
       </section>
 
       <section>
-        <SectionHeader title="Credit ledger" />
+        <SectionHeader title="Credit activity" />
         <Card className="space-y-3">
           {data.transactions.length ? (
             <div className="space-y-2">
