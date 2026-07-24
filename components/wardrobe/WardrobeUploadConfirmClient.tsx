@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   WardrobeSaveSuccessState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { AITagConfirmationForm, type AITagConfirmationDefaults, type AITagConfirmationValues } from "@/components/wardrobe/AITagConfirmationForm";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { analyzeWardrobeUpload, confirmWardrobeUploadTags, getJobStatus, getWardrobeUpload, type WardrobeUploadRecord } from "@/lib/api-client";
 import { safeUserMessage } from "@/lib/user-facing-errors";
@@ -87,6 +88,9 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   const [createdItem, setCreatedItem] = useState<WardrobeItem | null>(null);
   const [message, setMessage] = useState("");
   const [analysisJobId, setAnalysisJobId] = useState("");
+  const formSectionRef = useRef<HTMLElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
+  const revealContent = useRevealContent();
   const selectedDefaults = useMemo(() => selectedDefaultsFromUpload(upload), [upload]);
 
   const warnings = useMemo(() => upload?.aiAnalysis?.labelWarnings || [], [upload]);
@@ -167,6 +171,11 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
     return null;
   }, [loadUpload, uploadId]);
 
+  async function checkPhotosAgain() {
+    const refreshed = await analyzeUpload();
+    if (refreshed) revealContent(formSectionRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
+  }
+
   useEffect(() => {
     if (session.status !== "authenticated") return;
 
@@ -187,6 +196,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
     if (result.ok) {
       setCreatedItem(result.data.item);
       setUpload(result.data.upload);
+      revealContent(successRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
@@ -217,7 +227,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
 
   if (createdItem) {
     return (
-      <div className="mt-7 space-y-5">
+      <div ref={successRef} className="mt-7 space-y-5">
         <WardrobeSaveSuccessState
           title="Added to wardrobe"
           body={`${createdItem.name} is saved and ready for outfit planning.`}
@@ -266,14 +276,14 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
               {warnings.map((warning) => <p key={warning} className="mt-1 text-muted">{warning}</p>)}
             </div>
           ) : null}
-          <Button type="button" variant="secondary" className="w-full" onClick={() => void analyzeUpload()} disabled={isAnalyzing || isSaving}>
+          <Button type="button" variant="secondary" className="w-full" onClick={() => void checkPhotosAgain()} disabled={isAnalyzing || isSaving}>
             <RotateCcw size={16} aria-hidden="true" />
             {isAnalyzing ? "Checking..." : "Check photos again"}
           </Button>
         </Card>
       </section>
 
-      <section>
+      <section ref={formSectionRef}>
         <SectionHeader title="Save to wardrobe" eyebrow="Check details" />
         <Card>
           <AITagConfirmationForm

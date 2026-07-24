@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { getStyleProfile, updateStyleProfile, type StyleProfileData } from "@/lib/api-client";
 
 const inputClass =
@@ -43,6 +44,8 @@ export function StyleProfileForm() {
   const [fashionRiskLevel, setFashionRiskLevel] = useState<"conservative" | "balanced" | "expressive">("balanced");
   const [comfortPriority, setComfortPriority] = useState<"low" | "medium" | "high">("medium");
   const [luxuryPreference, setLuxuryPreference] = useState<"low" | "medium" | "high">("medium");
+  const statusRef = useRef<HTMLDivElement>(null);
+  const revealContent = useRevealContent();
 
   useEffect(() => {
     void (async () => {
@@ -96,11 +99,13 @@ export function StyleProfileForm() {
 
     if (!result.ok) {
       setError("Unable to save your style preferences.");
+      revealContent(statusRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
     setProfile(result.data.profile);
     setNotice("Style preferences saved.");
+    revealContent(statusRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
   }
 
   if (loading) {
@@ -119,8 +124,10 @@ export function StyleProfileForm() {
         <Badge tone="premium">User controlled</Badge>
       </div>
 
-      {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-      {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
+      <div ref={statusRef} aria-live="polite">
+        {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+        {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
+      </div>
 
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
         <div>

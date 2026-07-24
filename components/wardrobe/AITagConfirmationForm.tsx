@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldGroup } from "@/components/ui/FieldGroup";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { confidenceLabel, garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory } from "@/types/wardrobe";
@@ -205,6 +206,9 @@ export function AITagConfirmationForm({
   const [fitConfidence, setFitConfidence] = useState("0");
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const fitDetailsRef = useRef<HTMLDetailsElement>(null);
+  const revealContent = useRevealContent();
   const lowConfidenceCount = useMemo(() => {
     if (!aiAnalysis?.fields) return 0;
     return essentialFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
@@ -275,6 +279,7 @@ export function AITagConfirmationForm({
 
     if (!itemName || !category || !primaryColor) {
       setError("Add a name, category, and colour before saving.");
+      revealContent(errorRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
@@ -338,7 +343,7 @@ export function AITagConfirmationForm({
         </div>
       </div>
 
-      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+      {error ? <p ref={errorRef} className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3">
@@ -387,7 +392,13 @@ export function AITagConfirmationForm({
         </div>
       </section>
 
-      <details className="rounded-2xl border border-line bg-canvas/60 p-3">
+      <details
+        ref={fitDetailsRef}
+        className="rounded-2xl border border-line bg-canvas/60 p-3"
+        onToggle={(event) => {
+          if (event.currentTarget.open) revealContent(fitDetailsRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
+        }}
+      >
         <summary className="cursor-pointer text-sm font-semibold text-ink">Improve fit accuracy</summary>
         <p className="mt-2 text-xs leading-5 text-muted">Optional. Add size and measurement details only when you know them.</p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">

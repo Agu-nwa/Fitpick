@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import {
   addReferenceFashionItemToCloset,
   analyzeReferenceFashionItem,
@@ -430,8 +431,10 @@ export function StylistChat() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const lookStudioRef = useRef<HTMLDivElement>(null);
   const lastReferenceFileRef = useRef<{ file: File; source: "camera" | "upload" } | null>(null);
   const conversationIdRef = useRef(`stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const revealContent = useRevealContent();
   const [activeFlow, setActiveFlow] = useState<StylistFlow>("home");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -467,7 +470,7 @@ export function StylistChat() {
   }, [referencePreviewUrl]);
 
   function focusWorkspace() {
-    window.setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+    revealContent(workspaceRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
   }
 
   function chooseFlow(flow: StylistFlow) {
@@ -591,6 +594,7 @@ export function StylistChat() {
       setReferencePreviewUrl(created?.imageUrl || normalized.previewUrl);
       setReferenceMessage("Reading photo...");
       setActiveFlow("match");
+      focusWorkspace();
       setCanRetryReferenceUpload(false);
 
       if (!created?.id) throw new Error("We couldn’t upload that image. Try another photo.");
@@ -599,6 +603,7 @@ export function StylistChat() {
         setActiveReference(analyzed.data.referenceItem);
         setReferencePreviewUrl(analyzed.data.referenceItem?.imageUrl || created.imageUrl);
         setReferenceMessage(analyzed.data.referenceItem?.status === "needs-selection" ? "Choose which item to style." : "Photo ready.");
+        focusWorkspace();
       } else {
         setReferenceMessage(safeUserMessage(analyzed.error, "I couldn’t clearly identify the fashion item in this image. Try another photo."));
       }
@@ -649,6 +654,7 @@ export function StylistChat() {
     }
     setActiveReference(result.data.referenceItem);
     setReferenceMessage("Photo ready.");
+    focusWorkspace();
   }
 
   async function addActiveReferenceToCloset(reference = activeReference) {
@@ -760,6 +766,7 @@ export function StylistChat() {
     setError("");
     setMessage("");
     setMessages(sessionMessages);
+    revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
 
     const response = await sendStylistMessage(promptText, {
       includeVisualization: options.includeVisualization ?? includeVisualization,
@@ -792,6 +799,7 @@ export function StylistChat() {
       fitLock: response.data.visualization?.fitLock || response.data.stylist.fitLock,
       jobId
     });
+    revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
 
     if (jobId && avatarPreview.status !== "ready") {
       void pollAvatarJob(assistantId, jobId);
@@ -1279,7 +1287,7 @@ export function StylistChat() {
       {toast ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
 
       {latestLook || loading || latestAssistant ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+        <div ref={lookStudioRef} className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
           <Card className="min-h-[28rem] space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-canvas">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>

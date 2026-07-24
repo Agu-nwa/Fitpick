@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, MapPin, Palette, Sparkles } from "lucide-react";
 import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { FieldGroup } from "@/components/ui/FieldGroup";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { updateCurrentUser, updatePreferences } from "@/lib/api-client";
 
@@ -88,6 +89,8 @@ export function EssentialModelSetup() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const customLocationRef = useRef<HTMLDivElement>(null);
+  const revealContent = useRevealContent();
 
   useEffect(() => {
     if (session.user?.name) setName(session.user.name);
@@ -110,6 +113,12 @@ export function EssentialModelSetup() {
     setSelectedCountry(value);
     setSelectedCity("");
     if (value !== otherLocation) setCustomLocation("");
+    if (value === otherLocation) revealContent(customLocationRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
+  }
+
+  function chooseCity(value: string) {
+    setSelectedCity(value);
+    if (value === otherLocation) revealContent(customLocationRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
   }
 
   function currentLocationName() {
@@ -265,7 +274,7 @@ export function EssentialModelSetup() {
               </select>
             </FieldGroup>
             <FieldGroup label="City" htmlFor="setup-city">
-              <select id="setup-city" className={inputClass} value={selectedCity} onChange={(event) => setSelectedCity(event.target.value)} disabled={!selectedCountry}>
+              <select id="setup-city" className={inputClass} value={selectedCity} onChange={(event) => chooseCity(event.target.value)} disabled={!selectedCountry}>
                 <option value="">{selectedCountry ? "Choose city" : "Choose country first"}</option>
                 {cityOptions.map((city) => (
                   <option key={city} value={city}>{city}</option>
@@ -275,9 +284,11 @@ export function EssentialModelSetup() {
             </FieldGroup>
           </div>
           {usesCustomLocation ? (
-            <FieldGroup label="City and country" htmlFor="setup-custom-location" help="Use this only if your city is not listed." className="mt-3">
-              <input id="setup-custom-location" className={inputClass} value={customLocation} onChange={(event) => setCustomLocation(event.target.value)} placeholder="City, country" />
-            </FieldGroup>
+            <div ref={customLocationRef}>
+              <FieldGroup label="City and country" htmlFor="setup-custom-location" help="Use this only if your city is not listed." className="mt-3">
+                <input id="setup-custom-location" className={inputClass} value={customLocation} onChange={(event) => setCustomLocation(event.target.value)} placeholder="City, country" />
+              </FieldGroup>
+            </div>
           ) : null}
         </section>
 

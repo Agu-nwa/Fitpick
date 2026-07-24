@@ -31,6 +31,7 @@ import {
   WardrobeLoadingState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { WardrobeImageSlots, type WardrobeImageSlotDefinition } from "@/components/wardrobe/WardrobeImageSlots";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import {
   analyzeWardrobeUpload,
@@ -127,6 +128,9 @@ export function WardrobeAddClient() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLElement>(null);
+  const selectedPhotosRef = useRef<HTMLDivElement>(null);
+  const labelSectionRef = useRef<HTMLElement>(null);
+  const revealContent = useRevealContent();
   const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>("clothing");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const selectedCategory = findIntakeCategory(selectedCategoryId);
@@ -225,7 +229,7 @@ export function WardrobeAddClient() {
 
   function continueToPhotos() {
     if (!selectedCategory) return;
-    uploadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    revealContent(uploadSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
   }
 
   function openFilePicker(target: FileTarget) {
@@ -318,6 +322,7 @@ export function WardrobeAddClient() {
       setMessage("Photo ready.");
       setUploadStage("completed");
       setStatus("idle");
+      revealContent(selectedPhotosRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
     } catch (error) {
       setMessage(imageUploadErrorMessage(error));
       setUploadStage("failed");
@@ -377,6 +382,12 @@ export function WardrobeAddClient() {
       if (current.includes(kind)) return current.filter((item) => item !== kind);
       return [...current, kind].slice(0, 7);
     });
+  }
+
+  function toggleLabelReading() {
+    const next = !labelEnabled;
+    setLabelEnabled(next);
+    revealContent(next ? uploadSectionRef : labelSectionRef, { delayMs: next ? 120 : 80, topOffset: 24, bottomOffset: 136 });
   }
 
   async function uploadSlot(purpose: WardrobeImagePurpose, slot: SlotFile): Promise<UploadedSlot> {
@@ -788,7 +799,7 @@ export function WardrobeAddClient() {
           />
 
           {selectedCategory ? (
-            <div className="space-y-3">
+            <div ref={selectedPhotosRef} className="space-y-3">
               {activeSlots.map((slot) => {
                 const selected = slotFiles[slot.key];
                 if (!selected) return null;
@@ -846,7 +857,7 @@ export function WardrobeAddClient() {
       </section>
 
       {selectedCategory ? (
-        <section>
+        <section ref={labelSectionRef}>
           <Card className="space-y-4 border-cocoa/15 bg-gradient-to-br from-white via-canvas to-cocoa/8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -859,7 +870,7 @@ export function WardrobeAddClient() {
                   This helps identify materials, care instructions, size, product details, serials, and manufacturing text automatically.
                 </p>
               </div>
-              <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={() => setLabelEnabled((value) => !value)} disabled={isSaving || isAnalyzing}>
+              <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={toggleLabelReading} disabled={isSaving || isAnalyzing}>
                 {labelEnabled ? "Label reading on" : "Add label photos"}
               </Button>
             </div>

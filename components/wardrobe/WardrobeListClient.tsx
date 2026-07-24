@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, CheckCircle2, ChevronDown, Layers3, Plus, SlidersHorizontal, X } from "lucide-react";
@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { ProgressCard } from "@/components/ui/ProgressCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { getWardrobe, type WardrobeListData } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -278,7 +279,8 @@ function FilterToolbar({
   occasions,
   weather,
   updateFilters,
-  clearFilters
+  clearFilters,
+  revealResults
 }: {
   filters: WardrobeFilterState;
   colors: WardrobeFacetOption[];
@@ -286,11 +288,19 @@ function FilterToolbar({
   weather: WardrobeFacetOption[];
   updateFilters: (patch: Partial<WardrobeFilterState>) => void;
   clearFilters: () => void;
+  revealResults: () => void;
 }) {
   const [panel, setPanel] = useState<SmartPanel>(null);
+  const revealContent = useRevealContent();
+
+  function applyFilters(patch: Partial<WardrobeFilterState>) {
+    updateFilters(patch);
+    revealResults();
+  }
 
   function togglePanel(next: Exclude<SmartPanel, null>) {
     setPanel((current) => current === next ? null : next);
+    revealContent(() => document.getElementById("wardrobe-filter-panel"), { delayMs: 90, topOffset: 24, bottomOffset: 136 });
   }
 
   return (
@@ -302,7 +312,7 @@ function FilterToolbar({
             active={filters.category === category.id}
             onClick={() => {
               setPanel(null);
-              updateFilters({ category: category.id });
+              applyFilters({ category: category.id });
             }}
           >
             {category.label}
@@ -331,7 +341,7 @@ function FilterToolbar({
             </FilterButton>
           );
         })}
-        <FilterButton active={filters.needsCare} onClick={() => updateFilters({ needsCare: !filters.needsCare })}>
+        <FilterButton active={filters.needsCare} onClick={() => applyFilters({ needsCare: !filters.needsCare })}>
           Needs care
         </FilterButton>
       </div>
@@ -342,7 +352,7 @@ function FilterToolbar({
         colors={colors}
         occasions={occasions}
         weather={weather}
-        updateFilters={updateFilters}
+        updateFilters={applyFilters}
       />
 
       <ActiveFilterChips
@@ -350,8 +360,11 @@ function FilterToolbar({
         colors={colors}
         occasions={occasions}
         weather={weather}
-        updateFilters={updateFilters}
-        clearFilters={clearFilters}
+        updateFilters={applyFilters}
+        clearFilters={() => {
+          clearFilters();
+          revealResults();
+        }}
       />
     </section>
   );
@@ -427,6 +440,8 @@ export function WardrobeListClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const resultsRef = useRef<HTMLElement>(null);
+  const revealContent = useRevealContent();
   const [wardrobe, setWardrobe] = useState<WardrobeListData | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "empty" | "unavailable" | "error">("idle");
 
@@ -468,6 +483,10 @@ export function WardrobeListClient() {
     router.push(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
+  const revealResults = useCallback(() => {
+    revealContent(resultsRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
+  }, [revealContent]);
+
   if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
     return <WardrobeLoadingState />;
   }
@@ -494,9 +513,10 @@ export function WardrobeListClient() {
           weather={facetOptions.weather}
           updateFilters={updateFilters}
           clearFilters={clearFilters}
+          revealResults={revealResults}
         />
         <SummaryCard summary={displaySummary} />
-        <section className="mt-10">
+        <section ref={resultsRef} className="mt-10">
           <SectionHeader title="Style archive" eyebrow="All pieces" />
           <WardrobeEmptyState />
         </section>
@@ -513,9 +533,10 @@ export function WardrobeListClient() {
         weather={facetOptions.weather}
         updateFilters={updateFilters}
         clearFilters={clearFilters}
+        revealResults={revealResults}
       />
       <SummaryCard summary={displaySummary} />
-      <section className="mt-10">
+      <section ref={resultsRef} className="mt-10">
         <SectionHeader
           title="Style archive"
           eyebrow={hasFilters ? `${filteredItems.length} of ${items.length} pieces` : `${items.length} pieces`}

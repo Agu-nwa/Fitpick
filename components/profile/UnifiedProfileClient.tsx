@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, LogOut, MapPin, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, ScanFace, type LucideIcon } from "lucide-react";
 import { AvatarStudioClient } from "@/components/avatar/AvatarStudioClient";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { WalletSummaryCard } from "@/components/wallet/WalletSummaryCard";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import {
   getWallet,
@@ -50,6 +51,8 @@ export function UnifiedProfileClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedSection = normalizeSection(searchParams.get("section"));
+  const contentRef = useRef<HTMLElement>(null);
+  const revealContent = useRevealContent();
 
   const sectionTitle = useMemo(
     () => sections.find((section) => section.id === selectedSection)?.label || "Personal",
@@ -63,6 +66,7 @@ export function UnifiedProfileClient() {
 
     const query = params.toString();
     router.replace(`/profile${query ? `?${query}` : ""}`, { scroll: false });
+    revealContent(contentRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
   }
 
   if (session.status === "loading") return <LoadingCard title="Loading profile" />;
@@ -103,7 +107,7 @@ export function UnifiedProfileClient() {
         </div>
       </Card>
 
-      <section aria-labelledby="profile-section-title" className="min-w-0">
+      <section ref={contentRef} aria-labelledby="profile-section-title" className="min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">{sectionTitle}</p>
@@ -130,6 +134,8 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const statusRef = useRef<HTMLDivElement>(null);
+  const revealContent = useRevealContent();
 
   useEffect(() => {
     setName(session.user?.name || "");
@@ -142,6 +148,7 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
 
     if (trimmed.length < 2) {
       setError("Enter the name you want shown in MyFitPick.");
+      revealContent(statusRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
@@ -151,11 +158,13 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
 
     if (!result.ok) {
       setError(safeUserMessage(result.error, "Unable to save your profile right now."));
+      revealContent(statusRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
     await session.refresh();
     setNotice("Profile saved.");
+    revealContent(statusRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
   }
 
   return (
@@ -170,8 +179,10 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
         </div>
       </div>
 
-      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-      {notice ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
+      <div ref={statusRef} aria-live="polite">
+        {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+        {notice ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="block text-sm font-semibold text-ink" htmlFor="profile-display-name">

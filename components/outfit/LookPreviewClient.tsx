@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { Toast } from "@/components/ui/Toast";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
@@ -65,6 +66,8 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const previewStageRef = useRef<HTMLElement>(null);
+  const revealContent = useRevealContent();
 
   const referenceItems = useMemo(() => outfit?.referenceItems?.filter((item) => item?.imageUrl) || [], [outfit]);
   const referenceFootwear = useMemo(() => referenceItems.find(isReferenceFootwear) || null, [referenceItems]);
@@ -108,6 +111,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         const refreshed = await getAvatarPreview(outfitId);
         if (refreshed.ok) {
           setPreview(refreshed.data.preview);
+          revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
         }
         showToast("Avatar preview ready.");
         return;
@@ -127,6 +131,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   async function handleGenerate(regenerate = false) {
     setGenerating(true);
     setError("");
+    revealContent(previewStageRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
     const result = await generateAvatarPreview(outfitId, {
       regenerate,
       idempotencyKey: createClientIdempotencyKey("avatar-preview")
@@ -139,6 +144,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     }
 
     setPreview(result.data.preview);
+    revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
     const jobId = result.data.job?.id;
     if (jobId && result.data.preview.status !== "ready") {
       showToast("Avatar preview is being prepared.");
@@ -194,7 +200,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
-        <section className="space-y-4">
+        <section ref={previewStageRef} className="space-y-4">
           <Card className="overflow-hidden p-0">
             {imageUrl ? (
               <ImageFrame

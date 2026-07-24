@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, CreditCard, Gift, Rocket, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import {
   getWallet,
@@ -155,6 +156,8 @@ export function WalletClient() {
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
   const [routeNotice, setRouteNotice] = useState("");
+  const creditPacksRef = useRef<HTMLElement>(null);
+  const revealContent = useRevealContent();
 
   const loadWallet = useCallback(async () => {
     setState("loading");
@@ -181,7 +184,8 @@ export function WalletClient() {
     const nextQuery = params.toString();
     window.history.replaceState(null, "", `/wallet${nextQuery ? `?${nextQuery}` : ""}`);
     setRouteNotice(cryptoComingSoonCopy);
-  }, []);
+    revealContent(creditPacksRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
+  }, [revealContent]);
 
   const stripeConfigured = Boolean(data?.providers?.stripe?.configured);
 
@@ -255,7 +259,7 @@ export function WalletClient() {
         </Card>
       </div>
 
-      <section id="credit-packs" className="scroll-mt-6 space-y-4">
+      <section ref={creditPacksRef} id="credit-packs" className="scroll-mt-6 space-y-4">
         <SectionHeader title="Top Up Credits" />
         {routeNotice ? (
           <div className="flex items-start gap-3 rounded-2xl border border-cocoa/20 bg-gradient-to-r from-cocoa/10 via-white/70 to-olive/10 p-4 text-sm leading-6 text-ink">
@@ -289,7 +293,7 @@ export function WalletClient() {
             onClose={() => setCryptoModalOpen(false)}
             onContinueWithCard={() => {
               setCryptoModalOpen(false);
-              document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              revealContent(creditPacksRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
             }}
             cardBusy={Boolean(checkoutPackId)}
             cardReady={stripeConfigured}

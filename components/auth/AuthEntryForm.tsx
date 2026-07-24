@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { requestAuthOtp, verifyAuthOtp } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
+import { useRevealContent } from "@/hooks/use-reveal-content";
 import { safeUserMessage } from "@/lib/user-facing-errors";
 
 type Step = "email" | "code";
@@ -50,8 +51,16 @@ export function AuthEntryForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("");
+  const codeInputRef = useRef<HTMLInputElement>(null);
+  const revealContent = useRevealContent();
 
   const nextPath = safeNextPath(nextPathInput);
+
+  useEffect(() => {
+    if (step !== "code") return;
+    revealContent(codeInputRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
+    codeInputRef.current?.focus({ preventScroll: true });
+  }, [revealContent, step]);
 
   async function requestCode(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -141,6 +150,7 @@ export function AuthEntryForm({
           <label className="block">
             <span className="text-sm font-semibold text-ink">Verification code</span>
             <input
+              ref={codeInputRef}
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
