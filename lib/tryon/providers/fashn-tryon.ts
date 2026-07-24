@@ -73,9 +73,7 @@ function normalizeStatus(status?: FashnStatus): TryOnProviderOutput["status"] {
 
 function errorMessage(error: FashnStatusResponse["error"] | FashnRunResponse["error"]) {
   if (!error) return "";
-  if (typeof error === "string") return error;
-  if (typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
-  return "FASHN try-on failed.";
+  return "Virtual Try-On could not be completed.";
 }
 
 function rankedProductImages(items: any[]) {
@@ -151,9 +149,9 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
     signal: AbortSignal.timeout(providerConfig.timeoutMs)
   });
 
-  if (!response.ok) return { ...unavailable(`FASHN run returned HTTP ${response.status}.`), status: "failed" as const };
+  if (!response.ok) return { ...unavailable("Virtual Try-On could not be completed right now."), status: "failed" as const };
   const data = await response.json() as FashnRunResponse;
-  if (!data.id) return { ...unavailable(errorMessage(data.error) || data.message || "FASHN did not return a prediction ID."), status: "failed" as const };
+  if (!data.id) return { ...unavailable(errorMessage(data.error) || "Virtual Try-On could not be started."), status: "failed" as const };
   return pollUntilReady(data.id, {
     ...input,
     cacheKey: `${input.cacheKey || "fashn"}-step-${payload.stepIndex}`
@@ -162,7 +160,7 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
 
 async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnProviderOutput> {
   const providerConfig = config();
-  if (!providerConfig.apiKey) return unavailable("FASHN_API_KEY is not configured.");
+  if (!providerConfig.apiKey) return unavailable("Virtual Try-On is temporarily unavailable.");
   const response = await fetch(`${providerConfig.statusEndpoint.replace(/\/$/, "")}/${encodeURIComponent(jobId)}`, {
     headers: {
       authorization: `Bearer ${providerConfig.apiKey}`
@@ -171,7 +169,7 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
   });
   if (!response.ok) {
     const retryable = response.status === 429 || response.status >= 500;
-    return { ...unavailable(`FASHN status returned HTTP ${response.status}.`), status: retryable ? "processing" : "failed", jobId };
+    return { ...unavailable("Virtual Try-On is still preparing."), status: retryable ? "processing" : "failed", jobId };
   }
   const data = await response.json() as FashnStatusResponse;
   const normalized = normalizeStatus(data.status);
@@ -213,7 +211,7 @@ async function pollUntilReady(jobId: string, input: TryOnPreviewInput): Promise<
     animationUrl: null,
     modelUrl: null,
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
-    warnings: ["FASHN try-on is still processing."],
+    warnings: ["Virtual Try-On is still processing."],
     jobId
   };
 }
@@ -223,7 +221,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
     type: "fashn",
     async generateTryOnPreview(input: TryOnPreviewInput) {
       const providerConfig = config();
-      if (!providerConfig.apiKey) return unavailable("FASHN_API_KEY is not configured.");
+      if (!providerConfig.apiKey) return unavailable("Virtual Try-On is temporarily unavailable.");
 
       const loaded = input.outfitRecommendationId
         ? await loadOwnedAvatarPreviewSubject(input.userId, input.outfitRecommendationId)
@@ -231,17 +229,17 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const avatarProfile = input.avatarProfileId
         ? await AvatarProfile.findOne({ _id: input.avatarProfileId, userId: input.userId }).lean()
         : null;
-      if (!loaded || !avatarProfile) return { ...unavailable("FASHN try-on needs an outfit recommendation and avatar profile."), status: "failed" };
+      if (!loaded || !avatarProfile) return { ...unavailable("Virtual Try-On needs a saved outfit and full-body photo."), status: "failed" };
 
       const modelImage = preferredTryOnModelImageUrl(avatarProfile);
-      if (!modelImage) return { ...unavailable("Add an uploaded full-body model photo or generate a MyFitPick model image before using FASHN."), status: "failed" };
+      if (!modelImage) return { ...unavailable("Upload a full-body photo before using Virtual Try-On."), status: "failed" };
 
       const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
-      if (!products.length) return { ...unavailable("FASHN needs at least one wardrobe item with a usable reference image."), status: "failed" };
+      if (!products.length) return { ...unavailable("Virtual Try-On needs at least one closet item with a usable image."), status: "failed" };
 
       const startedAt = Date.now();
       const warnings = products.length > 1
-        ? [`MyFitPick applied ${products.length} wardrobe references sequentially because FASHN Try-On Max accepts one product image per request.`]
+        ? [`MyFitPick applied ${products.length} wardrobe references sequentially for a cleaner preview.`]
         : [];
 
       try {
@@ -272,7 +270,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
           currentModelImage = result.previewUrls[0];
         }
 
-        if (!result) return { ...unavailable("FASHN could not process the selected outfit."), status: "failed" };
+        if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
 
         logAiEvent({
@@ -294,7 +292,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
           provider: "fashn",
           errorCategory: errorCategory(error)
         });
-        return { ...unavailable("FASHN try-on request failed."), status: "failed" };
+        return { ...unavailable("Virtual Try-On could not be completed right now."), status: "failed" };
       }
     },
     async generateGarmentMesh(input: TryOnPreviewInput) {

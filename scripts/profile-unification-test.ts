@@ -48,11 +48,31 @@ assert.ok(preferencesTopRedirect.includes('redirect("/profile?section=style")'),
 
 const avatarForm = read("components/avatar/AvatarProfileForm.tsx");
 assert.ok(avatarForm.includes("Upload full-body photo"), "Appearance should retain full-body model photo upload.");
-assert.ok(avatarForm.includes("Generate model image"), "Appearance should retain generated model image support.");
-assert.ok(avatarForm.includes("Fit details"), "Appearance should retain fit details.");
+assert.ok(avatarForm.includes("Replace photo"), "Appearance should allow replacing the uploaded full-body photo.");
+assert.ok(avatarForm.includes("Remove photo"), "Appearance should allow removing the uploaded full-body photo.");
+assert.ok(!avatarForm.includes("Generate model image"), "Appearance must not expose generated model image support.");
+assert.ok(!avatarForm.includes("Fit details"), "Appearance must not expose fit measurement details.");
+for (const removedCopy of ["Model base", "Body shape", "Height range", "Shoe size", "Preferred fit", "Skin tone", "Hair style"]) {
+  assert.ok(!avatarForm.includes(removedCopy), `Appearance should not contain removed setup copy: ${removedCopy}.`);
+}
 assert.ok(!avatarForm.includes("Custom model link"), "Appearance form should not expose custom model links.");
 assert.ok(!avatarForm.includes("avatarProvider"), "Appearance form should not expose provider selection.");
 assert.ok(!avatarForm.includes("Skip for now"), "Profile Appearance should not include onboarding skip controls.");
+
+const apiClient = read("lib/api-client.ts");
+assert.ok(!apiClient.includes("generateAvatarModelImage"), "Client API should not expose generated model image calls.");
+
+const avatarProfileLib = read("lib/avatar/avatar-profile.ts");
+const preferredImageHelper = avatarProfileLib.slice(
+  avatarProfileLib.indexOf("export function preferredTryOnModelImageUrl"),
+  avatarProfileLib.indexOf("export async function getOrCreateAvatarProfile")
+);
+assert.ok(preferredImageHelper.includes("uploadedModelImageUrl"), "Virtual Try-On should use uploaded full-body photos.");
+assert.ok(!preferredImageHelper.includes("generatedModelImageUrl"), "Virtual Try-On should not fall back to generated model images.");
+
+const progressiveTriggers = read("lib/progressive-intelligence/triggers.ts");
+assert.ok(progressiveTriggers.includes('requiredData: ["uploaded full-body photo", "preview consent"]'), "Virtual Try-On readiness should require an uploaded full-body photo.");
+assert.ok(!progressiveTriggers.includes("avatar model image or generated model"), "Virtual Try-On readiness should not mention generated models.");
 
 const styleForm = read("components/style-profile/StyleProfileForm.tsx");
 for (const field of ["favoriteBrands", "dislikedBrands", "dislikedFits", "preferredCategories", "avoidedCategories"]) {

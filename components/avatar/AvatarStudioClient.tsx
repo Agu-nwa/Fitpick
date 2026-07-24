@@ -5,7 +5,6 @@ import { ApiErrorState } from "@/components/integration/ApiErrorState";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { AvatarProfileForm } from "@/components/avatar/AvatarProfileForm";
-import { AvatarViewer } from "@/components/avatar/AvatarViewer";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -47,7 +46,7 @@ export function AvatarStudioClient() {
     return (
       <Card className="p-4">
         <p className="text-sm font-semibold text-ink">Your appearance profile is ready to set up.</p>
-        <p className="mt-2 text-sm leading-6 text-muted">Add your model photo and size details to improve outfit previews.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Upload a full-body photo before using Virtual Try-On.</p>
         <Button type="button" className="mt-4 w-full" onClick={() => void loadProfile()}>
           Open appearance setup
         </Button>
@@ -56,8 +55,7 @@ export function AvatarStudioClient() {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
-      <AvatarViewer profile={profile} />
+    <div className="w-full">
       <AvatarProfileForm profile={profile} onSaved={setProfile} />
     </div>
   );

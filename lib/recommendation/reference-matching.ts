@@ -228,10 +228,10 @@ function explanation(input: {
     whyItWorks: `${anchor} anchors the look, while ${itemNames.join(", ") || "your saved closet items"} complete the outfit from your closet.`,
     materialNote: fabrics.length
       ? `Material read: ${Array.from(new Set(fabrics)).slice(0, 3).join(", ")}.`
-      : "Material detail is limited, so MyFitPick matched by category, color, and occasion.",
+      : "Material detail is limited, so MyFitPick matched the look by category, color, and occasion.",
     silhouetteNote: silhouettes.length
       ? `Silhouette read: ${Array.from(new Set(silhouettes)).slice(0, 3).join(", ")}.`
-      : "Fit detail is limited, so MyFitPick kept the styling balanced and practical.",
+      : "Fit detail is limited, so MyFitPick keeps the styling balanced and practical.",
     improvementNote: input.missingCategories.length
       ? `This would improve with saved ${input.missingCategories.join(" and ")} options.`
       : "No major closet gap detected for this photo match.",

@@ -37,6 +37,7 @@ import {
   serializeOutfitPreview
 } from "@/lib/outfit-preview/outfit-preview";
 import { serializeOutfit } from "@/lib/recommendation/engine";
+import { markReferenceItemsLinkedToOutfit } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
@@ -347,6 +348,11 @@ export async function createOrReuseStylistOutfitRecommendation(
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  await markReferenceItemsLinkedToOutfit({
+    userId,
+    referenceItemIds,
+    outfitRecommendationId: String(outfit._id)
+  });
 
   return {
     outfit,

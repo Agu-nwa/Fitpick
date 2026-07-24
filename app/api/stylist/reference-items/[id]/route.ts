@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
-import { serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
+import { clearReferenceFashionItem, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
@@ -46,8 +46,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     if (!isObjectId(id)) return apiError("NOT_FOUND", "That photo is no longer available.");
 
-    await ReferenceFashionItem.findOneAndDelete({ _id: id, userId: auth.user._id });
-    return apiSuccess({ cleared: true }, { message: "Reference photo cleared." });
+    const cleared = await clearReferenceFashionItem({ userId: String(auth.user._id), referenceItemId: id });
+    return apiSuccess({ cleared: cleared.cleared, retained: cleared.retained }, { message: "Reference photo cleared." });
   } catch (error) {
     logSafeError("stylist.reference.delete", error);
     return apiError("INTERNAL_ERROR", "Unable to clear that photo right now.");

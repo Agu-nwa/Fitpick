@@ -25,7 +25,7 @@ type CustomTryOnResponse = {
   accuracyLevel?: TryOnPreviewInput["accuracyLevelRequested"];
 };
 
-function unavailable(message = "Dedicated virtual try-on provider is not configured."): TryOnProviderOutput {
+function unavailable(message = "Virtual Try-On is temporarily unavailable."): TryOnProviderOutput {
   return {
     status: "provider_unavailable",
     provider: "custom",
@@ -94,6 +94,11 @@ function garmentPayload(item: any) {
   };
 }
 
+function safeProviderWarnings(warnings?: string[]) {
+  if (!Array.isArray(warnings) || !warnings.length) return [];
+  return ["Virtual Try-On preview is estimated."];
+}
+
 async function toProviderOutput(input: TryOnPreviewInput, data: CustomTryOnResponse): Promise<TryOnProviderOutput> {
   const urls = previewUrlsFromResponse(data);
   const base64 = data.previewBase64 || data.base64 || "";
@@ -139,14 +144,14 @@ async function toProviderOutput(input: TryOnPreviewInput, data: CustomTryOnRespo
     animationUrl: data.animationUrl || null,
     modelUrl: data.modelUrl || null,
     accuracyLevel: getPreviewAccuracyLevel(data.accuracyLevel || input.accuracyLevelRequested || "true_3d_simulation"),
-    warnings: Array.isArray(data.warnings) ? data.warnings.map(String).slice(0, 8) : [],
+    warnings: safeProviderWarnings(data.warnings),
     jobId: data.jobId || null
   };
 }
 
 async function callEndpoint(input: TryOnPreviewInput, payload: Record<string, unknown>): Promise<TryOnProviderOutput> {
   const providerConfig = config();
-  if (!providerConfig.endpoint) return unavailable("TRYON_CUSTOM_ENDPOINT is not configured.");
+  if (!providerConfig.endpoint) return unavailable("Virtual Try-On is temporarily unavailable.");
 
   const startedAt = Date.now();
   try {
@@ -170,7 +175,7 @@ async function callEndpoint(input: TryOnPreviewInput, payload: Record<string, un
         provider: "custom",
         errorCategory: `http_${response.status}`
       });
-      return { ...unavailable(`Custom try-on provider returned HTTP ${response.status}.`), status: "failed" };
+      return { ...unavailable("Virtual Try-On could not be completed right now."), status: "failed" };
     }
 
     const output = await toProviderOutput(input, await response.json() as CustomTryOnResponse);
@@ -193,13 +198,13 @@ async function callEndpoint(input: TryOnPreviewInput, payload: Record<string, un
       provider: "custom",
       errorCategory: errorCategory(error)
     });
-    return { ...unavailable("Custom try-on provider request failed."), status: "failed" };
+    return { ...unavailable("Virtual Try-On could not be completed right now."), status: "failed" };
   }
 }
 
 async function status(jobId: string): Promise<TryOnProviderOutput> {
   const providerConfig = config();
-  if (!providerConfig.statusEndpoint) return unavailable("TRYON_CUSTOM_STATUS_ENDPOINT is not configured.");
+  if (!providerConfig.statusEndpoint) return unavailable("Virtual Try-On is temporarily unavailable.");
   const url = providerConfig.statusEndpoint.includes("{jobId}")
     ? providerConfig.statusEndpoint.replace("{jobId}", encodeURIComponent(jobId))
     : `${providerConfig.statusEndpoint.replace(/\/$/, "")}/${encodeURIComponent(jobId)}`;
@@ -209,7 +214,7 @@ async function status(jobId: string): Promise<TryOnProviderOutput> {
     },
     signal: AbortSignal.timeout(providerConfig.timeoutMs)
   });
-  if (!response.ok) return { ...unavailable(`Custom try-on status endpoint returned HTTP ${response.status}.`), status: "failed" };
+  if (!response.ok) return { ...unavailable("Virtual Try-On is still preparing."), status: "failed" };
   return toProviderOutput({ userId: "", wardrobeItemIds: [] }, await response.json() as CustomTryOnResponse);
 }
 
@@ -224,8 +229,10 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
         ? await AvatarProfile.findOne({ _id: input.avatarProfileId, userId: input.userId }).lean()
         : null;
       if (!loaded || !avatarProfile) {
-        return { ...unavailable("Dedicated virtual try-on needs an outfit recommendation and avatar profile."), status: "failed" };
+        return { ...unavailable("Virtual Try-On needs a saved outfit and full-body photo."), status: "failed" };
       }
+      const modelImageUrl = preferredTryOnModelImageUrl(avatarProfile);
+      if (!modelImageUrl) return { ...unavailable("Upload a full-body photo before using Virtual Try-On."), status: "failed" };
 
       return callEndpoint(input, {
         requestType: "virtual_try_on",
@@ -236,7 +243,7 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
         accuracyLevelRequested: input.accuracyLevelRequested || "true_3d_simulation",
         cacheKey: input.cacheKey,
         avatar: serializeAvatarProfile(avatarProfile),
-        modelImageUrl: preferredTryOnModelImageUrl(avatarProfile),
+        modelImageUrl,
         avatarMeasurements: input.avatarMeasurements || {},
         garments: loaded.items.map(garmentPayload),
         garmentAssets: input.garmentAssets || [],

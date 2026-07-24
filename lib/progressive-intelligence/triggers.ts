@@ -28,11 +28,11 @@ export const progressiveTriggers: Record<ProgressiveTriggerId, ProgressiveTrigge
     priority: 100,
     cooldownDays: 14,
     maxFrequency: 3,
-    requiredData: ["avatar model image or generated model", "preview consent"],
+    requiredData: ["uploaded full-body photo", "preview consent"],
     value: "Unlock realistic outfit previews only when the user asks for try-on.",
-    title: "Create your try-on model",
-    body: "To create a realistic try-on, MyFitPick needs a model to dress. A clear full-body image or generated model helps preserve proportions for previews.",
-    primaryAction: "Set up try-on model",
+    title: "Add your full-body photo",
+    body: "To create Virtual Try-On previews, MyFitPick needs a clear full-body photo where your head, outfit area, and feet are visible.",
+    primaryAction: "Upload full-body photo",
     secondaryAction: "Continue without try-on"
   },
   FULL_BODY_PHOTO_NEEDED: {
@@ -134,7 +134,7 @@ export const progressiveTriggers: Record<ProgressiveTriggerId, ProgressiveTrigge
 };
 
 export function triggerForVirtualTryOn(avatarProfile?: any) {
-  const hasModel = Boolean(avatarProfile?.uploadedModelImageUrl || avatarProfile?.generatedModelImageUrl);
+  const hasModel = Boolean(avatarProfile?.uploadedModelImageUrl);
   const hasConsent = Boolean(avatarProfile?.consentAccepted);
   if (hasModel && hasConsent) return null;
   return progressiveTriggers.FIRST_VIRTUAL_TRYON_MODEL_REQUIRED;

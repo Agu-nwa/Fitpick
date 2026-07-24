@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
+import { markReferenceItemsSavedWithOutfit } from "@/lib/ai/reference-fashion-item";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
@@ -13,6 +14,22 @@ import { recordOutfitHistory } from "@/lib/recommendation/history";
 import { saveOutfitSchema } from "@/schemas/outfit.schema";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+function referenceItemIdsForOutfit(outfit: any) {
+  return Array.from(
+    new Set([
+      ...(outfit.referenceItemIds || []).map(String),
+      ...((outfit.outfitPieces || []) as any[])
+        .filter((piece) => piece?.source === "reference-upload")
+        .map((piece) => String(piece.referenceItemId || ""))
+        .filter(Boolean),
+      ...((outfit.reasoningMetadata?.outfitPieces || []) as any[])
+        .filter((piece) => piece?.source === "reference-upload")
+        .map((piece) => String(piece.referenceItemId || ""))
+        .filter(Boolean)
+    ])
+  );
+}
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
@@ -35,6 +52,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     outfit.favorite = parsed.data.favorite ?? Boolean(outfit.favorite);
     outfit.savedAt = outfit.savedAt || new Date();
     await outfit.save();
+    const referenceItemIds = referenceItemIdsForOutfit(outfit);
+    if (referenceItemIds.length) {
+      await markReferenceItemsSavedWithOutfit({
+        userId: String(auth.user._id),
+        referenceItemIds,
+        outfitRecommendationId: String(outfit._id)
+      });
+    }
 
     await recordAuditEvent({
       request,

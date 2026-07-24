@@ -126,6 +126,7 @@ async function loadRuntime() {
     isRetryableBackgroundJobFailure: handlers.isRetryableBackgroundJobFailure,
     handleTerminalBackgroundJobFailure: handlers.handleTerminalBackgroundJobFailure,
     expireStaleTryOnGenerations: (await import("../lib/tryon/tryon-generation")).expireStaleTryOnGenerations,
+    expireStaleReferenceFashionItems: (await import("../lib/ai/reference-fashion-item")).expireStaleReferenceFashionItems,
     errorCategory: logger.errorCategory,
     logJobEvent: logger.logJobEvent
   };
@@ -158,11 +159,13 @@ async function main() {
         await runtime.handleTerminalBackgroundJobFailure(job, "stale_processing_dead_letter", "Background job expired before completion.");
       }
       const expired = await runtime.expireStaleTryOnGenerations({ olderThanMs: 90 * 60_000, limit: 50 });
-      if (recovered.scanned || expired.expiredCount) {
+      const expiredReferences = await runtime.expireStaleReferenceFashionItems({ limit: 50 });
+      if (recovered.scanned || expired.expiredCount || expiredReferences.expiredCount || expiredReferences.retainedCount || expiredReferences.failedCount) {
         console.info("fitpick.worker", {
           status: "maintenance",
           recovered,
           expired,
+          expiredReferences,
           workerId,
           timestamp: new Date().toISOString()
         });

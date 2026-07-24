@@ -21,7 +21,7 @@ const ReferenceFashionItemSchema = new Schema(
     source: { type: String, enum: ["camera", "upload"], default: "upload" },
     status: {
       type: String,
-      enum: ["uploaded", "analyzing", "needs-selection", "ready", "failed"],
+      enum: ["uploaded", "analyzing", "needs-selection", "needs_clarification", "ready", "failed", "expired", "converted_to_wardrobe"],
       default: "uploaded",
       index: true
     },
@@ -54,13 +54,25 @@ const ReferenceFashionItemSchema = new Schema(
     analysisModel: { type: String, default: "", trim: true, maxlength: 80 },
     analyzedAt: { type: Date, default: null },
     expiresAt: { type: Date, default: null, index: true },
-    convertedWardrobeUploadId: { type: Schema.Types.ObjectId, ref: "WardrobeUpload", default: null, index: true }
+    savedOutfitId: { type: Schema.Types.ObjectId, ref: "OutfitRecommendation", default: null, index: true },
+    outfitRecommendationIds: { type: [{ type: Schema.Types.ObjectId, ref: "OutfitRecommendation" }], default: [] },
+    convertedWardrobeUploadId: { type: Schema.Types.ObjectId, ref: "WardrobeUpload", default: null, index: true },
+    wardrobeItemId: { type: Schema.Types.ObjectId, ref: "WardrobeItem", default: null, index: true },
+    cleanupStatus: {
+      type: String,
+      enum: ["pending", "skipped", "completed", "failed"],
+      default: "pending",
+      index: true
+    },
+    cleanupAt: { type: Date, default: null },
+    cleanupError: { type: String, default: "", trim: true, maxlength: 180 }
   },
   { timestamps: true }
 );
 
 ReferenceFashionItemSchema.index({ userId: 1, conversationId: 1, createdAt: -1 });
 ReferenceFashionItemSchema.index({ userId: 1, status: 1, updatedAt: -1 });
+ReferenceFashionItemSchema.index({ expiresAt: 1, cleanupStatus: 1, status: 1 });
 
 export type ReferenceFashionItemDocument = InferSchemaType<typeof ReferenceFashionItemSchema> & {
   _id: mongoose.Types.ObjectId;

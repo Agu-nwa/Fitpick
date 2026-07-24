@@ -6,11 +6,9 @@ import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/r
 import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/policy";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import {
-  fabricCompatibilityScore,
   metadataList,
   metadataValue,
-  scoreOutfit,
-  silhouetteBalanceScore
+  scoreOutfit
 } from "@/lib/recommendation/scoring";
 import { generateCombinations } from "@/lib/recommendation/generator";
 import { serializeWardrobeItem } from "@/lib/wardrobe";
@@ -109,11 +107,11 @@ function buildFashionExplanation(input: {
         : `Built from owned wardrobe pieces for ${input.occasion}.`,
     whyItWorks: `${itemNames.join(", ")} create a wearable ${input.occasion.toLowerCase()} look from actual wardrobe items.${missingText}`,
     materialNote: fabrics.length
-      ? `Material read: ${fabrics.slice(0, 3).join(", ")}. Compatibility score ${fabricCompatibilityScore(input.items)}.`
-      : "Fabric data is limited, so MyFitPick used category and occasion fallback logic.",
+      ? `Material read: ${fabrics.slice(0, 3).join(", ")}. These textures work together for the occasion.`
+      : "Fabric detail is limited, so MyFitPick matched the look by category, color, and occasion.",
     silhouetteNote: silhouettes.length
-      ? `Silhouette read: ${silhouettes.slice(0, 3).join(", ")}. Balance score ${silhouetteBalanceScore(input.items)}.`
-      : "Silhouette data is limited, so MyFitPick avoided overclaiming fit balance.",
+      ? `Silhouette read: ${silhouettes.slice(0, 3).join(", ")}. The proportions are kept balanced and wearable.`
+      : "Fit detail is limited, so MyFitPick keeps the proportions balanced without overclaiming exact fit.",
     improvementNote: input.missing.length
       ? `This outfit would improve with owned ${input.missing.join(" and ")} options.`
       : "No major wardrobe gap detected for this recommendation.",

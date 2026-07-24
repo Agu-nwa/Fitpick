@@ -140,9 +140,7 @@ export function validateModelImageUrl(value?: string | null) {
 }
 
 export function preferredTryOnModelImageUrl(profile: any) {
-  if (profile?.tryOnModelSource === "uploaded") return profile.uploadedModelImageUrl || null;
-  if (profile?.tryOnModelSource === "generated") return profile.generatedModelImageUrl || null;
-  return profile?.uploadedModelImageUrl || profile?.generatedModelImageUrl || null;
+  return profile?.uploadedModelImageUrl || null;
 }
 
 export async function getOrCreateAvatarProfile(userId: string | Types.ObjectId) {

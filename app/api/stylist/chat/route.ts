@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
 
     let visualization = serializeStylistVisualization();
     let persistedOutfit: Awaited<ReturnType<typeof createOrReuseStylistOutfitRecommendation>> = null;
+    const persistedReferenceOutfits: Array<Awaited<ReturnType<typeof createOrReuseStylistOutfitRecommendation>>> = [];
     const visualMode = parsed.data.visualMode || "digital_human";
     const hasOutfit = Boolean(deterministicRecommendation.items?.length);
     const wantsVisualization = shouldGenerateVisualization(response.stylist.intent, sanitizedMessage, {
@@ -297,6 +298,22 @@ export async function POST(request: NextRequest) {
       visualMode,
       hasOutfit
     });
+
+    if (referenceItem && hasOutfit && referenceRecommendations.length) {
+      for (const recommendation of referenceRecommendations.slice(0, 3)) {
+        const persistedReferenceOutfit = await createOrReuseStylistOutfitRecommendation(
+          String(auth.user._id),
+          recommendation,
+          {
+            ownedItemIds: stylistContext.ownedItemIds,
+            requestText: sanitizedMessage,
+            source: "stylist_chat"
+          }
+        );
+        if (persistedReferenceOutfit) persistedReferenceOutfits.push(persistedReferenceOutfit);
+      }
+      persistedOutfit = persistedReferenceOutfits[0] || null;
+    }
 
     if (wantsVisualization) {
       const visualizationLimited = rateLimitRequest({
@@ -320,15 +337,17 @@ export async function POST(request: NextRequest) {
         });
       } else {
         try {
-          persistedOutfit = await createOrReuseStylistOutfitRecommendation(
-            String(auth.user._id),
-            deterministicRecommendation,
-            {
-              ownedItemIds: stylistContext.ownedItemIds,
-              requestText: sanitizedMessage,
-              source: "stylist_chat"
-            }
-          );
+          if (!persistedOutfit) {
+            persistedOutfit = await createOrReuseStylistOutfitRecommendation(
+              String(auth.user._id),
+              deterministicRecommendation,
+              {
+                ownedItemIds: stylistContext.ownedItemIds,
+                requestText: sanitizedMessage,
+                source: "stylist_chat"
+              }
+            );
+          }
 
           if (persistedOutfit?.outfitRecommendationId) {
             await Promise.all([
@@ -393,37 +412,42 @@ export async function POST(request: NextRequest) {
     const stylist = {
       ...response.stylist,
       visualMode: visualization.visualMode,
-      outfitRecommendationId: visualization.outfitRecommendationId,
+      outfitRecommendationId: visualization.outfitRecommendationId || persistedOutfit?.outfitRecommendationId || null,
       avatarPreview: visualization.avatarPreview,
       visualizationDisclaimer: visualization.visualizationDisclaimer,
       fitLock: visualization.fitLock
     };
+    const responseOutfitId = visualization.outfitRecommendationId || persistedOutfit?.outfitRecommendationId || null;
 
     return apiSuccess({
       reply: response.reply,
       stylist,
       referenceItem: referenceItem ? serializeReferenceFashionItem(referenceItem) : null,
-      referenceRecommendations: referenceRecommendations.map((recommendation) => ({
-        ...recommendation,
-        items: (recommendation.items || []).map((item: any) => ({
-          id: String(item._id || item.id),
-          name: item.name,
-          category: item.category,
-          subcategory: item.subcategory || "",
-          color: item.color || "",
-          pattern: item.pattern || "",
-          fabric: item.fabric || "",
-          fit: item.fit || "",
-          formality: item.formality || [],
-          occasions: item.occasions || [],
-          weather: item.weather || [],
-          condition: item.condition || "ready",
-          imageUrl: item.imageUrl || "",
-          thumbnailUrl: item.thumbnailUrl || item.imageUrl || ""
-        }))
-      })),
+      referenceRecommendations: referenceRecommendations.map((recommendation, index) => {
+        const persisted = persistedReferenceOutfits[index];
+        if (persisted?.serializedOutfit) return persisted.serializedOutfit;
+        return {
+          ...recommendation,
+          items: (recommendation.items || []).map((item: any) => ({
+            id: String(item._id || item.id),
+            name: item.name,
+            category: item.category,
+            subcategory: item.subcategory || "",
+            color: item.color || "",
+            pattern: item.pattern || "",
+            fabric: item.fabric || "",
+            fit: item.fit || "",
+            formality: item.formality || [],
+            occasions: item.occasions || [],
+            weather: item.weather || [],
+            condition: item.condition || "ready",
+            imageUrl: item.imageUrl || "",
+            thumbnailUrl: item.thumbnailUrl || item.imageUrl || ""
+          }))
+        };
+      }),
       referenceSelectionRequired: false,
-      outfitRecommendationId: visualization.outfitRecommendationId,
+      outfitRecommendationId: responseOutfitId,
       avatarPreview: visualization.avatarPreview,
       visualization,
       outfit: persistedOutfit?.serializedOutfit || null,

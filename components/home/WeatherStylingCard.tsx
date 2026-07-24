@@ -30,7 +30,7 @@ export function WeatherStylingCard() {
     setLoading(false);
     if (result.ok) {
       setWeather(result.data);
-      if (result.data.status === "unavailable") setStatusMessage(safeUserMessage(result.data.safeMessage, "Weather is temporarily unavailable."));
+      if (result.data.status === "unavailable") setStatusMessage("");
       return;
     }
     setStatusMessage(safeUserMessage(result.error, "Unable to load weather right now."));
@@ -121,9 +121,15 @@ export function WeatherStylingCard() {
             </p>
           </div>
           <div className="grid shrink-0 gap-2 sm:min-w-44">
-            <Link href="/stylist">
-              <Button className="w-full rounded-full">Style me for today</Button>
-            </Link>
+            {weatherUnavailable && hasLocation ? (
+              <Button type="button" className="w-full rounded-full" disabled={loading} onClick={() => void loadWeather()}>
+                {loading ? "Checking..." : "Retry weather"}
+              </Button>
+            ) : (
+              <Link href="/stylist">
+                <Button className="w-full rounded-full">Style me for today</Button>
+              </Link>
+            )}
             <Button
               ref={chooseButtonRef}
               type="button"

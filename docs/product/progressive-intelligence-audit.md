@@ -18,7 +18,7 @@ The product model after this phase is:
 ## Current audit findings
 
 - The previous onboarding flow required avatar/full-body setup too early. That blocked normal product entry and overloaded the first session.
-- The avatar page already contains the full-body upload, generated model image, measurements, consent, pose, and visualization controls. It is the correct progressive entry point for try-on setup.
+- Profile Appearance contains the full-body photo upload and preview consent. It is the correct progressive entry point for try-on setup.
 - The recommendation engine already used owned wardrobe items, occasion, weather, color, formality, wardrobe completeness, style profile, and fashion memory. It needed stronger history-level rotation, diversity, and user-facing freshness language.
 - Stylist chat already persisted recommendations for visualization. It now needs to treat deterministic recommendations as grounded candidates and use AI only for stylist reasoning and copy.
 - Weather styling had a home prompt but pointed users back to old model onboarding. Preferences now contains the city/country selector needed by that prompt.
@@ -154,7 +154,7 @@ The trigger objects are structured so future UI can render modals, bottom sheets
 
 - No automatic destructive migration.
 - Existing users keep their current `modelSetupCompletedAt` values.
-- Existing avatar profiles and uploaded/generated model images remain reusable for first try-on.
+- Existing avatar profiles remain reusable when they include an uploaded full-body photo.
 - Existing outfit records serialize with defaults for new fields such as `freshnessCue`, `wardrobeReadiness`, and `alternatives`.
 - New `OutfitHistory` records are created only as users generate, save, reject, swap, wear, or preview looks after deployment.
 - Production can optionally backfill `OutfitHistory` from saved/worn looks later if analytics need it.

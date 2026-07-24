@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, CalendarDays, Camera, CloudRain, HeartHandshake, ImagePlus, MessageCircle, Sparkles, UploadCloud, WandSparkles, X } from "lucide-react";
+import { ArrowUpRight, Camera, ImagePlus, Layers3, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -50,17 +50,30 @@ type ChatMessage = {
   jobId?: string | null;
 };
 
+type StylistFlow = "home" | "create" | "match";
+
+const occasionSuggestions = [
+  { label: "Work", prompt: "Create a polished work look from my wardrobe." },
+  { label: "Date night", prompt: "Create a clean date night look from my wardrobe." },
+  { label: "Wedding", prompt: "Create a wedding guest look from my wardrobe." },
+  { label: "Casual", prompt: "Create an easy casual look from my wardrobe." },
+  { label: "Travel", prompt: "Create a travel outfit from my wardrobe." },
+  { label: "Dinner", prompt: "Create a dinner look from my wardrobe." },
+  { label: "Weekend", prompt: "Create a weekend look from my wardrobe." },
+  { label: "Surprise me", prompt: "Create a confident look from my wardrobe. Surprise me." }
+];
+
 const promptSuggestions = [
-  { label: "Work", prompt: "Style me for work in cold weather", icon: CalendarDays },
-  { label: "Dinner", prompt: "Find a polished dinner look", icon: Sparkles },
-  { label: "Wedding", prompt: "What should I wear to a wedding?", icon: HeartHandshake },
-  { label: "Rain", prompt: "Dress me for a rainy day", icon: CloudRain }
+  "Style my black blazer",
+  "Build a dinner look",
+  "Make this more casual",
+  "Use my white sneakers"
 ];
 
 const loadingSteps = [
   "Reading your wardrobe...",
-  "Finding a few options...",
-  "Preparing your preview..."
+  "Finding the strongest pieces...",
+  "Building your look..."
 ];
 
 function messageId() {
@@ -102,7 +115,9 @@ function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarP
     missingVisualItemIds: preview?.missingVisualItemIds,
     visualizationWarnings: preview?.visualizationWarnings,
     footwearIncluded: preview?.footwearIncluded,
-    visualGroundingStatus: preview?.visualGroundingStatus
+    visualGroundingStatus: preview?.visualGroundingStatus,
+    progressiveTrigger: preview?.progressiveTrigger,
+    setupPath: preview?.setupPath
   };
 }
 
@@ -118,6 +133,184 @@ function referenceStatusCopy(reference?: ReferenceFashionItemSummary | null) {
   if (reference.status === "ready") return "Ready to match with your closet.";
   if (reference.status === "failed") return "Try a clearer photo.";
   return "Photo added.";
+}
+
+function StylistProductCard({
+  title,
+  body,
+  action,
+  note,
+  icon: Icon,
+  featured,
+  active,
+  onClick
+}: {
+  title: string;
+  body: string;
+  action: string;
+  note?: string;
+  icon: LucideIcon;
+  featured?: boolean;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "focus-ring group min-h-56 rounded-xl3 border p-5 text-left shadow-card transition hover:-translate-y-0.5",
+        featured
+          ? "border-cocoa/30 bg-gradient-to-br from-cocoa/12 via-surface to-olive/10"
+          : "border-line bg-surface/90",
+        active ? "ring-2 ring-cocoa/30" : "hover:border-cocoa/35"
+      )}
+      onClick={onClick}
+      aria-pressed={active}
+    >
+      <span className={cn("inline-flex size-11 items-center justify-center rounded-2xl border", featured ? "border-cocoa/25 bg-cocoa text-canvas" : "border-line bg-canvas text-cocoa")}>
+        <Icon size={18} aria-hidden="true" />
+      </span>
+      <span className="mt-5 block font-editorial text-3xl font-semibold leading-none text-ink">{title}</span>
+      <span className="mt-3 block text-sm leading-6 text-muted">{body}</span>
+      {note ? <span className="mt-4 block text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{note}</span> : null}
+      <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-ink">
+        {action}
+        <ArrowUpRight size={16} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
+function MatchFlowVisual() {
+  const steps = ["Reference look", "Closet matches", "FitPick version"];
+  return (
+    <div className="grid grid-cols-3 gap-2" aria-label="Match Outfit flow">
+      {steps.map((step, index) => (
+        <div key={step} className="rounded-2xl border border-line bg-white/65 px-3 py-3 text-center">
+          <span className="mx-auto flex size-8 items-center justify-center rounded-full bg-olive/10 text-xs font-bold text-olive">{index + 1}</span>
+          <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{step}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function matchTone(label: string) {
+  if (label === "Exact") return "success" as const;
+  if (label === "Close match") return "premium" as const;
+  if (label === "Alternative") return "info" as const;
+  return "warning" as const;
+}
+
+function itemMatchesReference(item: OutfitRecommendation["items"][number], reference?: ReferenceFashionItemSummary | null) {
+  const category = `${item.category || ""} ${item.subcategory || ""}`.toLowerCase();
+  const referenceCategory = `${reference?.category || ""} ${reference?.subcategory || ""}`.toLowerCase();
+  const itemColor = `${item.color || ""}`.toLowerCase();
+  const referenceColor = `${reference?.primaryColor || ""}`.toLowerCase();
+  const categoryMatch = Boolean(referenceCategory && category && (category.includes(referenceCategory) || referenceCategory.includes(category.split(" ")[0] || "")));
+  const colorMatch = Boolean(referenceColor && itemColor && (itemColor.includes(referenceColor) || referenceColor.includes(itemColor)));
+  if (categoryMatch && colorMatch) return "Exact";
+  if (categoryMatch) return "Close match";
+  return "Alternative";
+}
+
+function DetectedPiecesPanel({
+  reference,
+  busy
+}: {
+  reference?: ReferenceFashionItemSummary | null;
+  busy?: boolean;
+}) {
+  if (!reference && !busy) return null;
+  const pieces = reference?.detectedItems?.length
+    ? reference.detectedItems
+    : reference
+      ? [{
+          id: reference.id,
+          label: referenceLabel(reference),
+          category: reference.category,
+          subcategory: reference.subcategory,
+          primaryColor: reference.primaryColor,
+          confidence: undefined
+        }]
+      : [];
+
+  return (
+    <div className="rounded-2xl border border-line bg-canvas/65 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-ink">Detected pieces</p>
+        <Badge tone={reference?.status === "ready" ? "success" : busy ? "premium" : "neutral"}>
+          {busy ? "Studying" : reference?.status === "ready" ? "Ready" : "In progress"}
+        </Badge>
+      </div>
+      {busy && !pieces.length ? (
+        <p className="mt-3 text-sm leading-6 text-muted">Studying the look...</p>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {pieces.slice(0, 5).map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface/80 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">{item.label}</p>
+                <p className="truncate text-xs text-muted">{[item.primaryColor, item.subcategory || item.category].filter(Boolean).join(" • ") || "Fashion piece"}</p>
+              </div>
+              {reference?.selectedDetectedItemId === item.id ? <Badge tone="success">Selected</Badge> : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WardrobeMatchPanel({
+  reference,
+  recommendations
+}: {
+  reference?: ReferenceFashionItemSummary | null;
+  recommendations?: OutfitRecommendation[];
+}) {
+  if (!reference && !recommendations?.length) return null;
+  const primaryRecommendation = recommendations?.[0] || null;
+  const matchedItems = primaryRecommendation?.items || [];
+
+  return (
+    <div className="rounded-2xl border border-line bg-canvas/65 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-ink">Wardrobe matches</p>
+        {primaryRecommendation ? <Badge tone="premium">FitPick version</Badge> : <Badge tone="neutral">Pending</Badge>}
+      </div>
+      {primaryRecommendation ? (
+        <div className="mt-3 grid gap-2">
+          {matchedItems.slice(0, 5).map((item) => {
+            const label = itemMatchesReference(item, reference);
+            return (
+              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface/80 p-2">
+                <ImageFrame
+                  src={item.thumbnailUrl || item.imageUrl}
+                  alt={item.name}
+                  placeholder={item.category}
+                  className="h-14 w-14 shrink-0 rounded-lg"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+                  <p className="truncate text-xs text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
+                </div>
+                <Badge tone={matchTone(label)}>{label}</Badge>
+              </div>
+            );
+          })}
+          {primaryRecommendation.missingCategories?.slice(0, 3).map((category) => (
+            <div key={category} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2">
+              <span className="text-sm font-semibold text-ink">{category}</span>
+              <Badge tone="warning">Missing</Badge>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-muted">Upload a reference, then MyFitPick will find the closest pieces in your closet.</p>
+      )}
+    </div>
+  );
 }
 
 function ReferenceImageCard({
@@ -236,7 +429,10 @@ function ItemStrip({ outfit }: { outfit: OutfitRecommendation }) {
 export function StylistChat() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const lastReferenceFileRef = useRef<{ file: File; source: "camera" | "upload" } | null>(null);
   const conversationIdRef = useRef(`stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const [activeFlow, setActiveFlow] = useState<StylistFlow>("home");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -249,6 +445,7 @@ export function StylistChat() {
   const [referenceMessage, setReferenceMessage] = useState("");
   const [referencePreviewUrl, setReferencePreviewUrl] = useState("");
   const [activeReference, setActiveReference] = useState<ReferenceFashionItemSummary | null>(null);
+  const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
   const latestAssistant = useMemo(
     () => [...messages].reverse().find((entry) => entry.role === "assistant"),
@@ -269,8 +466,18 @@ export function StylistChat() {
     };
   }, [referencePreviewUrl]);
 
+  function focusWorkspace() {
+    window.setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+  }
+
+  function chooseFlow(flow: StylistFlow) {
+    setActiveFlow(flow);
+    focusWorkspace();
+  }
+
   function openReferencePicker(source: "camera" | "upload") {
     setPickerOpen(false);
+    setActiveFlow("match");
     setFilePickerSource(source);
     window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
@@ -339,17 +546,18 @@ export function StylistChat() {
     return created.data.referenceItem;
   }
 
-  async function handleReferenceFiles(files: FileList | null) {
-    const file = files?.[0];
+  async function handleReferenceFile(file: File | null, source = filePickerSource) {
     if (!file || referenceBusy) return;
 
+    lastReferenceFileRef.current = { file, source };
+    setCanRetryReferenceUpload(false);
     setReferenceBusy(true);
     setReferenceMessage("Preparing photo...");
     setError("");
 
     try {
       const normalized = await normalizeImageForUpload(file, {
-        source: filePickerSource === "camera" ? "camera" : "gallery" as ImageUploadSource,
+        source: source === "camera" ? "camera" : "gallery" as ImageUploadSource,
         onStage: (stage) => {
           if (stage === "validating") setReferenceMessage("Checking photo...");
           if (stage === "converting") setReferenceMessage("Preparing iPhone photo...");
@@ -360,10 +568,12 @@ export function StylistChat() {
       setReferencePreviewUrl(normalized.previewUrl);
       setReferenceMessage("Uploading photo...");
 
-      const created = await uploadReferenceImage(normalized, filePickerSource);
+      const created = await uploadReferenceImage(normalized, source);
       setActiveReference(created);
       setReferencePreviewUrl(created?.imageUrl || normalized.previewUrl);
       setReferenceMessage("Reading photo...");
+      setActiveFlow("match");
+      setCanRetryReferenceUpload(false);
 
       if (!created?.id) throw new Error("We couldn’t upload that image. Try another photo.");
       const analyzed = await analyzeReferenceFashionItem(created.id);
@@ -377,16 +587,33 @@ export function StylistChat() {
     } catch (uploadError) {
       setReferenceMessage(imageUploadErrorMessage(uploadError) || safeUploadErrorMessage(uploadError, "We couldn’t upload that image. Try another photo."));
       setActiveReference(null);
+      setCanRetryReferenceUpload(true);
     } finally {
       setReferenceBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
+  async function handleReferenceFiles(files: FileList | null) {
+    await handleReferenceFile(files?.[0] || null);
+  }
+
+  async function retryReferenceUpload() {
+    const retry = lastReferenceFileRef.current;
+    if (!retry) {
+      setPickerOpen(true);
+      return;
+    }
+    setFilePickerSource(retry.source);
+    await handleReferenceFile(retry.file, retry.source);
+  }
+
   async function clearActiveReference() {
     const referenceId = activeReference?.id;
     setActiveReference(null);
     setReferenceMessage("");
+    setCanRetryReferenceUpload(false);
+    lastReferenceFileRef.current = null;
     if (referencePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(referencePreviewUrl);
     setReferencePreviewUrl("");
     if (referenceId) void clearReferenceFashionItem(referenceId);
@@ -441,7 +668,7 @@ export function StylistChat() {
           }),
           jobId: null
         });
-        showToast("Avatar preview ready.");
+        showToast("Virtual Try-On ready.");
         return;
       }
 
@@ -478,6 +705,7 @@ export function StylistChat() {
   async function submitStylistMessage(text?: string, options: { includeVisualization?: boolean; visualMode?: StylistVisualMode } = {}) {
     const trimmed = (text ?? message).trim();
     const referenceForMessage = activeReference?.status === "ready" ? activeReference : null;
+    if (referenceForMessage) setActiveFlow("match");
     if ((!trimmed && !referenceForMessage) || loading || referenceBusy) return;
     if (activeReference?.status === "needs-selection") {
       setError("Choose the item you want MyFitPick to style first.");
@@ -613,6 +841,7 @@ export function StylistChat() {
   function renderLookStudio(entry: ChatMessage) {
     const outfit = entry.outfit;
     const reference = entry.referenceItem || outfit?.referenceItems?.[0] || null;
+    const referenceRecommendations = entry.referenceRecommendations || [];
     const preview = entry.avatarPreview;
     const status = preview?.status || "not_started";
     const hasVisualization = entry.visualMode === "digital_human" || Boolean(entry.outfitRecommendationId);
@@ -629,6 +858,54 @@ export function StylistChat() {
             busy={referenceBusy}
           />
         ) : null}
+        {reference ? <DetectedPiecesPanel reference={reference} /> : null}
+        {reference ? <WardrobeMatchPanel reference={reference} recommendations={referenceRecommendations.length ? referenceRecommendations : outfit ? [outfit] : []} /> : null}
+        {referenceRecommendations.length > 1 ? (
+          <div className="rounded-2xl border border-line bg-canvas/65 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-ink">Strong match options</p>
+              <Badge tone="premium">{Math.min(referenceRecommendations.length, 3)} looks</Badge>
+            </div>
+            <div className="mt-3 grid gap-3">
+              {referenceRecommendations.slice(0, 3).map((option, index) => (
+                <div key={option.id || `${option.title}-${index}`} className="rounded-2xl border border-line bg-surface/80 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">{option.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted">{option.occasionFit || option.summary}</p>
+                    </div>
+                    <Badge tone={index === 0 ? "success" : "neutral"}>{index === 0 ? "Best" : `Option ${index + 1}`}</Badge>
+                  </div>
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                    {option.items.slice(0, 5).map((item) => (
+                      <div key={item.id} className="w-24 shrink-0 overflow-hidden rounded-xl border border-line bg-canvas/80">
+                        <ImageFrame
+                          src={item.thumbnailUrl || item.imageUrl}
+                          alt={item.name}
+                          placeholder={item.category}
+                          className="h-20 rounded-none border-0"
+                        />
+                        <p className="truncate px-2 py-1 text-[11px] font-semibold text-ink">{item.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {option.id ? (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <Button type="button" variant="secondary" onClick={() => void saveOutfit(option.id, { title: option.title, favorite: false }).then((result) => showToast(result.ok ? "Look saved." : "Unable to save look right now."))}>
+                        Save look
+                      </Button>
+                      <Link href={`/outfit/${option.id}/preview`} className="block">
+                        <Button type="button" className="w-full">
+                          Generate Virtual Try-On
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {outfit ? <ItemStrip outfit={outfit} /> : null}
 
         {hasVisualization ? (
@@ -642,22 +919,29 @@ export function StylistChat() {
               <ImageFrame
                 src={preview.imageUrl}
                 alt="MyFitPick avatar outfit preview"
-                placeholder="Avatar preview"
-                className="mt-3 rounded-xl"
+                placeholder="Virtual Try-On preview"
+                className="mt-3 min-h-72 rounded-xl sm:min-h-96"
               />
             ) : status === "queued" || status === "generating" || status === "processing" ? (
-              <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-4 text-center">
+              <div className="mt-3 flex min-h-72 items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-4 text-center sm:min-h-96">
                 <p className="text-sm font-semibold text-cocoa">Showing it on your avatar...</p>
               </div>
             ) : (
-              <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-5 text-center">
+              <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-12 text-center">
                 <p className="text-sm leading-6 text-muted">
                   {preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : "Your avatar preview will appear here when available."}
                 </p>
+                {preview?.setupPath ? (
+                  <Link href={preview.setupPath} className="mt-4 inline-flex">
+                    <Button type="button" variant="secondary">
+                      Upload full-body photo
+                    </Button>
+                  </Link>
+                ) : null}
               </div>
             )}
 
-            <p className="mt-3 text-xs leading-5 text-muted">Preview accuracy depends on the saved item photos and avatar details.</p>
+            <p className="mt-3 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
             {fitWarnings.length ? (
               <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
                 {fitWarnings.slice(0, 3).map((warning) => (
@@ -676,13 +960,13 @@ export function StylistChat() {
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {entry.outfitRecommendationId ? (
                 <Button type="button" onClick={() => void handleSaveLook(entry)}>
-                  Save this look
+                  Save look
                 </Button>
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Link href={`/outfit/${entry.outfitRecommendationId}/preview`} className="block">
                   <Button type="button" className="w-full" variant="secondary">
-                    View full look
+                    Use this look
                   </Button>
                 </Link>
               ) : null}
@@ -691,34 +975,18 @@ export function StylistChat() {
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Button type="button" variant="secondary" onClick={() => void submitStylistMessage(`Try another ${outfit?.occasion || "look"} from my wardrobe`, { includeVisualization: true })}>
-                  Try another look
+                  Swap an item
                 </Button>
               ) : null}
               {entry.outfitRecommendationId ? (
                 <Button type="button" variant="secondary" onClick={() => void handleRegenerate(entry)}>
-                  See it on you
+                  Try on
                 </Button>
               ) : null}
-              <Link href="/profile?section=appearance" className="block">
-                <Button type="button" variant="secondary" className="w-full">
-                  Improve size details
+              {reference ? (
+                <Button type="button" variant="ghost" onClick={() => void clearActiveReference()}>
+                  Start another match
                 </Button>
-              </Link>
-              {outfit ? (
-                <>
-                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} more polished`, { includeVisualization: true })}>
-                    Make it more polished
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} simpler`, { includeVisualization: true })}>
-                    Make it simpler
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} more formal`, { includeVisualization: true })}>
-                    Make it more formal
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => void submitStylistMessage(`Make this ${outfit.occasion || "look"} more casual`, { includeVisualization: true })}>
-                    Make it more casual
-                  </Button>
-                </>
               ) : null}
             </div>
           </div>
@@ -729,281 +997,383 @@ export function StylistChat() {
 
   return (
     <section className="space-y-5 pb-4 pt-6">
-      <Card className="space-y-5 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-              <WandSparkles size={14} aria-hidden="true" />
-              Styling appointment
-            </p>
-            <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">What are we dressing for?</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Give the stylist an occasion, mood, setting, or dress code. MyFitPick will work from your saved closet.</p>
-          </div>
-          <Badge tone="premium">Closet-led</Badge>
-        </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
+        capture={filePickerSource === "camera" ? "environment" : undefined}
+        className="sr-only"
+        aria-label="Upload a fashion reference"
+        onChange={(event) => void handleReferenceFiles(event.currentTarget.files)}
+      />
 
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <button
-            type="button"
-            className="focus-ring group min-h-24 rounded-2xl border border-cocoa/25 bg-cocoa/10 px-3 py-4 text-left transition hover:-translate-y-0.5 hover:border-cocoa/45 disabled:opacity-50"
-            onClick={() => setPickerOpen(true)}
-            disabled={loading || referenceBusy}
-          >
-            <ImagePlus size={18} className="text-cocoa" aria-hidden="true" />
-            <span className="mt-4 block text-xs font-bold uppercase tracking-[0.16em] text-ink">Match photo</span>
-            <span className="mt-1 block text-[11px] leading-4 text-muted">Match a photo with my closet</span>
-          </button>
-          {promptSuggestions.map((suggestion) => {
-            const Icon = suggestion.icon;
-            return (
+      {pickerOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end bg-ink/30 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:justify-center">
+          <div role="dialog" aria-modal="true" aria-label="Choose photo source" className="w-full max-w-sm rounded-[1.75rem] border border-line bg-surface p-4 shadow-card">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-ink">Match an Outfit</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Upload a full-outfit reference or a clear fashion screenshot.</p>
+              </div>
               <button
-                key={suggestion.label}
                 type="button"
-                className="focus-ring group min-h-24 rounded-2xl border border-line bg-canvas/60 px-3 py-4 text-left transition hover:-translate-y-0.5 hover:border-cocoa/40 disabled:opacity-50"
-                onClick={() => setMessage(suggestion.prompt)}
-                disabled={loading}
+                className="focus-ring inline-flex size-9 items-center justify-center rounded-full border border-line bg-canvas text-muted"
+                onClick={() => setPickerOpen(false)}
+                aria-label="Close photo picker"
               >
-                <Icon size={18} className="text-cocoa" aria-hidden="true" />
-                <span className="mt-4 block text-xs font-bold uppercase tracking-[0.16em] text-ink">{suggestion.label}</span>
-                <span className="mt-1 block text-[11px] leading-4 text-muted">{suggestion.prompt}</span>
+                <X size={15} aria-hidden="true" />
               </button>
-            );
-          })}
-        </div>
-
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitStylistMessage();
-          }}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
-            capture={filePickerSource === "camera" ? "environment" : undefined}
-            className="sr-only"
-            aria-label="Upload a fashion item photo"
-            onChange={(event) => void handleReferenceFiles(event.currentTarget.files)}
-          />
-
-          {pickerOpen ? (
-            <div className="fixed inset-0 z-50 flex items-end bg-ink/30 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:justify-center">
-              <div role="dialog" aria-modal="true" aria-label="Choose photo source" className="w-full max-w-sm rounded-[1.75rem] border border-line bg-surface p-4 shadow-card">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-ink">Match a photo with your closet</p>
-                    <p className="mt-1 text-xs leading-5 text-muted">Use a fashion item photo where the item is easy to see.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="focus-ring inline-flex size-9 items-center justify-center rounded-full border border-line bg-canvas text-muted"
-                    onClick={() => setPickerOpen(false)}
-                    aria-label="Close photo picker"
-                  >
-                    <X size={15} aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="mt-4 grid gap-2">
-                  <Button type="button" onClick={() => openReferencePicker("camera")}>
-                    <Camera size={16} aria-hidden="true" />
-                    Take photo
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => openReferencePicker("upload")}>
-                    <UploadCloud size={16} aria-hidden="true" />
-                    Upload photo
-                  </Button>
-                </div>
-              </div>
             </div>
-          ) : null}
-
-          {activeReference ? (
-            <div className="space-y-3" aria-live="polite">
-              <ReferenceImageCard
-                reference={activeReference}
-                onClear={() => void clearActiveReference()}
-                onAddToCloset={() => void addActiveReferenceToCloset(activeReference)}
-                busy={referenceBusy}
-              />
-              {activeReference.status === "needs-selection" ? (
-                <ReferenceSelectionCard
-                  reference={activeReference}
-                  onSelect={(detectedItemId) => void chooseDetectedReference(detectedItemId)}
-                  busy={referenceBusy}
-                />
-              ) : null}
+            <div className="mt-4 grid gap-2">
+              <Button type="button" onClick={() => openReferencePicker("camera")}>
+                <Camera size={16} aria-hidden="true" />
+                Take photo
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => openReferencePicker("upload")}>
+                <UploadCloud size={16} aria-hidden="true" />
+                Upload reference
+              </Button>
             </div>
-          ) : referencePreviewUrl ? (
-            <div className="rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
-              <div className="flex items-center gap-3">
-                <ImageFrame
-                  src={referencePreviewUrl}
-                  alt="Selected fashion item preview"
-                  placeholder="Photo"
-                  className="h-16 w-16 shrink-0 rounded-xl"
-                />
-                <div>
-                  <p className="text-sm font-semibold text-ink">Photo selected</p>
-                  <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Preparing photo..."}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {referenceMessage && activeReference ? (
-            <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-2 text-xs font-semibold text-muted" aria-live="polite">
-              {referenceMessage}
-            </p>
-          ) : null}
-
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder={activeReference ? "Ask how to style this photo, or leave blank to match it with your closet..." : "Occasion, mood, weather, dress code..."}
-            className="focus-ring min-h-28 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
-              <input
-                type="checkbox"
-                checked={includeVisualization}
-                onChange={(event) => setIncludeVisualization(event.target.checked)}
-                className="h-4 w-4 rounded border-line accent-cocoa"
-              />
-              Avatar preview
-            </label>
-            <Button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")}>
-              <Sparkles size={16} aria-hidden="true" />
-              {loading ? "Styling..." : activeReference ? "Match my closet" : "Style me"}
-            </Button>
           </div>
-        </form>
-      </Card>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <StylistProductCard
+          title="Create a Look"
+          body="Build an outfit from your wardrobe for an occasion, mood, weather, or favorite piece."
+          action="Create a look"
+          note="Wardrobe first"
+          icon={WandSparkles}
+          active={activeFlow === "create"}
+          onClick={() => chooseFlow("create")}
+        />
+        <StylistProductCard
+          title="Match an Outfit"
+          body="Upload or share a fashion reference. MyFitPick identifies the pieces, finds closet matches, and recreates the look."
+          action="Match an outfit"
+          note="Photo, screenshot, or fashion reference"
+          icon={ImagePlus}
+          featured
+          active={activeFlow === "match"}
+          onClick={() => chooseFlow("match")}
+        />
+      </div>
+
+      <div ref={workspaceRef} className="scroll-mt-6 space-y-5">
+        {activeFlow === "create" ? (
+          <Card className="space-y-4 border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                  <WandSparkles size={14} aria-hidden="true" />
+                  Create a Look
+                </p>
+                <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">What are you dressing for today?</h2>
+              </div>
+              <Badge tone="premium">Closet-led</Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {occasionSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  className={cn(
+                    "focus-ring min-h-12 rounded-2xl border px-3 py-2 text-sm font-semibold transition hover:border-cocoa/40",
+                    message === suggestion.prompt ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-line bg-canvas/70 text-ink"
+                  )}
+                  onClick={() => setMessage(suggestion.prompt)}
+                  aria-pressed={message === suggestion.prompt}
+                  disabled={loading}
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
+
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void submitStylistMessage();
+              }}
+            >
+              <div className="flex flex-wrap gap-2">
+                {promptSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="focus-ring rounded-full border border-line bg-white/70 px-3 py-2 text-xs font-semibold text-muted transition hover:border-cocoa/30 hover:text-ink"
+                    onClick={() => setMessage(suggestion)}
+                    disabled={loading}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+              <label className="sr-only" htmlFor="stylist-create-prompt">Tell your stylist what you need</label>
+              <textarea
+                id="stylist-create-prompt"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Tell your stylist what you need..."
+                className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
+                  <input
+                    type="checkbox"
+                    checked={includeVisualization}
+                    onChange={(event) => setIncludeVisualization(event.target.checked)}
+                    className="h-4 w-4 rounded border-line accent-cocoa"
+                  />
+                  Virtual try-on
+                </label>
+                <Button type="submit" disabled={loading || referenceBusy || !message.trim()}>
+                  <Sparkles size={16} aria-hidden="true" />
+                  {loading ? "Curating..." : "Create look"}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        ) : null}
+
+        {activeFlow === "match" ? (
+          <Card className="space-y-4 overflow-hidden border-cocoa/25 bg-gradient-to-br from-cocoa/10 via-surface to-olive/10">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="space-y-4">
+                <div>
+                  <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                    <ImagePlus size={14} aria-hidden="true" />
+                    Match an Outfit
+                  </p>
+                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Recreate a reference look.</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">Upload a look you want to recreate. MyFitPick will match it with pieces you already own.</p>
+                </div>
+                <MatchFlowVisual />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy}>
+                    <UploadCloud size={16} aria-hidden="true" />
+                    Upload reference
+                  </Button>
+                  {activeReference || referencePreviewUrl ? (
+                    <Button type="button" variant="secondary" onClick={() => void clearActiveReference()} disabled={referenceBusy}>
+                      Start another match
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {activeReference ? (
+                  <div className="space-y-3" aria-live="polite">
+                    <ReferenceImageCard
+                      reference={activeReference}
+                      onClear={() => void clearActiveReference()}
+                      onAddToCloset={() => void addActiveReferenceToCloset(activeReference)}
+                      busy={referenceBusy}
+                    />
+                    {activeReference.status === "needs-selection" ? (
+                      <ReferenceSelectionCard
+                        reference={activeReference}
+                        onSelect={(detectedItemId) => void chooseDetectedReference(detectedItemId)}
+                        busy={referenceBusy}
+                      />
+                    ) : null}
+                    <DetectedPiecesPanel reference={activeReference} busy={referenceBusy} />
+                    <WardrobeMatchPanel reference={activeReference} recommendations={latestLook?.referenceRecommendations || (latestLook?.outfit ? [latestLook.outfit] : [])} />
+                  </div>
+                ) : referencePreviewUrl ? (
+                  <div className="rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
+                    <div className="flex items-center gap-3">
+                      <ImageFrame
+                        src={referencePreviewUrl}
+                        alt="Selected fashion reference preview"
+                        placeholder="Photo"
+                        className="h-20 w-20 shrink-0 rounded-xl"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-ink">Reference selected</p>
+                        <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Studying the look..."}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/70 px-5 text-center">
+                    <div>
+                      <ImagePlus size={26} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
+                      <p className="font-editorial text-3xl font-semibold leading-none text-ink">Upload a look you want to recreate.</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">Photo, screenshot, or fashion reference.</p>
+                    </div>
+                  </div>
+                )}
+
+                {referenceMessage ? (
+                  <div className="rounded-2xl border border-line bg-canvas/60 px-3 py-2" aria-live="polite">
+                    <p className="text-xs font-semibold text-muted">{referenceMessage}</p>
+                    {canRetryReferenceUpload && !activeReference ? (
+                      <Button type="button" variant="secondary" className="mt-2 w-full" onClick={() => void retryReferenceUpload()} disabled={referenceBusy}>
+                        Retry upload
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <form
+                  className="space-y-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitStylistMessage();
+                  }}
+                >
+                  <label className="sr-only" htmlFor="stylist-match-prompt">Add optional direction for this match</label>
+                  <textarea
+                    id="stylist-match-prompt"
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    placeholder="Optional: dinner, work, more casual..."
+                    className="focus-ring min-h-20 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
+                      <input
+                        type="checkbox"
+                        checked={includeVisualization}
+                        onChange={(event) => setIncludeVisualization(event.target.checked)}
+                        className="h-4 w-4 rounded border-line accent-cocoa"
+                      />
+                      Virtual try-on
+                    </label>
+                    <Button type="submit" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
+                      <Sparkles size={16} aria-hidden="true" />
+                      {loading ? "Building..." : "Build matched look"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+      </div>
 
       {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
       {toast ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
-        <Card className="min-h-[28rem] space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-canvas">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                <MessageCircle size={14} aria-hidden="true" />
-                Selected look
-              </p>
-              <h3 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">
-                {latestLook?.outfit?.title || (loading ? "Curating your look" : "No look selected yet")}
-              </h3>
-            </div>
-            {latestLook?.outfit?.completenessStatus ? (
-              <Badge tone={latestLook.outfit.completenessStatus === "complete" ? "success" : "warning"}>
-                {completenessLabel(latestLook.outfit.completenessStatus)}
-              </Badge>
-            ) : null}
-          </div>
-
-          {latestLook ? (
-            <>
-              {renderLookStudio(latestLook)}
-              <div className="rounded-2xl border border-line bg-canvas/60 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist notes</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestLook.content}</p>
-              </div>
-            </>
-          ) : loading ? (
-            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
-              <div className="space-y-2">
-                {loadingSteps.map((step) => (
-                  <p key={step} className="text-sm font-semibold text-muted">{step}</p>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
+      {latestLook || loading || latestAssistant ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+          <Card className="min-h-[28rem] space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-canvas">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-                <p className="font-editorial text-3xl font-semibold leading-none text-ink">Your styled look will appear here.</p>
-                <p className="mt-2 text-xs leading-5 text-muted">Start with an occasion and MyFitPick will pull from your saved wardrobe.</p>
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                  <Layers3 size={14} aria-hidden="true" />
+                  Look studio
+                </p>
+                <h3 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">
+                  {latestLook?.outfit?.title || (loading ? "Curating your look" : "Stylist note")}
+                </h3>
               </div>
+              {latestLook?.outfit?.completenessStatus ? (
+                <Badge tone={latestLook.outfit.completenessStatus === "complete" ? "success" : "warning"}>
+                  {completenessLabel(latestLook.outfit.completenessStatus)}
+                </Badge>
+              ) : null}
             </div>
-          )}
-        </Card>
 
-        <aside className="space-y-4">
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-ink">Style brief</p>
-              <Badge tone={includeVisualization ? "premium" : "neutral"}>
-                {includeVisualization ? "Avatar on" : "Avatar off"}
-              </Badge>
-            </div>
-            {requestHistory.length ? (
-              <div className="space-y-2">
-                {requestHistory.map((entry) => (
-                  <button
-                    key={entry.id}
+            {latestLook ? (
+              <>
+                {renderLookStudio(latestLook)}
+                <div className="rounded-2xl border border-line bg-canvas/60 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestLook.content}</p>
+                </div>
+              </>
+            ) : loading ? (
+              <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
+                <div className="space-y-2">
+                  {loadingSteps.map((step) => (
+                    <p key={step} className="text-sm font-semibold text-muted">{step}</p>
+                  ))}
+                </div>
+              </div>
+            ) : latestAssistant ? (
+              <div className="rounded-2xl border border-line bg-canvas/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestAssistant.content}</p>
+              </div>
+            ) : null}
+          </Card>
+
+          <aside className="space-y-4">
+            <Card className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-ink">Current brief</p>
+                <Badge tone={includeVisualization ? "premium" : "neutral"}>
+                  {includeVisualization ? "Try-on on" : "Try-on off"}
+                </Badge>
+              </div>
+              {requestHistory.length ? (
+                <div className="space-y-2">
+                  {requestHistory.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="focus-ring w-full rounded-2xl border border-line bg-canvas/60 px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
+                      onClick={() => setMessage(entry.content)}
+                    >
+                      {entry.attachment?.imageUrl ? (
+                        <ImageFrame
+                          src={entry.attachment.imageUrl}
+                          alt="Reference photo from this styling request"
+                          placeholder="Photo"
+                          className="mb-2 h-20 rounded-xl"
+                        />
+                      ) : null}
+                      {entry.content}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-3 text-xs leading-5 text-muted">
+                  Choose Create a Look or Match an Outfit to begin.
+                </p>
+              )}
+            </Card>
+
+            <Card className="space-y-3">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                <ArrowUpRight size={16} className="text-cocoa" aria-hidden="true" />
+                Refine
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {["More polished", "Simpler", "More formal", "More casual"].map((label) => (
+                  <Button
+                    key={label}
                     type="button"
-                    className="focus-ring w-full rounded-2xl border border-line bg-canvas/60 px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
-                    onClick={() => setMessage(entry.content)}
+                    variant="secondary"
+                    className="px-3 text-xs"
+                    disabled={!latestLook?.outfit || loading}
+                    onClick={() => void submitStylistMessage(`${label} for this ${latestLook?.outfit?.occasion || "look"}`, { includeVisualization: true })}
                   >
-                    {entry.attachment?.imageUrl ? (
-                      <ImageFrame
-                        src={entry.attachment.imageUrl}
-                        alt="Reference photo from this styling request"
-                        placeholder="Photo"
-                        className="mb-2 h-20 rounded-xl"
-                      />
-                    ) : null}
-                    {entry.content}
-                  </button>
+                    {label}
+                  </Button>
                 ))}
               </div>
-            ) : (
-              <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-3 text-xs leading-5 text-muted">
-                Tell MyFitPick the occasion, weather, dress code, and how dressed-up you want to feel.
-              </p>
-            )}
-          </Card>
+            </Card>
 
-          <Card className="space-y-3">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-              <ArrowUpRight size={16} className="text-cocoa" aria-hidden="true" />
-              Refine the edit
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {["More polished", "Simpler", "More formal", "More casual"].map((label) => (
-                <Button
-                  key={label}
-                  type="button"
-                  variant="secondary"
-                  className="px-3 text-xs"
-                  disabled={!latestLook?.outfit || loading}
-                  onClick={() => void submitStylistMessage(`${label} for this ${latestLook?.outfit?.occasion || "look"}`, { includeVisualization: true })}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </Card>
-
-          {latestAssistant && !latestLook ? (
-            <Card className="space-y-3">
-              <p className="text-sm font-semibold text-ink">Stylist notes</p>
-              {latestAssistant.referenceItem ? (
+            {latestAssistant?.referenceItem && !latestLook ? (
+              <Card className="space-y-3">
+                <p className="text-sm font-semibold text-ink">Reference</p>
                 <ReferenceImageCard
                   reference={latestAssistant.referenceItem}
                   onAddToCloset={() => void addActiveReferenceToCloset(latestAssistant.referenceItem)}
                   busy={referenceBusy}
                 />
-              ) : null}
-              <p className="whitespace-pre-wrap text-xs leading-5 text-muted">{latestAssistant.content}</p>
-            </Card>
-          ) : null}
-        </aside>
-      </div>
+              </Card>
+            ) : null}
+          </aside>
+        </div>
+      ) : null}
     </section>
   );
 }

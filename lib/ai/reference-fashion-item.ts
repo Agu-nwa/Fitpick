@@ -8,12 +8,14 @@ import { safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { logSafeError } from "@/lib/security/safe-log";
+import { deleteStoredObject } from "@/lib/storage";
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/upload-limits";
+import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import type { WardrobeCategory } from "@/types/wardrobe";
 
 const wardrobeCategories = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"] as const;
-const referenceStatuses = ["uploaded", "analyzing", "needs-selection", "ready", "failed"] as const;
+const referenceStatuses = ["uploaded", "analyzing", "needs-selection", "needs_clarification", "ready", "failed", "expired", "converted_to_wardrobe"] as const;
 const publicSourceSchema = z.enum(["camera", "upload"]);
 
 export type ReferenceFashionStatus = typeof referenceStatuses[number];
@@ -205,6 +207,42 @@ export function logReferenceItemEvent(event: {
     errorCategory: event.errorCategory || "",
     timestamp: new Date().toISOString()
   });
+}
+
+function normalizeObjectIds(values: unknown[]) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value || "").trim())
+        .filter((value) => /^[a-f\d]{24}$/i.test(value))
+    )
+  ).slice(0, 12);
+}
+
+function hasReferenceLifecycleProtection(item: any) {
+  return Boolean(
+    item?.savedOutfitId ||
+    item?.convertedWardrobeUploadId ||
+    item?.wardrobeItemId ||
+    String(item?.status || "") === "converted_to_wardrobe" ||
+    (Array.isArray(item?.outfitRecommendationIds) && item.outfitRecommendationIds.length > 0)
+  );
+}
+
+async function referenceHasPersistedOutfitDependency(item: any) {
+  if (!item?._id || !item?.userId) return false;
+  if (hasReferenceLifecycleProtection(item)) return true;
+  const referenceId = String(item._id);
+  const dependency = await OutfitRecommendation.exists({
+    userId: item.userId,
+    $or: [
+      { referenceItemIds: item._id },
+      { "outfitPieces.referenceItemId": referenceId },
+      { "reasoningMetadata.referenceItemIds": referenceId },
+      { "reasoningMetadata.outfitPieces.referenceItemId": referenceId }
+    ]
+  });
+  return Boolean(dependency);
 }
 
 export function referenceItemToPseudoWardrobeItem(item: any) {
@@ -531,4 +569,180 @@ export async function selectDetectedReferenceItem(input: { userId: string; refer
 
   logReferenceItemEvent({ event: "reference_item_selected", userId: input.userId, referenceItemId: input.referenceItemId, status: item.status, category: item.category });
   return { ok: true as const, item };
+}
+
+export async function markReferenceItemsLinkedToOutfit(input: {
+  userId: string;
+  referenceItemIds: unknown[];
+  outfitRecommendationId: string;
+}) {
+  const referenceItemIds = normalizeObjectIds(input.referenceItemIds);
+  if (!referenceItemIds.length || !/^[a-f\d]{24}$/i.test(input.outfitRecommendationId)) return { matchedCount: 0, modifiedCount: 0 };
+
+  const result = await ReferenceFashionItem.updateMany(
+    {
+      _id: { $in: referenceItemIds },
+      userId: input.userId
+    },
+    {
+      $addToSet: { outfitRecommendationIds: input.outfitRecommendationId },
+      $set: { cleanupStatus: "skipped", cleanupError: "" }
+    }
+  );
+
+  for (const referenceItemId of referenceItemIds) {
+    logReferenceItemEvent({ event: "reference_outfit_linked", userId: input.userId, referenceItemId, status: "ready" });
+  }
+
+  return { matchedCount: result.matchedCount || 0, modifiedCount: result.modifiedCount || 0 };
+}
+
+export async function markReferenceItemsSavedWithOutfit(input: {
+  userId: string;
+  referenceItemIds: unknown[];
+  outfitRecommendationId: string;
+}) {
+  const referenceItemIds = normalizeObjectIds(input.referenceItemIds);
+  if (!referenceItemIds.length || !/^[a-f\d]{24}$/i.test(input.outfitRecommendationId)) return { matchedCount: 0, modifiedCount: 0 };
+
+  const result = await ReferenceFashionItem.updateMany(
+    {
+      _id: { $in: referenceItemIds },
+      userId: input.userId
+    },
+    {
+      $set: {
+        savedOutfitId: input.outfitRecommendationId,
+        cleanupStatus: "skipped",
+        cleanupError: ""
+      },
+      $addToSet: { outfitRecommendationIds: input.outfitRecommendationId }
+    }
+  );
+
+  for (const referenceItemId of referenceItemIds) {
+    logReferenceItemEvent({ event: "reference_outfit_saved", userId: input.userId, referenceItemId, status: "ready" });
+  }
+
+  return { matchedCount: result.matchedCount || 0, modifiedCount: result.modifiedCount || 0 };
+}
+
+export async function markReferenceItemConvertedToWardrobe(input: {
+  userId: string;
+  referenceItemId?: unknown;
+  wardrobeUploadId?: unknown;
+  wardrobeItemId: string;
+}) {
+  const referenceItemId = String(input.referenceItemId || "").trim();
+  if (!/^[a-f\d]{24}$/i.test(referenceItemId) || !/^[a-f\d]{24}$/i.test(input.wardrobeItemId)) {
+    return { matchedCount: 0, modifiedCount: 0 };
+  }
+
+  const result = await ReferenceFashionItem.updateOne(
+    {
+      _id: referenceItemId,
+      userId: input.userId
+    },
+    {
+      $set: {
+        wardrobeItemId: input.wardrobeItemId,
+        ...(input.wardrobeUploadId && /^[a-f\d]{24}$/i.test(String(input.wardrobeUploadId)) ? { convertedWardrobeUploadId: String(input.wardrobeUploadId) } : {}),
+        status: "converted_to_wardrobe",
+        cleanupStatus: "skipped",
+        cleanupError: ""
+      }
+    }
+  );
+
+  logReferenceItemEvent({ event: "reference_converted_to_wardrobe", userId: input.userId, referenceItemId, status: "converted_to_wardrobe" });
+  return { matchedCount: result.matchedCount || 0, modifiedCount: result.modifiedCount || 0 };
+}
+
+export async function clearReferenceFashionItem(input: { userId: string; referenceItemId: string }) {
+  const item = await ReferenceFashionItem.findOne({ _id: input.referenceItemId, userId: input.userId });
+  if (!item) return { cleared: false, retained: false, storageDeleted: false };
+
+  const protectedReference = await referenceHasPersistedOutfitDependency(item);
+  if (protectedReference) {
+    item.cleanupStatus = "skipped";
+    item.cleanupError = "";
+    await item.save();
+    logReferenceItemEvent({ event: "reference_clear_skipped_retained", userId: input.userId, referenceItemId: input.referenceItemId, status: item.status });
+    return { cleared: true, retained: true, storageDeleted: false };
+  }
+
+  let storageDeleted = false;
+  if (item.storageKey) {
+    try {
+      const deleted = await deleteStoredObject({ storageKey: item.storageKey });
+      storageDeleted = Boolean(deleted.deleted);
+    } catch (error) {
+      logSafeError("stylist.reference.clear.storage", error, { referenceItemId: input.referenceItemId, userId: input.userId });
+    }
+  }
+
+  await ReferenceFashionItem.deleteOne({ _id: item._id, userId: input.userId });
+  logReferenceItemEvent({ event: "reference_cleared", userId: input.userId, referenceItemId: input.referenceItemId, status: "expired" });
+  return { cleared: true, retained: false, storageDeleted };
+}
+
+export async function expireStaleReferenceFashionItems(input: { olderThan?: Date; limit?: number } = {}) {
+  const now = input.olderThan || new Date();
+  const limit = Math.max(1, Math.min(input.limit || 25, 250));
+  const candidates = await ReferenceFashionItem.find({
+    expiresAt: { $lte: now },
+    cleanupStatus: { $in: ["pending", "failed"] },
+    status: { $nin: ["expired", "converted_to_wardrobe"] }
+  }).sort({ expiresAt: 1 }).limit(limit);
+
+  const result = {
+    scanned: candidates.length,
+    expiredCount: 0,
+    retainedCount: 0,
+    failedCount: 0
+  };
+
+  for (const item of candidates) {
+    const referenceItemId = String(item._id);
+    const userId = String(item.userId);
+    try {
+      if (await referenceHasPersistedOutfitDependency(item)) {
+        item.cleanupStatus = "skipped";
+        item.cleanupAt = new Date();
+        item.cleanupError = "";
+        await item.save();
+        result.retainedCount += 1;
+        logReferenceItemEvent({ event: "reference_cleanup_skipped_retained", userId, referenceItemId, status: item.status });
+        continue;
+      }
+
+      if (item.storageKey) {
+        const deleted = await deleteStoredObject({ storageKey: item.storageKey });
+        if (deleted.ready && !deleted.deleted) {
+          throw new Error("Reference image cleanup could not be completed.");
+        }
+      }
+
+      item.status = "expired";
+      item.usableForMatching = false;
+      item.usableForTryOn = false;
+      item.cleanupStatus = "completed";
+      item.cleanupAt = new Date();
+      item.cleanupError = "";
+      await item.save();
+      result.expiredCount += 1;
+      logReferenceItemEvent({ event: "reference_cleanup_completed", userId, referenceItemId, status: "expired" });
+    } catch (error) {
+      logSafeError("stylist.reference.cleanup", error, { referenceItemId, userId });
+      item.status = "expired";
+      item.cleanupStatus = "failed";
+      item.cleanupAt = new Date();
+      item.cleanupError = "Reference cleanup will be retried.";
+      await item.save();
+      result.failedCount += 1;
+      logReferenceItemEvent({ event: "reference_cleanup_failed", userId, referenceItemId, status: "expired", errorCategory: errorCategory(error) });
+    }
+  }
+
+  return result;
 }

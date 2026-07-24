@@ -286,7 +286,7 @@ export function EssentialModelSetup() {
             <CheckCircle2 size={14} aria-hidden="true" />
             Later, when useful
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted">Virtual try-on will ask for a full-body model image inside Avatar Studio. Outfit recommendations work from your closet without that step.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Virtual Try-On will ask for a full-body photo inside Profile. Outfit recommendations work from your closet without that step.</p>
         </section>
 
         <div>

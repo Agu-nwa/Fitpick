@@ -24,6 +24,8 @@ assert(countries.some((country) => country.code === "CA" && country.name === "Ca
 const canadianCities = searchLocationCities({ countryCode: "CA", query: "", limit: 50 });
 assert(isSorted(canadianCities.map((city) => city.cityName)), "cities should be alphabetical within country");
 assert(canadianCities.some((city) => city.cityName === "Toronto"), "Toronto should be available for Canada");
+const calgarySearch = searchLocationCities({ countryCode: "CA", query: "calg", limit: 20 });
+assert(calgarySearch.some((city) => city.cityName === "Calgary"), "Calgary should be available for Canada");
 
 const torontoSearch = searchLocationCities({ countryCode: "CA", query: "tor", limit: 20 });
 assert(torontoSearch.length === 1 && torontoSearch[0].cityName === "Toronto", "city search should find Toronto");
@@ -34,8 +36,12 @@ const weatherCard = read("components/home/WeatherStylingCard.tsx");
 assert(!weatherCard.includes('href="/profile/preferences"'), "Home weather card should not redirect to Profile Preferences");
 assert(weatherCard.includes("LocationSelector"), "Home weather card should open the location selector");
 assert(weatherCard.includes("Choose city") && weatherCard.includes("Change city"), "Home weather card should keep choose/change city actions");
+assert(weatherCard.includes("Retry weather"), "Home weather card should expose retry when weather is unavailable");
 assert(weatherCard.includes("session.refresh()"), "Home save flow should refetch user session");
 assert(weatherCard.includes("loadWeather({"), "Home save flow should refetch weather after save");
+const unavailableCopyCount = (weatherCard.match(/Weather is temporarily unavailable/g) || []).length;
+assert(unavailableCopyCount === 1, "Home weather card should not render duplicate unavailable messages");
+assert(!weatherCard.includes("setStatusMessage(safeUserMessage(result.data.safeMessage"), "Unavailable weather copy should not be duplicated in live status text");
 
 const selector = read("components/home/LocationSelector.tsx");
 assert(selector.includes('role="dialog"') && selector.includes('aria-modal="true"'), "selector should be an accessible modal dialog");
@@ -59,6 +65,7 @@ const weatherRoute = read("app/api/weather/forecast/route.ts");
 const weatherService = read("lib/weather/weather-service.ts");
 assert(weatherRoute.includes("Weather is temporarily unavailable. Your location is still saved."), "weather route should use graceful failure copy");
 assert(weatherRoute.includes("weatherErrorMetadata"), "weather route should log structured provider metadata");
+assert(weatherService.includes("process.env.OPENWEATHER_API_KEY"), "weather provider should document the exact required env variable in code");
 assert(weatherService.includes("WeatherProviderError"), "weather service should expose structured provider errors");
 assert(weatherService.includes("retryable") && weatherService.includes("provider_timeout"), "weather service should classify retryable transient failures");
 assert(weatherService.includes("weatherCacheTtlMs"), "weather service should cache provider responses");

@@ -13,7 +13,7 @@ export function AppShell({ children, showNav = true, className }: { children: Re
       <FashionBackdrop density="soft" />
       {showNav ? <DesktopNav /> : null}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cn("mx-auto flex w-full max-w-[1480px] flex-1 flex-col px-5 pb-[calc(7.5rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))] sm:px-8 lg:px-12 lg:pb-12 lg:pt-10 xl:px-16", className)}>
+        <div className={cn("mx-auto flex w-full max-w-[1480px] flex-1 flex-col px-5 pb-[calc(10rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))] sm:px-8 lg:px-12 lg:pb-12 lg:pt-10 xl:px-16", className)}>
           {showNav ? <MobileAccountNav /> : null}
           {children}
         </div>

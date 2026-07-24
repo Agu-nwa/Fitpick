@@ -15,6 +15,7 @@ import {
   buildWardrobeSearchMetadata
 } from "@/lib/wardrobe/enrichment";
 import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
+import { markReferenceItemConvertedToWardrobe } from "@/lib/ai/reference-fashion-item";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadTagReviewSchema } from "@/schemas/wardrobe.schema";
@@ -196,6 +197,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     };
     upload.enrichmentStatus = backgroundJobsEnabled() ? "queued" : "completed";
     await upload.save();
+    const referenceItemId = (upload.userInputMetadata as any)?.referenceItemId;
+    if (referenceItemId) {
+      await markReferenceItemConvertedToWardrobe({
+        userId: String(auth.user._id),
+        referenceItemId,
+        wardrobeUploadId: String(upload._id),
+        wardrobeItemId: String(item._id)
+      });
+    }
 
     if (backgroundJobsEnabled()) {
       await enqueueJob(

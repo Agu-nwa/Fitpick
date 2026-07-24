@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { referenceItemToPseudoWardrobeItem, referenceItemToWardrobeAiAnalysis, serializeReferenceFashionItem } from "../lib/ai/reference-fashion-item";
+import {
+  clearReferenceFashionItem,
+  expireStaleReferenceFashionItems,
+  markReferenceItemConvertedToWardrobe,
+  markReferenceItemsLinkedToOutfit,
+  markReferenceItemsSavedWithOutfit,
+  referenceItemToPseudoWardrobeItem,
+  referenceItemToWardrobeAiAnalysis,
+  serializeReferenceFashionItem
+} from "../lib/ai/reference-fashion-item";
 import { buildReferenceOutfitRecommendations } from "../lib/recommendation/reference-matching";
 
 function field(value: unknown, confidence = 0.92, source = "user_confirmed") {
@@ -126,5 +135,10 @@ assert.ok(first.outfitPieces.some((piece: any) => piece.source === "reference-up
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "wardrobe" && piece.wardrobeItemId), "outfit pieces must include saved wardrobe sources");
 assert.equal(first.referenceItems[0]?.id, referenceItem._id);
 assert.equal(first.similarityMetadata?.source, "reference-upload");
+assert.equal(typeof markReferenceItemsLinkedToOutfit, "function", "reference items must link to generated outfit records");
+assert.equal(typeof markReferenceItemsSavedWithOutfit, "function", "saved looks must preserve temporary reference metadata");
+assert.equal(typeof markReferenceItemConvertedToWardrobe, "function", "explicit closet conversion must mark reference records");
+assert.equal(typeof clearReferenceFashionItem, "function", "clearing a reference must be lifecycle-aware");
+assert.equal(typeof expireStaleReferenceFashionItems, "function", "abandoned temporary references must have cleanup support");
 
 console.log("Stylist reference item checks passed.");
