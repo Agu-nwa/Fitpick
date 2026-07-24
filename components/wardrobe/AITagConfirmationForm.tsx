@@ -7,7 +7,7 @@ import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { confidenceLabel, garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
-import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory } from "@/types/wardrobe";
+import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
 
 type FieldKind = "text" | "list" | "category";
 
@@ -97,6 +97,11 @@ const hiddenAiFields: FieldConfig[] = [
 
 const allFields = [...essentialFields, ...hiddenAiFields];
 const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
+const conditionOptions: Array<{ value: WardrobeCondition; label: string; helper: string }> = [
+  { value: "ready", label: "Ready", helper: "Clean, wearable, and fully usable for styling." },
+  { value: "needs-care", label: "Needs care", helper: "Requires cleaning, repair, steaming, or attention before wearing." },
+  { value: "missing-tags", label: "Needs more detail", helper: "Keep this when important styling details are still uncertain." }
+];
 const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
 const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "custom"];
 const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];
@@ -132,6 +137,11 @@ function splitList(value: string) {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 20);
+}
+
+function hasMeaningfulValue(value: string | undefined) {
+  const cleaned = String(value || "").trim().toLowerCase();
+  return Boolean(cleaned && cleaned !== "unknown" && cleaned !== "n/a" && cleaned !== "none");
 }
 
 function clampScore(key: string, value: string) {
@@ -205,6 +215,7 @@ export function AITagConfirmationForm({
   const [measurementSource, setMeasurementSource] = useState<MeasurementSource>("unknown");
   const [fitConfidence, setFitConfidence] = useState("0");
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
+  const [condition, setCondition] = useState<WardrobeCondition>("ready");
   const [error, setError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
   const fitDetailsRef = useRef<HTMLDetailsElement>(null);
@@ -218,6 +229,21 @@ export function AITagConfirmationForm({
     return garmentMeasurementFields.filter((field) => allowed.has(field.key));
   }, [values.category, values.subcategory]);
   const visibleMeasurementKeys = useMemo(() => visibleMeasurementFields.map((field) => field.key), [visibleMeasurementFields]);
+  const stylistReadinessChecks = useMemo(() => {
+    const material = values.fabricComposition || values.fabricEstimate;
+    const fit = values.fit || (garmentFit !== "unknown" ? garmentFit : "");
+    return [
+      { label: "Category", ready: hasMeaningfulValue(values.category) },
+      { label: "Subtype", ready: hasMeaningfulValue(values.subcategory) },
+      { label: "Colour", ready: hasMeaningfulValue(values.primaryColor) },
+      { label: "Material", ready: hasMeaningfulValue(material) },
+      { label: "Fit", ready: hasMeaningfulValue(fit) },
+      { label: "Occasion", ready: splitList(values.occasionSuitability || "").length > 0 },
+      { label: "Weather", ready: splitList(values.weatherSuitability || "").length > 0 },
+      { label: "Readiness", ready: Boolean(condition) }
+    ];
+  }, [condition, garmentFit, values]);
+  const stylistReadyCount = stylistReadinessChecks.filter((check) => check.ready).length;
 
   useEffect(() => {
     const next = initialValues;
@@ -233,6 +259,7 @@ export function AITagConfirmationForm({
     setMeasurementSource(fieldFromAnalysis(aiAnalysis, "size")?.source === "ocr" ? "label_ocr" : normalizeOption(fieldFromAnalysis(aiAnalysis, "measurementSource")?.value, measurementSourceOptions, "ai_estimated"));
     setFitConfidence(String(Math.max(fieldFromAnalysis(aiAnalysis, "fit")?.confidence ?? 0, fieldFromAnalysis(aiAnalysis, "garmentFit")?.confidence ?? 0).toFixed(2)));
     setGarmentMeasurements({});
+    setCondition(splitList(next.occasionSuitability || "").length && next.category && next.primaryColor ? "ready" : "missing-tags");
   }, [aiAnalysis, initialValues, selectedDefaults?.itemLabel, selectedDefaults?.subcategory]);
 
   useEffect(() => {
@@ -267,6 +294,9 @@ export function AITagConfirmationForm({
       fabricDrape: { value: fabricDrape, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "fabricDrape")?.confidence ?? 0, source: "user_confirmed" as const },
       fitConfidence: { value: Math.max(0, Math.min(1, Number(fitConfidence) || 0)), confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "fitConfidence")?.confidence ?? 0, source: "user_confirmed" as const },
       measurementSource: { value: measurementSource, confidence: 1, originalConfidence: fieldFromAnalysis(aiAnalysis, "measurementSource")?.confidence ?? 0, source: "user_confirmed" as const }
+    });
+    Object.assign(verifiedFields, {
+      condition: { value: condition, confidence: 1, originalConfidence: 0, source: "user_confirmed" as const }
     });
 
     return verifiedFields;
@@ -308,7 +338,7 @@ export function AITagConfirmationForm({
       fabricDrape,
       fitConfidence: Math.max(0, Math.min(1, Number(fitConfidence) || 0)),
       measurementSource,
-      condition: "ready",
+      condition,
       verifiedFields: buildVerifiedFields()
     });
   }
@@ -324,7 +354,7 @@ export function AITagConfirmationForm({
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <p className="text-sm font-semibold text-ink">Confirm what MyFitPick detected</p>
         <p className="mt-1 text-xs leading-5 text-muted">
-          Review the essentials. Anything you save becomes the trusted wardrobe detail.
+          Review the essentials. Category, colour, material, fit, occasion, weather, and readiness guide your stylist later.
         </p>
         {lowConfidenceCount ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
@@ -344,6 +374,33 @@ export function AITagConfirmationForm({
       </div>
 
       {error ? <p ref={errorRef} className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+
+      <section className="rounded-2xl border border-olive/20 bg-olive/10 p-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-ink">Stylist-ready checklist</h3>
+            <p className="mt-1 text-xs leading-5 text-muted">Confirm what you know. Leave uncertain details blank instead of guessing.</p>
+          </div>
+          <Badge tone={stylistReadyCount >= stylistReadinessChecks.length ? "success" : "warning"}>
+            {stylistReadyCount}/{stylistReadinessChecks.length}
+          </Badge>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stylistReadinessChecks.map((check) => (
+            <div key={check.label} className="rounded-2xl border border-line bg-white/75 px-3 py-2">
+              <p className="truncate text-xs font-bold text-ink">{check.label}</p>
+              <p className={`mt-1 text-[11px] font-semibold ${check.ready ? "text-success" : "text-muted"}`}>
+                {check.ready ? "Set" : "Review"}
+              </p>
+            </div>
+          ))}
+        </div>
+        {values.category === "shoes" ? (
+          <p className="mt-3 rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
+            This item is saved as shoes, so MyFitPick can use it as footwear when completing outfits.
+          </p>
+        ) : null}
+      </section>
 
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3">
@@ -389,6 +446,16 @@ export function AITagConfirmationForm({
               </FieldGroup>
             );
           })}
+        </div>
+        <div className="mt-3">
+          <FieldGroup label="Readiness" htmlFor="ai-field-condition">
+            <select id="ai-field-condition" className={inputClass} value={condition} onChange={(event) => setCondition(event.target.value as WardrobeCondition)}>
+              {conditionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </FieldGroup>
+          <p className="mt-2 text-xs leading-5 text-muted">
+            {conditionOptions.find((option) => option.value === condition)?.helper}
+          </p>
         </div>
       </section>
 

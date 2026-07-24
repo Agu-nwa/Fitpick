@@ -252,7 +252,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
                 Review details
               </p>
               <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what MyFitPick detected.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">Check the category, colour, material, fit, and size details before saving the item to your closet.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">Check the category, subtype, colour, material, fit, occasion, weather, and readiness before saving the item to your closet.</p>
             </div>
           </div>
           <ProgressSteps steps={reviewSteps} />

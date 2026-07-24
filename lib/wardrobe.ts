@@ -12,6 +12,7 @@ export function inferCondition(input: {
   condition?: "ready" | "needs-care" | "missing-tags";
 }) {
   if (input.condition === "needs-care") return "needs-care";
+  if (input.condition === "missing-tags") return "missing-tags";
 
   const hasMinimumTags = Boolean(input.category && input.color && input.occasions?.length);
   return hasMinimumTags ? "ready" : "missing-tags";

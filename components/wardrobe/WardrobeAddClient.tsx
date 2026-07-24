@@ -81,6 +81,13 @@ type FileTarget = {
 
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
 
+const stylistPhotoGuide = [
+  { title: "Main/front", body: "A clear full view anchors the item." },
+  { title: "Back or side", body: "Extra angles improve shape and structure." },
+  { title: "Fabric/detail", body: "Texture, pattern, and hardware help styling." },
+  { title: "Label", body: "Size, brand, material, and care details improve accuracy." }
+];
+
 function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
   if (!uploaded) return undefined;
   return {
@@ -137,7 +144,7 @@ export function WardrobeAddClient() {
   const [activeTarget, setActiveTarget] = useState<FileTarget>({ purpose: "front" });
   const [slotFiles, setSlotFiles] = useState<Partial<Record<WardrobeImagePurpose, SlotFile>>>({});
   const [additionalFiles, setAdditionalFiles] = useState<SlotFile[]>([]);
-  const [labelEnabled, setLabelEnabled] = useState(false);
+  const [labelEnabled, setLabelEnabled] = useState(true);
   const [selectedLabelKinds, setSelectedLabelKinds] = useState<LabelPhotoKind[]>(["care_label", "brand_label", "size_tag"]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [draftNotice, setDraftNotice] = useState("");
@@ -708,6 +715,13 @@ export function WardrobeAddClient() {
             )}
           </div>
 
+          <div className="mt-5 rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Stylist priority</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Shoes, bottoms, outerwear, and versatile basics make outfit recommendations stronger as your closet grows.
+            </p>
+          </div>
+
           <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-6 flex justify-end rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
               Continue
@@ -742,6 +756,17 @@ export function WardrobeAddClient() {
           {selectedCategory ? (
             <div className="rounded-2xl border border-line bg-canvas/60 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo guide</p>
+              <p className="mt-2 text-xs leading-5 text-muted">
+                Add front, back, fabric/detail, and label photos when you have them. The main photo is required; the rest make styling and try-on smarter.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {stylistPhotoGuide.map((guide) => (
+                  <div key={guide.title} className="rounded-2xl border border-line bg-white/70 p-3">
+                    <p className="text-xs font-bold text-ink">{guide.title}</p>
+                    <p className="mt-1 text-[11px] leading-4 text-muted">{guide.body}</p>
+                  </div>
+                ))}
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {selectedCategory.guidance.map((guide) => <Badge key={guide} tone="neutral">{guide}</Badge>)}
               </div>
@@ -863,7 +888,7 @@ export function WardrobeAddClient() {
               <div>
                 <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                   <Tag size={14} aria-hidden="true" />
-                  Optional label intelligence
+                  Recommended label intelligence
                 </p>
                 <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Would you like MyFitPick to read the item label?</h2>
                 <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
@@ -871,7 +896,7 @@ export function WardrobeAddClient() {
                 </p>
               </div>
               <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={toggleLabelReading} disabled={isSaving || isAnalyzing}>
-                {labelEnabled ? "Label reading on" : "Add label photos"}
+                {labelEnabled ? "Label reading on" : "Add label slot"}
               </Button>
             </div>
 
