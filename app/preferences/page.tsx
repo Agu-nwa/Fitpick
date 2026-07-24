@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function StyleProfilePage() {
+export default function PreferencesRedirectPage() {
   redirect("/profile?section=style");
 }

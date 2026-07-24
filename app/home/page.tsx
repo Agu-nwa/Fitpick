@@ -2,9 +2,6 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SimpleHomeActions } from "@/components/home/SimpleHomeActions";
 import { SimpleStartGuide } from "@/components/onboarding/SimpleStartGuide";
 import { WeatherStylingCard } from "@/components/home/WeatherStylingCard";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Button } from "@/components/ui/Button";
-import Link from "next/link";
 
 export default function HomePage() {
   return (
@@ -23,17 +20,6 @@ export default function HomePage() {
       <div className="mt-6 flex flex-col gap-6">
         <WeatherStylingCard />
         <SimpleHomeActions />
-        <section>
-          <SectionHeader title="Continue" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/outfit">
-              <Button variant="secondary" className="w-full rounded-full">Pick an outfit</Button>
-            </Link>
-            <Link href="/wallet">
-              <Button variant="secondary" className="w-full rounded-full">Check credits</Button>
-            </Link>
-          </div>
-        </section>
         <SimpleStartGuide />
       </div>
     </AppShell>

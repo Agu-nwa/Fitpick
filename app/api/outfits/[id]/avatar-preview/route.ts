@@ -142,7 +142,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return apiError("SETUP_REQUIRED", "Set up your try-on model before generating this preview.", {
         details: {
           progressiveTrigger: serializeProgressiveTrigger(tryOnSetupTrigger),
-          setupPath: "/avatar"
+          setupPath: "/profile?section=appearance"
         }
       });
     }

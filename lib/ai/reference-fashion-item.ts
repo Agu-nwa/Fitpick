@@ -8,6 +8,7 @@ import { safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { logSafeError } from "@/lib/security/safe-log";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import type { WardrobeCategory } from "@/types/wardrobe";
 
@@ -26,7 +27,7 @@ export const referenceFashionItemCreateSchema = z
     source: publicSourceSchema.default("upload"),
     filename: z.string().trim().max(180).optional(),
     mimeType: z.string().trim().max(80).optional(),
-    sizeBytes: z.number().int().positive().max(20 * 1024 * 1024).optional(),
+    sizeBytes: z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES).optional(),
     width: z.number().int().positive().max(12000).optional(),
     height: z.number().int().positive().max(12000).optional()
   })

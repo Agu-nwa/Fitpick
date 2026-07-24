@@ -34,22 +34,22 @@ export function AvatarStudioClient() {
     if (session.status === "authenticated") void loadProfile();
   }, [loadProfile, session.status]);
 
-  if (session.status === "loading" || status === "loading") return <LoadingState title="Loading your avatar" />;
+  if (session.status === "loading" || status === "loading") return <LoadingState title="Loading appearance profile" />;
   if (session.status === "logged-out") return <AuthRequiredState />;
   if (session.status === "backend-unavailable" || status === "unavailable") {
     return <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadProfile} />;
   }
   if (status === "error") {
-    return <ApiErrorState title="Avatar unavailable" message="Unable to load your avatar right now." onRetry={loadProfile} />;
+    return <ApiErrorState title="Appearance profile unavailable" message="Unable to load your appearance profile right now." onRetry={loadProfile} />;
   }
 
   if (!profile) {
     return (
       <Card className="p-4">
-        <p className="text-sm font-semibold text-ink">You have not created your avatar yet.</p>
-        <p className="mt-2 text-sm leading-6 text-muted">Create one now, or add your size later to improve outfit previews.</p>
+        <p className="text-sm font-semibold text-ink">Your appearance profile is ready to set up.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Add your model photo and size details to improve outfit previews.</p>
         <Button type="button" className="mt-4 w-full" onClick={() => void loadProfile()}>
-          Create my avatar
+          Open appearance setup
         </Button>
       </Card>
     );

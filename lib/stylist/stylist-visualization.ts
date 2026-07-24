@@ -573,7 +573,7 @@ export async function triggerDigitalHumanPreviewForStylist(
         status: "failed",
         errorMessage: "Set up your try-on model before generating this preview.",
         progressiveTrigger: serializeProgressiveTrigger(tryOnSetupTrigger),
-        setupPath: "/avatar"
+        setupPath: "/profile?section=appearance"
       })
     });
   }

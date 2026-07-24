@@ -699,7 +699,7 @@ export function StylistChat() {
                   See it on you
                 </Button>
               ) : null}
-              <Link href="/avatar" className="block">
+              <Link href="/profile?section=appearance" className="block">
                 <Button type="button" variant="secondary" className="w-full">
                   Improve size details
                 </Button>

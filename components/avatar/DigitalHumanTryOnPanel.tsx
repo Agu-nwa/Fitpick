@@ -166,7 +166,7 @@ export function DigitalHumanTryOnPanel({
               View full look
             </Button>
           </Link>
-          <Link href="/avatar">
+          <Link href="/profile?section=appearance">
             <Button type="button" variant="secondary" className="w-full">{setupRequired ? "Set up try-on model" : "Improve size details"}</Button>
           </Link>
           {previewUrl ? (

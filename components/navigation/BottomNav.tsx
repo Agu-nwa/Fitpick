@@ -9,7 +9,7 @@ export const primaryNavItems: Array<{ label: string; href: string; icon: LucideI
   { label: "Home", href: "/home", icon: Home },
   { label: "Closet", href: "/wardrobe", icon: Shirt },
   { label: "Stylist", href: "/stylist", icon: Sparkles },
-  { label: "Avatar", href: "/avatar", icon: UserRound }
+  { label: "Profile", href: "/profile", icon: UserRound }
 ];
 
 export function BottomNav() {

@@ -31,9 +31,14 @@ export function StyleProfileForm() {
   const [error, setError] = useState("");
   const [favoriteColors, setFavoriteColors] = useState("");
   const [dislikedColors, setDislikedColors] = useState("");
+  const [favoriteBrands, setFavoriteBrands] = useState("");
+  const [dislikedBrands, setDislikedBrands] = useState("");
   const [preferredFits, setPreferredFits] = useState("");
+  const [dislikedFits, setDislikedFits] = useState("");
   const [preferredOccasions, setPreferredOccasions] = useState("");
   const [eventStylePreferences, setEventStylePreferences] = useState("");
+  const [preferredCategories, setPreferredCategories] = useState("");
+  const [avoidedCategories, setAvoidedCategories] = useState("");
   const [notes, setNotes] = useState("");
   const [fashionRiskLevel, setFashionRiskLevel] = useState<"conservative" | "balanced" | "expressive">("balanced");
   const [comfortPriority, setComfortPriority] = useState<"low" | "medium" | "high">("medium");
@@ -52,9 +57,14 @@ export function StyleProfileForm() {
       setProfile(next);
       setFavoriteColors(joinList(next.favoriteColors));
       setDislikedColors(joinList(next.dislikedColors));
+      setFavoriteBrands(joinList(next.favoriteBrands));
+      setDislikedBrands(joinList(next.dislikedBrands));
       setPreferredFits(joinList(next.preferredFits));
+      setDislikedFits(joinList(next.dislikedFits));
       setPreferredOccasions(joinList(next.preferredOccasions));
       setEventStylePreferences(joinList(next.eventStylePreferences));
+      setPreferredCategories(joinList(next.preferredCategories));
+      setAvoidedCategories(joinList(next.avoidedCategories));
       setNotes(joinList(next.notes));
       setFashionRiskLevel(next.fashionRiskLevel);
       setComfortPriority(next.comfortPriority);
@@ -69,9 +79,14 @@ export function StyleProfileForm() {
     const result = await updateStyleProfile({
       favoriteColors: splitList(favoriteColors),
       dislikedColors: splitList(dislikedColors),
+      favoriteBrands: splitList(favoriteBrands),
+      dislikedBrands: splitList(dislikedBrands),
       preferredFits: splitList(preferredFits),
+      dislikedFits: splitList(dislikedFits),
       preferredOccasions: splitList(preferredOccasions),
       eventStylePreferences: splitList(eventStylePreferences),
+      preferredCategories: splitList(preferredCategories),
+      avoidedCategories: splitList(avoidedCategories),
       notes: splitList(notes),
       fashionRiskLevel,
       comfortPriority,
@@ -121,8 +136,30 @@ export function StyleProfileForm() {
         <FieldGroup label="Preferred fits" htmlFor="preferred-fits">
           <input id="preferred-fits" className={inputClass} value={preferredFits} onChange={(event) => setPreferredFits(event.target.value)} placeholder="slim, tailored, relaxed" />
         </FieldGroup>
+        <FieldGroup label="Disliked fits" htmlFor="disliked-fits">
+          <input id="disliked-fits" className={inputClass} value={dislikedFits} onChange={(event) => setDislikedFits(event.target.value)} placeholder="too tight, oversized" />
+        </FieldGroup>
         <FieldGroup label="Preferred occasions" htmlFor="preferred-occasions">
-          <input id="preferred-occasions" className={inputClass} value={preferredOccasions} onChange={(event) => setPreferredOccasions(event.target.value)} placeholder="church, business casual, date night" />
+          <input id="preferred-occasions" className={inputClass} value={preferredOccasions} onChange={(event) => setPreferredOccasions(event.target.value)} placeholder="business casual, date night, dinner" />
+        </FieldGroup>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">Fine tuning</h3>
+          <p className="mt-1 text-xs leading-5 text-muted">These signals are used gently and never override the occasion.</p>
+        </div>
+        <FieldGroup label="Favorite brands" htmlFor="favorite-brands">
+          <input id="favorite-brands" className={inputClass} value={favoriteBrands} onChange={(event) => setFavoriteBrands(event.target.value)} placeholder="COS, Uniqlo, Zara" />
+        </FieldGroup>
+        <FieldGroup label="Disliked brands" htmlFor="disliked-brands">
+          <input id="disliked-brands" className={inputClass} value={dislikedBrands} onChange={(event) => setDislikedBrands(event.target.value)} placeholder="Brands to avoid" />
+        </FieldGroup>
+        <FieldGroup label="Preferred categories" htmlFor="preferred-categories">
+          <input id="preferred-categories" className={inputClass} value={preferredCategories} onChange={(event) => setPreferredCategories(event.target.value)} placeholder="tops, shoes, outerwear" />
+        </FieldGroup>
+        <FieldGroup label="Avoided categories" htmlFor="avoided-categories">
+          <input id="avoided-categories" className={inputClass} value={avoidedCategories} onChange={(event) => setAvoidedCategories(event.target.value)} placeholder="accessories, outerwear" />
         </FieldGroup>
         <FieldGroup label="Event style preferences" htmlFor="event-style-preferences">
           <input id="event-style-preferences" className={inputClass} value={eventStylePreferences} onChange={(event) => setEventStylePreferences(event.target.value)} placeholder="weddings, business dinners, black tie" />

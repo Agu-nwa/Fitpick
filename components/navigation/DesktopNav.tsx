@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Settings, Sparkles, UserRound } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { primaryNavItems } from "@/components/navigation/BottomNav";
 import { WalletBalancePill } from "@/components/wallet/WalletBalancePill";
@@ -41,30 +41,6 @@ export function DesktopNav() {
               <Icon size={18} strokeWidth={active ? 2.3 : 1.7} aria-hidden="true" />
               <span>{item.label}</span>
               {active ? <span className="ml-auto size-1.5 rounded-full bg-lime" /> : null}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <nav className="mt-6 border-t border-line pt-6" aria-label="Account navigation">
-        {[
-          { label: "Profile", href: "/profile", icon: UserRound },
-          { label: "Settings", href: "/profile/preferences", icon: Settings }
-        ].map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "focus-ring flex min-h-10 items-center gap-3 rounded-full px-4 text-xs font-bold transition duration-300",
-                active ? "bg-cocoa/12 text-ink" : "text-muted hover:bg-white hover:text-ink"
-              )}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon size={16} strokeWidth={active ? 2.3 : 1.7} aria-hidden="true" />
-              <span>{item.label}</span>
             </Link>
           );
         })}

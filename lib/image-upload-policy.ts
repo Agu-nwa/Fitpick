@@ -30,6 +30,9 @@ export type ImageUploadFileLike = {
   lastModified?: number;
 };
 
+export const MAX_IMAGE_UPLOAD_MB = 50;
+export const MAX_IMAGE_UPLOAD_BYTES = MAX_IMAGE_UPLOAD_MB * 1024 * 1024;
+
 export type ImageUploadDiagnostics = {
   stage?: ImageUploadStage;
   source?: ImageUploadSource;
@@ -63,7 +66,7 @@ export const IMAGE_UPLOAD_POLICY = {
   supportedExtensions: ["jpg", "jpeg", "png", "webp", "heic", "heif"] as const,
   acceptedOutputMimeType: "image/jpeg" as const,
   acceptedOutputExtension: "jpg" as const,
-  maxInputBytes: 20 * 1024 * 1024,
+  maxInputBytes: MAX_IMAGE_UPLOAD_BYTES,
   maxDimensionPx: 4096,
   compressionQuality: 0.9,
   minimumCompressionQuality: 0.78,
@@ -74,8 +77,6 @@ export const IMAGE_UPLOAD_POLICY = {
 } as const;
 
 export const DEFAULT_ALLOWED_IMAGE_MIME_TYPES = IMAGE_UPLOAD_POLICY.supportedInputMimeTypes;
-export const MAX_IMAGE_UPLOAD_BYTES = IMAGE_UPLOAD_POLICY.maxInputBytes;
-export const MAX_IMAGE_UPLOAD_MB = MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024);
 
 const mimeByExtension: Record<string, typeof IMAGE_UPLOAD_POLICY.supportedInputMimeTypes[number]> = {
   jpg: "image/jpeg",
