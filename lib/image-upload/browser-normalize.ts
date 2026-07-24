@@ -9,6 +9,7 @@ import {
   messageForImageUploadError,
   normalizedImageFilename,
   safeImageUploadDiagnostics,
+  validateImageByteCandidate,
   validateImageFileCandidate
 } from "@/lib/image-upload-policy";
 
@@ -20,6 +21,7 @@ export type NormalizedImageUpload = {
   original: ImageUploadDiagnostics;
   normalizedMimeType: string;
   normalizedSizeBytes: number;
+  serverNormalizationRequired?: boolean;
   warnings: string[];
 };
 
@@ -109,9 +111,10 @@ function timeout<T>(promise: Promise<T>, ms: number, onTimeout: () => never) {
 async function ensureReadable(file: File, options: NormalizeOptions) {
   emit("preparing", file, options);
   try {
-    await timeout(file.slice(0, Math.min(file.size, 1024 * 1024)).arrayBuffer(), IMAGE_UPLOAD_POLICY.fileReadTimeoutMs, () => {
+    const head = await timeout(file.slice(0, Math.min(file.size, 4096)).arrayBuffer(), IMAGE_UPLOAD_POLICY.fileReadTimeoutMs, () => {
       throw new ImageUploadError("ICLOUD_FILE_UNAVAILABLE", messageForImageUploadError("ICLOUD_FILE_UNAVAILABLE"), withBrowserDiagnostics(file, { stage: "preparing", source: options.source || "unknown", reason: "read_timeout" }));
     });
+    return new Uint8Array(head);
   } catch (error) {
     if (error instanceof ImageUploadError) throw error;
     fail("ICLOUD_FILE_UNAVAILABLE", file, { stage: "preparing", source: options.source || "unknown", reason: "read_failed" }, error);
@@ -120,22 +123,18 @@ async function ensureReadable(file: File, options: NormalizeOptions) {
 
 async function convertHeicToJpeg(file: File, options: NormalizeOptions) {
   emit("converting", file, options, { reason: "heic_heif" });
-  try {
-    const heic2any = (await import("heic2any")).default as (input: {
-      blob: Blob;
-      toType: string;
-      quality?: number;
-    }) => Promise<Blob | Blob[]>;
-    const converted = await heic2any({ blob: file, toType: IMAGE_UPLOAD_POLICY.acceptedOutputMimeType, quality: IMAGE_UPLOAD_POLICY.compressionQuality });
-    const blob = Array.isArray(converted) ? converted[0] : converted;
-    if (!blob || blob.size <= 0) throw new Error("empty_heic_conversion");
-    return new File([blob], normalizedImageFilename(file.name), {
-      type: IMAGE_UPLOAD_POLICY.acceptedOutputMimeType,
-      lastModified: file.lastModified || Date.now()
-    });
-  } catch (error) {
-    fail("IMAGE_CONVERSION_FAILED", file, { stage: "converting", source: options.source || "unknown", reason: "heic_conversion_failed" }, error);
-  }
+  const heic2any = (await import("heic2any")).default as (input: {
+    blob: Blob;
+    toType: string;
+    quality?: number;
+  }) => Promise<Blob | Blob[]>;
+  const converted = await heic2any({ blob: file, toType: IMAGE_UPLOAD_POLICY.fallbackOutputMimeType, quality: IMAGE_UPLOAD_POLICY.compressionQuality });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!blob || blob.size <= 0) throw new Error("empty_heic_conversion");
+  return new File([blob], normalizedImageFilename(file.name, IMAGE_UPLOAD_POLICY.fallbackOutputExtension), {
+    type: IMAGE_UPLOAD_POLICY.fallbackOutputMimeType,
+    lastModified: file.lastModified || Date.now()
+  });
 }
 
 async function decodeImage(file: File, options: NormalizeOptions): Promise<ImageBitmap | HTMLImageElement> {
@@ -184,8 +183,8 @@ function dimensionsOf(image: ImageBitmap | HTMLImageElement) {
   return { width, height };
 }
 
-async function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
-  return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, IMAGE_UPLOAD_POLICY.acceptedOutputMimeType, quality));
+async function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number) {
+  return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, quality));
 }
 
 async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageElement) {
@@ -197,24 +196,40 @@ async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageE
   const canvas = document.createElement("canvas");
   canvas.width = outputWidth;
   canvas.height = outputHeight;
-  const context = canvas.getContext("2d", { alpha: false });
+  const context = canvas.getContext("2d", { alpha: true });
   if (!context) throw new Error("canvas_unavailable");
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, outputWidth, outputHeight);
+  context.clearRect(0, 0, outputWidth, outputHeight);
   context.drawImage(image, 0, 0, outputWidth, outputHeight);
 
   const qualities = [IMAGE_UPLOAD_POLICY.compressionQuality, 0.86, 0.82, IMAGE_UPLOAD_POLICY.minimumCompressionQuality];
   let blob: Blob | null = null;
+  let mimeType: "image/webp" | "image/jpeg" = IMAGE_UPLOAD_POLICY.acceptedOutputMimeType;
   for (const quality of qualities) {
-    blob = await canvasToBlob(canvas, quality);
+    blob = await canvasToBlob(canvas, IMAGE_UPLOAD_POLICY.acceptedOutputMimeType, quality);
     if (blob && blob.size > 0 && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes) break;
+  }
+
+  if (!blob || blob.size <= 0 || blob.size > IMAGE_UPLOAD_POLICY.maxInputBytes) {
+    const jpegCanvas = document.createElement("canvas");
+    jpegCanvas.width = outputWidth;
+    jpegCanvas.height = outputHeight;
+    const jpegContext = jpegCanvas.getContext("2d", { alpha: false });
+    if (!jpegContext) throw new Error("canvas_unavailable");
+    jpegContext.fillStyle = "#ffffff";
+    jpegContext.fillRect(0, 0, outputWidth, outputHeight);
+    jpegContext.drawImage(canvas, 0, 0);
+    mimeType = IMAGE_UPLOAD_POLICY.fallbackOutputMimeType;
+    for (const quality of qualities) {
+      blob = await canvasToBlob(jpegCanvas, IMAGE_UPLOAD_POLICY.fallbackOutputMimeType, quality);
+      if (blob && blob.size > 0 && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes) break;
+    }
   }
 
   if (!blob || blob.size <= 0) throw new Error("canvas_blob_failed");
   if (blob.size > IMAGE_UPLOAD_POLICY.maxInputBytes) throw new Error("normalized_too_large");
 
-  const normalized = new File([blob], normalizedImageFilename(file.name), {
-    type: IMAGE_UPLOAD_POLICY.acceptedOutputMimeType,
+  const normalized = new File([blob], normalizedImageFilename(file.name, mimeType === IMAGE_UPLOAD_POLICY.acceptedOutputMimeType ? IMAGE_UPLOAD_POLICY.acceptedOutputExtension : IMAGE_UPLOAD_POLICY.fallbackOutputExtension), {
+    type: mimeType,
     lastModified: file.lastModified || Date.now()
   });
 
@@ -224,18 +239,44 @@ async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageE
 export async function normalizeImageForUpload(file: File, options: NormalizeOptions = {}): Promise<NormalizedImageUpload> {
   emit("selected", file, options);
   const validation = validateImageFileCandidate(file, options.source || "unknown");
-  if (!validation.ok) {
+  if (!validation.ok && !["IMAGE_TYPE_UNSUPPORTED", "IMAGE_MIME_UNKNOWN"].includes(validation.error.code)) {
     breadcrumb("failed", validation.error.diagnostics);
     Sentry.captureException(validation.error, { tags: { area: "image_upload", code: validation.error.code }, extra: validation.error.diagnostics });
     throw validation.error;
   }
 
-  emit("validating", file, options, { reason: validation.detected.hasMimeExtensionMismatch ? "mime_extension_mismatch" : undefined });
-  await ensureReadable(file, options);
+  const headBytes = await ensureReadable(file, options);
+  const byteValidation = validateImageByteCandidate(file, headBytes, options.source || "unknown");
+  if (!byteValidation.ok) {
+    breadcrumb("failed", byteValidation.error.diagnostics);
+    Sentry.captureException(byteValidation.error, { tags: { area: "image_upload", code: byteValidation.error.code }, extra: byteValidation.error.diagnostics });
+    throw byteValidation.error;
+  }
+
+  emit("validating", file, options, {
+    detectedMimeType: byteValidation.detected.detectedMimeType,
+    reason: byteValidation.detected.hasMimeExtensionMismatch ? "mime_extension_mismatch" : byteValidation.detected.detectedBy
+  });
 
   const original = withBrowserDiagnostics(file, { stage: "selected", source: options.source || "unknown" });
-  const detected = detectImageFileType(file);
-  const prepared = detected.isHeicLike ? await convertHeicToJpeg(file, options) : file;
+  const detected = detectImageFileType(file, { format: byteValidation.detected.format, mimeType: byteValidation.detected.detectedMimeType, extension: byteValidation.detected.extension || "", reason: byteValidation.detected.detectedBy });
+  let prepared = file;
+  if (detected.isHeicLike) {
+    try {
+      prepared = await convertHeicToJpeg(file, options);
+    } catch {
+      const previewUrl = URL.createObjectURL(file);
+      return {
+        file: new File([file], file.name || "fitpick-photo", { type: detected.detectedMimeType || file.type || "", lastModified: file.lastModified || Date.now() }),
+        previewUrl,
+        original,
+        normalizedMimeType: detected.detectedMimeType || file.type || "",
+        normalizedSizeBytes: file.size,
+        serverNormalizationRequired: true,
+        warnings: []
+      };
+    }
+  }
 
   let normalizedFile = prepared;
   let width: number | undefined;
@@ -250,6 +291,18 @@ export async function normalizeImageForUpload(file: File, options: NormalizeOpti
     width = normalized.width;
     height = normalized.height;
   } catch (error) {
+    if (byteValidation.detected.isSupportedMimeType) {
+      const previewUrl = URL.createObjectURL(file);
+      return {
+        file: new File([file], file.name || "fitpick-photo", { type: detected.detectedMimeType || file.type || "", lastModified: file.lastModified || Date.now() }),
+        previewUrl,
+        original,
+        normalizedMimeType: detected.detectedMimeType || file.type || "",
+        normalizedSizeBytes: file.size,
+        serverNormalizationRequired: true,
+        warnings: ["Image will be prepared after upload."]
+      };
+    }
     fail(detected.isHeicLike ? "IMAGE_CONVERSION_FAILED" : "IMAGE_DECODE_FAILED", file, { stage: "generating-preview", source: options.source || "unknown", reason: error instanceof Error ? error.message : "decode_failed" }, error);
   }
 

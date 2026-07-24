@@ -59,6 +59,7 @@ type SlotFile = {
   width?: number;
   height?: number;
   original?: NormalizedImageUpload["original"];
+  serverNormalizationRequired?: boolean;
   source: ImageUploadSource;
 };
 
@@ -269,6 +270,7 @@ export function WardrobeAddClient() {
           width: normalized.width,
           height: normalized.height,
           original: normalized.original,
+          serverNormalizationRequired: normalized.serverNormalizationRequired,
           source
         }
       };
@@ -286,6 +288,7 @@ export function WardrobeAddClient() {
         width: normalized.width,
         height: normalized.height,
         original: normalized.original,
+        serverNormalizationRequired: normalized.serverNormalizationRequired,
         source
       });
     }
@@ -396,18 +399,38 @@ export function WardrobeAddClient() {
     setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
     const dimensions = { width: slot.width, height: slot.height };
 
-    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string }): UploadedSlot => ({
+    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number }): UploadedSlot => ({
       url: input.url,
       storageKey: input.storageKey,
       provider: "s3",
       uploadedAt: new Date().toISOString(),
       purpose,
-      filename: slot.file.name,
-      mimeType,
-      sizeBytes: slot.file.size,
-      ...dimensions,
+      filename: input.filename || slot.file.name,
+      mimeType: input.mimeType || mimeType,
+      sizeBytes: input.sizeBytes || slot.file.size,
+      width: input.width || dimensions.width,
+      height: input.height || dimensions.height,
       thumbnailUrl: input.url
     });
+
+    if (slot.serverNormalizationRequired) {
+      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
+      if (fallback.ok) {
+        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true, normalizedOnServer: true } });
+        return makeUploadedSlot({
+          url: fallback.data.upload.publicUrl,
+          storageKey: fallback.data.upload.storageKey,
+          filename: fallback.data.upload.filename,
+          mimeType: fallback.data.upload.mimeType,
+          sizeBytes: fallback.data.upload.sizeBytes,
+          width: fallback.data.upload.width,
+          height: fallback.data.upload.height
+        });
+      }
+      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "server_normalization_failed" } });
+      throw new Error(safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again."));
+    }
 
     const signed = await requestSignedUploadUrl({
       filename: slot.file.name,
@@ -422,7 +445,15 @@ export function WardrobeAddClient() {
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+        return makeUploadedSlot({
+          url: fallback.data.upload.publicUrl,
+          storageKey: fallback.data.upload.storageKey,
+          filename: fallback.data.upload.filename,
+          mimeType: fallback.data.upload.mimeType,
+          sizeBytes: fallback.data.upload.sizeBytes,
+          width: fallback.data.upload.width,
+          height: fallback.data.upload.height
+        });
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "upload_access_failed" } });
       throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again.")));
@@ -453,7 +484,15 @@ export function WardrobeAddClient() {
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({ url: fallback.data.upload.publicUrl, storageKey: fallback.data.upload.storageKey });
+        return makeUploadedSlot({
+          url: fallback.data.upload.publicUrl,
+          storageKey: fallback.data.upload.storageKey,
+          filename: fallback.data.upload.filename,
+          mimeType: fallback.data.upload.mimeType,
+          sizeBytes: fallback.data.upload.sizeBytes,
+          width: fallback.data.upload.width,
+          height: fallback.data.upload.height
+        });
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "direct_upload_failed" } });
       throw new Error(safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again."));

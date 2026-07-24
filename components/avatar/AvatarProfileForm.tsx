@@ -85,6 +85,15 @@ export function AvatarProfileForm({
         }
       });
 
+      if (normalized.serverNormalizationRequired) {
+        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
+        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "Unable to upload your full-body photo."));
+
+        await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
+        URL.revokeObjectURL(normalized.previewUrl);
+        return;
+      }
+
       const signed = await requestSignedUploadUrl({
         filename: normalized.file.name,
         mimeType: normalized.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType,

@@ -211,6 +211,22 @@ export type ServerUploadData = {
     provider: string;
     storageKey: string;
     publicUrl: string;
+    filename?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+    width?: number;
+    height?: number;
+    normalized?: {
+      originalMimeType?: string;
+      detectedMimeType?: string;
+      detectedFormat?: string;
+      originalSizeBytes?: number;
+      originalWidth?: number;
+      originalHeight?: number;
+      outputMimeType?: string;
+      outputSizeBytes?: number;
+      warnings?: string[];
+    };
     maxSizeBytes: number;
     allowedMimeTypes: string[];
     nextAction: string;

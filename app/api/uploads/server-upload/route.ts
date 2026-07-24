@@ -7,9 +7,9 @@ import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadImageObject } from "@/lib/storage";
-import { imageUploadRequirementText } from "@/lib/upload-limits";
-import { formatZodError } from "@/lib/validation";
-import { signedUploadSchema } from "@/schemas/upload.schema";
+import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
+import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
+import { uploadPurposeSchema } from "@/schemas/upload.schema";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -28,26 +28,25 @@ export async function POST(request: NextRequest) {
       return apiError("VALIDATION_ERROR", "Choose an image to upload.");
     }
 
-    const parsed = signedUploadSchema.safeParse({
-      filename: file.name || "wardrobe-upload",
-      mimeType: file.type || "image/jpeg",
-      sizeBytes: file.size,
-      purpose: typeof purpose === "string" ? purpose : "wardrobe_original"
-    });
-
-    if (!parsed.success) {
-      return apiError("VALIDATION_ERROR", imageUploadRequirementText(), {
-        details: formatZodError(parsed.error)
-      });
+    if (typeof file.size === "number" && file.size > getMaxImageSizeBytes()) {
+      return apiError("VALIDATION_ERROR", messageForImageUploadError("IMAGE_TOO_LARGE"));
     }
+    const parsedPurpose = uploadPurposeSchema.safeParse(typeof purpose === "string" ? purpose : "wardrobe_original");
+    if (!parsedPurpose.success) return apiError("VALIDATION_ERROR", imageUploadRequirementText());
 
+    const body = Buffer.from(await file.arrayBuffer());
+    const normalized = await normalizeUploadedImageBuffer({
+      buffer: body,
+      filename: file.name || "wardrobe-upload",
+      mimeType: file.type || "",
+      source: parsedPurpose.data === "avatar_model" ? "avatar_model" : "unknown"
+    });
     const storageKey = createStorageKey({
       userId: String(auth.user._id),
-      filename: parsed.data.filename,
-      purpose: parsed.data.purpose
+      filename: normalized.filename,
+      purpose: parsedPurpose.data
     });
-    const body = Buffer.from(await file.arrayBuffer());
-    const uploaded = await uploadImageObject({ storageKey, mimeType: parsed.data.mimeType, body });
+    const uploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
 
     await recordAuditEvent({
       request,
@@ -64,6 +63,22 @@ export async function POST(request: NextRequest) {
           provider: uploaded.provider,
           storageKey: uploaded.storageKey,
           publicUrl: uploaded.url,
+          filename: normalized.filename,
+          mimeType: normalized.mimeType,
+          sizeBytes: normalized.sizeBytes,
+          width: normalized.width,
+          height: normalized.height,
+          normalized: {
+            originalMimeType: normalized.original.mimeType,
+            detectedMimeType: normalized.original.detectedMimeType,
+            detectedFormat: normalized.original.detectedFormat,
+            originalSizeBytes: normalized.original.sizeBytes,
+            originalWidth: normalized.original.width,
+            originalHeight: normalized.original.height,
+            outputMimeType: normalized.mimeType,
+            outputSizeBytes: normalized.sizeBytes,
+            warnings: normalized.warnings
+          },
           maxSizeBytes: getMaxImageSizeBytes(),
           allowedMimeTypes: getAllowedImageTypes(),
           nextAction: "uploaded_to_s3"
@@ -73,6 +88,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     logSafeError("uploads.server-upload", error);
+    if (error instanceof ImageUploadError) {
+      return apiError("VALIDATION_ERROR", error.message || "We couldn't process this image. Try another photo.");
+    }
     return apiError("INTERNAL_ERROR", "Unable to upload image right now.");
   }
 }

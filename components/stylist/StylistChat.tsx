@@ -494,17 +494,35 @@ export function StylistChat() {
   async function uploadReferenceImage(normalized: NormalizedImageUpload, source: "camera" | "upload") {
     const file = normalized.file;
     const mimeType = file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType;
-    const makePayload = (input: { publicUrl: string; storageKey: string }) => ({
+    const makePayload = (input: { publicUrl: string; storageKey: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number }) => ({
       conversationId: conversationIdRef.current,
       imageUrl: input.publicUrl,
       storageKey: input.storageKey,
       source,
-      filename: file.name,
-      mimeType,
-      sizeBytes: file.size,
-      ...(normalized.width ? { width: normalized.width } : {}),
-      ...(normalized.height ? { height: normalized.height } : {})
+      filename: input.filename || file.name,
+      mimeType: input.mimeType || mimeType,
+      sizeBytes: input.sizeBytes || file.size,
+      ...(input.width || normalized.width ? { width: input.width || normalized.width } : {}),
+      ...(input.height || normalized.height ? { height: input.height || normalized.height } : {})
     });
+
+    if (normalized.serverNormalizationRequired) {
+      const fallback = await uploadImageViaServer({ file, purpose: "stylist_reference" });
+      if (!fallback.ok) {
+        throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload that image. Try another photo."));
+      }
+      const created = await createReferenceFashionItem(makePayload({
+        publicUrl: fallback.data.upload.publicUrl,
+        storageKey: fallback.data.upload.storageKey,
+        filename: fallback.data.upload.filename,
+        mimeType: fallback.data.upload.mimeType,
+        sizeBytes: fallback.data.upload.sizeBytes,
+        width: fallback.data.upload.width,
+        height: fallback.data.upload.height
+      }));
+      if (!created.ok) throw new Error(safeUserMessage(created.error, "We couldn’t upload that image. Try another photo."));
+      return created.data.referenceItem;
+    }
 
     const signed = await requestSignedUploadUrl({
       filename: file.name,

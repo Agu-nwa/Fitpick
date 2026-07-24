@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText } from "@/lib/upload-limits";
+import { MAX_IMAGE_UPLOAD_BYTES, NORMALIZED_STORAGE_IMAGE_MIME_TYPES, imageUploadRequirementText } from "@/lib/upload-limits";
 
-export const allowedUploadMimeTypes = DEFAULT_ALLOWED_IMAGE_MIME_TYPES;
+export const allowedUploadMimeTypes = NORMALIZED_STORAGE_IMAGE_MIME_TYPES;
 
 export const uploadPurposeSchema = z
   .enum([

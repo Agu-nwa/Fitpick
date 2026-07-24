@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText } from "@/lib/upload-limits";
+import { MAX_IMAGE_UPLOAD_BYTES, NORMALIZED_STORAGE_IMAGE_MIME_TYPES, imageUploadRequirementText } from "@/lib/upload-limits";
 import { sanitizeGarmentMeasurementsForCategory as sanitizeMeasurementObjectForCategory } from "@/lib/wardrobe/category-intelligence";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier.");
@@ -160,7 +160,7 @@ export const wardrobeFiltersSchema = z.object({
   archived: z.enum(["true", "false"]).optional()
 });
 
-const allowedMimeTypes = DEFAULT_ALLOWED_IMAGE_MIME_TYPES;
+const allowedMimeTypes = NORMALIZED_STORAGE_IMAGE_MIME_TYPES;
 
 const imagePurposeSchema = z.enum(["front", "back", "fabricCloseUp", "label", "additional"]);
 const intakeGroupSchema = z.enum(["clothing", "shoes", "bags", "accessories"]);

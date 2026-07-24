@@ -3,7 +3,8 @@ import { assertEnvReady } from "@/lib/config/env";
 import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
 import { deleteGeneratedImage, getGeneratedImageUrl } from "@/lib/storage/generated-images";
 import { normalizeStorageKey } from "@/lib/storage/url";
-import { DEFAULT_ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB } from "@/lib/upload-limits";
+import { imageUploadRequirementText } from "@/lib/image-upload-policy";
+import { MAX_IMAGE_UPLOAD_BYTES, MAX_IMAGE_UPLOAD_MB, NORMALIZED_STORAGE_IMAGE_MIME_TYPES } from "@/lib/upload-limits";
 
 export type StorageProvider = "s3";
 
@@ -11,10 +12,7 @@ const service = "s3";
 const extensionByMime: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/heic": "heic",
-  "image/heif": "heif"
+  "image/webp": "webp"
 };
 
 export function storageProvider(): StorageProvider {
@@ -78,7 +76,7 @@ export function getAllowedImageTypes() {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  return configured.length ? configured : [...DEFAULT_ALLOWED_IMAGE_MIME_TYPES];
+  return configured.length ? configured : [...NORMALIZED_STORAGE_IMAGE_MIME_TYPES];
 }
 
 export function getMaxImageSizeBytes() {
@@ -173,7 +171,7 @@ export async function createSignedUploadUrl(input: {
       storageKey,
       maxSizeBytes: validation.maxSizeBytes,
       allowedMimeTypes: validation.allowedMimeTypes,
-      message: `Choose a JPG, PNG, WebP, or HEIC image under ${MAX_IMAGE_UPLOAD_MB} MB.`,
+      message: imageUploadRequirementText(),
       nextAction: "choose_supported_image"
     };
   }
