@@ -1,20 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Camera, ImagePlus, Layers3, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Camera, ImagePlus, Layers3, RotateCcw, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
-import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import {
   analyzeReferenceFashionItem,
   clearReferenceFashionItem,
   createReferenceFashionItem,
-  generateAvatarPreview,
   getJobStatus,
   requestSignedUploadUrl,
   saveOutfit,
@@ -24,7 +21,6 @@ import {
 } from "@/lib/api-client";
 import { imageUploadErrorMessage, normalizeImageForUpload, type NormalizedImageUpload } from "@/lib/image-upload/browser-normalize";
 import { IMAGE_UPLOAD_POLICY, type ImageUploadSource } from "@/lib/image-upload-policy";
-import { completenessLabel } from "@/lib/recommendation/completeness";
 import { safeTryOnErrorMessage, safeUploadErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, ReferenceFashionItemSummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
@@ -51,6 +47,7 @@ type ChatMessage = {
 };
 
 type StylistFlow = "home" | "create" | "match";
+type StylistProductMode = "hub" | "create" | "match";
 
 const occasionSuggestions = [
   { label: "Work", prompt: "Create a polished work look from my wardrobe." },
@@ -82,21 +79,6 @@ function messageId() {
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function previewTone(status?: string) {
-  if (status === "ready") return "success" as const;
-  if (status === "failed") return "danger" as const;
-  if (status === "queued" || status === "generating" || status === "processing") return "premium" as const;
-  return "neutral" as const;
-}
-
-function previewLabel(status?: string) {
-  if (status === "ready") return "Avatar ready";
-  if (status === "failed") return "Preview failed";
-  if (status === "queued") return "Preview waiting";
-  if (status === "generating" || status === "processing") return "Showing outfit";
-  return "See it on you";
 }
 
 function compactPreview(preview?: Partial<StylistAvatarPreview>): StylistAvatarPreview {
@@ -195,25 +177,6 @@ function MatchFlowVisual() {
   );
 }
 
-function matchTone(label: string) {
-  if (label === "Exact") return "success" as const;
-  if (label === "Close match") return "premium" as const;
-  if (label === "Alternative") return "info" as const;
-  return "warning" as const;
-}
-
-function itemMatchesReference(item: OutfitRecommendation["items"][number], reference?: ReferenceFashionItemSummary | null) {
-  const category = `${item.category || ""} ${item.subcategory || ""}`.toLowerCase();
-  const referenceCategory = `${reference?.category || ""} ${reference?.subcategory || ""}`.toLowerCase();
-  const itemColor = `${item.color || ""}`.toLowerCase();
-  const referenceColor = `${reference?.primaryColor || ""}`.toLowerCase();
-  const categoryMatch = Boolean(referenceCategory && category && (category.includes(referenceCategory) || referenceCategory.includes(category.split(" ")[0] || "")));
-  const colorMatch = Boolean(referenceColor && itemColor && (itemColor.includes(referenceColor) || referenceColor.includes(itemColor)));
-  if (categoryMatch && colorMatch) return "Exact";
-  if (categoryMatch) return "Close match";
-  return "Alternative";
-}
-
 function DetectedPiecesPanel({
   reference,
   busy
@@ -258,53 +221,6 @@ function DetectedPiecesPanel({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function WardrobeMatchPanel({
-  reference,
-  recommendations
-}: {
-  reference?: ReferenceFashionItemSummary | null;
-  recommendations?: OutfitRecommendation[];
-}) {
-  const primaryRecommendation = recommendations?.[0] || null;
-  if (!primaryRecommendation) return null;
-  const matchedItems = primaryRecommendation?.items || [];
-
-  return (
-    <div className="rounded-2xl border border-line bg-canvas/65 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Closet pairings</p>
-        <Badge tone="premium">FitPick version</Badge>
-      </div>
-      <div className="mt-3 grid gap-2">
-        {matchedItems.slice(0, 5).map((item) => {
-          const label = itemMatchesReference(item, reference);
-          return (
-            <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface/80 p-2">
-              <ImageFrame
-                src={item.thumbnailUrl || item.imageUrl}
-                alt={item.name}
-                placeholder={item.category}
-                className="h-14 w-14 shrink-0 rounded-lg"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
-                <p className="truncate text-xs text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
-              </div>
-              <Badge tone={matchTone(label)}>{label}</Badge>
-            </div>
-          );
-        })}
-        {primaryRecommendation.missingCategories?.slice(0, 3).map((category) => (
-          <div key={category} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2">
-            <span className="text-sm font-semibold text-ink">{category}</span>
-            <Badge tone="warning">Missing</Badge>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -391,45 +307,149 @@ function ReferenceSelectionCard({
   );
 }
 
-function ItemStrip({ outfit }: { outfit: OutfitRecommendation }) {
+function outfitVisualImages(outfit: OutfitRecommendation, preview?: StylistAvatarPreview) {
+  const previewImage = preview?.imageUrl || outfit.preview?.imageUrl || outfit.referenceItems?.[0]?.imageUrl || "";
+  const itemImages = outfit.items
+    .map((item) => item.thumbnailUrl || item.imageUrl || "")
+    .filter(Boolean)
+    .slice(0, 6);
+  return { previewImage, itemImages };
+}
+
+function shortEditorialLine(outfit: OutfitRecommendation) {
+  const itemNames = outfit.items
+    .slice(0, 3)
+    .map((item) => item.name)
+    .filter(Boolean);
+
+  if (outfit.referenceItems?.length) return "A closet-led interpretation of your inspiration.";
+  if (itemNames.length >= 2) return `${itemNames.join(", ")} bring the look into focus.`;
+  if (outfit.occasion) return `A refined option for ${outfit.occasion}.`;
+  return "A refined option from your closet.";
+}
+
+function EditorialOutfitVisual({
+  outfit,
+  preview,
+  featured = false
+}: {
+  outfit: OutfitRecommendation;
+  preview?: StylistAvatarPreview;
+  featured?: boolean;
+}) {
+  const { previewImage, itemImages } = outfitVisualImages(outfit, preview);
+
+  if (previewImage) {
+    return (
+      <ImageFrame
+        src={previewImage}
+        alt={`${outfit.title} preview`}
+        placeholder={outfit.title}
+        className={cn("min-h-[24rem] rounded-[1.75rem] sm:min-h-[30rem]", featured ? "lg:min-h-[36rem]" : "lg:min-h-[28rem]")}
+      />
+    );
+  }
+
   return (
-    <div className="mt-3 space-y-2">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Clothes from your closet</p>
-      <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
-        {outfit.items.map((item) => (
-          <div key={item.id} className="w-32 shrink-0 overflow-hidden rounded-xl border border-line bg-surface/80">
-            <ImageFrame
-              src={item.thumbnailUrl || item.imageUrl}
-              alt={item.name}
-              placeholder={item.category}
-              className="rounded-none border-0"
-            />
-            <div className="space-y-1 p-2">
-              <p className="truncate text-xs font-semibold text-ink">{item.name}</p>
-              <p className="truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className={cn("grid min-h-[24rem] grid-cols-2 gap-2 rounded-[1.75rem] border border-line bg-canvas/70 p-2 sm:min-h-[30rem]", featured ? "lg:min-h-[36rem]" : "lg:min-h-[28rem]")}>
+      {(itemImages.length ? itemImages : [""]).slice(0, 4).map((imageUrl, index) => (
+        <ImageFrame
+          key={`${imageUrl || "placeholder"}-${index}`}
+          src={imageUrl}
+          alt={outfit.items[index]?.name || "Outfit piece"}
+          placeholder={outfit.items[index]?.category || "Closet piece"}
+          className="h-full rounded-[1.25rem]"
+        />
+      ))}
     </div>
   );
 }
 
-export function StylistChat() {
-  const router = useRouter();
+function EditorialRecommendationCard({
+  outfit,
+  preview,
+  featured = false,
+  eyebrow,
+  onSave,
+  saveDisabled = false
+}: {
+  outfit: OutfitRecommendation;
+  preview?: StylistAvatarPreview;
+  featured?: boolean;
+  eyebrow: string;
+  onSave: () => void;
+  saveDisabled?: boolean;
+}) {
+  const detailsHref = outfit.id ? `/outfit/${outfit.id}/preview` : "";
+
+  return (
+    <article className={cn("overflow-hidden rounded-[2rem] border bg-surface shadow-card", featured ? "border-cocoa/25" : "border-line")}>
+      <div className={cn("grid gap-5 p-3 sm:p-4", featured ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]")}>
+        <EditorialOutfitVisual outfit={outfit} preview={preview} featured={featured} />
+        <div className="flex flex-col justify-between gap-5 p-2 sm:p-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={featured ? "success" : "neutral"}>{eyebrow}</Badge>
+              {outfit.footwearIncluded === false ? <Badge tone="warning">Shoes missing</Badge> : null}
+            </div>
+            <h3 className={cn("font-editorial mt-4 font-semibold leading-[0.92] text-ink", featured ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl")}>
+              {outfit.title}
+            </h3>
+            <p className="mt-4 truncate text-sm leading-6 text-muted">{shortEditorialLine(outfit)}</p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              {detailsHref ? (
+                <Link
+                  href={detailsHref}
+                  className="focus-ring inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-cocoa px-5 py-3 text-center text-sm font-semibold leading-5 text-canvas shadow-glow transition hover:bg-cocoa/90 active:scale-[0.99] active:bg-espresso"
+                >
+                  Virtual Try-On
+                </Link>
+              ) : (
+                <Button type="button" disabled>
+                  Virtual Try-On
+                </Button>
+              )}
+              <Button type="button" variant="secondary" onClick={onSave} disabled={saveDisabled || !outfit.id}>
+                Save Look
+              </Button>
+            </div>
+            {detailsHref ? (
+              <Link href={detailsHref} className="inline-flex text-xs font-bold uppercase tracking-[0.14em] text-cocoa">
+                View Details
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function StylistChat({
+  initialFlow = "home",
+  productMode = "hub"
+}: {
+  initialFlow?: StylistFlow;
+  productMode?: StylistProductMode;
+} = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const lookStudioRef = useRef<HTMLDivElement>(null);
   const lastReferenceFileRef = useRef<{ file: File; source: "camera" | "upload" } | null>(null);
+  const lastCreateBriefRef = useRef("");
   const conversationIdRef = useRef(`stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const revealContent = useRevealContent();
-  const [activeFlow, setActiveFlow] = useState<StylistFlow>("home");
+  const [activeFlow, setActiveFlow] = useState<StylistFlow>(initialFlow);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [includeVisualization, setIncludeVisualization] = useState(true);
+  const [isRegeneratingLooks, setIsRegeneratingLooks] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [filePickerSource, setFilePickerSource] = useState<"camera" | "upload">("upload");
   const [referenceBusy, setReferenceBusy] = useState(false);
@@ -437,6 +457,7 @@ export function StylistChat() {
   const [referencePreviewUrl, setReferencePreviewUrl] = useState("");
   const [activeReference, setActiveReference] = useState<ReferenceFashionItemSummary | null>(null);
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
+  const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
   const latestAssistant = useMemo(
     () => [...messages].reverse().find((entry) => entry.role === "assistant"),
@@ -444,10 +465,6 @@ export function StylistChat() {
   );
   const latestLook = useMemo(
     () => [...messages].reverse().find((entry) => entry.role === "assistant" && (entry.outfit || entry.outfitRecommendationId)),
-    [messages]
-  );
-  const requestHistory = useMemo(
-    () => messages.filter((entry) => entry.role === "user").slice(-3).reverse(),
     [messages]
   );
 
@@ -702,7 +719,7 @@ export function StylistChat() {
     });
   }
 
-  async function submitStylistMessage(text?: string, options: { includeVisualization?: boolean; visualMode?: StylistVisualMode } = {}) {
+  async function submitStylistMessage(text?: string, options: { includeVisualization?: boolean; visualMode?: StylistVisualMode; preserveCreateBrief?: boolean } = {}) {
     const trimmed = (text ?? message).trim();
     const referenceForMessage = activeReference?.status === "ready" ? activeReference : null;
     if (referenceForMessage) setActiveFlow("match");
@@ -717,6 +734,10 @@ export function StylistChat() {
     }
 
     const promptText = trimmed || "Style this photo with my closet.";
+    if (!referenceForMessage && currentFlow === "create" && !options.preserveCreateBrief) {
+      lastCreateBriefRef.current = promptText;
+    }
+
     const userEntry: ChatMessage = {
       id: messageId(),
       role: "user",
@@ -782,217 +803,53 @@ export function StylistChat() {
     }
 
     if (response.data.outfitRecommendationId && !referenceForMessage) {
-      showToast("Opening your full look.");
-      router.push(`/outfit/${response.data.outfitRecommendationId}/preview`);
+      showToast("Look ready.");
     }
   }
 
-  async function handleSaveLook(entry: ChatMessage) {
-    if (!entry.outfitRecommendationId) return;
-    const result = await saveOutfit(entry.outfitRecommendationId, {
-      title: entry.outfit?.title || "Stylist look",
+  async function handleSaveOutfit(outfit: OutfitRecommendation | null) {
+    if (!outfit?.id) return;
+    const result = await saveOutfit(outfit.id, {
+      title: outfit.title || "Stylist look",
       favorite: false
     });
     showToast(result.ok ? "Look saved." : "Unable to save look right now.");
   }
 
-  async function handleRegenerate(entry: ChatMessage) {
-    if (!entry.outfitRecommendationId) return;
-    patchMessage(entry.id, {
-      avatarPreview: compactPreview({
-        ...entry.avatarPreview,
-        status: "generating",
-        errorMessage: null
-      })
-    });
+  async function handleRegenerateLooks() {
+    const lastPrompt = lastCreateBriefRef.current || [...messages].reverse().find((entry) => entry.role === "user" && entry.content.trim())?.content || message.trim();
+    if (!lastPrompt || loading || referenceBusy || isRegeneratingLooks) return;
+    const regeneratePrompt = `${lastPrompt} Create a fresh option from my wardrobe and avoid repeating the same combination where practical.`;
 
-    const result = await generateAvatarPreview(entry.outfitRecommendationId, { regenerate: true });
-    if (!result.ok) {
-      patchMessage(entry.id, {
-        avatarPreview: compactPreview({
-          status: "failed",
-          errorMessage: safeTryOnErrorMessage(result.error, "Unable to show it on your avatar right now.")
-        })
-      });
-      return;
-    }
-
-    const preview = result.data.preview;
-    const jobId = result.data.job?.id || null;
-    patchMessage(entry.id, {
-      avatarPreview: compactPreview({
-        status: preview.status as StylistAvatarPreview["status"],
-        jobId,
-        previewId: preview.id || null,
-        imageUrl: preview.imageUrl || preview.previewUrl || null,
-        cacheKey: preview.cacheKey || null,
-        errorMessage: preview.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : null,
-        accuracyLevel: preview.accuracyLevel,
-        fitStatus: preview.fitStatus,
-        fitConfidence: preview.fitConfidence,
-        fitWarnings: preview.fitWarnings
-      }),
-      jobId
-    });
-
-    if (jobId && preview.status !== "ready") {
-      void pollAvatarJob(entry.id, jobId);
-    }
+    setIsRegeneratingLooks(true);
+    await submitStylistMessage(regeneratePrompt, { includeVisualization, preserveCreateBrief: true });
+    setIsRegeneratingLooks(false);
   }
 
   function renderLookStudio(entry: ChatMessage) {
     const outfit = entry.outfit;
-    const reference = entry.referenceItem || outfit?.referenceItems?.[0] || null;
-    const referenceRecommendations = entry.referenceRecommendations || [];
     const preview = entry.avatarPreview;
-    const status = preview?.status || "not_started";
-    const hasVisualization = entry.visualMode === "digital_human" || Boolean(entry.outfitRecommendationId);
-    const rawFitWarnings = entry.fitLock?.warnings?.length ? entry.fitLock.warnings : preview?.fitWarnings || [];
-    const fitWarnings = safeUserMessages(rawFitWarnings);
-    const completenessWarnings = safeUserMessages(outfit?.completenessWarnings || []);
+    const recommendations = entry.referenceRecommendations?.length
+      ? entry.referenceRecommendations.slice(0, 3)
+      : outfit
+        ? [outfit]
+        : [];
+
+    if (!recommendations.length) return null;
 
     return (
-      <>
-        {reference ? (
-          <ReferenceImageCard
-            reference={reference}
-            busy={referenceBusy}
+      <div className="space-y-6">
+        {recommendations.map((recommendation, index) => (
+          <EditorialRecommendationCard
+            key={recommendation.id || `${recommendation.title}-${index}`}
+            outfit={recommendation}
+            preview={index === 0 ? preview : undefined}
+            featured={index === 0}
+            eyebrow={index === 0 ? "Best Match" : `Alternative ${index + 1}`}
+            onSave={() => void handleSaveOutfit(recommendation)}
           />
-        ) : null}
-        {reference ? <DetectedPiecesPanel reference={reference} /> : null}
-        {reference ? <WardrobeMatchPanel reference={reference} recommendations={referenceRecommendations.length ? referenceRecommendations : outfit ? [outfit] : []} /> : null}
-        {referenceRecommendations.length > 1 ? (
-          <div className="rounded-2xl border border-line bg-canvas/65 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">Strong match options</p>
-              <Badge tone="premium">{Math.min(referenceRecommendations.length, 3)} looks</Badge>
-            </div>
-            <div className="mt-3 grid gap-3">
-              {referenceRecommendations.slice(0, 3).map((option, index) => (
-                <div key={option.id || `${option.title}-${index}`} className="rounded-2xl border border-line bg-surface/80 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink">{option.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted">{option.occasionFit || option.summary}</p>
-                    </div>
-                    <Badge tone={index === 0 ? "success" : "neutral"}>{index === 0 ? "Best" : `Option ${index + 1}`}</Badge>
-                  </div>
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                    {option.items.slice(0, 5).map((item) => (
-                      <div key={item.id} className="w-24 shrink-0 overflow-hidden rounded-xl border border-line bg-canvas/80">
-                        <ImageFrame
-                          src={item.thumbnailUrl || item.imageUrl}
-                          alt={item.name}
-                          placeholder={item.category}
-                          className="h-20 rounded-none border-0"
-                        />
-                        <p className="truncate px-2 py-1 text-[11px] font-semibold text-ink">{item.name}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {option.id ? (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      <Button type="button" variant="secondary" onClick={() => void saveOutfit(option.id, { title: option.title, favorite: false }).then((result) => showToast(result.ok ? "Look saved." : "Unable to save look right now."))}>
-                        Save look
-                      </Button>
-                      <Link href={`/outfit/${option.id}/preview`} className="block">
-                        <Button type="button" className="w-full">
-                          Generate Virtual Try-On
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {outfit ? <ItemStrip outfit={outfit} /> : null}
-
-        {hasVisualization ? (
-          <div className="rounded-2xl border border-line bg-canvas/60 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={previewTone(status)}>{previewLabel(status)}</Badge>
-              {outfit?.completenessStatus ? <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge> : null}
-            </div>
-
-            {preview?.imageUrl ? (
-              <ImageFrame
-                src={preview.imageUrl}
-                alt="MyFitPick avatar outfit preview"
-                placeholder="Virtual Try-On preview"
-                className="mt-3 min-h-72 rounded-xl sm:min-h-96"
-              />
-            ) : status === "queued" || status === "generating" || status === "processing" ? (
-              <div className="mt-3 flex min-h-72 items-center justify-center rounded-xl border border-dashed border-line bg-surface/60 px-4 text-center sm:min-h-96">
-                <p className="text-sm font-semibold text-cocoa">Showing it on your avatar...</p>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-12 text-center">
-                <p className="text-sm leading-6 text-muted">
-                  {preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : "Your avatar preview will appear here when available."}
-                </p>
-                {preview?.setupPath ? (
-                  <Link href={preview.setupPath} className="mt-4 inline-flex">
-                    <Button type="button" variant="secondary">
-                      Upload full-body photo
-                    </Button>
-                  </Link>
-                ) : null}
-              </div>
-            )}
-
-            <p className="mt-3 text-xs leading-5 text-muted">This is a preview, not a perfect fitting.</p>
-            {fitWarnings.length ? (
-              <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
-                {fitWarnings.slice(0, 3).map((warning) => (
-                  <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
-                ))}
-              </div>
-            ) : null}
-            {completenessWarnings.length ? (
-              <div className="mt-3 space-y-1 rounded-xl border border-warning/20 bg-warning/10 p-3">
-                {completenessWarnings.slice(0, 2).map((warning) => (
-                  <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {entry.outfitRecommendationId ? (
-                <Button type="button" onClick={() => void handleSaveLook(entry)}>
-                  Save look
-                </Button>
-              ) : null}
-              {entry.outfitRecommendationId ? (
-                <Link href={`/outfit/${entry.outfitRecommendationId}/preview`} className="block">
-                  <Button type="button" className="w-full" variant="secondary">
-                    Use this look
-                  </Button>
-                </Link>
-              ) : null}
-              {entry.outfitRecommendationId && preview?.imageUrl && status === "ready" ? (
-                <PreviewDownloadButton outfitId={entry.outfitRecommendationId} />
-              ) : null}
-              {entry.outfitRecommendationId ? (
-                <Button type="button" variant="secondary" onClick={() => void submitStylistMessage(`Try another ${outfit?.occasion || "look"} from my wardrobe`, { includeVisualization: true })}>
-                  Swap an item
-                </Button>
-              ) : null}
-              {entry.outfitRecommendationId ? (
-                <Button type="button" variant="secondary" onClick={() => void handleRegenerate(entry)}>
-                  Try on
-                </Button>
-              ) : null}
-              {reference ? (
-                <Button type="button" variant="ghost" onClick={() => void clearActiveReference()}>
-                  Start another match
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-      </>
+        ))}
+      </div>
     );
   }
 
@@ -1039,30 +896,32 @@ export function StylistChat() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <StylistProductCard
-          title="Create a Look"
-          body="Build an outfit from your wardrobe for an occasion, mood, weather, or favorite piece."
-          action="Create a look"
-          note="Wardrobe first"
-          icon={WandSparkles}
-          active={activeFlow === "create"}
-          onClick={() => chooseFlow("create")}
-        />
-        <StylistProductCard
-          title="Match an Outfit"
-          body="Bring in a look you admire and MyFitPick will style it with your closet."
-          action="Match an outfit"
-          note="Photo or screenshot"
-          icon={ImagePlus}
-          featured
-          active={activeFlow === "match"}
-          onClick={() => chooseFlow("match")}
-        />
-      </div>
+      {productMode === "hub" ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <StylistProductCard
+            title="Create a Look"
+            body="Build an outfit from your wardrobe for an occasion, mood, weather, or favorite piece."
+            action="Create a look"
+            note="Wardrobe first"
+            icon={WandSparkles}
+            active={currentFlow === "create"}
+            onClick={() => chooseFlow("create")}
+          />
+          <StylistProductCard
+            title="Match an Outfit"
+            body="Bring in a look you admire and MyFitPick will style it with your closet."
+            action="Match an outfit"
+            note="Photo or screenshot"
+            icon={ImagePlus}
+            featured
+            active={currentFlow === "match"}
+            onClick={() => chooseFlow("match")}
+          />
+        </div>
+      ) : null}
 
       <div ref={workspaceRef} className="scroll-mt-6 space-y-5">
-        {activeFlow === "create" ? (
+        {currentFlow === "create" ? (
           <Card className="space-y-4 border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -1140,7 +999,7 @@ export function StylistChat() {
           </Card>
         ) : null}
 
-        {activeFlow === "match" ? (
+        {currentFlow === "match" ? (
           <Card className="space-y-4 overflow-hidden border-cocoa/25 bg-gradient-to-br from-cocoa/10 via-surface to-olive/10">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-4">
@@ -1182,7 +1041,6 @@ export function StylistChat() {
                       />
                     ) : null}
                     <DetectedPiecesPanel reference={activeReference} busy={referenceBusy} />
-                    <WardrobeMatchPanel reference={activeReference} recommendations={latestLook?.referenceRecommendations || (latestLook?.outfit ? [latestLook.outfit] : [])} />
                   </div>
                 ) : referencePreviewUrl ? (
                   <div className="rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
@@ -1262,116 +1120,62 @@ export function StylistChat() {
       {toast ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
 
       {latestLook || loading || latestAssistant ? (
-        <div ref={lookStudioRef} className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
-          <Card className="min-h-[28rem] space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-canvas">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                  <Layers3 size={14} aria-hidden="true" />
-                  Look studio
-                </p>
-                <h3 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">
-                  {latestLook?.outfit?.title || (loading ? "Curating your look" : "Stylist note")}
-                </h3>
-              </div>
-              {latestLook?.outfit?.completenessStatus ? (
-                <Badge tone={latestLook.outfit.completenessStatus === "complete" ? "success" : "warning"}>
-                  {completenessLabel(latestLook.outfit.completenessStatus)}
-                </Badge>
-              ) : null}
-            </div>
-
-            {latestLook ? (
-              <>
-                {renderLookStudio(latestLook)}
-                <div className="rounded-2xl border border-line bg-canvas/60 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestLook.content}</p>
-                </div>
-              </>
-            ) : loading ? (
-              <div className="flex min-h-80 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/60 px-5 text-center">
-                <div className="space-y-2">
-                  {loadingSteps.map((step) => (
-                    <p key={step} className="text-sm font-semibold text-muted">{step}</p>
-                  ))}
-                </div>
-              </div>
-            ) : latestAssistant ? (
-              <div className="rounded-2xl border border-line bg-canvas/60 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestAssistant.content}</p>
-              </div>
-            ) : null}
-          </Card>
-
-          <aside className="space-y-4">
-            <Card className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-ink">Current brief</p>
-                <Badge tone={includeVisualization ? "premium" : "neutral"}>
-                  {includeVisualization ? "Try-on on" : "Try-on off"}
-                </Badge>
-              </div>
-              {requestHistory.length ? (
-                <div className="space-y-2">
-                  {requestHistory.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className="focus-ring w-full rounded-2xl border border-line bg-canvas/60 px-3 py-2 text-left text-xs leading-5 text-ink hover:border-cocoa/30"
-                      onClick={() => setMessage(entry.content)}
-                    >
-                      {entry.attachment?.imageUrl ? (
-                        <ImageFrame
-                          src={entry.attachment.imageUrl}
-                          alt="Photo from this styling request"
-                          placeholder="Photo"
-                          className="mb-2 h-20 rounded-xl"
-                        />
-                      ) : null}
-                      {entry.content}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-2xl border border-line bg-canvas/60 px-3 py-3 text-xs leading-5 text-muted">
-                  Choose Create a Look or Match an Outfit to begin.
-                </p>
-              )}
-            </Card>
-
-            <Card className="space-y-3">
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-                <ArrowUpRight size={16} className="text-cocoa" aria-hidden="true" />
-                Refine
+        <div ref={lookStudioRef} className="space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+                <Layers3 size={14} aria-hidden="true" />
+                {currentFlow === "match" ? "Matched looks" : "Curated looks"}
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                {["More polished", "Simpler", "More formal", "More casual"].map((label) => (
-                  <Button
-                    key={label}
-                    type="button"
-                    variant="secondary"
-                    className="px-3 text-xs"
-                    disabled={!latestLook?.outfit || loading}
-                    onClick={() => void submitStylistMessage(`${label} for this ${latestLook?.outfit?.occasion || "look"}`, { includeVisualization: true })}
-                  >
-                    {label}
-                  </Button>
+              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink sm:text-5xl">
+                {currentFlow === "match" ? "Styled from your inspiration." : "Your stylist edit."}
+              </h2>
+            </div>
+            {currentFlow === "create" && latestLook?.outfit ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleRegenerateLooks()}
+                disabled={loading || isRegeneratingLooks}
+              >
+                <RotateCcw size={16} aria-hidden="true" />
+                {isRegeneratingLooks || loading ? "Regenerating..." : "Regenerate Looks"}
+              </Button>
+            ) : null}
+          </div>
+
+          {latestLook ? (
+            <>
+              {renderLookStudio(latestLook)}
+              {latestLook.content ? (
+                <details className="rounded-2xl border border-line bg-surface/80 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-ink">View stylist note</summary>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted">{latestLook.content}</p>
+                </details>
+              ) : null}
+            </>
+          ) : loading ? (
+            <Card className="flex min-h-80 items-center justify-center border-dashed border-line bg-canvas/60 px-5 text-center">
+              <div className="space-y-2">
+                {loadingSteps.map((step) => (
+                  <p key={step} className="text-sm font-semibold text-muted">{step}</p>
                 ))}
               </div>
             </Card>
+          ) : latestAssistant ? (
+            <Card className="rounded-2xl border border-line bg-canvas/60 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestAssistant.content}</p>
+            </Card>
+          ) : null}
 
-            {latestAssistant?.referenceItem && !latestLook ? (
-              <Card className="space-y-3">
-                <p className="text-sm font-semibold text-ink">Inspiration photo</p>
-                <ReferenceImageCard
-                  reference={latestAssistant.referenceItem}
-                  busy={referenceBusy}
-                />
-              </Card>
-            ) : null}
-          </aside>
+          {currentFlow === "match" && activeReference ? (
+            <div className="flex justify-end">
+              <Button type="button" variant="ghost" onClick={() => void clearActiveReference()}>
+                Start another match
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
