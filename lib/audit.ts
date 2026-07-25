@@ -38,7 +38,9 @@ export type AuditAction =
   | "privacy.update"
   | "account.delete_request"
   | "storage.signed_upload"
-  | "storage.signed_view";
+  | "storage.signed_view"
+  | "support.status.update"
+  | "support.assignment.update";
 
 export function requestMeta(request: NextRequest) {
   return {

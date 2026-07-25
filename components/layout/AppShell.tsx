@@ -1,6 +1,7 @@
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { DesktopNav } from "@/components/navigation/DesktopNav";
 import { MobileAccountNav } from "@/components/navigation/MobileAccountNav";
+import { SupportLauncher } from "@/components/support/SupportLauncher";
 import { FashionBackdrop } from "@/components/ui/FashionBackdrop";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export function AppShell({ children, showNav = true, className }: { children: Re
         </div>
       </div>
       {showNav ? <BottomNav /> : null}
+      {showNav ? <SupportLauncher /> : null}
     </main>
   );
 }

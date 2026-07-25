@@ -21,6 +21,7 @@ const required = [
   "app/settings/page.tsx",
   "app/plus/page.tsx",
   "app/states/page.tsx",
+  "app/support/page.tsx",
   "app/backend-ready/page.tsx",
   "app/frontend-complete/page.tsx",
   "app/login/page.tsx",
@@ -37,6 +38,7 @@ const required = [
   "app/legal/refund-policy/page.tsx",
   "app/legal/copyright-ip-policy/page.tsx",
   "app/admin/page.tsx",
+  "app/admin/support/page.tsx",
 ];
 
 const missing = required.filter((file) => !existsSync(file));

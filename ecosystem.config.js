@@ -21,6 +21,19 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       max_memory_restart: "512M"
+    },
+    {
+      name: "fitpick-realtime",
+      cwd: __dirname,
+      script: "node_modules/.bin/tsx",
+      args: "server/support-realtime.ts",
+      env: {
+        NODE_ENV: "production"
+      },
+      stop_exit_codes: [0],
+      restart_delay: 5000,
+      max_restarts: 10,
+      max_memory_restart: "256M"
     }
   ]
 };
