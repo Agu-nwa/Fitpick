@@ -84,6 +84,13 @@ export function safeTryOnFailureMessage(error: unknown) {
   return "Virtual Try-On could not be completed. Your credit was not deducted.";
 }
 
+function providerDiagnosticsFromError(error: unknown) {
+  if (!error || typeof error !== "object") return {};
+  const diagnostics = (error as { providerDiagnostics?: unknown }).providerDiagnostics;
+  if (!diagnostics || typeof diagnostics !== "object" || Array.isArray(diagnostics)) return {};
+  return sanitizeTryOnMetadata(diagnostics as Record<string, unknown>);
+}
+
 export function serializeTryOnGeneration(generation: any) {
   if (!generation) return null;
   return {
@@ -338,7 +345,10 @@ export async function failTryOnGeneration(input: {
     failureStage: input.stage,
     failureCode: input.code || errorCategory(input.error),
     failureMessage,
-    providerDiagnostics: sanitizeTryOnMetadata({ errorCategory: errorCategory(input.error) })
+    providerDiagnostics: sanitizeTryOnMetadata({
+      ...providerDiagnosticsFromError(input.error),
+      errorCategory: errorCategory(input.error)
+    })
   });
   if (input.error) {
     Sentry.captureException(input.error instanceof Error ? input.error : new Error(String(input.error)), {

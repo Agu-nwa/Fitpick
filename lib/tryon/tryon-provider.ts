@@ -30,6 +30,12 @@ function unavailable(provider: TryOnProviderType, message = "True virtual try-on
   };
 }
 
+function errorWithProviderDiagnostics(message: string, diagnostics?: Record<string, unknown>) {
+  const error = new Error(message);
+  if (diagnostics) (error as Error & { providerDiagnostics?: Record<string, unknown> }).providerDiagnostics = diagnostics;
+  return error;
+}
+
 function unavailableProvider(providerType: TryOnProviderType): TryOnProvider {
   return {
     type: providerType,
@@ -189,8 +195,11 @@ export async function runConfiguredVirtualTryOnJob(input: {
   }
 
   const saved = await saveProviderPreview(input, output);
-  if (!saved && output.status === "failed") throw new Error(safeTryOnErrorMessage(output.warnings[0]));
-  if (!saved && output.status === "provider_unavailable") throw new Error(safeTryOnErrorMessage(output.warnings[0]));
-  if (!saved || !assertUsablePreviewRecord(saved)) throw new Error("Virtual Try-On couldn't be completed. Your credit was not deducted.");
+  if (output.status === "failed" || output.status === "provider_unavailable") {
+    throw errorWithProviderDiagnostics(safeTryOnErrorMessage(output.warnings[0]), output.providerDiagnostics);
+  }
+  if (!saved || !assertUsablePreviewRecord(saved)) {
+    throw errorWithProviderDiagnostics("Virtual Try-On couldn't be completed. Your credit was not deducted.", output.providerDiagnostics);
+  }
   return { preview: saved, cached: false, providerOutput: output };
 }

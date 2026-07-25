@@ -40,6 +40,7 @@ export type TryOnProviderOutput = {
   warnings: string[];
   jobId?: string | null;
   cached?: boolean;
+  providerDiagnostics?: Record<string, unknown>;
 };
 
 export interface TryOnProvider {

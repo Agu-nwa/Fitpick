@@ -22,6 +22,22 @@ type FashnStatusResponse = {
   error?: { name?: string; message?: string } | string | null;
 };
 
+type FashnDiagnostics = {
+  provider: "fashn";
+  stage: string;
+  modelName: string;
+  stepIndex?: number;
+  httpStatus?: number;
+  safeReason: string;
+  providerReturnedJobId?: boolean;
+  modelImagePresent?: boolean;
+  productImagePresent?: boolean;
+  modelImageHost?: string;
+  productImageHost?: string;
+  outputCount?: number;
+  providerStatus?: string;
+};
+
 const fashionCategories = ["top", "shirt", "blouse", "jacket", "coat", "dress", "bottom", "trouser", "pant", "jean", "skirt", "shoe", "bag", "accessory"];
 
 function config() {
@@ -50,6 +66,86 @@ function unavailable(message: string): TryOnProviderOutput {
     modelUrl: null,
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
     warnings: [message]
+  };
+}
+
+function safeImageHost(value?: string) {
+  if (!value) return "";
+  if (value.startsWith("data:image/")) return "base64-image";
+  try {
+    const url = new URL(value);
+    return url.hostname.slice(0, 120);
+  } catch {
+    return "invalid-url";
+  }
+}
+
+function safeReasonFromStatus(status: number, bodyText = "") {
+  const body = bodyText.toLowerCase();
+  if (status === 401 || status === 403) return "auth_failed";
+  if (status === 402 || /credit|balance|payment|quota/.test(body)) return "provider_credits_or_quota";
+  if (status === 408 || /timeout/.test(body)) return "provider_timeout";
+  if (status === 409) return "provider_conflict";
+  if (status === 413 || /too large|payload/.test(body)) return "image_too_large";
+  if (status === 415 || /content.type|mime|format|unsupported/.test(body)) return "unsupported_image_format";
+  if (status === 422 || /pose|image|url|model|product|garment/.test(body)) return "invalid_or_unreachable_image";
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "provider_unavailable";
+  if (status >= 400) return "invalid_request";
+  return "unknown_provider_response";
+}
+
+function safeReasonFromProviderPayload(payload: FashnRunResponse | FashnStatusResponse) {
+  const text = JSON.stringify(payload).toLowerCase();
+  if (/credit|balance|payment|quota/.test(text)) return "provider_credits_or_quota";
+  if (/auth|api.?key|token|permission|forbidden|unauthorized/.test(text)) return "auth_failed";
+  if (/pose|image|url|model|product|garment/.test(text)) return "invalid_or_unreachable_image";
+  if (/rate|limit|too many/.test(text)) return "rate_limited";
+  if (/timeout|temporary|unavailable/.test(text)) return "provider_unavailable";
+  return "provider_rejected_request";
+}
+
+function diagnostics(input: {
+  stage: string;
+  modelName: string;
+  stepIndex?: number;
+  httpStatus?: number;
+  safeReason: string;
+  providerReturnedJobId?: boolean;
+  modelImage?: string;
+  productImage?: string;
+  outputCount?: number;
+  providerStatus?: string;
+}): FashnDiagnostics {
+  return {
+    provider: "fashn",
+    stage: input.stage,
+    modelName: input.modelName,
+    stepIndex: input.stepIndex,
+    httpStatus: input.httpStatus,
+    safeReason: input.safeReason,
+    providerReturnedJobId: input.providerReturnedJobId,
+    modelImagePresent: Boolean(input.modelImage),
+    productImagePresent: Boolean(input.productImage),
+    modelImageHost: safeImageHost(input.modelImage),
+    productImageHost: safeImageHost(input.productImage),
+    outputCount: input.outputCount,
+    providerStatus: input.providerStatus
+  };
+}
+
+function logFashnDiagnostic(event: string, diagnostic: FashnDiagnostics) {
+  console.info("fitpick.tryon.provider", {
+    event,
+    ...diagnostic,
+    timestamp: new Date().toISOString()
+  });
+}
+
+function unavailableWithDiagnostics(message: string, providerDiagnostics: FashnDiagnostics): TryOnProviderOutput {
+  return {
+    ...unavailable(message),
+    providerDiagnostics
   };
 }
 
@@ -149,9 +245,46 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
     signal: AbortSignal.timeout(providerConfig.timeoutMs)
   });
 
-  if (!response.ok) return { ...unavailable("Virtual Try-On could not be completed right now."), status: "failed" as const };
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => "");
+    const providerDiagnostics = diagnostics({
+      stage: "run_request",
+      modelName: providerConfig.modelName,
+      stepIndex: payload.stepIndex,
+      httpStatus: response.status,
+      safeReason: safeReasonFromStatus(response.status, bodyText),
+      providerReturnedJobId: false,
+      modelImage: payload.modelImage,
+      productImage: payload.productImage
+    });
+    logFashnDiagnostic("run_rejected", providerDiagnostics);
+    return { ...unavailableWithDiagnostics("Virtual Try-On could not be completed right now.", providerDiagnostics), status: "failed" as const };
+  }
   const data = await response.json() as FashnRunResponse;
-  if (!data.id) return { ...unavailable(errorMessage(data.error) || "Virtual Try-On could not be started."), status: "failed" as const };
+  if (!data.id) {
+    const providerDiagnostics = diagnostics({
+      stage: "run_response",
+      modelName: providerConfig.modelName,
+      stepIndex: payload.stepIndex,
+      httpStatus: response.status,
+      safeReason: safeReasonFromProviderPayload(data),
+      providerReturnedJobId: false,
+      modelImage: payload.modelImage,
+      productImage: payload.productImage
+    });
+    logFashnDiagnostic("run_missing_job_id", providerDiagnostics);
+    return { ...unavailableWithDiagnostics(errorMessage(data.error) || "Virtual Try-On could not be started.", providerDiagnostics), status: "failed" as const };
+  }
+  logFashnDiagnostic("run_accepted", diagnostics({
+    stage: "run_response",
+    modelName: providerConfig.modelName,
+    stepIndex: payload.stepIndex,
+    httpStatus: response.status,
+    safeReason: "accepted",
+    providerReturnedJobId: true,
+    modelImage: payload.modelImage,
+    productImage: payload.productImage
+  }));
   return pollUntilReady(data.id, {
     ...input,
     cacheKey: `${input.cacheKey || "fashn"}-step-${payload.stepIndex}`
@@ -169,11 +302,30 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
   });
   if (!response.ok) {
     const retryable = response.status === 429 || response.status >= 500;
-    return { ...unavailable("Virtual Try-On is still preparing."), status: retryable ? "processing" : "failed", jobId };
+    const bodyText = await response.text().catch(() => "");
+    const providerDiagnostics = diagnostics({
+      stage: "status_request",
+      modelName: providerConfig.modelName,
+      httpStatus: response.status,
+      safeReason: safeReasonFromStatus(response.status, bodyText),
+      providerReturnedJobId: Boolean(jobId)
+    });
+    logFashnDiagnostic("status_rejected", providerDiagnostics);
+    return { ...unavailableWithDiagnostics("Virtual Try-On is still preparing.", providerDiagnostics), status: retryable ? "processing" : "failed", jobId };
   }
   const data = await response.json() as FashnStatusResponse;
   const normalized = normalizeStatus(data.status);
   const warnings = errorMessage(data.error) ? [errorMessage(data.error)] : [];
+  const providerDiagnostics = diagnostics({
+    stage: "status_response",
+    modelName: providerConfig.modelName,
+    httpStatus: response.status,
+    safeReason: normalized === "failed" ? safeReasonFromProviderPayload(data) : "accepted",
+    providerReturnedJobId: Boolean(data.id || jobId),
+    outputCount: data.output?.length || 0,
+    providerStatus: data.status
+  });
+  if (normalized === "failed") logFashnDiagnostic("status_failed", providerDiagnostics);
   const persisted = normalized === "ready"
     ? await outputToPersistedImages(input || { userId: "", wardrobeItemIds: [] }, data.output || [])
     : { urls: [], storageKeys: [] };
@@ -186,7 +338,8 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
     modelUrl: null,
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
     warnings,
-    jobId: data.id || jobId
+    jobId: data.id || jobId,
+    providerDiagnostics
   };
 }
 
@@ -212,7 +365,13 @@ async function pollUntilReady(jobId: string, input: TryOnPreviewInput): Promise<
     modelUrl: null,
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
     warnings: ["Virtual Try-On is still processing."],
-    jobId
+    jobId,
+    providerDiagnostics: diagnostics({
+      stage: "poll_timeout",
+      modelName: providerConfig.modelName,
+      safeReason: "provider_timeout",
+      providerReturnedJobId: Boolean(jobId)
+    })
   };
 }
 
@@ -221,7 +380,16 @@ export function createFashnTryOnProvider(): TryOnProvider {
     type: "fashn",
     async generateTryOnPreview(input: TryOnPreviewInput) {
       const providerConfig = config();
-      if (!providerConfig.apiKey) return unavailable("Virtual Try-On is temporarily unavailable.");
+      if (!providerConfig.apiKey) {
+        const providerDiagnostics = diagnostics({
+          stage: "configuration",
+          modelName: providerConfig.modelName,
+          safeReason: "missing_api_key",
+          providerReturnedJobId: false
+        });
+        logFashnDiagnostic("configuration_missing", providerDiagnostics);
+        return unavailableWithDiagnostics("Virtual Try-On is temporarily unavailable.", providerDiagnostics);
+      }
 
       const loaded = input.outfitRecommendationId
         ? await loadOwnedAvatarPreviewSubject(input.userId, input.outfitRecommendationId)
@@ -229,13 +397,13 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const avatarProfile = input.avatarProfileId
         ? await AvatarProfile.findOne({ _id: input.avatarProfileId, userId: input.userId }).lean()
         : null;
-      if (!loaded || !avatarProfile) return { ...unavailable("Virtual Try-On needs a saved outfit and full-body photo."), status: "failed" };
+      if (!loaded || !avatarProfile) return { ...unavailableWithDiagnostics("Virtual Try-On needs a saved outfit and full-body photo.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_outfit_or_avatar_profile", providerReturnedJobId: false })), status: "failed" };
 
       const modelImage = preferredTryOnModelImageUrl(avatarProfile);
-      if (!modelImage) return { ...unavailable("Upload a full-body photo before using Virtual Try-On."), status: "failed" };
+      if (!modelImage) return { ...unavailableWithDiagnostics("Upload a full-body photo before using Virtual Try-On.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_model_image", providerReturnedJobId: false })), status: "failed" };
 
       const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
-      if (!products.length) return { ...unavailable("Virtual Try-On needs at least one closet item with a usable image."), status: "failed" };
+      if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };
 
       const startedAt = Date.now();
       const warnings = products.length > 1
