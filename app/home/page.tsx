@@ -1,10 +1,17 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { DynamicEditorialGreeting } from "@/components/home/DynamicEditorialGreeting";
 import { SimpleHomeActions } from "@/components/home/SimpleHomeActions";
-import { SimpleStartGuide } from "@/components/onboarding/SimpleStartGuide";
+import { GettingStartedChecklist } from "@/components/onboarding/GettingStartedChecklist";
 import { WeatherStylingCard } from "@/components/home/WeatherStylingCard";
+import { requireUser } from "@/lib/auth";
+import { getOnboardingState } from "@/lib/onboarding/onboarding-state";
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const auth = await requireUser();
+  if (!auth.ok) redirect("/login");
+  const onboarding = await getOnboardingState(auth.user);
+
   return (
     <AppShell>
       <header className="relative overflow-hidden rounded-xl4 border border-line bg-white/76 p-6 shadow-card backdrop-blur-xl sm:p-8">
@@ -16,7 +23,7 @@ export default function HomePage() {
       <div className="mt-6 flex flex-col gap-6">
         <WeatherStylingCard />
         <SimpleHomeActions />
-        <SimpleStartGuide />
+        <GettingStartedChecklist initialState={onboarding} />
       </div>
     </AppShell>
   );

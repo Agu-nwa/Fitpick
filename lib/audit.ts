@@ -35,12 +35,14 @@ export type AuditAction =
   | "payment.refund"
   | "payment.reconcile"
   | "notifications.update"
+  | "onboarding.update"
   | "privacy.update"
   | "account.delete_request"
   | "storage.signed_upload"
   | "storage.signed_view"
   | "support.status.update"
-  | "support.assignment.update";
+  | "support.assignment.update"
+  | "support.note.create";
 
 export function requestMeta(request: NextRequest) {
   return {

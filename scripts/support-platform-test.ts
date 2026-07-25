@@ -3,6 +3,7 @@ import { getSupportAttachmentMaxBytes, getSupportMessageMaxLength, isSupportChat
 import {
   adminSupportListQuerySchema,
   supportAttachmentSchema,
+  supportInternalNoteSchema,
   supportMessageBodySchema,
   supportSocketJoinSchema,
   supportStatusPatchSchema
@@ -39,6 +40,8 @@ assert.equal(
 
 assert.equal(adminSupportListQuerySchema.safeParse({ status: "open", unread: "support", search: "charles" }).success, true, "admin filters should pass");
 assert.equal(supportStatusPatchSchema.safeParse({ status: "archived" }).success, false, "unknown statuses should fail");
+assert.equal(supportInternalNoteSchema.safeParse({ body: "Customer reported upload trouble after retry." }).success, true, "internal note should pass");
+assert.equal(supportInternalNoteSchema.safeParse({ body: "" }).success, false, "blank internal note should fail");
 assert.equal(supportSocketJoinSchema.safeParse({ conversationId: objectId }).success, true, "socket join payload should pass");
 assert.equal(supportSocketJoinSchema.safeParse({ conversationId: "not-an-id" }).success, false, "socket join must reject invalid conversation ids");
 

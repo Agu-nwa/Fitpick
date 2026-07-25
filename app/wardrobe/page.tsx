@@ -2,10 +2,16 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { WardrobeListClient } from "@/components/wardrobe/WardrobeListClient";
 import { Button } from "@/components/ui/Button";
+import { requireUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function WardrobePage() {
+export default async function WardrobePage() {
+  const auth = await requireUser();
+  if (!auth.ok) redirect("/login");
+
   return (
     <AppShell>
       <header className="relative overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
@@ -32,6 +38,12 @@ export default function WardrobePage() {
           </Link>
         </div>
       </header>
+
+      <div className="mt-5">
+        <ContextualTip tipId="closet" dismissedTips={auth.user.onboardingTipsDismissed}>
+          Upload more wardrobe items to improve outfit recommendations.
+        </ContextualTip>
+      </div>
 
       <Suspense fallback={null}>
         <WardrobeListClient />

@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, Inbox, RefreshCw, Send, UserCheck } from "lucide-react";
+import { CheckCircle2, ClipboardList, Inbox, RefreshCw, Send, StickyNote, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ApiResponse } from "@/types/api";
-import type { SupportConversationStatus, SupportConversationSummary, SupportMessage } from "@/types/support";
+import type { SupportConversationStatus, SupportConversationSummary, SupportInternalNote, SupportMessage, SupportOperationalContext } from "@/types/support";
 
 type ListData = { conversations: SupportConversationSummary[] };
 type MessagesData = { messages: SupportMessage[]; nextCursor: string | null };
 type MessageAck = { message: SupportMessage; conversation: SupportConversationSummary };
+type ContextData = { context: SupportOperationalContext };
+type NotesData = { notes: SupportInternalNote[] };
+type NoteData = { note: SupportInternalNote };
 type StatusFilter = "all" | SupportConversationStatus;
 
 async function jsonApi<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -37,15 +40,33 @@ function StatusPill({ status }: { status: SupportConversationStatus }) {
   return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${tone}`}>{status}</span>;
 }
 
+function ContextRow({ label, value, tone }: { label: string; value: string | number; tone?: "good" | "warn" | "bad" }) {
+  const toneClass = tone === "bad" ? "text-danger" : tone === "warn" ? "text-espresso" : tone === "good" ? "text-success" : "text-ink";
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-line/70 py-2 last:border-b-0">
+      <span className="text-xs font-semibold text-muted">{label}</span>
+      <span className={`max-w-[60%] truncate text-right text-xs font-bold ${toneClass}`}>{value || "n/a"}</span>
+    </div>
+  );
+}
+
+function formatMoney(amountMinor: number, currency: string) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD" }).format((amountMinor || 0) / 100);
+}
+
 export function AdminSupportDashboard({ agentName }: { agentName: string }) {
   const [conversations, setConversations] = useState<SupportConversationSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [supportContext, setSupportContext] = useState<SupportOperationalContext | null>(null);
+  const [notes, setNotes] = useState<SupportInternalNote[]>([]);
   const [status, setStatus] = useState<StatusFilter>("open");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -73,13 +94,28 @@ export function AdminSupportDashboard({ agentName }: { agentName: string }) {
     if (!result.ok) setFeedback(result.error.message);
   }, []);
 
+  const loadSupportContext = useCallback(async (conversationId: string) => {
+    if (!conversationId) return;
+    setContextLoading(true);
+    const [contextResult, notesResult] = await Promise.all([
+      jsonApi<ContextData>(`/api/admin/support/conversations/${conversationId}/context`, { cache: "no-store" }),
+      jsonApi<NotesData>(`/api/admin/support/conversations/${conversationId}/notes`, { cache: "no-store" })
+    ]);
+    if (contextResult.ok) setSupportContext(contextResult.data.context);
+    if (!contextResult.ok) setFeedback(contextResult.error.message);
+    if (notesResult.ok) setNotes(notesResult.data.notes);
+    if (!notesResult.ok) setFeedback(notesResult.error.message);
+    setContextLoading(false);
+  }, []);
+
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
 
   useEffect(() => {
     void loadMessages(selectedId);
-  }, [loadMessages, selectedId]);
+    void loadSupportContext(selectedId);
+  }, [loadMessages, loadSupportContext, selectedId]);
 
   const updateConversation = useCallback((conversation: SupportConversationSummary) => {
     setConversations((current) => current.map((item) => (item.id === conversation.id ? conversation : item)));
@@ -114,6 +150,21 @@ export function AdminSupportDashboard({ agentName }: { agentName: string }) {
     if (result.ok) updateConversation(result.data.conversation);
     if (!result.ok) setFeedback(result.error.message);
   }, [selectedId, updateConversation]);
+
+  const saveNote = useCallback(async () => {
+    const body = noteDraft.trim();
+    if (!selectedId || !body) return;
+    const result = await jsonApi<NoteData>(`/api/admin/support/conversations/${selectedId}/notes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body })
+    });
+    if (result.ok) {
+      setNotes((current) => [result.data.note, ...current]);
+      setNoteDraft("");
+    }
+    if (!result.ok) setFeedback(result.error.message);
+  }, [noteDraft, selectedId]);
 
   return (
     <main className="min-h-[100svh] bg-canvas px-5 py-6 text-ink sm:px-8 lg:px-12">
@@ -179,7 +230,42 @@ export function AdminSupportDashboard({ agentName }: { agentName: string }) {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                <div className="grid gap-4 border-b border-line bg-canvas/35 p-5 xl:grid-cols-3">
+                  <Card className="p-4 shadow-none">
+                    <p className="mb-3 flex items-center gap-2 text-sm font-bold text-ink"><ClipboardList size={16} /> User overview</p>
+                    {supportContext ? (
+                      <>
+                        <ContextRow label="Account" value={supportContext.user.accountStatus} tone="good" />
+                        <ContextRow label="Credits" value={supportContext.user.credits.toFixed(2)} />
+                        <ContextRow label="Closet items" value={supportContext.wardrobe.itemCount} />
+                        <ContextRow label="Model setup" value={supportContext.user.modelSetupCompletedAt ? "complete" : "not complete"} tone={supportContext.user.modelSetupCompletedAt ? "good" : "warn"} />
+                      </>
+                    ) : <p className="text-xs text-muted">{contextLoading ? "Loading context..." : "No context loaded."}</p>}
+                  </Card>
+
+                  <Card className="p-4 shadow-none">
+                    <p className="mb-3 text-sm font-bold text-ink">Recent try-on</p>
+                    {supportContext?.tryOn.latest.length ? supportContext.tryOn.latest.slice(0, 3).map((item) => (
+                      <div key={item.id} className="border-b border-line/70 py-2 last:border-b-0">
+                        <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-bold text-ink">{item.generationId}</span><span className={`text-xs font-bold ${item.status === "failed" ? "text-danger" : item.status === "completed" ? "text-success" : "text-muted"}`}>{item.status}</span></div>
+                        {item.safeIssue ? <p className="mt-1 line-clamp-2 text-xs text-muted">{item.safeIssue}</p> : null}
+                      </div>
+                    )) : <p className="text-xs text-muted">No recent try-on activity.</p>}
+                  </Card>
+
+                  <Card className="p-4 shadow-none">
+                    <p className="mb-3 text-sm font-bold text-ink">Latest upload signals</p>
+                    {supportContext?.wardrobe.latestUploads.length ? supportContext.wardrobe.latestUploads.slice(0, 3).map((item) => (
+                      <div key={item.id} className="border-b border-line/70 py-2 last:border-b-0">
+                        <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-ink">{item.category}</span><span className="text-xs text-muted">{item.aiTagStatus}</span></div>
+                        {item.safeIssue ? <p className="mt-1 line-clamp-2 text-xs text-muted">{item.safeIssue}</p> : null}
+                      </div>
+                    )) : <p className="text-xs text-muted">No recent wardrobe uploads.</p>}
+                  </Card>
+                </div>
+
+                <div className="grid flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="space-y-4 overflow-y-auto p-5">
                   {messages.map((message) => {
                     const mine = message.senderType === "support";
                     return (
@@ -197,6 +283,49 @@ export function AdminSupportDashboard({ agentName }: { agentName: string }) {
                     );
                   })}
                   {!messages.length ? <p className="rounded-2xl border border-dashed border-line bg-canvas/60 p-5 text-sm text-muted">No messages in this conversation yet.</p> : null}
+                </div>
+
+                <aside className="space-y-4 overflow-y-auto border-t border-line bg-white/45 p-5 lg:border-l lg:border-t-0">
+                  <div>
+                    <p className="mb-3 flex items-center gap-2 text-sm font-bold text-ink"><StickyNote size={16} /> Internal notes</p>
+                    <textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} rows={3} placeholder="Add a private note" className="focus-ring w-full resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm" />
+                    <Button variant="secondary" onClick={saveNote} disabled={!noteDraft.trim()} className="mt-2 w-full">Save note</Button>
+                  </div>
+                  <div className="space-y-3">
+                    {notes.map((note) => (
+                      <div key={note.id} className="rounded-2xl border border-line bg-white p-3">
+                        <p className="text-xs font-bold text-ink">{note.authorName}</p>
+                        <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-muted">{note.body}</p>
+                        <p className="mt-2 text-[10px] text-muted">{formatDate(note.createdAt)}</p>
+                      </div>
+                    ))}
+                    {!notes.length ? <p className="rounded-2xl border border-dashed border-line bg-white p-3 text-xs text-muted">No internal notes yet.</p> : null}
+                  </div>
+
+                  {supportContext ? (
+                    <div className="rounded-2xl border border-line bg-white p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Troubleshooting</p>
+                      <div className="mt-3 space-y-2">
+                        <ContextRow label="Ready items" value={supportContext.wardrobe.readyCount} tone="good" />
+                        <ContextRow label="Needs care" value={supportContext.wardrobe.needsCareCount} tone={supportContext.wardrobe.needsCareCount ? "warn" : undefined} />
+                        <ContextRow label="Recent jobs" value={supportContext.jobs.latest.length} />
+                        <ContextRow label="Transactions" value={supportContext.credits.latestTransactions.length} />
+                      </div>
+                      {supportContext.jobs.latest.slice(0, 3).map((job) => (
+                        <div key={job.id} className="mt-3 rounded-xl border border-line/70 bg-canvas/60 p-2">
+                          <div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-bold text-ink">{job.type}</span><span className={`text-xs font-bold ${job.status === "failed" || job.status === "dead_letter" ? "text-danger" : "text-muted"}`}>{job.status}</span></div>
+                          {job.safeIssue ? <p className="mt-1 line-clamp-2 text-xs text-muted">{job.safeIssue}</p> : null}
+                        </div>
+                      ))}
+                      {supportContext.credits.latestPurchases.slice(0, 2).map((purchase) => (
+                        <div key={purchase.id} className="mt-3 rounded-xl border border-line/70 bg-canvas/60 p-2">
+                          <p className="text-xs font-bold text-ink">{purchase.packName} · {purchase.status}</p>
+                          <p className="mt-1 text-xs text-muted">{purchase.credits} Credits · {formatMoney(purchase.amountMinor, purchase.currency)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </aside>
                 </div>
 
                 <div className="border-t border-line p-4">

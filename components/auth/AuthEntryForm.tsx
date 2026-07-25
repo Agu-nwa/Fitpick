@@ -96,7 +96,7 @@ export function AuthEntryForm({
       return;
     }
 
-    router.push(nextPath);
+    router.push(result.data.user?.onboardingWelcomeCompletedAt ? nextPath : "/welcome");
     router.refresh();
   }
 

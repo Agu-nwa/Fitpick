@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const session = await getSessionUser();
-  if (session) redirect("/home");
+  if (session) redirect("/welcome");
   const params = await searchParams;
 
   return (

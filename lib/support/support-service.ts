@@ -2,15 +2,26 @@ import crypto from "crypto";
 import mongoose, { Types } from "mongoose";
 import { getGeneratedImageUrl } from "@/lib/storage/generated-images";
 import { normalizeStorageKey } from "@/lib/storage/url";
+import { BackgroundJob } from "@/models/BackgroundJob";
+import { CreditPurchase } from "@/models/CreditPurchase";
+import { CreditTransaction } from "@/models/CreditTransaction";
+import { OutfitRecommendation } from "@/models/OutfitRecommendation";
+import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { SupportConversation, type SupportConversationDocument } from "@/models/SupportConversation";
+import { SupportInternalNote, type SupportInternalNoteDocument } from "@/models/SupportInternalNote";
 import { SupportMessage, type SupportMessageDocument } from "@/models/SupportMessage";
+import { TryOnGeneration } from "@/models/TryOnGeneration";
 import { User, type UserDocument } from "@/models/User";
+import { WardrobeItem } from "@/models/WardrobeItem";
+import { WardrobeUpload } from "@/models/WardrobeUpload";
 import type {
   SupportAttachment,
   SupportAvailability,
   SupportConversationStatus,
   SupportConversationSummary,
+  SupportInternalNote as SerializedSupportInternalNote,
   SupportMessage as SerializedSupportMessage,
+  SupportOperationalContext,
   SupportSenderType
 } from "@/types/support";
 
@@ -34,6 +45,10 @@ function compactText(value: string, max = 180) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, max);
+}
+
+function safeIssue(value?: string | null) {
+  return compactText(value || "", 180);
 }
 
 function populatedUser(value: unknown): SerializedUser {
@@ -117,6 +132,19 @@ export function serializeSupportConversation(conversation: SupportConversationDo
     supportUnreadCount: conversation.supportUnreadCount || 0,
     createdAt: conversation.createdAt.toISOString(),
     updatedAt: conversation.updatedAt.toISOString()
+  };
+}
+
+export function serializeSupportInternalNote(note: SupportInternalNoteDocument): SerializedSupportInternalNote {
+  const author = populatedAgent(note.authorId) || { id: String(note.authorId), name: "Support" };
+  return {
+    id: String(note._id),
+    conversationId: String(note.conversationId),
+    authorId: author.id,
+    authorName: author.name,
+    body: note.body,
+    createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString()
   };
 }
 
@@ -294,6 +322,149 @@ export async function updateSupportConversationAssignment(input: { conversationI
     .populate("assignedAgentId", "name email");
   if (!updated) throw new Error("support_conversation_not_found");
   return serializeSupportConversation(updated);
+}
+
+export async function listSupportInternalNotes(input: { conversationId: string; actor: Actor }) {
+  if (!isSupportAgent(input.actor)) throw new Error("support_forbidden");
+  const conversation = await getSupportConversationForActor(input);
+  if (!conversation) throw new Error("support_conversation_not_found");
+  const notes = await SupportInternalNote.find({ conversationId: conversation._id }).sort({ createdAt: -1 }).limit(50).populate("authorId", "name email");
+  return notes.map(serializeSupportInternalNote);
+}
+
+export async function createSupportInternalNote(input: { conversationId: string; actor: Actor; body: string }) {
+  if (!isSupportAgent(input.actor)) throw new Error("support_forbidden");
+  const conversation = await getSupportConversationForActor(input);
+  if (!conversation) throw new Error("support_conversation_not_found");
+  const note = await SupportInternalNote.create({
+    conversationId: conversation._id,
+    authorId: asObjectId(input.actor.userId),
+    body: compactText(input.body, 2000)
+  });
+  await note.populate("authorId", "name email");
+  return serializeSupportInternalNote(note);
+}
+
+export async function getAdminSupportOperationalContext(input: { conversationId: string; actor: Actor }): Promise<SupportOperationalContext> {
+  if (!isSupportAgent(input.actor)) throw new Error("support_forbidden");
+  const conversation = await getSupportConversationForActor(input);
+  if (!conversation) throw new Error("support_conversation_not_found");
+  const customer = populatedUser(conversation.userId);
+  const userId = asObjectId(customer.id);
+
+  const [user, itemCount, readyCount, needsCareCount, uploads, tryOns, outfits, referenceItems, jobs, transactions, purchases] = await Promise.all([
+    User.findById(userId),
+    WardrobeItem.countDocuments({ userId, archivedAt: null }),
+    WardrobeItem.countDocuments({ userId, archivedAt: null, condition: "ready" }),
+    WardrobeItem.countDocuments({ userId, archivedAt: null, condition: "needs-care" }),
+    WardrobeUpload.find({ userId }).sort({ createdAt: -1 }).limit(5).select("selectedCategory uploadStatus aiTagStatus enrichmentStatus aiErrorSafeMessage createdAt updatedAt"),
+    TryOnGeneration.find({ userId }).sort({ createdAt: -1 }).limit(5).select("generationId status failureStage failureCode failureMessage creditsReserved creditsCommitted creditsReleased createdAt completedAt failedAt"),
+    OutfitRecommendation.find({ userId }).sort({ createdAt: -1 }).limit(5).select("title source occasion preview.status completenessStatus createdAt"),
+    ReferenceFashionItem.find({ userId }).sort({ createdAt: -1 }).limit(5).select("status category primaryColor usableForMatching outfitRecommendationIds createdAt"),
+    BackgroundJob.find({ userId }).sort({ createdAt: -1 }).limit(8).select("type status attempts errorMessage createdAt updatedAt"),
+    CreditTransaction.find({ user: userId }).sort({ createdAt: -1 }).limit(5).select("feature credits status balanceAfter createdAt"),
+    CreditPurchase.find({ userId }).sort({ createdAt: -1 }).limit(5).select("packName credits amountMinor currency provider status createdAt")
+  ]);
+
+  if (!user) throw new Error("support_user_not_found");
+
+  return {
+    user: {
+      id: String(user._id),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      accountStatus: "active",
+      credits: typeof user.credits === "number" ? user.credits : 0,
+      joinedAt: dateOrNull(user.createdAt),
+      lastLoginAt: dateOrNull(user.lastLoginAt),
+      modelSetupCompletedAt: dateOrNull(user.modelSetupCompletedAt)
+    },
+    wardrobe: {
+      itemCount,
+      readyCount,
+      needsCareCount,
+      latestUploads: uploads.map((upload) => ({
+        id: String(upload._id),
+        category: upload.selectedCategory || "unknown",
+        uploadStatus: upload.uploadStatus || "unknown",
+        aiTagStatus: upload.aiTagStatus || "unknown",
+        enrichmentStatus: upload.enrichmentStatus || "unknown",
+        safeIssue: safeIssue(upload.aiErrorSafeMessage),
+        createdAt: upload.createdAt.toISOString(),
+        updatedAt: upload.updatedAt.toISOString()
+      }))
+    },
+    tryOn: {
+      latest: tryOns.map((generation) => ({
+        id: String(generation._id),
+        generationId: generation.generationId,
+        status: generation.status,
+        failureStage: generation.failureStage || "",
+        failureCode: generation.failureCode || "",
+        safeIssue: safeIssue(generation.failureMessage),
+        creditsReserved: generation.creditsReserved || 0,
+        creditsCommitted: generation.creditsCommitted || 0,
+        creditsReleased: generation.creditsReleased || 0,
+        createdAt: generation.createdAt.toISOString(),
+        completedAt: dateOrNull(generation.completedAt),
+        failedAt: dateOrNull(generation.failedAt)
+      }))
+    },
+    outfits: {
+      latest: outfits.map((outfit) => ({
+        id: String(outfit._id),
+        title: outfit.title || "Untitled look",
+        source: outfit.source || "unknown",
+        occasion: outfit.occasion || "",
+        previewStatus: outfit.preview?.status || "not_started",
+        completenessStatus: outfit.completenessStatus || "unknown",
+        createdAt: outfit.createdAt.toISOString()
+      }))
+    },
+    matchOutfit: {
+      latest: referenceItems.map((item) => ({
+        id: String(item._id),
+        status: item.status,
+        category: item.category || "unknown",
+        primaryColor: item.primaryColor || "unknown",
+        usableForMatching: Boolean(item.usableForMatching),
+        recommendationCount: item.outfitRecommendationIds?.length || 0,
+        createdAt: item.createdAt.toISOString()
+      }))
+    },
+    jobs: {
+      latest: jobs.map((job) => ({
+        id: String(job._id),
+        type: job.type,
+        status: job.status,
+        attempts: job.attempts || 0,
+        safeIssue: safeIssue(job.errorMessage),
+        createdAt: job.createdAt.toISOString(),
+        updatedAt: job.updatedAt.toISOString()
+      }))
+    },
+    credits: {
+      latestTransactions: transactions.map((transaction) => ({
+        id: String(transaction._id),
+        feature: transaction.feature,
+        credits: transaction.credits,
+        status: transaction.status,
+        balanceAfter: typeof transaction.balanceAfter === "number" ? transaction.balanceAfter : null,
+        createdAt: transaction.createdAt.toISOString()
+      })),
+      latestPurchases: purchases.map((purchase) => ({
+        id: String(purchase._id),
+        packName: purchase.packName,
+        credits: purchase.credits,
+        amountMinor: purchase.amountMinor,
+        currency: purchase.currency,
+        provider: purchase.provider,
+        status: purchase.status,
+        createdAt: purchase.createdAt.toISOString()
+      }))
+    }
+  };
 }
 
 export function supportAvailabilityFromAgentCount(count: number): SupportAvailability {

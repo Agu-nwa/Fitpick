@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft, ImagePlus } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { StylistChat } from "@/components/stylist/StylistChat";
+import { requireUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function MatchOutfitPage() {
+export default async function MatchOutfitPage() {
+  const auth = await requireUser();
+  if (!auth.ok) redirect("/login");
+
   return (
     <AppShell>
       <header className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
@@ -25,6 +31,9 @@ export default function MatchOutfitPage() {
           3 options
         </p>
       </header>
+      <ContextualTip tipId="match-outfit" dismissedTips={auth.user.onboardingTipsDismissed}>
+        Upload a shopping screenshot or product photo and FitPick will match it with your wardrobe.
+      </ContextualTip>
       <StylistChat initialFlow="match" productMode="match" />
     </AppShell>
   );

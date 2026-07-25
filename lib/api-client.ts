@@ -99,6 +99,9 @@ export type CurrentUserSummary = {
     weatherLongitude?: number;
     weatherTimezone?: string;
     weatherLocationUpdatedAt?: string;
+    onboardingWelcomeCompletedAt?: string;
+    onboardingChecklistDismissedAt?: string;
+    onboardingTipsDismissed?: string[];
   };
   wallet?: CreditWalletSummary;
 };

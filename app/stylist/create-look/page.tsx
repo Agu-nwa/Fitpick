@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft, WandSparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { StylistChat } from "@/components/stylist/StylistChat";
+import { requireUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function CreateLookPage() {
+export default async function CreateLookPage() {
+  const auth = await requireUser();
+  if (!auth.ok) redirect("/login");
+
   return (
     <AppShell>
       <header className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-between">
@@ -25,6 +31,9 @@ export default function CreateLookPage() {
           Editor&apos;s pick
         </p>
       </header>
+      <ContextualTip tipId="create-look" dismissedTips={auth.user.onboardingTipsDismissed}>
+        The more complete your wardrobe, the better your styling suggestions become.
+      </ContextualTip>
       <StylistChat initialFlow="create" productMode="create" />
     </AppShell>
   );

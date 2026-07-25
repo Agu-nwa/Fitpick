@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { DesktopNav } from "@/components/navigation/DesktopNav";
+import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { LookPreviewClient } from "@/components/outfit/LookPreviewClient";
+import { requireUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function OutfitPreviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireUser();
+  if (!auth.ok) redirect("/login");
   const { id } = await params;
 
   return (
@@ -15,6 +20,11 @@ export default async function OutfitPreviewPage({ params }: { params: Promise<{ 
           <Link href={`/outfit/${id}`} className="mb-5 inline-flex min-h-11 items-center rounded-2xl px-1 text-sm font-semibold text-cocoa">
             Back to outfit
           </Link>
+          <div className="mb-5">
+            <ContextualTip tipId="virtual-try-on" dismissedTips={auth.user.onboardingTipsDismissed}>
+              Use a clear full-body photo for the most realistic preview.
+            </ContextualTip>
+          </div>
           <LookPreviewClient outfitId={id} />
         </div>
       </div>

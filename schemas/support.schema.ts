@@ -40,6 +40,13 @@ export const supportMessageBodySchema = z
 
 export const supportStatusPatchSchema = z.object({ status: z.enum(["open", "pending", "resolved"]) });
 export const supportAssignmentPatchSchema = z.object({ assignedAgentId: objectIdSchema.nullable().optional() });
+export const supportInternalNoteSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(2, "Write a little more detail.")
+    .max(2000, "Keep internal notes under 2,000 characters.")
+});
 export const adminSupportListQuerySchema = z.object({
   status: z.enum(["all", "open", "pending", "resolved"]).optional().default("all"),
   unread: z.enum(["all", "support"]).optional().default("all"),

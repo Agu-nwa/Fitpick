@@ -28,6 +28,9 @@ const UserSchema = new Schema(
     weatherLongitude: { type: Number, default: null, min: -180, max: 180 },
     weatherTimezone: { type: String, default: "", trim: true, maxlength: 80 },
     weatherLocationUpdatedAt: { type: Date, default: null },
+    onboardingWelcomeCompletedAt: { type: Date, default: null },
+    onboardingChecklistDismissedAt: { type: Date, default: null },
+    onboardingTipsDismissed: { type: [String], default: [] },
     lastLoginAt: { type: Date }
   },
   { timestamps: true }
@@ -64,6 +67,9 @@ export function toSafeUser(user: UserDocument): SafeUser {
     weatherLongitude: typeof user.weatherLongitude === "number" ? user.weatherLongitude : undefined,
     weatherTimezone: user.weatherTimezone || undefined,
     weatherLocationUpdatedAt: user.weatherLocationUpdatedAt?.toISOString(),
+    onboardingWelcomeCompletedAt: user.onboardingWelcomeCompletedAt?.toISOString(),
+    onboardingChecklistDismissedAt: user.onboardingChecklistDismissedAt?.toISOString(),
+    onboardingTipsDismissed: user.onboardingTipsDismissed || [],
     createdAt: user.createdAt?.toISOString(),
     updatedAt: user.updatedAt?.toISOString(),
     lastLoginAt: user.lastLoginAt?.toISOString()

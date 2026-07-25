@@ -27,6 +27,9 @@ export type SafeUser = {
   weatherLongitude?: number;
   weatherTimezone?: string;
   weatherLocationUpdatedAt?: string;
+  onboardingWelcomeCompletedAt?: string;
+  onboardingChecklistDismissedAt?: string;
+  onboardingTipsDismissed?: string[];
   createdAt?: string;
   updatedAt?: string;
   lastLoginAt?: string;

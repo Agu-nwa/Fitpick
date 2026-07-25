@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 const required = [
   "app/page.tsx",
   "app/onboarding/page.tsx",
+  "app/welcome/page.tsx",
   "app/home/page.tsx",
   "app/occasion/page.tsx",
   "app/wardrobe/page.tsx",
