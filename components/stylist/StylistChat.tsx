@@ -139,7 +139,7 @@ function StylistProductCard({
     <button
       type="button"
       className={cn(
-        "focus-ring group min-h-56 rounded-xl3 border p-5 text-left shadow-card transition hover:-translate-y-0.5",
+        "focus-ring group min-h-56 w-full min-w-0 overflow-hidden rounded-xl3 border p-5 text-left shadow-card transition hover:-translate-y-0.5",
         featured
           ? "border-cocoa/30 bg-gradient-to-br from-cocoa/12 via-surface to-olive/10"
           : "border-line bg-surface/90",
@@ -151,10 +151,10 @@ function StylistProductCard({
       <span className={cn("inline-flex size-11 items-center justify-center rounded-2xl border", featured ? "border-cocoa/25 bg-cocoa text-canvas" : "border-line bg-canvas text-cocoa")}>
         <Icon size={18} aria-hidden="true" />
       </span>
-      <span className="mt-5 block font-editorial text-3xl font-semibold leading-none text-ink">{title}</span>
-      <span className="mt-3 block text-sm leading-6 text-muted">{body}</span>
-      {note ? <span className="mt-4 block text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{note}</span> : null}
-      <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-ink">
+      <span className="mt-5 block max-w-full break-words font-editorial text-3xl font-semibold leading-none text-ink">{title}</span>
+      <span className="mt-3 block max-w-full text-sm leading-6 text-muted">{body}</span>
+      {note ? <span className="mt-4 block max-w-full text-xs font-bold uppercase tracking-[0.14em] text-cocoa sm:tracking-[0.16em]">{note}</span> : null}
+      <span className="mt-5 inline-flex max-w-full items-center gap-2 text-sm font-semibold text-ink">
         {action}
         <ArrowUpRight size={16} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
       </span>
