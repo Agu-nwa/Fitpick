@@ -5,7 +5,19 @@ import { SupportLauncher } from "@/components/support/SupportLauncher";
 import { FashionBackdrop } from "@/components/ui/FashionBackdrop";
 import { cn } from "@/lib/utils";
 
-export function AppShell({ children, showNav = true, className }: { children: React.ReactNode; showNav?: boolean; className?: string }) {
+export function AppShell({
+  children,
+  showNav = true,
+  showSupport,
+  className
+}: {
+  children: React.ReactNode;
+  showNav?: boolean;
+  showSupport?: boolean;
+  className?: string;
+}) {
+  const shouldShowSupport = showSupport ?? showNav;
+
   return (
     <main
       id="main-content"
@@ -20,7 +32,7 @@ export function AppShell({ children, showNav = true, className }: { children: Re
         </div>
       </div>
       {showNav ? <BottomNav /> : null}
-      {showNav ? <SupportLauncher /> : null}
+      {shouldShowSupport ? <SupportLauncher /> : null}
     </main>
   );
 }

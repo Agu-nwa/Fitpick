@@ -109,6 +109,27 @@ export function fabricCompatibilityScore(items: any[]) {
   return 10;
 }
 
+export function materialWeatherScore(items: any[], weatherContext = "") {
+  const target = normalize(weatherContext);
+  if (!target) return 0;
+  const fabrics = items.map((item) => [
+    metadataValue(item, "fabricComposition"),
+    metadataValue(item, "fabricEstimate"),
+    metadataValue(item, "texture"),
+    item.fabric
+  ].map(normalize).join(" ")).filter(Boolean);
+  if (!fabrics.length) return -2;
+
+  const hasLight = fabrics.some((fabric) => /linen|cotton|silk|chiffon|mesh|breathable|light|jersey/.test(fabric));
+  const hasWarm = fabrics.some((fabric) => /wool|cashmere|fleece|knit|leather|suede|tweed|heavy|thick/.test(fabric));
+  const hasRainFriendly = fabrics.some((fabric) => /nylon|polyester|leather|treated|waterproof|water resistant|rain/.test(fabric));
+
+  if (/hot|warm|humid|summer|heat/.test(target)) return hasLight && !hasWarm ? 12 : hasWarm ? -8 : 4;
+  if (/cold|winter|chilly|snow|wind/.test(target)) return hasWarm ? 12 : hasLight ? -4 : 4;
+  if (/rain|wet|storm|drizzle/.test(target)) return hasRainFriendly ? 10 : hasLight ? -3 : 2;
+  return 0;
+}
+
 export function silhouetteBalanceScore(items: any[]) {
   const silhouettes = items.map((item) => normalize(metadataValue(item, "silhouette") || item.fit)).filter(Boolean);
   if (!silhouettes.length) return 5;
@@ -141,9 +162,37 @@ export function eventRelevanceScore(items: any[], occasionName = "") {
 
 export function completenessScore(items: any[], desiredCategories: string[]) {
   const present = new Set(items.map((item) => item.category));
-  const required = desiredCategories.filter((category) => !["outerwear", "accessories", "bags"].includes(category));
-  const missingRequired = required.filter((category) => !present.has(category));
-  return Math.max(-35, 18 - missingRequired.length * 16);
+  const wantsShoes = desiredCategories.includes("shoes");
+  const wantsMainClothing = desiredCategories.some((category) => ["tops", "bottoms", "dresses"].includes(category));
+  const hasDress = present.has("dresses") || items.some((item) => /dress|gown|jumpsuit|romper|one[-\s]?piece/i.test([item.name, item.subcategory, metadataValue(item, "garmentType")].join(" ")));
+  const hasTopBottom = present.has("tops") && present.has("bottoms");
+  const missingMain = wantsMainClothing && !hasDress && !hasTopBottom;
+  const missingShoes = wantsShoes && !present.has("shoes");
+  const optionalBonus = ["outerwear", "accessories", "bags"].filter((category) => desiredCategories.includes(category) && present.has(category)).length * 3;
+
+  let score = 18 + optionalBonus;
+  if (missingMain) score -= 28;
+  if (missingShoes) score -= 18;
+  return Math.max(-42, Math.min(28, score));
+}
+
+export function outfitRoleBalanceScore(items: any[], desiredCategories: string[] = []) {
+  const categories = new Set(items.map((item) => item.category));
+  const hasDress = categories.has("dresses") || items.some((item) => /dress|gown|jumpsuit|romper|one[-\s]?piece/i.test([item.name, item.subcategory, metadataValue(item, "garmentType")].join(" ")));
+  const hasTopBottom = categories.has("tops") && categories.has("bottoms");
+  const hasShoes = categories.has("shoes");
+  const hasOuterwear = categories.has("outerwear");
+  const hasAccessoryOrBag = categories.has("accessories") || categories.has("bags");
+
+  let score = 0;
+  if (hasDress || hasTopBottom) score += 12;
+  else score -= 24;
+  if (hasShoes) score += 10;
+  else if (desiredCategories.includes("shoes")) score -= 16;
+  if (hasOuterwear && desiredCategories.includes("outerwear")) score += 4;
+  if (hasAccessoryOrBag) score += 3;
+  if (items.filter((item) => item.category === "accessories" || item.category === "bags").length > 2) score -= 4;
+  return score;
 }
 
 function hasAny(value: unknown, candidates: string[] = []) {
@@ -168,6 +217,7 @@ export function styleProfileScore(items: any[], styleProfile?: any) {
   const preferredCategories = styleProfile.preferredCategories || [];
   const avoidedCategories = styleProfile.avoidedCategories || [];
   const eventPreferences = styleProfile.eventStylePreferences || [];
+  const culturalStylePreferences = styleProfile.culturalStylePreferences || [];
 
   for (const item of items) {
     const color = metadataValue(item, "primaryColor") || item.color;
@@ -175,6 +225,7 @@ export function styleProfileScore(items: any[], styleProfile?: any) {
     const fit = metadataValue(item, "fit") || item.fit;
     const occasions = metadataList(item, "occasionSuitability").concat(item.occasions || []);
     const eventRelevance = metadataValue(item, "eventRelevance");
+    const culturalRelevance = metadataValue(item, "culturalTraditionalRelevance") || metadataValue(item, "styleFamily");
 
     if (hasAny(color, favoriteColors)) score += 6;
     if (hasAny(color, dislikedColors)) score -= 12;
@@ -186,6 +237,7 @@ export function styleProfileScore(items: any[], styleProfile?: any) {
     if (avoidedCategories.includes(item.category)) score -= 16;
     if (occasions.some((occasion: string) => hasAny(occasion, preferredOccasions))) score += 4;
     if (hasAny(eventRelevance, eventPreferences)) score += 5;
+    if (hasAny(culturalRelevance, culturalStylePreferences)) score += 4;
   }
 
   const risk = styleProfile.fashionRiskLevel || "balanced";
@@ -318,7 +370,7 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     seasonFit: itemBreakdown.seasonFit,
     colorHarmony: colorCompatibilityScore(items),
     silhouetteBalance: silhouetteBalanceScore(items),
-    materialCompatibility: fabricCompatibilityScore(items),
+    materialCompatibility: fabricCompatibilityScore(items) + materialWeatherScore(items, input.weatherContext),
     styleProfile: styleProfileScore(items, input.styleProfile),
     memoryPreference: memoryPreferenceScore(items, input.memorySummary, input.allowRecentRepeat),
     rotation: itemBreakdown.rotation,
@@ -326,7 +378,8 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     novelty: noveltyPreferenceScore(items, input.outfitHistorySummary),
     readiness: itemBreakdown.readiness,
     comfort: comfortScore(items, input.styleProfile),
-    luxury: luxuryAestheticScore(items, input.styleProfile)
+    luxury: luxuryAestheticScore(items, input.styleProfile),
+    outfitRoles: outfitRoleBalanceScore(items, input.desiredCategories || [])
   };
 
   const total =
@@ -347,8 +400,10 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     breakdown.comfort * weights.comfort +
     breakdown.luxury * weights.luxury;
 
+  const roleAdjustedTotal = total + breakdown.outfitRoles;
+
   return {
-    total: Math.round(total * 10) / 10,
+    total: Math.round(roleAdjustedTotal * 10) / 10,
     breakdown
   };
 }

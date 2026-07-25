@@ -96,6 +96,15 @@ const hiddenAiFields: FieldConfig[] = [
 ];
 
 const allFields = [...essentialFields, ...hiddenAiFields];
+const optionalStylingFields = hiddenAiFields.filter((field) => [
+  "secondaryColors",
+  "texture",
+  "thicknessEstimate",
+  "layeringSuitability",
+  "seasonSuitability",
+  "careInstructions",
+  "stylingNotes"
+].includes(field.key));
 const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
 const conditionOptions: Array<{ value: WardrobeCondition; label: string; helper: string }> = [
   { value: "ready", label: "Ready", helper: "Clean, wearable, and fully usable for styling." },
@@ -120,6 +129,35 @@ const garmentMeasurementFields: Array<{ key: keyof GarmentMeasurements; label: s
   { key: "shoeLengthCm", label: "Shoe length", placeholder: "28" },
   { key: "heelHeightCm", label: "Heel height", placeholder: "4" }
 ];
+
+const subtypePresets: Partial<Record<WardrobeCategory, string[]>> = {
+  tops: ["T-shirt", "Shirt", "Polo", "Blouse", "Sweater", "Hoodie", "Tank top"],
+  bottoms: ["Jeans", "Trousers", "Chinos", "Shorts", "Skirt", "Joggers"],
+  dresses: ["Dress", "Gown", "Jumpsuit", "Romper"],
+  outerwear: ["Blazer", "Jacket", "Coat", "Cardigan", "Vest"],
+  shoes: ["Sneakers", "Loafers", "Boots", "Formal shoes", "Sandals", "Heels", "Slippers", "Sports shoes"],
+  bags: ["Tote", "Handbag", "Crossbody", "Clutch", "Backpack"],
+  accessories: ["Belt", "Watch", "Sunglasses", "Jewellery", "Hat", "Scarf"]
+};
+
+const scalarPresets: Record<string, string[]> = {
+  pattern: ["Plain", "Striped", "Checked", "Graphic", "Floral", "Textured"],
+  fabricComposition: ["Cotton", "Denim", "Linen", "Wool", "Leather", "Polyester", "Knit", "Silk"],
+  fabricEstimate: ["Cotton", "Denim", "Linen", "Wool", "Leather", "Polyester", "Knit", "Silk"],
+  fit: ["Slim", "Regular", "Relaxed", "Oversized", "Tailored", "Flowing"],
+  formalityScore: ["Casual", "Smart casual", "Business casual", "Formal", "Evening"],
+  texture: ["Smooth", "Ribbed", "Textured", "Soft", "Crisp", "Glossy"],
+  thicknessEstimate: ["Light", "Medium", "Heavy"],
+  layeringSuitability: ["Good alone", "Good under jacket", "Good over shirt", "Not ideal for layering"]
+};
+
+const listPresets: Record<string, string[]> = {
+  occasionSuitability: ["Work", "Dinner", "Date night", "Wedding", "Church", "Weekend", "Travel", "Party"],
+  weatherSuitability: ["Hot", "Warm", "Mild", "Cold", "Rainy"],
+  seasonSuitability: ["All season", "Dry season", "Rainy season", "Summer", "Winter"],
+  careInstructions: ["Machine wash", "Hand wash", "Dry clean", "Do not bleach", "Iron low"],
+  stylingNotes: ["Good alone", "Good under jacket", "Good with trousers", "Good with jeans", "Statement piece"]
+};
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -167,6 +205,39 @@ function measurementNumber(value: string) {
   if (!value.trim()) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 10) / 10 : null;
+}
+
+function joinUniqueList(current: string, next: string) {
+  const values = splitList(current);
+  if (!values.some((value) => value.toLowerCase() === next.toLowerCase())) values.push(next);
+  return values.join(", ");
+}
+
+function PresetButtons({
+  options,
+  onSelect,
+  selected = []
+}: {
+  options?: string[];
+  onSelect: (value: string) => void;
+  selected?: string[];
+}) {
+  if (!options?.length) return null;
+  const selectedSet = new Set(selected.map((value) => value.toLowerCase()));
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${selectedSet.has(option.toLowerCase()) ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-line bg-white/70 text-muted hover:border-cocoa/35 hover:text-ink"}`}
+          onClick={() => onSelect(option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function fieldFromAnalysis(aiAnalysis: WardrobeAiAnalysis | null | undefined, key: string) {
@@ -353,8 +424,8 @@ export function AITagConfirmationForm({
     >
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <p className="text-sm font-semibold text-ink">Confirm what MyFitPick detected</p>
-        <p className="mt-1 text-xs leading-5 text-muted">
-          Review the essentials. Category, colour, material, fit, occasion, weather, and readiness guide your stylist later.
+              <p className="mt-1 text-xs leading-5 text-muted">
+          Review the essentials. Category, subtype, colour, material, fit, occasion, weather, and readiness guide your stylist later.
         </p>
         {lowConfidenceCount ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
@@ -426,22 +497,36 @@ export function AITagConfirmationForm({
                     {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 ) : field.kind === "list" ? (
-                  <textarea
-                    id={fieldId}
-                    className={`${inputClass} min-h-20`}
-                    value={values[field.key] || ""}
-                    onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                    placeholder="Comma-separated"
-                  />
+                  <>
+                    <textarea
+                      id={fieldId}
+                      className={`${inputClass} min-h-20`}
+                      value={values[field.key] || ""}
+                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                      placeholder="Comma-separated"
+                    />
+                    <PresetButtons
+                      options={listPresets[field.key]}
+                      selected={splitList(values[field.key] || "")}
+                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: joinUniqueList(current[field.key] || "", option) }))}
+                    />
+                  </>
                 ) : (
-                  <input
-                    id={fieldId}
-                    className={inputClass}
-                    value={values[field.key] || ""}
-                    onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                    placeholder={field.required ? "Required" : "Optional"}
-                    required={field.required}
-                  />
+                  <>
+                    <input
+                      id={fieldId}
+                      className={inputClass}
+                      value={values[field.key] || ""}
+                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                      placeholder={field.required ? "Required" : "Optional"}
+                      required={field.required}
+                    />
+                    <PresetButtons
+                      options={field.key === "subcategory" ? subtypePresets[(values.category || "tops") as WardrobeCategory] : scalarPresets[field.key]}
+                      selected={values[field.key] ? [values[field.key]] : []}
+                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: option }))}
+                    />
+                  </>
                 )}
               </FieldGroup>
             );
@@ -458,6 +543,65 @@ export function AITagConfirmationForm({
           </p>
         </div>
       </section>
+
+      <details
+        className="rounded-2xl border border-line bg-canvas/60 p-3"
+        onToggle={(event) => {
+          if (event.currentTarget.open) revealContent(event.currentTarget, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
+        }}
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-ink">Optional styling intelligence</summary>
+        <p className="mt-2 text-xs leading-5 text-muted">Add these when you know them. They help with season, layering, care, and richer outfit styling.</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {optionalStylingFields.map((field) => {
+            const fieldId = `optional-ai-field-${field.key}`;
+            const original = fieldFromAnalysis(aiAnalysis, field.key);
+            return (
+              <FieldGroup key={field.key} label={field.label} htmlFor={fieldId}>
+                {original ? (
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <Badge tone={original.source === "ocr" && original.confidence >= 0.8 ? "success" : original.confidence < 0.65 ? "warning" : "neutral"}>
+                      {confidenceLabel(original.confidence, original.source)}
+                    </Badge>
+                    <span className="text-[11px] font-semibold text-muted">{sourceLabel(original.source)}</span>
+                  </div>
+                ) : null}
+                {field.kind === "list" ? (
+                  <>
+                    <textarea
+                      id={fieldId}
+                      className={`${inputClass} min-h-20`}
+                      value={values[field.key] || ""}
+                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                      placeholder="Comma-separated"
+                    />
+                    <PresetButtons
+                      options={listPresets[field.key]}
+                      selected={splitList(values[field.key] || "")}
+                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: joinUniqueList(current[field.key] || "", option) }))}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <input
+                      id={fieldId}
+                      className={inputClass}
+                      value={values[field.key] || ""}
+                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                      placeholder="Optional"
+                    />
+                    <PresetButtons
+                      options={scalarPresets[field.key]}
+                      selected={values[field.key] ? [values[field.key]] : []}
+                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: option }))}
+                    />
+                  </>
+                )}
+              </FieldGroup>
+            );
+          })}
+        </div>
+      </details>
 
       <details
         ref={fitDetailsRef}

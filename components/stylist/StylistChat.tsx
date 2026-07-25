@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
+import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import {
   analyzeReferenceFashionItem,
@@ -66,10 +67,35 @@ const promptSuggestions = [
   "Use my white sneakers"
 ];
 
-const loadingSteps = [
-  "Reading your wardrobe...",
-  "Finding the strongest pieces...",
-  "Building your look..."
+const createLookExamples = [
+  "Style me for dinner.",
+  "Create something relaxed but polished.",
+  "I need an outfit for a wedding.",
+  "Help me dress for a first date.",
+  "Build a smart casual look."
+];
+
+const createLoadingSteps = [
+  "Reviewing your wardrobe",
+  "Balancing colour and silhouette",
+  "Selecting the strongest outfit",
+  "Creating your Virtual Try-On"
+];
+
+const matchLoadingSteps = [
+  "Analysing your item",
+  "Searching your wardrobe",
+  "Styling around your upload",
+  "Creating your Virtual Try-On"
+];
+
+const refinementChips = [
+  "More relaxed",
+  "More elevated",
+  "Add colour",
+  "Keep trousers",
+  "Keep jacket",
+  "Avoid trainers"
 ];
 
 function messageId() {
@@ -371,12 +397,105 @@ function EditorialOutfitVisual({
   );
 }
 
+function RecommendationDetailsDrawer({
+  outfit,
+  reference,
+  assistantNote,
+  open,
+  onClose
+}: {
+  outfit: OutfitRecommendation;
+  reference?: ReferenceFashionItemSummary | null;
+  assistantNote?: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  const notes = [outfit.summary, outfit.occasionFit, outfit.colorNote, assistantNote].filter(Boolean);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-ink/35 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm lg:items-center lg:justify-end lg:p-6">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Look details"
+        className="max-h-[88svh] w-full overflow-y-auto rounded-[1.75rem] border border-line bg-surface p-4 shadow-card lg:max-w-xl lg:p-5"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Look details</p>
+            <h3 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">{outfit.title}</h3>
+          </div>
+          <button
+            type="button"
+            className="focus-ring inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line bg-canvas text-muted hover:text-ink"
+            onClick={onClose}
+            aria-label="Close look details"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-5">
+          {reference ? (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Uploaded item</p>
+              <div className="mt-2 rounded-2xl border border-cocoa/20 bg-cocoa/10 p-3">
+                <ReferenceImageCard reference={reference} />
+              </div>
+            </div>
+          ) : null}
+
+          {outfit.items.length ? (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Closet items</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {outfit.items.slice(0, 8).map((item) => (
+                  <div key={item.id} className="overflow-hidden rounded-2xl border border-line bg-canvas/70">
+                    <ImageFrame
+                      src={item.thumbnailUrl || item.imageUrl}
+                      alt={item.name}
+                      placeholder={item.category}
+                      className="h-28 rounded-none border-0"
+                    />
+                    <div className="px-3 py-2">
+                      <p className="truncate text-xs font-semibold text-ink">{item.name}</p>
+                      <p className="truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {notes.length ? (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Styling notes</p>
+              <div className="mt-2 space-y-3 rounded-2xl border border-line bg-canvas/65 p-4">
+                {notes.slice(0, 4).map((note, index) => (
+                  <p key={`${note}-${index}`} className="text-sm leading-6 text-muted">{note}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {outfit.occasion ? <Badge tone="neutral">{outfit.occasion}</Badge> : null}
+            {outfit.weatherFit ? <Badge tone="neutral">{outfit.weatherFit}</Badge> : null}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function EditorialRecommendationCard({
   outfit,
   index,
   loading,
   preview,
   assistantNote,
+  reference,
   onRegenerate,
   showRegenerate
 }: {
@@ -385,16 +504,14 @@ function EditorialRecommendationCard({
   loading?: boolean;
   preview?: StylistAvatarPreview;
   assistantNote?: string;
-  onRegenerate?: () => void;
+  reference?: ReferenceFashionItemSummary | null;
+  onRegenerate?: (refinement?: string) => void;
   showRegenerate?: boolean;
 }) {
   const featured = index === 0;
-  const detailNotes = [
-    outfit.summary,
-    outfit.occasionFit,
-    outfit.colorNote,
-    assistantNote
-  ].filter(Boolean);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const previewFailed = featured && preview?.status === "failed";
+  const previewReady = featured && Boolean(preview?.imageUrl);
 
   return (
     <article
@@ -403,59 +520,72 @@ function EditorialRecommendationCard({
         featured ? "border-cocoa/25" : "border-line"
       )}
     >
-      <EditorialOutfitVisual outfit={outfit} featured={featured} preview={featured ? preview : undefined} />
+      <div className="relative">
+        {featured ? (
+          <p className="absolute left-4 top-4 z-10 rounded-full border border-white/70 bg-surface/85 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa shadow-soft backdrop-blur">
+            {reference ? "Best Match" : "Editor's Pick"}
+          </p>
+        ) : null}
+        <EditorialOutfitVisual outfit={outfit} featured={featured} preview={featured ? preview : undefined} />
+      </div>
       <div className="grid gap-5 px-1 py-5 sm:px-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
+          {reference ? <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Styled Around Your Item</p> : null}
           <h4 className={cn("font-editorial font-semibold leading-none text-ink", featured ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl")}>
             {outfit.title}
           </h4>
+          {outfit.summary ? <p className="mt-3 max-w-xl truncate text-sm leading-6 text-muted">{outfit.summary}</p> : null}
         </div>
-        <div className={cn("grid gap-2 lg:min-w-80", showRegenerate ? "sm:grid-cols-2" : "")}>
+        <div className="grid gap-2 lg:min-w-80">
           <Link href={`/outfit/${outfit.id}/preview`} className="block">
             <Button type="button" className="w-full">
               Virtual Try-On
             </Button>
           </Link>
           {showRegenerate && onRegenerate ? (
-            <Button type="button" variant="secondary" onClick={onRegenerate} disabled={loading}>
+            <Button type="button" variant="secondary" onClick={() => onRegenerate()} disabled={loading}>
               <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" />
-              {loading ? "Regenerating..." : "Regenerate Looks"}
+              {loading ? "Regenerating..." : "Regenerate Look"}
             </Button>
           ) : null}
+          {previewReady ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
+          <Button type="button" variant="ghost" onClick={() => setDetailsOpen(true)}>
+            View Details
+          </Button>
         </div>
       </div>
 
-      {(outfit.items.length || detailNotes.length) ? (
-        <details className="border-t border-line/70 px-1 py-4 sm:px-2">
-          <summary className="focus-ring inline-flex cursor-pointer rounded-full text-xs font-bold uppercase tracking-[0.16em] text-cocoa">
-            View Details
-          </summary>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
-            {outfit.items.length ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {outfit.items.slice(0, 6).map((item) => (
-                  <div key={item.id} className="overflow-hidden rounded-2xl border border-line bg-canvas/70">
-                    <ImageFrame
-                      src={item.thumbnailUrl || item.imageUrl}
-                      alt={item.name}
-                      placeholder={item.category}
-                      className="h-24 rounded-none border-0"
-                    />
-                    <p className="truncate px-3 py-2 text-xs font-semibold text-ink">{item.name}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {detailNotes.length ? (
-              <div className="space-y-2 rounded-2xl border border-line bg-canvas/60 p-4">
-                {detailNotes.slice(0, 3).map((note, noteIndex) => (
-                  <p key={`${note}-${noteIndex}`} className="text-sm leading-6 text-muted">{note}</p>
-                ))}
-              </div>
-            ) : null}
+      {previewFailed ? (
+        <div className="mx-1 mb-4 rounded-2xl border border-warning/20 bg-warning/10 p-4 sm:mx-2">
+          <p className="font-semibold text-ink">Your outfit is ready.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">The preview couldn&apos;t be generated. You can try again without rebuilding the outfit.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Link href={`/outfit/${outfit.id}/preview`} className="block">
+              <Button type="button" className="w-full">Generate Preview Again</Button>
+            </Link>
+            <Button type="button" variant="secondary" onClick={() => setDetailsOpen(true)}>View Outfit</Button>
           </div>
-        </details>
+        </div>
       ) : null}
+      {showRegenerate && onRegenerate ? (
+        <div className="border-t border-line/70 px-1 py-4 sm:px-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Refine the next look</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {refinementChips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                className="focus-ring rounded-full border border-line bg-canvas/70 px-3 py-2 text-xs font-semibold text-muted transition hover:border-cocoa/40 hover:text-ink disabled:opacity-60"
+                onClick={() => onRegenerate(chip)}
+                disabled={loading}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <RecommendationDetailsDrawer outfit={outfit} reference={reference} assistantNote={assistantNote} open={detailsOpen} onClose={() => setDetailsOpen(false)} />
     </article>
   );
 }
@@ -466,6 +596,7 @@ function EditorialRecommendationStack({
   loading,
   preview,
   assistantNote,
+  reference,
   onRegenerate
 }: {
   recommendations: OutfitRecommendation[];
@@ -473,13 +604,14 @@ function EditorialRecommendationStack({
   loading?: boolean;
   preview?: StylistAvatarPreview;
   assistantNote?: string;
-  onRegenerate?: () => void;
+  reference?: ReferenceFashionItemSummary | null;
+  onRegenerate?: (refinement?: string) => void;
 }) {
   if (!recommendations.length) return null;
 
   return (
     <div className="space-y-4">
-      {recommendations.slice(0, mode === "match" ? 3 : 1).map((outfit, index) => (
+      {recommendations.slice(0, 1).map((outfit, index) => (
         <EditorialRecommendationCard
           key={outfit.id || `${outfit.title}-${index}`}
           outfit={outfit}
@@ -487,6 +619,7 @@ function EditorialRecommendationStack({
           loading={loading}
           preview={index === 0 ? preview : undefined}
           assistantNote={index === 0 ? assistantNote : undefined}
+          reference={index === 0 ? reference : null}
           onRegenerate={onRegenerate}
           showRegenerate={mode === "create" && index === 0}
         />
@@ -524,7 +657,9 @@ export function StylistChat({
   const [activeReference, setActiveReference] = useState<ReferenceFashionItemSummary | null>(null);
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const [lastCreateBrief, setLastCreateBrief] = useState("");
+  const [exampleIndex, setExampleIndex] = useState(0);
   const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
+  const flowLoadingSteps = currentFlow === "match" ? matchLoadingSteps : createLoadingSteps;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
   const latestAssistant = useMemo(
     () => [...messages].reverse().find((entry) => entry.role === "assistant"),
@@ -544,6 +679,14 @@ export function StylistChat({
       if (referencePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(referencePreviewUrl);
     };
   }, [referencePreviewUrl]);
+
+  useEffect(() => {
+    if (currentFlow !== "create") return;
+    const timer = window.setInterval(() => {
+      setExampleIndex((current) => (current + 1) % createLookExamples.length);
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [currentFlow]);
 
   function focusWorkspace() {
     revealContent(workspaceRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
@@ -874,13 +1017,14 @@ export function StylistChat({
     if (response.data.outfitRecommendationId && !referenceForMessage) showToast("Look ready.");
   }
 
-  async function handleRegenerateLooks(entry: ChatMessage) {
+  async function handleRegenerateLooks(entry: ChatMessage, refinement?: string) {
     if (loading || referenceBusy || isRegeneratingLooks) return;
     const originalBrief = lastCreateBrief || requestHistory.find((request) => !request.attachment)?.content || "Create a polished look from my wardrobe.";
     const currentItems = entry.outfit?.items.map((item) => item.name).filter(Boolean).join(", ");
+    const refinementLine = refinement ? `\nRefinement: ${refinement}.` : "";
     const regenerationPrompt = currentItems
-      ? `${originalBrief}\nCreate a fresh alternative from my wardrobe and avoid repeating this exact combination: ${currentItems}.`
-      : `${originalBrief}\nCreate a fresh alternative from my wardrobe.`;
+      ? `${originalBrief}${refinementLine}\nCreate a fresh alternative from my wardrobe and avoid repeating this exact combination: ${currentItems}.`
+      : `${originalBrief}${refinementLine}\nCreate a fresh alternative from my wardrobe.`;
 
     setIsRegeneratingLooks(true);
     try {
@@ -917,7 +1061,8 @@ export function StylistChat({
           loading={loading || isRegeneratingLooks}
           preview={preview}
           assistantNote={entry.content}
-          onRegenerate={!reference ? () => void handleRegenerateLooks(entry) : undefined}
+          reference={reference}
+          onRegenerate={!reference ? (refinement) => void handleRegenerateLooks(entry, refinement) : undefined}
         />
       </>
     );
@@ -1042,12 +1187,20 @@ export function StylistChat({
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                className="focus-ring rounded-full border border-line bg-white/70 px-3 py-2 text-xs font-semibold text-cocoa transition hover:border-cocoa/40"
+                onClick={() => setMessage(createLookExamples[exampleIndex])}
+                disabled={loading}
+              >
+                {createLookExamples[exampleIndex]}
+              </button>
               <label className="sr-only" htmlFor="stylist-create-prompt">Tell your stylist what you need</label>
               <textarea
                 id="stylist-create-prompt"
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Tell your stylist what you need..."
+                placeholder="What are you dressing for today?"
                 className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1079,7 +1232,7 @@ export function StylistChat({
                     Match an Outfit
                   </p>
                   <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style a look you admire.</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">Add a photo and let MyFitPick make it work with your closet.</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Upload a product photo, screenshot, or outfit reference.</p>
                 </div>
                 <MatchFlowVisual />
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -1131,11 +1284,11 @@ export function StylistChat({
                   <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/70 px-5 text-center">
                     <div>
                       <ImagePlus size={26} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-                      <p className="font-editorial text-3xl font-semibold leading-none text-ink">Add a look you love.</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">A photo or screenshot is enough.</p>
-                    </div>
+                    <p className="font-editorial text-3xl font-semibold leading-none text-ink">Add a look you love.</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">A photo or screenshot is enough.</p>
                   </div>
-                )}
+                </div>
+              )}
 
                 {referenceMessage ? (
                   <div className="rounded-2xl border border-line bg-canvas/60 px-3 py-2" aria-live="polite">
@@ -1155,7 +1308,7 @@ export function StylistChat({
                     void submitStylistMessage();
                   }}
                 >
-                  <p className="text-sm font-semibold text-ink">Ask your stylist how to wear it.</p>
+                  <p className="text-sm font-semibold text-ink">We&apos;ll build your outfit around this item.</p>
                   <label className="sr-only" htmlFor="stylist-match-prompt">Add optional direction for this match</label>
                   <textarea
                     id="stylist-match-prompt"
@@ -1176,7 +1329,7 @@ export function StylistChat({
                     </label>
                     <Button type="submit" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
                       <Sparkles size={16} aria-hidden="true" />
-                      {loading ? "Building..." : "Build matched look"}
+                      {loading ? "Building..." : "Match With My Wardrobe"}
                     </Button>
                   </div>
                 </form>
@@ -1208,7 +1361,7 @@ export function StylistChat({
           ) : loading ? (
             <Card className="flex min-h-80 items-center justify-center border-dashed border-line bg-canvas/60 px-5 text-center">
               <div className="space-y-2">
-                {loadingSteps.map((step) => (
+                {flowLoadingSteps.map((step) => (
                   <p key={step} className="text-sm font-semibold text-muted">{step}</p>
                 ))}
               </div>
