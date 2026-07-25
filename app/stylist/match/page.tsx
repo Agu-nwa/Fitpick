@@ -18,7 +18,7 @@ export default function MatchOutfitPage() {
           </p>
           <h1 className="font-editorial text-4xl font-semibold leading-none text-ink sm:text-5xl">Match an Outfit</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-            Upload a fashion photo and receive closet-led ways to wear it.
+            Bring a photo or screenshot and let MyFitPick style it with your closet.
           </p>
         </div>
         <p className="rounded-full border border-line bg-surface/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-muted">

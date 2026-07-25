@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/utils";
 import { primaryNavItems } from "@/components/navigation/BottomNav";
 import { WalletBalancePill } from "@/components/wallet/WalletBalancePill";
@@ -13,12 +14,7 @@ export function DesktopNav() {
   return (
     <aside className="sticky top-0 hidden h-screen w-72 flex-none flex-col border-r border-line bg-white/72 px-6 py-7 shadow-card backdrop-blur-xl lg:flex">
       <Link href="/home" className="focus-ring rounded-2xl px-2 py-1">
-        <span className="flex items-center gap-2 text-xl font-extrabold tracking-[-0.06em] text-ink">
-          <span className="flex size-8 items-center justify-center rounded-full bg-cocoa text-canvas">
-            <Sparkles size={16} aria-hidden="true" />
-          </span>
-          MyFitPick
-        </span>
+        <BrandLogo size="md" priority />
         <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Intelligent wardrobe</span>
       </Link>
 

@@ -1,15 +1,13 @@
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { legalContactEmail, legalLastUpdated, legalPolicyList, type LegalPolicy } from "@/lib/legal/policies";
 
 function LegalTopNav() {
   return (
     <nav className="flex flex-wrap items-center justify-between gap-3" aria-label="Legal navigation">
-      <Link href="/login" className="focus-ring inline-flex items-center gap-2 rounded-full pr-3 text-sm font-extrabold text-ink">
-        <span className="flex size-9 items-center justify-center rounded-full bg-olive text-canvas">
-          <Sparkles size={16} aria-hidden="true" />
-        </span>
-        MyFitPick
+      <Link href="/login" className="focus-ring inline-flex items-center rounded-full pr-3">
+        <BrandLogo size="sm" priority />
       </Link>
       <Link href="/legal" className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-white/76 px-4 text-sm font-bold text-muted shadow-soft transition hover:text-ink">
         <ArrowLeft size={15} aria-hidden="true" />

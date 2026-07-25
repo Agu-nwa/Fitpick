@@ -14,7 +14,7 @@ export default function StylistPage() {
           </p>
           <h1 className="font-editorial text-4xl font-semibold leading-none text-ink sm:text-5xl">Your Stylist</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-            Choose how you want to be styled today.
+            Choose how you want MyFitPick to style you today.
           </p>
         </div>
         <p className="rounded-full border border-line bg-surface/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-muted">
@@ -33,7 +33,7 @@ export default function StylistPage() {
                 <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">Create a Look</p>
                 <h2 className="font-editorial mt-3 text-5xl font-semibold leading-[0.9] text-ink">Build from your closet.</h2>
                 <p className="mt-4 max-w-md text-sm leading-6 text-muted">
-                  Tell MyFitPick the occasion, mood, weather, or piece you want to start with.
+                  Start with an occasion, mood, weather, or favorite piece.
                 </p>
               </div>
               <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
@@ -54,7 +54,7 @@ export default function StylistPage() {
                 <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">Match an Outfit</p>
                 <h2 className="font-editorial mt-3 text-5xl font-semibold leading-[0.9] text-ink">Style a look you admire.</h2>
                 <p className="mt-4 max-w-md text-sm leading-6 text-muted">
-                  Upload a photo or screenshot and receive closet-led outfit options.
+                  Upload a photo or screenshot and receive three closet-led options when possible.
                 </p>
               </div>
               <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
