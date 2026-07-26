@@ -1,12 +1,19 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type ImageFrameAspect = "square" | "portrait" | "wide";
+type ImageFrameAspect = "square" | "portrait" | "fullBody" | "wide";
+type ImageFrameFit = "cover" | "contain";
 
 const aspectClasses: Record<ImageFrameAspect, string> = {
   square: "aspect-square",
   portrait: "aspect-[4/5]",
+  fullBody: "aspect-[3/4]",
   wide: "aspect-[16/10]"
+};
+
+const fitClasses: Record<ImageFrameFit, string> = {
+  cover: "object-cover",
+  contain: "object-contain"
 };
 
 export function ImageFrame({
@@ -15,6 +22,7 @@ export function ImageFrame({
   placeholder,
   overlay,
   aspect = "square",
+  fit = "cover",
   className,
   imageClassName
 }: {
@@ -23,6 +31,7 @@ export function ImageFrame({
   placeholder?: ReactNode;
   overlay?: ReactNode;
   aspect?: ImageFrameAspect;
+  fit?: ImageFrameFit;
   className?: string;
   imageClassName?: string;
 }) {
@@ -38,7 +47,7 @@ export function ImageFrame({
         <img
           src={src}
           alt={alt}
-          className={cn("h-full w-full object-cover", imageClassName)}
+          className={cn("h-full w-full", fitClasses[fit], imageClassName)}
           loading="lazy"
         />
       ) : (

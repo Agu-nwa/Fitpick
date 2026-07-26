@@ -206,9 +206,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
               <ImageFrame
                 src={imageUrl}
                 alt={`${outfit.title} avatar preview`}
-                aspect="portrait"
+                aspect="fullBody"
+                fit="contain"
                 placeholder="Avatar preview"
-                className="min-h-[420px] rounded-none border-0 bg-canvas sm:min-h-[560px]"
+                className="min-h-[520px] rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-4 sm:min-h-[640px] lg:min-h-[720px]"
+                imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
               />
             ) : (
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">

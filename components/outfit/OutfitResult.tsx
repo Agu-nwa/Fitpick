@@ -401,10 +401,10 @@ export function OutfitResult({
           {previewUrl ? (
             <button
               type="button"
-              className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-canvas"
+              className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-canvas via-surface to-olive/10"
               onClick={() => setPreviewOpen(true)}
             >
-              <img src={previewUrl} alt={`${outfit.title} outfit preview`} className="aspect-square w-full object-cover" />
+              <img src={previewUrl} alt={`${outfit.title} outfit preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
             </button>
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/60 px-5 text-center">

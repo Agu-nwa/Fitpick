@@ -82,10 +82,10 @@ export function DigitalHumanTryOnPanel({
         {previewUrl ? (
           <button
             type="button"
-            className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-canvas"
+            className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-canvas via-surface to-olive/10"
             onClick={onOpenPreview}
           >
-            <img src={previewUrl} alt={`${outfit.title} avatar preview`} className="aspect-square w-full object-cover" />
+            <img src={previewUrl} alt={`${outfit.title} avatar preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
           </button>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/70 px-5 text-center">
