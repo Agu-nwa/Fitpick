@@ -397,10 +397,10 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const avatarProfile = input.avatarProfileId
         ? await AvatarProfile.findOne({ _id: input.avatarProfileId, userId: input.userId }).lean()
         : null;
-      if (!loaded || !avatarProfile) return { ...unavailableWithDiagnostics("Virtual Try-On needs a saved outfit and full-body photo.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_outfit_or_avatar_profile", providerReturnedJobId: false })), status: "failed" };
+      if (!loaded || !avatarProfile) return { ...unavailableWithDiagnostics("Virtual Try-On needs a saved outfit and My Model.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_outfit_or_avatar_profile", providerReturnedJobId: false })), status: "failed" };
 
       const modelImage = preferredTryOnModelImageUrl(avatarProfile);
-      if (!modelImage) return { ...unavailableWithDiagnostics("Upload a full-body photo before using Virtual Try-On.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_model_image", providerReturnedJobId: false })), status: "failed" };
+      if (!modelImage) return { ...unavailableWithDiagnostics("Choose your My Model before using Virtual Try-On.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_model_image", providerReturnedJobId: false })), status: "failed" };
 
       const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
       if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };

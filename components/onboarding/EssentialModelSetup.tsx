@@ -299,7 +299,7 @@ export function EssentialModelSetup() {
           {saving ? "Saving..." : "Continue"}
         </Button>
         <p className="text-center text-xs leading-5 text-muted">
-          Use a Studio Model for the cleanest preview, or upload your own full-body photo for a more personal result.
+          Use a Studio Model for the cleanest preview across MyFitPick.
         </p>
       </Card>
     );

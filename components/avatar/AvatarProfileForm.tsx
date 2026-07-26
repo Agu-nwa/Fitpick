@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import { Camera, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { requestSignedUploadUrl, updateAvatarProfile, uploadImageViaServer, type AvatarProfileData } from "@/lib/api-client";
-import { imageUploadErrorMessage, normalizeImageForUpload } from "@/lib/image-upload/browser-normalize";
-import { IMAGE_UPLOAD_POLICY } from "@/lib/image-upload-policy";
-import { safeUploadErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
+import { updateAvatarProfile, type AvatarProfileData } from "@/lib/api-client";
+import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
+import { safeUserMessage } from "@/lib/user-facing-errors";
+import { cn } from "@/lib/utils";
 
 type AvatarProfile = AvatarProfileData["profile"];
+
+function modelLabel(gender?: string | null, type?: string | null) {
+  if (!gender || !type) return "No Studio Model selected";
+  return `${gender === "male" ? "Male" : "Female"} ${type.replace(/-/g, " ")}`;
+}
 
 export function AvatarProfileForm({
   profile,
@@ -18,31 +24,39 @@ export function AvatarProfileForm({
   profile: AvatarProfile;
   onSaved: (profile: AvatarProfile) => void;
 }) {
-  const [uploadedModelImageUrl, setUploadedModelImageUrl] = useState(profile.uploadedModelImageUrl || "");
-  const [uploadedModelImageStorageKey, setUploadedModelImageStorageKey] = useState(profile.uploadedModelImageStorageKey || "");
-  const [consentAccepted, setConsentAccepted] = useState(profile.consentAccepted);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [studioGender, setStudioGender] = useState<StudioModelGender | "">(profile.studioModelGender || "");
+  const [studioModelType, setStudioModelType] = useState<StudioModelType | "">(profile.studioModelType || "");
   const [saving, setSaving] = useState(false);
-  const [uploadingModel, setUploadingModel] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const modelFileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setUploadedModelImageUrl(profile.uploadedModelImageUrl || "");
-    setUploadedModelImageStorageKey(profile.uploadedModelImageStorageKey || "");
-    setConsentAccepted(profile.consentAccepted);
-  }, [profile]);
+  const modelOptions = useMemo(() => getStudioModelOptions(studioGender || null), [studioGender]);
+  const currentOptions = useMemo(() => getStudioModelOptions(profile.studioModelGender || null), [profile.studioModelGender]);
+  const currentModel = currentOptions.find((option) => option.type === profile.studioModelType);
+  const selectedModel = modelOptions.find((option) => option.type === studioModelType);
 
-  async function saveProfile() {
+  function chooseGender(value: StudioModelGender) {
+    setStudioGender(value);
+    setStudioModelType("");
+    setNotice("");
+    setError("");
+  }
+
+  async function saveStudioModel() {
+    if (!studioGender || !studioModelType) {
+      setError("Choose your My Model to continue.");
+      return;
+    }
+
     setSaving(true);
     setNotice("");
     setError("");
 
     const result = await updateAvatarProfile({
-      tryOnModelSource: uploadedModelImageUrl ? "uploaded" : profile.studioModelGender ? "studio" : "none",
-      uploadedModelImageUrl: uploadedModelImageUrl || null,
-      uploadedModelImageStorageKey: uploadedModelImageStorageKey || null,
-      consentAccepted
+      tryOnModelSource: "studio",
+      studioModelGender: studioGender,
+      studioModelType
     });
 
     setSaving(false);
@@ -52,118 +66,9 @@ export function AvatarProfileForm({
     }
 
     onSaved(result.data.profile);
-    setNotice("Your preferences are saved.");
-  }
-
-  async function saveUploadedPhoto(publicUrl: string, storageKey: string) {
-    const result = await updateAvatarProfile({
-      tryOnModelSource: "uploaded",
-      uploadedModelImageUrl: publicUrl,
-      uploadedModelImageStorageKey: storageKey,
-      consentAccepted
-    });
-    if (!result.ok) throw new Error(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
-
-    onSaved(result.data.profile);
-    setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || publicUrl);
-    setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || storageKey);
+    setSelectorOpen(false);
     setNotice("Your My Model is ready.");
   }
-
-  async function handleModelPhoto(file: File) {
-    setUploadingModel(true);
-    setNotice("");
-    setError("");
-
-    try {
-      const normalized = await normalizeImageForUpload(file, {
-        source: "avatar_model",
-        onStage: (stage) => {
-          if (stage === "converting") setNotice("Preparing your photo...");
-          if (stage === "generating-preview") setNotice("Checking your full-body photo...");
-        }
-      });
-
-      if (normalized.serverNormalizationRequired) {
-        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
-
-        await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
-        URL.revokeObjectURL(normalized.previewUrl);
-        return;
-      }
-
-      const signed = await requestSignedUploadUrl({
-        filename: normalized.file.name,
-        mimeType: normalized.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType,
-        sizeBytes: normalized.file.size,
-        purpose: "avatar_model"
-      });
-
-      if (!signed.ok) {
-        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
-
-        await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
-        URL.revokeObjectURL(normalized.previewUrl);
-        return;
-      }
-
-      const uploadAccess = signed.data.upload;
-      if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
-        throw new Error(safeUploadErrorMessage(uploadAccess.message, "We couldn’t upload this image. Try another photo."));
-      }
-
-      const uploadResponse = await fetch(uploadAccess.uploadUrl, {
-        method: uploadAccess.method || "PUT",
-        headers: uploadAccess.headers || { "content-type": normalized.file.type || IMAGE_UPLOAD_POLICY.acceptedOutputMimeType },
-        body: normalized.file
-      });
-
-      if (!uploadResponse.ok) {
-        const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error("We couldn’t upload this image. Try another photo.");
-
-        await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
-        URL.revokeObjectURL(normalized.previewUrl);
-        return;
-      }
-
-      const imageUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl.split("?")[0] || "";
-      await saveUploadedPhoto(imageUrl, uploadAccess.storageKey);
-      URL.revokeObjectURL(normalized.previewUrl);
-    } catch (uploadError) {
-      setError(safeUploadErrorMessage(imageUploadErrorMessage(uploadError) || uploadError, "We couldn’t upload this image. Try another photo."));
-    } finally {
-      setUploadingModel(false);
-    }
-  }
-
-  async function removePhoto() {
-    setSaving(true);
-    setNotice("");
-    setError("");
-
-    const result = await updateAvatarProfile({
-      tryOnModelSource: profile.studioModelGender ? "studio" : "none",
-      uploadedModelImageUrl: null,
-      uploadedModelImageStorageKey: null,
-      consentAccepted
-    });
-
-    setSaving(false);
-    if (!result.ok) {
-      setError(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
-      return;
-    }
-
-    onSaved(result.data.profile);
-    setUploadedModelImageUrl("");
-    setUploadedModelImageStorageKey("");
-    setNotice("Your preferences are saved.");
-  }
-
-  const hasUploadedPhoto = Boolean(uploadedModelImageUrl);
 
   return (
     <Card className="mx-auto max-w-3xl space-y-5">
@@ -173,9 +78,9 @@ export function AvatarProfileForm({
             <Camera size={14} aria-hidden="true" />
             My Model
           </p>
-          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Choose your My Model</h2>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Current FitPick Studio Model</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Use a FitPick Studio Model, or upload your own full-body photo for a more personal result.
+            Your Studio Model is used throughout MyFitPick for Virtual Try-On, Create a Look, Match an Outfit, and styling previews.
           </p>
         </div>
       </div>
@@ -183,28 +88,22 @@ export function AvatarProfileForm({
       {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
       {notice ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
 
-      <input
-        ref={modelFileInputRef}
-        type="file"
-        accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.currentTarget.value = "";
-          if (file) void handleModelPhoto(file);
-        }}
-      />
-
       <section className="grid gap-4 rounded-xl3 border border-line bg-gradient-to-br from-canvas/80 via-canvas/60 to-olive/10 p-4 md:grid-cols-[0.9fr_1.1fr] md:items-center">
         <div className="overflow-hidden rounded-2xl border border-line bg-surface/80">
-          {hasUploadedPhoto ? (
-            <img src={uploadedModelImageUrl} alt="Uploaded full-body photo" className="aspect-[3/4] w-full object-cover" />
+          {currentModel ? (
+            <Image
+              src={currentModel.imagePath}
+              alt={`${currentModel.label} FitPick Studio Model`}
+              width={960}
+              height={1280}
+              className="aspect-[3/4] h-full w-full object-cover object-top"
+            />
           ) : (
             <div className="flex aspect-[3/4] items-center justify-center px-6 text-center">
               <div>
-                <ImagePlus className="mx-auto text-olive" size={34} aria-hidden="true" />
-                <p className="mt-3 text-sm font-semibold text-ink">Using your Studio Model</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Upload a personal photo only if you want to replace it.</p>
+                <CheckCircle2 className="mx-auto text-olive" size={34} aria-hidden="true" />
+                <p className="mt-3 text-sm font-semibold text-ink">Choose your My Model</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Select a FitPick Studio Model to begin.</p>
               </div>
             </div>
           )}
@@ -212,49 +111,96 @@ export function AvatarProfileForm({
 
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-semibold text-ink">Photo guide</p>
-            <ul className="mt-2 space-y-2 text-sm leading-6 text-muted">
-              <li>Use a full-body image with your head and feet visible.</li>
-              <li>Good lighting helps create a cleaner preview.</li>
-              <li>A saved photo from your camera roll is fine.</li>
-            </ul>
+            <p className="text-sm font-semibold text-ink">{currentModel?.label || modelLabel(profile.studioModelGender, profile.studioModelType)}</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {currentModel?.description || "Choose the Studio Model closest to how you want your styling previews to appear."}
+            </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" className="rounded-full" disabled={uploadingModel || saving} onClick={() => modelFileInputRef.current?.click()}>
-              {uploadingModel ? "Uploading..." : hasUploadedPhoto ? "Replace photo" : "Upload my photo"}
-            </Button>
-            {hasUploadedPhoto ? (
-              <Button type="button" variant="secondary" className="rounded-full" disabled={uploadingModel || saving} onClick={() => void removePhoto()}>
-                <Trash2 size={16} aria-hidden="true" />
-                Remove photo
-              </Button>
-            ) : null}
-          </div>
+          <Button type="button" className="w-full rounded-full" onClick={() => setSelectorOpen((open) => !open)}>
+            Change Model
+          </Button>
         </div>
       </section>
 
-      <label className="flex gap-3 rounded-2xl border border-cocoa/20 bg-cocoa/5 p-3 text-sm leading-6 text-ink">
-        <input
-          type="checkbox"
-          className="mt-1 h-4 w-4 accent-cocoa"
-          checked={consentAccepted}
-          onChange={(event) => setConsentAccepted(event.target.checked)}
-        />
-        <span>
-          <span className="inline-flex items-center gap-2 font-semibold">
-            <ShieldCheck size={15} aria-hidden="true" />
-            Preview consent
-          </span>
-          <span className="mt-1 block text-muted">
-            I understand Virtual Try-On previews are estimates, not perfect fittings.
-          </span>
-        </span>
-      </label>
+      {selectorOpen ? (
+        <section className="space-y-4 rounded-xl3 border border-cocoa/20 bg-cocoa/5 p-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Choose a model type</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {(["male", "female"] as const).map((gender) => (
+                <button
+                  key={gender}
+                  type="button"
+                  onClick={() => chooseGender(gender)}
+                  className={cn(
+                    "focus-ring min-h-12 rounded-2xl border px-4 text-sm font-bold capitalize transition duration-200 active:scale-[0.98]",
+                    studioGender === gender ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-canvas/70 text-ink hover:border-cocoa/50"
+                  )}
+                  aria-pressed={studioGender === gender}
+                >
+                  {gender === "male" ? "Male" : "Female"}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <Button type="button" variant="secondary" className="w-full rounded-full" onClick={() => void saveProfile()} disabled={saving || uploadingModel}>
-        {saving ? "Saving..." : "Save changes"}
-      </Button>
+          {studioGender ? (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">Body shape</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {modelOptions.map((option) => {
+                  const selected = studioModelType === option.type;
+                  return (
+                    <button
+                      key={option.type}
+                      type="button"
+                      onClick={() => setStudioModelType(option.type)}
+                      className={cn(
+                        "focus-ring group overflow-hidden rounded-[1.5rem] border bg-surface text-left shadow-soft transition duration-200 active:scale-[0.99]",
+                        selected ? "border-cocoa shadow-glow ring-2 ring-cocoa/20" : "border-line hover:-translate-y-0.5 hover:border-cocoa/40 hover:shadow-card"
+                      )}
+                      aria-pressed={selected}
+                    >
+                      <div className="aspect-[3/4] overflow-hidden bg-canvas">
+                        <Image
+                          src={option.imagePath}
+                          alt={`${option.label} FitPick Studio Model`}
+                          width={960}
+                          height={1280}
+                          className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-bold text-ink">{option.label}</h3>
+                          {selected ? <span className="rounded-full bg-cocoa px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-canvas">Selected</span> : null}
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-muted">{option.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {selectedModel ? (
+            <p className="rounded-2xl border border-line bg-surface/80 px-3 py-2 text-xs leading-5 text-muted">
+              Selected: {selectedModel.label}
+            </p>
+          ) : null}
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" disabled={saving || !studioGender || !studioModelType} onClick={() => void saveStudioModel()}>
+              {saving ? "Saving..." : "Save Model"}
+            </Button>
+            <Button type="button" variant="secondary" disabled={saving} onClick={() => setSelectorOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </section>
+      ) : null}
     </Card>
   );
 }

@@ -46,7 +46,7 @@ export const legalPolicies: Record<LegalPolicyId, LegalPolicy> = {
         bullets: [
           "Account details, such as your email address, display name, and sign-in verification activity.",
           "Wardrobe photos, item details, label photos, fit notes, care notes, and style preferences you add or confirm.",
-          "Optional model setup information, such as a full-body photo, avatar preferences, clothing fit details, and shoe size.",
+          "Optional model setup information, such as Studio Model preferences, clothing fit details, and shoe size.",
           "Payment and Credits activity, including Credit purchases, Credit usage, refunds, and transaction status.",
           "Messages you send to the Stylist and feedback you give on recommendations."
         ]

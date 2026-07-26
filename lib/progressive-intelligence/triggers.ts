@@ -28,11 +28,11 @@ export const progressiveTriggers: Record<ProgressiveTriggerId, ProgressiveTrigge
     priority: 100,
     cooldownDays: 14,
     maxFrequency: 3,
-    requiredData: ["uploaded full-body photo", "preview consent"],
+    requiredData: ["FitPick Studio Model"],
     value: "Unlock realistic outfit previews only when the user asks for try-on.",
-    title: "Add your full-body photo",
-    body: "To create Virtual Try-On previews, MyFitPick needs a clear full-body photo where your head, outfit area, and feet are visible.",
-    primaryAction: "Upload full-body photo",
+    title: "Choose your My Model",
+    body: "Choose a FitPick Studio Model so MyFitPick can create cleaner Virtual Try-On previews.",
+    primaryAction: "Change Model",
     secondaryAction: "Continue without try-on"
   },
   FULL_BODY_PHOTO_NEEDED: {
@@ -40,11 +40,11 @@ export const progressiveTriggers: Record<ProgressiveTriggerId, ProgressiveTrigge
     priority: 90,
     cooldownDays: 14,
     maxFrequency: 3,
-    requiredData: ["full-body image consent"],
+    requiredData: ["FitPick Studio Model"],
     value: "Improve the virtual try-on the user just requested.",
-    title: "Add a full-body photo",
-    body: "A full-body image helps MyFitPick create a cleaner virtual try-on. Ordinary outfit recommendations still work without it.",
-    primaryAction: "Upload full-body photo",
+    title: "Choose your My Model",
+    body: "A Studio Model helps MyFitPick create cleaner Virtual Try-On previews. Outfit recommendations still work without it.",
+    primaryAction: "Change Model",
     secondaryAction: "Not now"
   },
   WEATHER_VALUE_DISCOVERED: {
@@ -134,9 +134,8 @@ export const progressiveTriggers: Record<ProgressiveTriggerId, ProgressiveTrigge
 };
 
 export function triggerForVirtualTryOn(avatarProfile?: any) {
-  const hasModel = Boolean(avatarProfile?.uploadedModelImageUrl);
-  const hasConsent = Boolean(avatarProfile?.consentAccepted);
-  if (hasModel && hasConsent) return null;
+  const hasModel = Boolean(avatarProfile?.studioModelGender && avatarProfile?.studioModelType);
+  if (hasModel) return null;
   return progressiveTriggers.FIRST_VIRTUAL_TRYON_MODEL_REQUIRED;
 }
 

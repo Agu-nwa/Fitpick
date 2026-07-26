@@ -229,10 +229,10 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
         ? await AvatarProfile.findOne({ _id: input.avatarProfileId, userId: input.userId }).lean()
         : null;
       if (!loaded || !avatarProfile) {
-        return { ...unavailable("Virtual Try-On needs a saved outfit and full-body photo."), status: "failed" };
+        return { ...unavailable("Virtual Try-On needs a saved outfit and My Model."), status: "failed" };
       }
       const modelImageUrl = preferredTryOnModelImageUrl(avatarProfile);
-      if (!modelImageUrl) return { ...unavailable("Upload a full-body photo before using Virtual Try-On."), status: "failed" };
+      if (!modelImageUrl) return { ...unavailable("Choose your My Model before using Virtual Try-On."), status: "failed" };
 
       return callEndpoint(input, {
         requestType: "virtual_try_on",

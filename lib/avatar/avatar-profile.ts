@@ -150,11 +150,11 @@ export function validateModelImageUrl(value?: string | null) {
 }
 
 export function preferredTryOnModelImageUrl(profile: any) {
-  if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageUrl) return profile.uploadedModelImageUrl;
-  if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageUrl) return profile.generatedModelImageUrl;
   if (profile?.studioModelGender && profile?.studioModelType) {
     return resolveStudioModelImageUrl(profile.studioModelGender, profile.studioModelType) || profile.studioModelImageUrl || null;
   }
+  if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageUrl) return profile.generatedModelImageUrl;
+  if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageUrl) return profile.uploadedModelImageUrl;
   return fallbackStudioModelForGender(profile?.genderPresentation);
 }
 

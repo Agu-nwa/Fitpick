@@ -22,7 +22,7 @@ export default async function OutfitPreviewPage({ params }: { params: Promise<{ 
           </Link>
           <div className="mb-5">
             <ContextualTip tipId="virtual-try-on" dismissedTips={auth.user.onboardingTipsDismissed}>
-              Use a clear full-body photo for the most realistic preview.
+              Choose your My Model for cleaner Virtual Try-On previews.
             </ContextualTip>
           </div>
           <LookPreviewClient outfitId={id} />
