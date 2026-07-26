@@ -46,7 +46,7 @@ const emptySummary: WardrobeSummary = {
 
 function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 transition duration-300 md:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 transition duration-300 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => (
         <Link key={item.id} href={`/wardrobe/${item.id}`} className="focus-ring rounded-xl3">
           <WardrobeItemCard item={item} />
@@ -67,7 +67,7 @@ const smartFilters: Array<{ id: Exclude<SmartPanel, null>; label: string }> = [
 
 function chipClass(active?: boolean) {
   return cn(
-    "focus-ring inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] transition duration-200 active:scale-[0.98]",
+    "focus-ring inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] transition duration-200 ease-out active:scale-[0.98]",
     active
       ? "border-olive bg-olive text-canvas shadow-glow"
       : "border-line bg-surface/80 text-muted hover:border-olive/50 hover:text-ink"
@@ -382,11 +382,11 @@ function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState
   const copy = onlyCategory ? categoryCopy[filters.category] : null;
 
   return (
-    <Card className="border-dashed p-6 text-center">
+    <Card className="border-dashed border-cocoa/20 p-7 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-cocoa/15 bg-cocoa/10 text-cocoa">
         <SlidersHorizontal size={18} aria-hidden="true" />
       </div>
-      <h3 className="text-base font-semibold text-ink">{copy?.title || "No pieces match these filters."}</h3>
+      <h3 className="font-editorial text-3xl font-semibold leading-none text-ink">{copy?.title || "No pieces match these filters."}</h3>
       <p className="mt-2 text-sm leading-6 text-muted">{copy?.body || "Remove a filter or add a piece with these details."}</p>
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <Link href="/wardrobe/add" className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-cocoa px-4 text-sm font-semibold text-canvas shadow-glow transition hover:bg-cocoa/90">
@@ -410,7 +410,7 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
     : `${summary.readyCount} ready items. Your wardrobe is set up for stronger outfit picks.`;
 
   return (
-    <div className="mt-7 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+    <div className="mt-7 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
       <ProgressCard title="Wardrobe strength" body={body} progress={progress} />
       <Card className="p-4">
         <div className="grid h-full grid-cols-3 gap-2">

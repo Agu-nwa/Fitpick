@@ -11,8 +11,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
 }, ref) {
   const styles = {
     primary: "bg-cocoa text-canvas shadow-glow hover:bg-cocoa/90 active:bg-espresso",
-    secondary: "border border-line bg-white/80 text-ink shadow-card hover:border-olive/70 hover:bg-white",
-    ghost: "text-ink hover:bg-white/70 hover:text-cocoa",
+    secondary: "border border-line bg-white/85 text-ink shadow-card hover:border-cocoa/40 hover:bg-white",
+    ghost: "text-ink hover:bg-white/75 hover:text-cocoa",
     danger: "bg-danger text-canvas hover:bg-danger/90"
   };
 
@@ -20,7 +20,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
     <button
       ref={ref}
       className={cn(
-        "focus-ring inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-normal rounded-2xl px-5 py-3 text-center text-sm font-semibold leading-5 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-ring inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-normal rounded-2xl px-5 py-3 text-center text-sm font-semibold leading-5 transition duration-200 ease-out active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         className
       )}

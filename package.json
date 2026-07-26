@@ -51,13 +51,14 @@
     "framer-motion": "^11.3.8",
     "heic2any": "^0.0.4",
     "jose": "^5.6.3",
+    "js-yaml": "^4.3.0",
     "lucide-react": "^1.24.0",
     "mongoose": "^8.5.1",
-    "next": "^15.5.20",
+    "next": "^15.5.21",
     "openai": "^6.45.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "stripe": "^22.2.1",
@@ -69,14 +70,12 @@
     "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
-    "eslint-config-next": "^15.5.20",
-    "postcss": "^8.4.39",
+    "eslint-config-next": "^15.5.21",
+    "postcss": "^8.5.18",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3"
   },
   "overrides": {
-    "next": {
-      "postcss": "8.5.15"
-    }
+    "brace-expansion": "5.0.8"
   }
 }

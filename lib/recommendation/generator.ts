@@ -2,6 +2,7 @@ import { scoreOutfitDetailed } from "@/lib/recommendation/scoring";
 import { calculatePreferenceBoost } from "@/lib/recommendation/learning";
 import { calculateWeatherScore }
   from "@/lib/weather/weather-scoring";
+import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 
 function idFor(item: any) {
   return String(item?._id || item?.id || "");
@@ -30,8 +31,9 @@ export function generateCombinations(
 
   // Group wardrobe items by category
   categories.forEach((category) => {
+    const requestedSlot = categoryToOutfitSlot(category);
     categoryMap[category] = sortedByFreshness(wardrobeItems
-      .filter((item) => item.category === category)
+      .filter((item) => item.category === category || normalizeOutfitSlot(item) === requestedSlot)
     ).slice(0, 10); // Prevent combinational explosion while leaving enough variety.
   });
 
@@ -42,7 +44,7 @@ export function generateCombinations(
 
   function pushOutfit(items: any[]) {
     if (outfits.length >= maxCandidates) return;
-    const uniqueItems = items.filter(Boolean).filter((item, index, all) => all.findIndex((candidate) => String(candidate._id) === String(item._id)) === index);
+    const uniqueItems = sanitizeOutfitItems(items.filter(Boolean)).items;
     if (!uniqueItems.length) return;
 
     const detailed = scoreOutfitDetailed(uniqueItems, scoringInput);

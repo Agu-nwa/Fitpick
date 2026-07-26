@@ -652,11 +652,12 @@ export function WardrobeAddClient() {
         </p>
       ) : null}
 
-      <section className="mx-auto max-w-[520px]">
-        <Card className="border-cocoa/15 bg-gradient-to-br from-white via-surface to-cocoa/5 p-5 shadow-card sm:p-6">
+      <section className="mx-auto max-w-[540px]">
+        <Card className="border-cocoa/15 bg-surface/88 p-6 shadow-card sm:p-7">
           <div>
-            <h2 className="font-editorial text-3xl font-semibold leading-none text-ink">Add to Wardrobe</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Tell me what you&apos;re adding.</p>
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">New piece</p>
+            <h2 className="font-editorial text-4xl font-semibold leading-none text-ink">Add to closet.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">Start with the category. MyFitPick will ask only for what it needs next.</p>
           </div>
 
           <div className="mt-6 space-y-4">
@@ -718,7 +719,7 @@ export function WardrobeAddClient() {
           <div className="mt-5 rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Stylist priority</p>
             <p className="mt-1 text-xs leading-5 text-muted">
-              Shoes, bottoms, outerwear, and versatile basics make outfit recommendations stronger as your closet grows.
+              Shoes, bottoms, outerwear, and versatile basics make styling stronger as your closet grows.
             </p>
           </div>
 
@@ -732,16 +733,16 @@ export function WardrobeAddClient() {
       </section>
 
       <section ref={uploadSectionRef}>
-        <Card className="space-y-5 overflow-hidden p-4 sm:p-5">
+        <Card className="space-y-5 overflow-hidden p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                 <ImagePlus size={14} aria-hidden="true" />
                 Step 2
               </p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Upload photos</h2>
+              <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Upload photos</h2>
               <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                Add a clear main photo. Extra angles help MyFitPick understand shape, material, styling, and future try-on quality.
+                Add a clear main photo. Extra angles help with shape, material, styling, and future try-on quality.
               </p>
             </div>
             <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>

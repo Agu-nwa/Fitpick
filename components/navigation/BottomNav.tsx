@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="glass-panel fixed inset-x-3 bottom-2 z-40 mx-auto w-auto max-w-[620px] rounded-[1.25rem] px-1.5 pb-[calc(0.45rem+var(--safe-bottom))] pt-1.5 shadow-soft lg:hidden"
+      className="glass-panel fixed inset-x-3 bottom-2 z-40 mx-auto w-auto max-w-[620px] rounded-[1.35rem] px-1.5 pb-[calc(0.45rem+var(--safe-bottom))] pt-1.5 shadow-soft lg:hidden"
       aria-label="Primary navigation"
     >
       <div className="flex w-full min-w-0 items-stretch gap-1 overflow-hidden">
@@ -28,7 +28,7 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "focus-ring flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-1 text-center transition active:scale-[0.98]",
+                "focus-ring flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-1 text-center transition duration-200 ease-out active:scale-[0.97]",
                 active ? "bg-cocoa text-canvas shadow-glow" : "text-muted hover:bg-ink/5 hover:text-ink"
               )}
               aria-current={active ? "page" : undefined}

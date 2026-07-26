@@ -4,9 +4,9 @@ import Link from "next/link";
 
 export function AuthRequiredState() {
   return (
-    <Card className="p-4">
-      <p className="text-sm font-semibold text-ink">Signed out</p>
-      <p className="mt-2 text-xs leading-5 text-muted">
+    <Card className="p-5">
+      <p className="font-editorial text-2xl font-semibold leading-none text-ink">Sign in to continue.</p>
+      <p className="mt-3 text-sm leading-6 text-muted">
         Sign in or create an account to save wardrobe items, outfit history, and preferences.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2">

@@ -190,11 +190,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
+      <div className="relative overflow-hidden rounded-xl4 border border-line/80 bg-surface/82 p-6 shadow-card backdrop-blur-xl sm:p-9">
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Full look</p>
-        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{outfit.title}</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Fitting studio</p>
+        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{outfit.title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{outfit.occasionFit || outfit.summary}</p>
         </div>
       </div>
@@ -216,7 +216,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
                 <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                  Create a preview with the selected closet items.
+                  Create a preview with the selected closet pieces.
                 </p>
               </div>
             )}

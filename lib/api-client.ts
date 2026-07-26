@@ -486,6 +486,7 @@ export type StylistChatData = {
   };
   outfit: OutfitRecommendation | null;
   job?: JobStatusData["job"];
+  redirectTo?: string | null;
   groundedItemCount: number;
 };
 

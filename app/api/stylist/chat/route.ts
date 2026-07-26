@@ -418,6 +418,7 @@ export async function POST(request: NextRequest) {
       fitLock: visualization.fitLock
     };
     const responseOutfitId = visualization.outfitRecommendationId || persistedOutfit?.outfitRecommendationId || null;
+    const redirectTo = responseOutfitId && !referenceItem ? `/outfit/${responseOutfitId}/preview` : null;
 
     return apiSuccess({
       reply: response.reply,
@@ -452,6 +453,7 @@ export async function POST(request: NextRequest) {
       visualization,
       outfit: persistedOutfit?.serializedOutfit || null,
       job: visualization.job,
+      redirectTo,
       wallet: chatCreditCharge.wallet,
       creditCharge: {
         feature: chatCreditCharge.transaction.feature,

@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import {
   IMAGE_UPLOAD_POLICY,
   ImageUploadError,
@@ -64,7 +64,7 @@ function assertInputSize(input: NormalizeServerInput) {
   }
 }
 
-async function outputWithBudget(image: sharp.Sharp, hasAlpha: boolean) {
+async function outputWithBudget(image: Sharp, hasAlpha: boolean) {
   const webpQualities = [IMAGE_UPLOAD_POLICY.compressionQuality, 0.82, IMAGE_UPLOAD_POLICY.minimumCompressionQuality];
   for (const quality of webpQualities) {
     const buffer = await image.clone().webp({ quality: Math.round(quality * 100), effort: 4 }).toBuffer();

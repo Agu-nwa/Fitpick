@@ -21,7 +21,7 @@ export function FieldGroup({
   return (
     <div className={cn("block text-xs font-semibold text-ink", className)}>
       <div className="mb-2 flex min-h-7 flex-wrap items-center justify-between gap-2">
-        <label htmlFor={htmlFor} className={htmlFor ? "cursor-pointer" : undefined}>
+        <label htmlFor={htmlFor} className={cn("tracking-[0.01em]", htmlFor ? "cursor-pointer" : undefined)}>
           {label}
           {required ? <span aria-hidden="true"> *</span> : null}
         </label>

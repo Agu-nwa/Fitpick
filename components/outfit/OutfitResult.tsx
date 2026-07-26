@@ -379,7 +379,7 @@ export function OutfitResult({
   return (
     <>
       <section>
-        <SectionHeader title="Your outfit" eyebrow={outfit.occasion || "MyFitPick edit"} />
+        <SectionHeader title="Your look" eyebrow={outfit.occasion || "MyFitPick edit"} />
         <div className="mb-3 flex flex-wrap gap-2">
           <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>
             {completenessLabel(outfit.completenessStatus)}
@@ -395,7 +395,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Your outfit preview" />
+        <SectionHeader title="Preview the look" />
 
         <Card className="mt-4 overflow-hidden">
           {previewUrl ? (
@@ -408,7 +408,7 @@ export function OutfitResult({
             </button>
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/60 px-5 text-center">
-              <p className="text-sm leading-6 text-muted">Show a preview from your saved clothes.</p>
+              <p className="text-sm leading-6 text-muted">Preview the outfit from your saved clothes.</p>
             </div>
           )}
 
@@ -425,7 +425,7 @@ export function OutfitResult({
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button onClick={() => void handleGeneratePreview(false)} disabled={isGeneratingPreview || previewStatus === "generating"}>
-              {isGeneratingPreview ? "Showing outfit..." : "Show outfit"}
+              {isGeneratingPreview ? "Preparing preview..." : "Preview look"}
             </Button>
             <Link href={`/outfit/${outfit.id}/preview`}>
               <Button variant="secondary" className="w-full">View full look</Button>
@@ -476,7 +476,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Items in this look" />
+        <SectionHeader title="Closet pieces" />
 
         <div className="mobile-scrollbar flex gap-3 overflow-x-auto pb-2">
           {outfit.items.map((item) => (
@@ -489,7 +489,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Why this works" />
+        <SectionHeader title="Styling notes" />
         <Notes outfit={outfit} />
       </section>
 

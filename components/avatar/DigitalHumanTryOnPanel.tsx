@@ -63,7 +63,7 @@ export function DigitalHumanTryOnPanel({
 
   return (
     <div className="space-y-4">
-      <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
+      <Card className="space-y-4 overflow-hidden border-olive/20 bg-surface/88 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
@@ -71,7 +71,7 @@ export function DigitalHumanTryOnPanel({
               Virtual try-on
             </p>
             <p className="mt-1 text-xs leading-5 text-muted">
-              Generate a photorealistic model wearing the exact selected closet items.
+              Preview this look on your saved model.
             </p>
           </div>
           <Badge tone={accuracyLevel?.id === "fit_locked" ? "success" : "premium"}>
@@ -91,9 +91,9 @@ export function DigitalHumanTryOnPanel({
           <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/70 px-5 text-center">
             <div>
               <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-              <p className="font-editorial text-3xl font-semibold leading-none text-ink">Create on-model preview</p>
+              <p className="font-editorial text-3xl font-semibold leading-none text-ink">Step into your fitting studio.</p>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                MyFitPick will use the saved clothing photos to generate a digital human wearing this outfit.
+                MyFitPick will use your saved photos to prepare an on-model preview.
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export function DigitalHumanTryOnPanel({
 
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
           <div className="space-y-3 rounded-2xl border border-cocoa/15 bg-cocoa/5 p-3">
-            <p className="text-sm font-semibold text-cocoa">Creating the on-model try-on. Your Credit is only spent after the saved preview is ready.</p>
+            <p className="text-sm font-semibold text-cocoa">FitPick is preparing your look. Your Credit is only spent after the preview is saved.</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {tryOnProgressSteps.map((step, index) => (
                 <span key={step} className={`rounded-full px-2 py-1 text-center text-[11px] font-semibold ${index < 6 ? "bg-white/70 text-ink" : "bg-cocoa text-white"}`}>
@@ -157,7 +157,7 @@ export function DigitalHumanTryOnPanel({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
-            {isGenerating ? "Creating try-on..." : previewUrl ? "Regenerate try-on" : "Generate virtual try-on"}
+            {isGenerating ? "Preparing preview..." : previewUrl ? "Regenerate preview" : "Generate preview"}
           </Button>
           {previewUrl && previewStatus === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
           <Link href={`/outfit/${outfit.id}/preview`}>

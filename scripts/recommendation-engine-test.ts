@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { buildRecommendation } from "../lib/recommendation/engine";
 import { outfitItemSignature } from "../lib/recommendation/history";
+import { normalizeOutfitSlot, sanitizeOutfitItems } from "../lib/recommendation/outfit-slots";
 
 function field(value: unknown, confidence = 0.9, source = "user_confirmed") {
   return { value, confidence, source };
@@ -42,6 +43,10 @@ function item(
 
 function signature(outfit: { items: Array<{ id?: string; _id?: string }> }) {
   return outfitItemSignature(outfit.items.map((entry) => String(entry.id || entry._id)).filter(Boolean));
+}
+
+function slotCount(outfit: { items: any[] }, slot: string) {
+  return outfit.items.filter((entry) => normalizeOutfitSlot(entry) === slot).length;
 }
 
 const wardrobe = [
@@ -144,7 +149,7 @@ const businessLook = buildRecommendation({
 assert.equal(businessLook.recommendationMode, "business_ready");
 assert.ok(businessLook.items.length >= 3, "business casual recommendation should include owned core items");
 assert.ok(businessLook.items.every((entry: any) => wardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must only use fixture-owned items");
-assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v2");
+assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v3");
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
 
 const priorSignature = signature(businessLook as any);
@@ -182,5 +187,62 @@ const rainyLook = buildRecommendation({
 });
 
 assert.ok(rainyLook.items.some((entry: any) => entry.category === "outerwear"), "rain-ready recommendation should include owned weather outerwear when available");
+
+const duplicateBottomWardrobe = [
+  item("000000000000000000000011", "shirts", "White dress shirt", "white"),
+  item("000000000000000000000012", "shorts", "Tailored navy shorts", "navy"),
+  item("000000000000000000000013", "trousers", "Grey formal trouser", "grey"),
+  item("000000000000000000000014", "sneakers", "White sneakers", "white"),
+  item("000000000000000000000015", "loafers", "Black loafers", "black")
+];
+
+const noDuplicateBottomLook = buildRecommendation({
+  wardrobeItems: duplicateBottomWardrobe,
+  occasionName: "polished work look",
+  recommendationMode: "business_ready"
+});
+
+assert.ok(slotCount(noDuplicateBottomLook as any, "bottom") <= 1, "recommendation must select only one bottom slot");
+assert.ok(slotCount(noDuplicateBottomLook as any, "shoes") <= 1, "recommendation must select only one shoes slot");
+
+const onePieceLook = buildRecommendation({
+  wardrobeItems: [
+    item("000000000000000000000021", "native", "Cream kaftan", "cream"),
+    item("000000000000000000000022", "trousers", "Black trouser", "black"),
+    item("000000000000000000000023", "loafers", "Black loafers", "black")
+  ],
+  occasionName: "formal dinner",
+  recommendationMode: "event_ready"
+});
+
+assert.ok(slotCount(onePieceLook as any, "onePiece") <= 1, "recommendation must select at most one one-piece item");
+if (slotCount(onePieceLook as any, "onePiece") > 0) {
+  assert.equal(slotCount(onePieceLook as any, "bottom"), 0, "one-piece recommendation must not add a separate bottom");
+}
+
+const layeredLook = buildRecommendation({
+  wardrobeItems: [
+    item("000000000000000000000031", "shirts", "Blue shirt", "blue"),
+    item("000000000000000000000032", "jeans", "Dark jeans", "indigo"),
+    item("000000000000000000000033", "jacket", "Camel jacket", "camel"),
+    item("000000000000000000000034", "boots", "Brown boots", "brown")
+  ],
+  occasionName: "smart casual",
+  recommendationMode: "todays_best"
+});
+
+assert.ok(slotCount(layeredLook as any, "top") <= 1, "layering should not duplicate the top slot");
+assert.ok(slotCount(layeredLook as any, "outerwear") <= 1, "layering should allow only one outerwear item");
+
+const sanitizedDuplicateSlots = sanitizeOutfitItems([
+  item("000000000000000000000041", "shorts", "Shorts", "navy"),
+  item("000000000000000000000042", "pants", "Pants", "black"),
+  item("000000000000000000000043", "boots", "Boots", "black"),
+  item("000000000000000000000044", "sneakers", "Sneakers", "white")
+]);
+
+assert.equal(slotCount({ items: sanitizedDuplicateSlots.items }, "bottom"), 1, "sanitizer must keep one bottom");
+assert.equal(slotCount({ items: sanitizedDuplicateSlots.items }, "shoes"), 1, "sanitizer must keep one pair of shoes");
+assert.ok(sanitizedDuplicateSlots.removed.length >= 2, "sanitizer should report removed duplicate slots");
 
 console.log("Recommendation engine checks passed.");

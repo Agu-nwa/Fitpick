@@ -77,10 +77,10 @@ export function OutfitRecommendationClient() {
       {status === "premium" ? <PremiumLimitState /> : null}
 
       <section className="mb-7">
-        <SectionHeader title="Outfit request" eyebrow={String(requestBody.occasionName)} />
-        <Card className="space-y-4">
+        <SectionHeader title="Style brief" eyebrow={String(requestBody.occasionName)} />
+        <Card className="space-y-5 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-ink">Choose from my saved clothes</p>
+            <p className="text-sm font-semibold text-ink">Create from my closet</p>
             <Badge tone="premium">Saved clothes only</Badge>
           </div>
           <div>
@@ -102,17 +102,17 @@ export function OutfitRecommendationClient() {
               placeholder="hot, rainy, indoor"
             />
           </FieldGroup>
-          <Button className="w-full" onClick={() => void handleGenerate()} disabled={session.status !== "authenticated"}>
-            Pick outfit
+          <Button className="w-full rounded-full" onClick={() => void handleGenerate()} disabled={session.status !== "authenticated"}>
+            Create look
           </Button>
           <Link href="/occasion" className="block text-center text-sm font-semibold text-cocoa">Change occasion</Link>
         </Card>
       </section>
 
       {!outfit ? (
-        <Card className="mb-7 p-4">
-          <p className="text-sm font-semibold text-ink">No outfit picked yet.</p>
-          <p className="mt-2 text-sm leading-6 text-muted">Tap Pick outfit and MyFitPick will choose from your saved clothes.</p>
+        <Card className="mb-7 border-dashed border-cocoa/20 p-6 text-center">
+          <p className="font-editorial text-3xl font-semibold leading-none text-ink">Your edit is waiting.</p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">Create a look and MyFitPick will choose from your saved clothes.</p>
         </Card>
       ) : null}
 

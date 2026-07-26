@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Camera, ImagePlus, Layers3, RefreshCw, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -635,6 +636,7 @@ export function StylistChat({
   initialFlow?: StylistFlow;
   productMode?: StylistProductMode;
 } = {}) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const lookStudioRef = useRef<HTMLDivElement>(null);
@@ -1010,11 +1012,14 @@ export function StylistChat({
     });
     revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
 
-    if (jobId && avatarPreview.status !== "ready") {
+    if (jobId && avatarPreview.status !== "ready" && !response.data.redirectTo) {
       void pollAvatarJob(assistantId, jobId);
     }
 
-    if (response.data.outfitRecommendationId && !referenceForMessage) showToast("Look ready.");
+    if (response.data.outfitRecommendationId && !referenceForMessage) {
+      showToast("FitPick is preparing your look.");
+      if (response.data.redirectTo) router.push(response.data.redirectTo);
+    }
   }
 
   async function handleRegenerateLooks(entry: ChatMessage, refinement?: string) {
@@ -1137,7 +1142,7 @@ export function StylistChat({
 
       <div ref={workspaceRef} className="scroll-mt-6 space-y-5">
         {currentFlow === "create" ? (
-          <Card className="space-y-4 border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
+          <Card className="space-y-4 border-olive/20 bg-surface/88 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
@@ -1223,7 +1228,7 @@ export function StylistChat({
         ) : null}
 
         {currentFlow === "match" ? (
-          <Card className="space-y-4 overflow-hidden border-cocoa/25 bg-gradient-to-br from-cocoa/10 via-surface to-olive/10">
+          <Card className="space-y-4 overflow-hidden border-cocoa/25 bg-surface/88 p-5 sm:p-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-4">
                 <div>
@@ -1232,7 +1237,7 @@ export function StylistChat({
                     Match an Outfit
                   </p>
                   <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style a look you admire.</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">Upload a product photo, screenshot, or outfit reference.</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Add a photo or screenshot and style it with your closet.</p>
                 </div>
                 <MatchFlowVisual />
                 <div className="grid gap-2 sm:grid-cols-2">

@@ -5,6 +5,7 @@ import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gap
 import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/recommendation/outfit-structures";
 import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/policy";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
+import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import {
   metadataList,
   metadataValue,
@@ -219,7 +220,8 @@ export function buildRecommendation(input: EngineInput) {
 
   const bestOutfit = diverseOutfits[0] || combinations[0];
 
-  const coreItems: any[] = bestOutfit?.items || [];
+  const outfitSanitization = sanitizeOutfitItems(bestOutfit?.items || []);
+  const coreItems: any[] = outfitSanitization.items;
 
   if (!coreItems.length) {
     const completeness = evaluateOutfitCompleteness([]);
@@ -383,7 +385,7 @@ export function buildRecommendation(input: EngineInput) {
     diverseCandidateCount: diverseOutfits.length,
     alternatives: diverseOutfits.slice(1).map((outfit) => ({
       title: `${modeTitle} alternative`,
-      itemIds: outfit.items.map((item: any) => String(item._id || item.id)),
+      itemIds: sanitizeOutfitItems(outfit.items).items.map((item: any) => String(item._id || item.id)),
       similarityMetadata: outfit.similarityMetadata || {}
     }))
   };

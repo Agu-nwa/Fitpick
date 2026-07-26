@@ -24,8 +24,10 @@ const config: Config = {
         danger: "#B65B50"
       },
       boxShadow: {
-        soft: "0 30px 90px rgba(74, 46, 34, 0.12)",
-        card: "0 18px 50px rgba(74, 46, 34, 0.12)",
+        soft: "0 24px 80px rgba(74, 46, 34, 0.095)",
+        card: "0 16px 46px rgba(74, 46, 34, 0.09)",
+        lift: "0 28px 80px rgba(74, 46, 34, 0.13)",
+        inner: "inset 0 1px 0 rgba(255,255,255,0.72)",
         glow: "0 0 0 1px rgba(85, 124, 120, 0.16), 0 18px 50px rgba(85, 124, 120, 0.16)"
       },
       borderRadius: {

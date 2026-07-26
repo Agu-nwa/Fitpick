@@ -3,6 +3,7 @@ import { evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { diversifyOutfits } from "@/lib/recommendation/diversity";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
 import { inferOccasionGroup } from "@/lib/recommendation/outfit-structures";
+import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import {
   fabricCompatibilityScore,
@@ -76,8 +77,9 @@ function categoryPlanFor(anchorCategory: string, occasionName = ""): CategoryPla
 }
 
 function categoryCandidates(items: any[], category: string, max = 8) {
+  const requestedSlot = categoryToOutfitSlot(category);
   return items
-    .filter((item) => item.category === category)
+    .filter((item) => item.category === category || normalizeOutfitSlot(item) === requestedSlot)
     .slice(0, max);
 }
 
@@ -151,7 +153,7 @@ function makeCombinations(input: {
   function walkOptional(index: number, selected: any[]) {
     if (outfits.length >= 800) return;
     if (index >= optionalGroups.length) {
-      const unique = selected.filter(Boolean).filter((item, itemIndex, all) => all.findIndex((candidate) => itemId(candidate) === itemId(item)) === itemIndex);
+      const unique = sanitizeOutfitItems(selected.filter(Boolean)).items;
       if (!unique.length) return;
       const withAnchor = [input.anchor, ...unique];
       const detailed = scoreOutfitDetailed(withAnchor, input.scoringInput);
@@ -173,7 +175,7 @@ function makeCombinations(input: {
 
   walkRequired(0, []);
   if (!outfits.length && sorted.length) {
-    const fallback = sorted.slice(0, 4);
+    const fallback = sanitizeOutfitItems(sorted.slice(0, 4)).items;
     const withAnchor = [input.anchor, ...fallback];
     const detailed = scoreOutfitDetailed(withAnchor, input.scoringInput);
     outfits.push({

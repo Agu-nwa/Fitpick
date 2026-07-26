@@ -12,7 +12,7 @@ export function DesktopNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 flex-none flex-col border-r border-line bg-white/72 px-6 py-7 shadow-card backdrop-blur-xl lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-72 flex-none flex-col border-r border-line/80 bg-white/68 px-6 py-7 shadow-soft backdrop-blur-2xl lg:flex">
       <Link href="/home" className="focus-ring rounded-2xl px-2 py-1">
         <BrandLogo size="md" priority />
         <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Intelligent wardrobe</span>
@@ -29,8 +29,8 @@ export function DesktopNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "focus-ring group flex min-h-12 items-center gap-3 rounded-full px-4 text-sm font-bold transition duration-300",
-                active ? "bg-espresso text-canvas" : "text-muted hover:bg-white hover:text-ink"
+                "focus-ring group flex min-h-12 items-center gap-3 rounded-full px-4 text-sm font-bold transition duration-200 ease-out active:scale-[0.99]",
+                active ? "bg-espresso text-canvas shadow-glow" : "text-muted hover:bg-white/80 hover:text-ink"
               )}
               aria-current={active ? "page" : undefined}
             >
@@ -42,11 +42,11 @@ export function DesktopNav() {
         })}
       </nav>
 
-      <Link href="/outfit" className="fashion-shimmer group mt-auto overflow-hidden rounded-xl3 border border-olive/40 bg-espresso p-5 text-canvas shadow-card transition hover:border-cocoa/50">
+      <Link href="/outfit" className="fashion-shimmer group mt-auto overflow-hidden rounded-xl3 border border-olive/40 bg-espresso p-5 text-canvas shadow-card transition duration-200 ease-out hover:-translate-y-0.5 hover:border-cocoa/50 hover:shadow-lift">
         <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-canvas/60">AI edit</p>
         <p className="font-editorial mt-3 text-2xl font-semibold leading-none">What should I wear?</p>
         <span className="mt-5 flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-          Pick outfit
+          Create a look
           <ArrowUpRight size={16} className="transition group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
         </span>
       </Link>

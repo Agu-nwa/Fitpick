@@ -37,6 +37,7 @@ import {
   serializeOutfitPreview
 } from "@/lib/outfit-preview/outfit-preview";
 import { serializeOutfit } from "@/lib/recommendation/engine";
+import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { markReferenceItemsLinkedToOutfit } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -262,11 +263,13 @@ export async function createOrReuseStylistOutfitRecommendation(
   } = {}
 ): Promise<PersistedStylistOutfit | null> {
   const owned = new Set((stylistContext.ownedItemIds || []).map(String));
-  const items = (recommendationResult?.items || [])
+  const ownedItems = (recommendationResult?.items || [])
     .filter((item: any) => {
       const id = itemId(item);
       return id && (!owned.size || owned.has(id));
     });
+  const sanitized = sanitizeOutfitItems(ownedItems);
+  const items = sanitized.items;
 
   const itemIds: string[] = Array.from(new Set<string>(items.map(itemId).filter(Boolean)));
   if (!itemIds.length) return null;
@@ -340,6 +343,9 @@ export async function createOrReuseStylistOutfitRecommendation(
           diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
           alternatives: recommendationResult?.alternatives || [],
           itemCount: itemIds.length,
+          slotSanitization: sanitized.removed.length
+            ? { removedCount: sanitized.removed.length, reasons: sanitized.removed.map((entry) => entry.reason).slice(0, 8) }
+            : null,
           referenceItemIds,
           outfitPieces: Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces.slice(0, 12) : [],
           referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
