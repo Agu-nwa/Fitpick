@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientRecovery from "@/components/system/ClientRecovery";
+import GlobalNotificationListener from "@/components/notifications/GlobalNotificationListener";
 
 export const metadata: Metadata = {
   title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en" className="bg-canvas">
       <body className="font-sans">
         <ClientRecovery />
+        <GlobalNotificationListener />
 
         <a
           href="#main-content"

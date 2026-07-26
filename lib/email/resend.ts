@@ -5,6 +5,13 @@ type SendOtpEmailInput = {
   expiresInMinutes: number;
 };
 
+type SendTransactionalEmailInput = {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+};
+
 function emailFrom() {
   return process.env.EMAIL_FROM || "MyFitPick <auth@myfitpick.com>";
 }
@@ -67,6 +74,36 @@ export async function sendOtpEmail(input: SendOtpEmailInput) {
       subject: subjectForPurpose(input.purpose),
       text: textBody(input),
       html: htmlBody(input)
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`resend_send_failed_${response.status}`);
+  }
+}
+
+export async function sendTransactionalEmail(input: SendTransactionalEmailInput) {
+  if (provider() !== "resend") {
+    throw new Error("email_provider_not_configured");
+  }
+
+  const apiKey = resendApiKey();
+  if (!apiKey) {
+    throw new Error("resend_api_key_missing");
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: emailFrom(),
+      to: [input.to],
+      subject: input.subject,
+      text: input.text,
+      html: input.html
     })
   });
 

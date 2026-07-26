@@ -16,6 +16,7 @@ function serializeNotificationPreferences(preferences: any) {
     weatherAlerts: Boolean(preferences.weatherAlerts),
     eventPrep: Boolean(preferences.eventPrep),
     repeatWarnings: Boolean(preferences.repeatWarnings),
+    tryOnUpdates: preferences.tryOnUpdates !== false,
     pushTokenExists: Boolean(preferences.pushToken),
     quietHours: preferences.quietHours || { enabled: false, start: "", end: "" },
     timezone: preferences.timezone || ""

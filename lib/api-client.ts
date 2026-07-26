@@ -359,10 +359,30 @@ export type NotificationPreferencesData = {
     weatherAlerts: boolean;
     eventPrep: boolean;
     repeatWarnings: boolean;
+    tryOnUpdates: boolean;
     pushTokenExists?: boolean;
     quietHours?: { enabled?: boolean; start?: string; end?: string };
     timezone?: string;
   };
+};
+
+export type AppNotificationSummary = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  actionLabel: string;
+  actionUrl: string;
+  entityType: string;
+  entityId: string;
+  readAt: string | null;
+  seenAt: string | null;
+  createdAt: string | null;
+};
+
+export type AppNotificationsData = {
+  notifications: AppNotificationSummary[];
+  unreadCount: number;
 };
 
 export type StyleProfileData = {
@@ -839,6 +859,9 @@ export const updateCurrentUser = (body: unknown) => apiRequest<CurrentUserSummar
 export const getNotificationPreferences = () => apiRequest<NotificationPreferencesData>("/api/notifications/preferences", { cache: "no-store" });
 export const updateNotificationPreferences = (body: unknown) =>
   apiRequest<NotificationPreferencesData>("/api/notifications/preferences", { method: "PATCH", body });
+export const getAppNotifications = () => apiRequest<AppNotificationsData>("/api/notifications", { cache: "no-store" });
+export const markAppNotificationRead = (id: string) =>
+  apiRequest<AppNotificationsData>(`/api/notifications/${encodeURIComponent(id)}/read`, { method: "POST" });
 export const requestSignedUploadUrl = (body: unknown) => apiRequest<SignedUploadData>("/api/uploads/signed-url", { method: "POST", body });
 
 export async function uploadImageViaServer(input: { file: File; purpose: string }): Promise<ApiResponse<ServerUploadData>> {

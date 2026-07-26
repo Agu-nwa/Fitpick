@@ -7,6 +7,7 @@ const NotificationPreferenceSchema = new Schema(
     weatherAlerts: { type: Boolean, default: true },
     eventPrep: { type: Boolean, default: true },
     repeatWarnings: { type: Boolean, default: true },
+    tryOnUpdates: { type: Boolean, default: true },
     pushToken: { type: String, default: "" },
     quietHours: {
       enabled: { type: Boolean, default: false },

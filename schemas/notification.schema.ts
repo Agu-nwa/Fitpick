@@ -5,6 +5,7 @@ export const notificationPreferenceSchema = z.object({
   weatherAlerts: z.boolean().optional(),
   eventPrep: z.boolean().optional(),
   repeatWarnings: z.boolean().optional(),
+  tryOnUpdates: z.boolean().optional(),
   quietHours: z
     .object({
       enabled: z.boolean().optional(),

@@ -11,6 +11,7 @@ import {
   type InsufficientCreditsError
 } from "@/lib/credits/credit-engine";
 import { assertUsablePreviewRecord } from "@/lib/tryon/tryon-image-validation";
+import { createTryOnFailedNotification, createTryOnReadyNotification } from "@/lib/notifications/app-notifications";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { TryOnGeneration, type TryOnGenerationDocument } from "@/models/TryOnGeneration";
 
@@ -89,6 +90,34 @@ function providerDiagnosticsFromError(error: unknown) {
   const diagnostics = (error as { providerDiagnostics?: unknown }).providerDiagnostics;
   if (!diagnostics || typeof diagnostics !== "object" || Array.isArray(diagnostics)) return {};
   return sanitizeTryOnMetadata(diagnostics as Record<string, unknown>);
+}
+
+async function safeCreateTryOnNotification(input: {
+  status: "ready" | "failed";
+  generation: TryOnGenerationDocument | any;
+  previewId?: string | Types.ObjectId | null;
+}) {
+  try {
+    if (input.status === "ready") {
+      await createTryOnReadyNotification({
+        userId: input.generation.userId,
+        outfitId: input.generation.outfitId,
+        generationId: input.generation.generationId,
+        previewId: input.previewId
+      });
+      return;
+    }
+
+    await createTryOnFailedNotification({
+      userId: input.generation.userId,
+      outfitId: input.generation.outfitId,
+      generationId: input.generation.generationId
+    });
+  } catch (error) {
+    Sentry.captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { area: "tryon_notification", generationId: input.generation?.generationId || "" }
+    });
+  }
 }
 
 export function serializeTryOnGeneration(generation: any) {
@@ -323,6 +352,7 @@ export async function commitTryOnGenerationCredits(input: {
     failureMessage: ""
   });
   logTryOnGenerationEvent({ event: "credit_committed", generationId: generation.generationId, userId: String(generation.userId), outfitId: String(generation.outfitId), provider: generation.provider, stage: "completed" });
+  await safeCreateTryOnNotification({ status: "ready", generation: completed || generation, previewId: readBack?._id });
   return { creditCharge: charge, generation: completed || generation, preview: readBack };
 }
 
@@ -356,6 +386,7 @@ export async function failTryOnGeneration(input: {
       extra: { generationId: generation.generationId, provider: generation.provider, code: input.code || errorCategory(input.error) }
     });
   }
+  await safeCreateTryOnNotification({ status: "failed", generation: updated || generation });
   return updated;
 }
 
