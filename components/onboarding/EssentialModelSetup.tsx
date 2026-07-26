@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, MapPin, Palette, Sparkles } from "lucide-react";
 import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
@@ -11,7 +12,9 @@ import { Chip } from "@/components/ui/Chip";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
-import { updateCurrentUser, updatePreferences } from "@/lib/api-client";
+import { updateAvatarProfile, updateCurrentUser, updatePreferences } from "@/lib/api-client";
+import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
+import { cn } from "@/lib/utils";
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -76,6 +79,9 @@ function addChip(current: string, value: string) {
 export function EssentialModelSetup() {
   const router = useRouter();
   const session = useSession();
+  const [setupStep, setSetupStep] = useState<"model" | "style">("model");
+  const [studioGender, setStudioGender] = useState<StudioModelGender | "">("");
+  const [studioModelType, setStudioModelType] = useState<StudioModelType | "">("");
   const [name, setName] = useState("");
   const [styleIdentity, setStyleIdentity] = useState("clean, polished");
   const [colorPreferences, setColorPreferences] = useState("black, white, navy");
@@ -91,6 +97,7 @@ export function EssentialModelSetup() {
   const [error, setError] = useState("");
   const customLocationRef = useRef<HTMLDivElement>(null);
   const revealContent = useRevealContent();
+  const modelOptions = useMemo(() => getStudioModelOptions(studioGender || null), [studioGender]);
 
   useEffect(() => {
     if (session.user?.name) setName(session.user.name);
@@ -119,6 +126,34 @@ export function EssentialModelSetup() {
   function chooseCity(value: string) {
     setSelectedCity(value);
     if (value === otherLocation) revealContent(customLocationRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
+  }
+
+  function chooseGender(value: StudioModelGender) {
+    setStudioGender(value);
+    setStudioModelType("");
+  }
+
+  async function saveStudioModel() {
+    if (!studioGender || !studioModelType) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const result = await updateAvatarProfile({
+      tryOnModelSource: "studio",
+      studioModelGender: studioGender,
+      studioModelType
+    });
+
+    setSaving(false);
+    if (!result.ok) {
+      setError("We could not save your My Model. Please choose again.");
+      return;
+    }
+
+    setMessage("");
+    setSetupStep("style");
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   }
 
   function currentLocationName() {
@@ -184,6 +219,89 @@ export function EssentialModelSetup() {
     );
   }
 
+  if (setupStep === "model") {
+    return (
+      <Card className="space-y-5">
+        <div>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
+            <Sparkles size={14} aria-hidden="true" />
+            My Model
+          </p>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Choose your My Model</h2>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Select a FitPick Studio Model so your try-ons look cleaner and more reliable.
+          </p>
+        </div>
+
+        {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
+
+        <section>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">Choose gender</p>
+          <div className="grid grid-cols-2 gap-3">
+            {(["male", "female"] as const).map((gender) => (
+              <button
+                key={gender}
+                type="button"
+                onClick={() => chooseGender(gender)}
+                className={cn(
+                  "focus-ring min-h-12 rounded-2xl border px-4 text-sm font-bold capitalize transition duration-200 active:scale-[0.98]",
+                  studioGender === gender ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-canvas/70 text-ink hover:border-cocoa/50"
+                )}
+                aria-pressed={studioGender === gender}
+              >
+                {gender}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {studioGender ? (
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">FitPick Studio Model</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {modelOptions.map((option) => {
+                const selected = studioModelType === option.type;
+                return (
+                  <button
+                    key={option.type}
+                    type="button"
+                    onClick={() => setStudioModelType(option.type)}
+                    className={cn(
+                      "focus-ring group overflow-hidden rounded-[1.5rem] border bg-surface text-left shadow-soft transition duration-200 active:scale-[0.99]",
+                      selected ? "border-cocoa shadow-glow ring-2 ring-cocoa/20" : "border-line hover:-translate-y-0.5 hover:border-cocoa/40 hover:shadow-card"
+                    )}
+                    aria-pressed={selected}
+                  >
+                    <div className="aspect-[3/4] overflow-hidden bg-canvas">
+                      <Image
+                        src={option.imagePath}
+                        alt={`${option.label} FitPick Studio Model`}
+                        width={960}
+                        height={1280}
+                        className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-bold text-ink">{option.label}</h3>
+                        {selected ? <span className="rounded-full bg-cocoa px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-canvas">Selected</span> : null}
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-muted">{option.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <Button type="button" className="w-full" disabled={saving || !studioGender || !studioModelType} onClick={() => void saveStudioModel()}>
+          {saving ? "Saving..." : "Continue"}
+        </Button>
+      </Card>
+    );
+  }
+
   return (
     <Card className="space-y-5">
       <div>
@@ -192,7 +310,7 @@ export function EssentialModelSetup() {
           Style start
         </p>
         <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Teach MyFitPick the essentials.</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">Start with a few preferences. Model photos, measurements, and weather permissions appear later when they improve a specific feature.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Add a few preferences so your stylist has direction from day one.</p>
       </div>
 
       {message ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{message}</p> : null}
@@ -295,9 +413,9 @@ export function EssentialModelSetup() {
         <section className="rounded-2xl border border-olive/20 bg-olive/10 p-3">
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
             <CheckCircle2 size={14} aria-hidden="true" />
-            Later, when useful
+            My Model is ready
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted">Virtual Try-On will ask for a full-body photo inside Profile. Outfit recommendations work from your closet without that step.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">You can refine your Fitting Model later inside Profile.</p>
         </section>
 
         <div>

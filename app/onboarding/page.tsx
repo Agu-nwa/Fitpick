@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 
 const steps = [
+  { title: "Choose your My Model", body: "Select a FitPick Studio Model for cleaner try-on previews." },
   { title: "Set your style starting point", body: "Share a few preferences so MyFitPick has taste direction from day one." },
   { title: "Add a few pieces", body: "Start with the clothing, shoes, bags, and accessories you reach for often." },
   { title: "Ask your Stylist", body: "Get outfit ideas shaped by your closet, plans, and the context you choose to add." }

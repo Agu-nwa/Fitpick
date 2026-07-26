@@ -30,7 +30,7 @@ export function WelcomeScreen() {
       });
 
       if (!response.ok) throw new Error("Unable to complete welcome");
-      router.push("/home");
+      router.push("/onboarding");
       router.refresh();
     } catch {
       setMessage("We could not continue right now. Please try again.");

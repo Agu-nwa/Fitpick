@@ -402,13 +402,16 @@ export type AvatarProfileData = {
     avatarProvider: "ready_player_me" | "fitpick_preset" | "custom_glb";
     avatarUrl: string | null;
     glbStorageKey: string | null;
-    tryOnModelSource: "none" | "uploaded" | "generated";
+    tryOnModelSource: "none" | "uploaded" | "generated" | "studio";
     uploadedModelImageUrl: string | null;
     uploadedModelImageStorageKey: string | null;
     generatedModelImageUrl: string | null;
     generatedModelImageStorageKey: string | null;
     generatedModelPromptVersion: string;
     generatedModelAt: string | null;
+    studioModelGender: "male" | "female" | null;
+    studioModelType: "standard" | "petite" | "athletic" | "broad" | "curvy" | "plus-size" | "maternity" | null;
+    studioModelImageUrl: string | null;
     heightCm: number | null;
     weightKg: number | null;
     chestCm: number | null;

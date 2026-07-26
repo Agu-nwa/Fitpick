@@ -39,7 +39,7 @@ export function AvatarProfileForm({
     setError("");
 
     const result = await updateAvatarProfile({
-      tryOnModelSource: uploadedModelImageUrl ? "uploaded" : "none",
+      tryOnModelSource: uploadedModelImageUrl ? "uploaded" : profile.studioModelGender ? "studio" : "none",
       uploadedModelImageUrl: uploadedModelImageUrl || null,
       uploadedModelImageStorageKey: uploadedModelImageStorageKey || null,
       consentAccepted
@@ -145,7 +145,7 @@ export function AvatarProfileForm({
     setError("");
 
     const result = await updateAvatarProfile({
-      tryOnModelSource: "none",
+      tryOnModelSource: profile.studioModelGender ? "studio" : "none",
       uploadedModelImageUrl: null,
       uploadedModelImageStorageKey: null,
       consentAccepted
@@ -173,9 +173,9 @@ export function AvatarProfileForm({
             <Camera size={14} aria-hidden="true" />
             Appearance
           </p>
-          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Upload your full-body photo.</h2>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Refine your Fitting Model.</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            MyFitPick uses this image as your Virtual Try-On model. Choose a clear full-body image where your head, outfit area, and feet are visible.
+            Your FitPick Studio Model is ready. You can upload a personal full-body photo here when you want a more familiar preview.
           </p>
         </div>
       </div>
@@ -203,8 +203,8 @@ export function AvatarProfileForm({
             <div className="flex aspect-[3/4] items-center justify-center px-6 text-center">
               <div>
                 <ImagePlus className="mx-auto text-olive" size={34} aria-hidden="true" />
-                <p className="mt-3 text-sm font-semibold text-ink">No full-body photo yet</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Upload one image before using Virtual Try-On.</p>
+                <p className="mt-3 text-sm font-semibold text-ink">Using your Studio Model</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Upload a personal photo only if you want to replace it.</p>
               </div>
             </div>
           )}

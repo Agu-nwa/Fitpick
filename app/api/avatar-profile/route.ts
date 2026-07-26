@@ -25,11 +25,13 @@ const avatarProfilePatchSchema = z
     visualizationStyle: z.enum(["minimal", "luxury", "streetwear", "editorial"]).optional(),
     avatarProvider: z.enum(["ready_player_me", "fitpick_preset", "custom_glb"]).optional(),
     avatarUrl: z.union([z.string().trim().max(2048), z.null()]).optional(),
-    tryOnModelSource: z.enum(["none", "uploaded", "generated"]).optional(),
+    tryOnModelSource: z.enum(["none", "uploaded", "generated", "studio"]).optional(),
     uploadedModelImageUrl: z.union([z.string().trim().max(2048), z.null()]).optional(),
     uploadedModelImageStorageKey: z.union([z.string().trim().max(512), z.null()]).optional(),
     generatedModelImageUrl: z.union([z.string().trim().max(2048), z.null()]).optional(),
     generatedModelImageStorageKey: z.union([z.string().trim().max(512), z.null()]).optional(),
+    studioModelGender: z.enum(["male", "female"]).nullable().optional(),
+    studioModelType: z.enum(["standard", "petite", "athletic", "broad", "curvy", "plus-size", "maternity"]).nullable().optional(),
     heightCm: nullableMeasurement(90, 240),
     weightKg: nullableMeasurement(25, 260),
     chestCm: nullableMeasurement(45, 180),
@@ -82,6 +84,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (error instanceof Error && error.message === "invalid_model_image_url") {
       return apiError("VALIDATION_ERROR", "Use a secure HTTPS image URL for your model photo.");
+    }
+    if (error instanceof Error && error.message === "invalid_studio_model_selection") {
+      return apiError("VALIDATION_ERROR", "Choose a valid FitPick Studio Model.");
     }
     logSafeError("avatar-profile.patch", error);
     return apiError("INTERNAL_ERROR", "Unable to save your avatar right now.");

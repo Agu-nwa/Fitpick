@@ -45,8 +45,8 @@ export function AvatarStudioClient() {
   if (!profile) {
     return (
       <Card className="p-4">
-        <p className="text-sm font-semibold text-ink">Your appearance profile is ready to set up.</p>
-        <p className="mt-2 text-sm leading-6 text-muted">Upload a full-body photo before using Virtual Try-On.</p>
+        <p className="text-sm font-semibold text-ink">Your Fitting Model is ready to refine.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Open your appearance setup to review or replace your Studio Model.</p>
         <Button type="button" className="mt-4 w-full" onClick={() => void loadProfile()}>
           Open appearance setup
         </Button>
