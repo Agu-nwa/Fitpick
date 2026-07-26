@@ -8,15 +8,18 @@ import { cn } from "@/lib/utils";
 export function AppShell({
   children,
   showNav = true,
+  showMobileNav,
   showSupport,
   className
 }: {
   children: React.ReactNode;
   showNav?: boolean;
+  showMobileNav?: boolean;
   showSupport?: boolean;
   className?: string;
 }) {
   const shouldShowSupport = showSupport ?? showNav;
+  const shouldShowMobileNav = showMobileNav ?? showNav;
 
   return (
     <main
@@ -31,7 +34,7 @@ export function AppShell({
           {children}
         </div>
       </div>
-      {showNav ? <BottomNav /> : null}
+      {shouldShowMobileNav ? <BottomNav /> : null}
       {shouldShowSupport ? <SupportLauncher /> : null}
     </main>
   );

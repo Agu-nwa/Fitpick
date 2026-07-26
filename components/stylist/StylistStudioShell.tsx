@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { AppShell } from "@/components/layout/AppShell";
+import { MobileAccountNav } from "@/components/navigation/MobileAccountNav";
 import { cn } from "@/lib/utils";
 
 export function StylistStudioShell({
@@ -20,8 +21,10 @@ export function StylistStudioShell({
   className?: string;
 }) {
   return (
-    <AppShell showNav={false} showSupport className={cn("max-w-[1320px] gap-8 px-4 pb-[calc(7rem+var(--safe-bottom))] pt-[calc(1rem+var(--safe-top))] sm:px-8 lg:px-10", className)}>
-      <header className="sticky top-[var(--safe-top)] z-20 -mx-1 rounded-full border border-line/80 bg-surface/85 px-3 py-2 shadow-soft backdrop-blur-xl sm:mx-0 sm:px-4">
+    <AppShell showNav={false} showMobileNav showSupport className={cn("max-w-[1320px] gap-8 px-4 pb-[calc(7rem+var(--safe-bottom))] pt-[calc(1rem+var(--safe-top))] sm:px-8 lg:px-10", className)}>
+      <MobileAccountNav />
+
+      <header className="sticky top-[var(--safe-top)] z-20 -mx-1 hidden rounded-full border border-line/80 bg-surface/85 px-3 py-2 shadow-soft backdrop-blur-xl sm:mx-0 sm:px-4 lg:block">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <Link href="/home" className="focus-ring inline-flex min-w-0 shrink-0 rounded-full" aria-label="Go to Home">
             <BrandLogo size="sm" priority />
