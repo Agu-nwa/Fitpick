@@ -30,12 +30,12 @@ import { cn } from "@/lib/utils";
 type SectionId = "personal" | "appearance" | "style" | "location" | "credits" | "account";
 
 const sections: Array<{ id: SectionId; label: string; helper: string; icon: LucideIcon }> = [
-  { id: "personal", label: "Personal", helper: "Name and email", icon: UserRound },
-  { id: "appearance", label: "Appearance", helper: "Model and fit", icon: ScanFace },
-  { id: "style", label: "Style", helper: "Stylist preferences", icon: SlidersHorizontal },
+  { id: "personal", label: "Account", helper: "Name and email", icon: UserRound },
+  { id: "appearance", label: "My Model", helper: "Try-on preview", icon: ScanFace },
+  { id: "style", label: "Style preferences", helper: "Stylist preferences", icon: SlidersHorizontal },
   { id: "location", label: "Location", helper: "Weather styling", icon: MapPin },
   { id: "credits", label: "Credits", helper: "Balance and top up", icon: WalletCards },
-  { id: "account", label: "Account", helper: "Legal and sign out", icon: ShieldCheck }
+  { id: "account", label: "Privacy", helper: "Legal and sign out", icon: ShieldCheck }
 ];
 
 function normalizeSection(value: string | null): SectionId {
@@ -54,7 +54,7 @@ export function UnifiedProfileClient() {
   const revealContent = useRevealContent();
 
   const sectionTitle = useMemo(
-    () => sections.find((section) => section.id === selectedSection)?.label || "Personal",
+    () => sections.find((section) => section.id === selectedSection)?.label || "Account",
     [selectedSection]
   );
 
@@ -76,8 +76,8 @@ export function UnifiedProfileClient() {
     <div className="mt-6 grid gap-6 xl:grid-cols-[20rem_minmax(0,1fr)] xl:items-start">
       <Card className="p-3 xl:sticky xl:top-8">
         <div className="px-2 py-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Profile menu</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Your style, fit, and account.</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Profile</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Your account, style, and Credits.</p>
         </div>
         <div className="mt-3 grid gap-2" role="tablist" aria-label="Profile sections">
           {sections.map((section) => {
@@ -111,7 +111,7 @@ export function UnifiedProfileClient() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">{sectionTitle}</p>
             <h2 id="profile-section-title" className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">
-              {sectionTitle === "Personal" ? "Your details." : sectionTitle}
+              {sectionTitle === "Account" ? "Your details." : sectionTitle}
             </h2>
           </div>
         </div>
@@ -155,13 +155,13 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
     setSaving(false);
 
     if (!result.ok) {
-      setError(safeUserMessage(result.error, "Unable to save your profile right now."));
+      setError(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
       revealContent(statusRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
       return;
     }
 
     await session.refresh();
-    setNotice("Profile saved.");
+    setNotice("Your preferences are saved.");
     revealContent(statusRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
   }
 
@@ -194,7 +194,7 @@ function PersonalDetailsSection({ session }: { session: ReturnType<typeof useSes
           />
         </label>
         <Button type="button" onClick={() => void saveName()} disabled={saving} className="w-full rounded-full sm:w-auto">
-          {saving ? "Saving..." : "Save profile"}
+          {saving ? "Saving..." : "Save changes"}
         </Button>
       </div>
 
@@ -282,7 +282,7 @@ function CreditsSection() {
       ) : null}
       <WalletSummaryCard wallet={wallet} />
       <Link href="/wallet" className="block">
-        <Button type="button" className="w-full rounded-full">Top up Credits</Button>
+        <Button type="button" className="w-full rounded-full">Top Up</Button>
       </Link>
     </div>
   );
@@ -302,7 +302,7 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
     setSigningOut(false);
 
     if (!result.ok) {
-      setMessage("We could not sign you out. Try again soon.");
+      setMessage("We couldn’t sign you out. Please try again.");
       return;
     }
 
@@ -323,7 +323,7 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
     setRequestingDeletion(false);
 
     if (!result.ok) {
-      setMessage(safeUserMessage(result.error, "Unable to send the request right now."));
+      setMessage(safeUserMessage(result.error, "We couldn’t send your request. Please try again."));
       return;
     }
 

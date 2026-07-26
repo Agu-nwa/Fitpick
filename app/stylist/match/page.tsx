@@ -16,7 +16,7 @@ export default async function MatchOutfitPage() {
       badge="Photo or screenshot"
     >
       <ContextualTip tipId="match-outfit" dismissedTips={auth.user.onboardingTipsDismissed}>
-        Upload a shopping screenshot or product photo and FitPick will match it with your wardrobe.
+        Upload a shopping screenshot or product photo and MyFitPick will match it with your closet.
       </ContextualTip>
       <StylistChat initialFlow="match" productMode="match" />
     </StylistStudioShell>

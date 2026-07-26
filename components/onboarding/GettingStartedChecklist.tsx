@@ -57,7 +57,7 @@ export function GettingStartedChecklist({ initialState }: { initialState: Onboar
 
       {state.allComplete ? (
         <div className="mt-5 rounded-3xl border border-olive/25 bg-olive/8 px-4 py-4 text-sm leading-6 text-ink">
-          Beautiful. FitPick now has enough signal to style with more confidence.
+          Beautiful. MyFitPick now has enough signal to style with more confidence.
         </div>
       ) : null}
 

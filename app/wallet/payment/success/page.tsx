@@ -24,7 +24,7 @@ export default async function PaymentSuccessPage({
             Payment confirmation.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
-            This page checks payment status only. Credits are added after provider-confirmed payment events.
+            Credits are added once your payment is confirmed.
           </p>
         </div>
       </header>

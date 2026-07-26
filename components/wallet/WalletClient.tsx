@@ -66,7 +66,7 @@ function PaymentMethodSummary({
           <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
             <span className="inline-flex items-center gap-2">
               <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
-              Card or digital wallet
+              Card available
             </span>
             <Badge tone="success">Available</Badge>
           </span>
@@ -90,7 +90,7 @@ function PaymentMethodSummary({
             <Badge tone="premium">Coming Soon</Badge>
           </span>
           <span className="mt-2 block text-xs leading-5 text-muted">
-            USDT purchases are coming soon for TRC20, BEP20, and ERC20.
+            Secure crypto payments are on the way.
           </span>
         </button>
       </div>
@@ -126,7 +126,7 @@ function CryptoComingSoonModal({
             Secure cryptocurrency payments are launching soon.
           </p>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Soon you&apos;ll be able to purchase FitPick Credits using USDT.
+            Soon you&apos;ll be able to purchase MyFitPick Credits using USDT.
           </p>
           <div className="mt-4 rounded-2xl border border-line bg-white/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Supported networks will include</p>
@@ -198,7 +198,7 @@ export function WalletClient() {
       return;
     }
 
-    setCheckoutMessage(result.ok ? "Card checkout is not available right now." : safeUserMessage(result.error, "Card checkout is not available right now."));
+    setCheckoutMessage(result.ok ? "We couldn’t complete the payment. Please try again." : safeUserMessage(result.error, "We couldn’t complete the payment. Please try again."));
     setCheckoutPackId("");
     await loadWallet();
   };
@@ -218,7 +218,7 @@ export function WalletClient() {
                 Credits
               </p>
               <p className="mt-3 text-6xl font-black leading-none tracking-[-0.08em] text-ink">{formatCredits(data.wallet.balance)}</p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Your first 20 Credits are complimentary. Credits are spent only after premium actions succeed.</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">20 complimentary Credits added.</p>
             </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -259,7 +259,7 @@ export function WalletClient() {
       </div>
 
       <section ref={creditPacksRef} id="credit-packs" className="scroll-mt-6 space-y-4">
-        <SectionHeader title="Top Up Credits" />
+        <SectionHeader title="Top Up" />
         {routeNotice ? (
           <div className="flex items-start gap-3 rounded-2xl border border-cocoa/20 bg-gradient-to-r from-cocoa/10 via-white/70 to-olive/10 p-4 text-sm leading-6 text-ink">
             <Rocket size={17} className="mt-0.5 shrink-0 text-cocoa" aria-hidden="true" />
@@ -280,7 +280,7 @@ export function WalletClient() {
               <p className="text-xs leading-5 text-muted">{pack.amountLabel} one-time purchase. Purchased Credits do not expire.</p>
               <Button className="w-full" disabled={!stripeConfigured || Boolean(checkoutPackId)} variant={pack.id === "popular" ? "primary" : "secondary"} onClick={() => void startCardPayment(pack)}>
                 <CreditCard size={16} aria-hidden="true" />
-                {checkoutPackId === pack.id ? "Opening checkout" : "Top Up Credits"}
+                {checkoutPackId === pack.id ? "Opening checkout" : "Top Up"}
               </Button>
             </Card>
           ))}
@@ -356,7 +356,7 @@ export function WalletClient() {
               ))}
             </div>
           ) : (
-            <p className="rounded-2xl border border-line bg-canvas/60 p-4 text-sm leading-6 text-muted">No Credit usage yet. Your free wardrobe recommendations do not spend Credits.</p>
+            <p className="rounded-2xl border border-line bg-canvas/60 p-4 text-sm leading-6 text-muted">Outfit recommendations, weather styling, and closet browsing are free.</p>
           )}
         </Card>
       </section>

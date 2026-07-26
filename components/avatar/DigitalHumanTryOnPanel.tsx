@@ -33,13 +33,13 @@ function fitStatusLabel(status?: string) {
 }
 
 const tryOnProgressSteps = [
-  "Checking outfit",
-  "Checking Credits",
-  "Preparing images",
-  "Submitting try-on",
-  "Generating preview",
+  "Reviewing look",
+  "Preparing Credits",
+  "Preparing preview",
+  "Starting preview",
+  "Creating preview",
   "Saving preview",
-  "Complete"
+  "Ready"
 ];
 
 export function DigitalHumanTryOnPanel({
@@ -59,7 +59,7 @@ export function DigitalHumanTryOnPanel({
 }: DigitalHumanTryOnPanelProps) {
   const setupRequired = /try-on model|avatar settings|full-body|model image/i.test(previewError || "");
   const safeFitWarnings = safeUserMessages(fitWarnings);
-  const safeCompletenessWarnings = safeUserMessages([...(outfit.completenessWarnings || []), ...visualizationWarnings]);
+  const safeReadinessWarnings = safeUserMessages([...(outfit.completenessWarnings || []), ...visualizationWarnings]);
 
   return (
     <div className="space-y-4">
@@ -68,10 +68,10 @@ export function DigitalHumanTryOnPanel({
           <div>
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
               <WandSparkles size={14} aria-hidden="true" />
-              Virtual try-on
+              Virtual Try-On
             </p>
             <p className="mt-1 text-xs leading-5 text-muted">
-              Preview this look on your saved model.
+              See how this outfit comes together on your My Model.
             </p>
           </div>
           <Badge tone={accuracyLevel?.id === "fit_locked" ? "success" : "premium"}>
@@ -85,15 +85,15 @@ export function DigitalHumanTryOnPanel({
             className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-canvas via-surface to-olive/10"
             onClick={onOpenPreview}
           >
-            <img src={previewUrl} alt={`${outfit.title} avatar preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
+            <img src={previewUrl} alt={`${outfit.title} Virtual Try-On preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
           </button>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/70 px-5 text-center">
             <div>
               <Sparkles size={24} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-              <p className="font-editorial text-3xl font-semibold leading-none text-ink">Step into your fitting studio.</p>
+              <p className="font-editorial text-3xl font-semibold leading-none text-ink">Preview this look</p>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                MyFitPick will use your saved photos to prepare an on-model preview.
+                See how this outfit comes together on your My Model.
               </p>
             </div>
           </div>
@@ -133,9 +133,9 @@ export function DigitalHumanTryOnPanel({
           </div>
         ) : null}
 
-        {safeCompletenessWarnings.length ? (
+        {safeReadinessWarnings.length ? (
           <div className="space-y-2 rounded-2xl border border-warning/20 bg-warning/10 p-3">
-            {safeCompletenessWarnings.slice(0, 4).map((warning) => (
+            {safeReadinessWarnings.slice(0, 4).map((warning) => (
               <p key={warning} className="text-xs leading-5 text-ink">{warning}</p>
             ))}
           </div>
@@ -143,7 +143,7 @@ export function DigitalHumanTryOnPanel({
 
         {previewStatus === "queued" || previewStatus === "processing" || previewStatus === "generating" ? (
           <div className="space-y-3 rounded-2xl border border-cocoa/15 bg-cocoa/5 p-3">
-            <p className="text-sm font-semibold text-cocoa">FitPick is preparing your look. Your Credit is only spent after the preview is saved.</p>
+            <p className="text-sm font-semibold text-cocoa">MyFitPick is preparing your look. This may take a moment.</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {tryOnProgressSteps.map((step, index) => (
                 <span key={step} className={`rounded-full px-2 py-1 text-center text-[11px] font-semibold ${index < 6 ? "bg-white/70 text-ink" : "bg-cocoa text-white"}`}>
@@ -157,7 +157,7 @@ export function DigitalHumanTryOnPanel({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
-            {isGenerating ? "Preparing preview..." : previewUrl ? "Regenerate preview" : "Generate preview"}
+            {isGenerating ? "MyFitPick is preparing your look" : previewUrl ? "Try another look" : "Generate Virtual Try-On"}
           </Button>
           {previewUrl && previewStatus === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
           <Link href={`/outfit/${outfit.id}/preview`}>
@@ -167,11 +167,11 @@ export function DigitalHumanTryOnPanel({
             </Button>
           </Link>
           <Link href="/profile?section=appearance">
-            <Button type="button" variant="secondary" className="w-full">{setupRequired ? "Set up try-on model" : "Improve size details"}</Button>
+            <Button type="button" variant="secondary" className="w-full">{setupRequired ? "Choose your My Model" : "Edit details"}</Button>
           </Link>
           {previewUrl ? (
             <Button type="button" variant="ghost" onClick={onRegenerate} disabled={isGenerating}>
-              Try again
+              Retry Try-On
             </Button>
           ) : null}
         </div>

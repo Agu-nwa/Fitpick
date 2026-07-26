@@ -51,21 +51,21 @@ type StylistFlow = "home" | "create" | "match";
 type StylistProductMode = "hub" | "create" | "match";
 
 const occasionSuggestions = [
-  { label: "Work", prompt: "Create a polished work look from my wardrobe." },
-  { label: "Date night", prompt: "Create a clean date night look from my wardrobe." },
-  { label: "Wedding", prompt: "Create a wedding guest look from my wardrobe." },
-  { label: "Casual", prompt: "Create an easy casual look from my wardrobe." },
-  { label: "Travel", prompt: "Create a travel outfit from my wardrobe." },
-  { label: "Dinner", prompt: "Create a dinner look from my wardrobe." },
-  { label: "Weekend", prompt: "Create a weekend look from my wardrobe." },
-  { label: "Surprise me", prompt: "Create a confident look from my wardrobe. Surprise me." }
+  { label: "Work", prompt: "Style me for work today" },
+  { label: "Date night", prompt: "Create a clean date night look" },
+  { label: "Wedding", prompt: "Create a wedding guest look" },
+  { label: "Casual", prompt: "Create an easy casual look" },
+  { label: "Travel", prompt: "Create a travel outfit" },
+  { label: "Dinner", prompt: "Create a clean dinner look" },
+  { label: "Weekend", prompt: "Create a weekend look" },
+  { label: "Weather", prompt: "What should I wear in this weather?" }
 ];
 
 const promptSuggestions = [
-  "Style my black blazer",
-  "Build a dinner look",
-  "Make this more casual",
-  "Use my white sneakers"
+  "Style me for work today",
+  "Create a clean dinner look",
+  "Match this outfit with my closet",
+  "What should I wear in this weather?"
 ];
 
 const createLookExamples = [
@@ -77,17 +77,17 @@ const createLookExamples = [
 ];
 
 const createLoadingSteps = [
-  "Reviewing your wardrobe",
+  "MyFitPick is styling your look.",
   "Balancing colour and silhouette",
   "Selecting the strongest outfit",
-  "Creating your Virtual Try-On"
+  "Preparing your preview"
 ];
 
 const matchLoadingSteps = [
-  "Analysing your item",
-  "Searching your wardrobe",
-  "Styling around your upload",
-  "Creating your Virtual Try-On"
+  "MyFitPick is finding closet matches.",
+  "Reading your inspiration",
+  "Styling around your closet",
+  "Preparing your preview"
 ];
 
 const refinementChips = [
@@ -136,9 +136,9 @@ function referenceLabel(reference?: ReferenceFashionItemSummary | null) {
 
 function referenceStatusCopy(reference?: ReferenceFashionItemSummary | null) {
   if (!reference) return "";
-  if (reference.status === "analyzing") return "Reading photo...";
+  if (reference.status === "analyzing") return "Reading your inspiration...";
   if (reference.status === "needs-selection") return "Choose which item to style.";
-  if (reference.status === "ready") return "Ready for your stylist.";
+  if (reference.status === "ready") return "Your stylist is ready.";
   if (reference.status === "failed") return "Try a clearer photo.";
   return "Photo added.";
 }
@@ -192,7 +192,7 @@ function StylistProductCard({
 function MatchFlowVisual() {
   const steps = ["Photo", "Closet options", "Styled look"];
   return (
-    <div className="grid grid-cols-3 gap-2" aria-label="Match Outfit flow">
+    <div className="grid grid-cols-3 gap-2" aria-label="Match an Outfit flow">
       {steps.map((step, index) => (
         <div key={step} className="rounded-2xl border border-line bg-white/65 px-3 py-3 text-center">
           <span className="mx-auto flex size-8 items-center justify-center rounded-full bg-olive/10 text-xs font-bold text-olive">{index + 1}</span>
@@ -227,13 +227,13 @@ function DetectedPiecesPanel({
   return (
     <div className="rounded-2xl border border-line bg-canvas/65 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Pieces in the photo</p>
+        <p className="text-sm font-semibold text-ink">Pieces in your inspiration</p>
         <Badge tone={reference?.status === "ready" ? "success" : busy ? "premium" : "neutral"}>
           {busy ? "Studying" : reference?.status === "ready" ? "Ready" : "Reviewing"}
         </Badge>
       </div>
       {busy && !pieces.length ? (
-        <p className="mt-3 text-sm leading-6 text-muted">Studying the look...</p>
+        <p className="mt-3 text-sm leading-6 text-muted">Reading your inspiration...</p>
       ) : (
         <div className="mt-3 grid gap-2">
           {pieces.slice(0, 5).map((item) => (
@@ -813,7 +813,7 @@ export function StylistChat({
       const created = await uploadReferenceImage(normalized, source);
       setActiveReference(created);
       setReferencePreviewUrl(created?.imageUrl || normalized.previewUrl);
-      setReferenceMessage("Reading photo...");
+      setReferenceMessage("Reading your inspiration...");
       setActiveFlow("match");
       focusWorkspace();
       setCanRetryReferenceUpload(false);
@@ -909,7 +909,7 @@ export function StylistChat({
         patchMessage(messageIdToPatch, {
           avatarPreview: compactPreview({
             status: "failed",
-            errorMessage: safeTryOnErrorMessage(job.errorMessage, "Unable to show it on your avatar right now.")
+            errorMessage: safeTryOnErrorMessage(job.errorMessage, "We couldn’t complete that right now. Please try again.")
           }),
           jobId: null
         });
@@ -968,7 +968,7 @@ export function StylistChat({
     const assistantEntry: ChatMessage = {
       id: assistantId,
       role: "assistant",
-      content: "Reading your wardrobe..."
+      content: "Your stylist is putting the look together."
     };
     const sessionMessages = [...messages, userEntry, assistantEntry];
 
@@ -989,7 +989,7 @@ export function StylistChat({
     setLoading(false);
 
     if (!response.ok) {
-      const safeMessage = safeUserMessage(response.error, "Unable to reach MyFitPick Stylist right now.");
+      const safeMessage = safeUserMessage(response.error, "We couldn’t complete that right now. Please try again.");
       setError(safeMessage);
       patchMessage(assistantId, { content: safeMessage });
       return;
@@ -1017,7 +1017,7 @@ export function StylistChat({
     }
 
     if (response.data.outfitRecommendationId && !referenceForMessage) {
-      showToast("FitPick is preparing your look.");
+      showToast("MyFitPick is preparing your look.");
       if (response.data.redirectTo) router.push(response.data.redirectTo);
     }
   }
@@ -1091,7 +1091,7 @@ export function StylistChat({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-ink">Match an Outfit</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Choose a full-outfit photo or a clear fashion screenshot.</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Upload a product photo, screenshot, or outfit reference.</p>
               </div>
               <button
                 type="button"
@@ -1109,7 +1109,7 @@ export function StylistChat({
               </Button>
               <Button type="button" variant="secondary" onClick={() => openReferencePicker("upload")}>
                 <UploadCloud size={16} aria-hidden="true" />
-                Choose image
+                Upload inspiration
               </Button>
             </div>
           </div>
@@ -1120,17 +1120,17 @@ export function StylistChat({
         <div className="grid gap-4 md:grid-cols-2">
           <StylistProductCard
             title="Create a Look"
-            body="Build an outfit from your wardrobe for an occasion, mood, weather, or favorite piece."
-            action="Create a look"
-            note="Wardrobe first"
+            body="Start with an occasion, mood, weather, or favourite piece."
+            action="Create a Look"
+            note="Closet first"
             icon={WandSparkles}
             active={currentFlow === "create"}
             onClick={() => chooseFlow("create")}
           />
           <StylistProductCard
             title="Match an Outfit"
-            body="Bring in a look you admire and MyFitPick will style it with your closet."
-            action="Match an outfit"
+            body="Upload inspiration and build a look from your closet."
+            action="Match an Outfit"
             note="Photo or screenshot"
             icon={ImagePlus}
             featured
@@ -1149,7 +1149,7 @@ export function StylistChat({
                   <WandSparkles size={14} aria-hidden="true" />
                   Create a Look
                 </p>
-                <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">What are you dressing for today?</h2>
+                <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Create from your closet.</h2>
               </div>
               <Badge tone="premium">Closet-led</Badge>
             </div>
@@ -1205,7 +1205,7 @@ export function StylistChat({
                 id="stylist-create-prompt"
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="What are you dressing for today?"
+                placeholder="Dinner, work, date night, errands, church, travel..."
                 className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1216,11 +1216,11 @@ export function StylistChat({
                     onChange={(event) => setIncludeVisualization(event.target.checked)}
                     className="h-4 w-4 rounded border-line accent-cocoa"
                   />
-                  Virtual try-on
+                  Virtual Try-On
                 </label>
                 <Button type="submit" disabled={loading || referenceBusy || !message.trim()}>
                   <Sparkles size={16} aria-hidden="true" />
-                  {loading ? "Curating..." : "Create look"}
+                  {loading ? "Your stylist is putting the look together." : "Create a Look"}
                 </Button>
               </div>
             </form>
@@ -1236,14 +1236,14 @@ export function StylistChat({
                     <ImagePlus size={14} aria-hidden="true" />
                     Match an Outfit
                   </p>
-                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style a look you admire.</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">Add a photo or screenshot and style it with your closet.</p>
+                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style around inspiration.</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">Upload a product photo, screenshot, or outfit reference and build a look from your closet.</p>
                 </div>
                 <MatchFlowVisual />
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy}>
                     <UploadCloud size={16} aria-hidden="true" />
-                    Choose image
+                    Upload inspiration
                   </Button>
                   {activeReference || referencePreviewUrl ? (
                     <Button type="button" variant="secondary" onClick={() => void clearActiveReference()} disabled={referenceBusy}>
@@ -1281,7 +1281,7 @@ export function StylistChat({
                       />
                       <div>
                         <p className="text-sm font-semibold text-ink">Photo selected</p>
-                        <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Studying the look..."}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Reading your inspiration..."}</p>
                       </div>
                     </div>
                   </div>
@@ -1313,7 +1313,7 @@ export function StylistChat({
                     void submitStylistMessage();
                   }}
                 >
-                  <p className="text-sm font-semibold text-ink">We&apos;ll build your outfit around this item.</p>
+                  <p className="text-sm font-semibold text-ink">Ask your stylist</p>
                   <label className="sr-only" htmlFor="stylist-match-prompt">Add optional direction for this match</label>
                   <textarea
                     id="stylist-match-prompt"
@@ -1330,11 +1330,11 @@ export function StylistChat({
                         onChange={(event) => setIncludeVisualization(event.target.checked)}
                         className="h-4 w-4 rounded border-line accent-cocoa"
                       />
-                      Virtual try-on
+                      Virtual Try-On
                     </label>
                     <Button type="submit" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
                       <Sparkles size={16} aria-hidden="true" />
-                      {loading ? "Building..." : "Match With My Wardrobe"}
+                      {loading ? "MyFitPick is finding closet matches." : "Match an Outfit"}
                     </Button>
                   </div>
                 </form>
@@ -1353,10 +1353,10 @@ export function StylistChat({
             <div>
               <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
                 <Layers3 size={14} aria-hidden="true" />
-                {currentFlow === "match" ? "Matched looks" : "Curated looks"}
+                {currentFlow === "match" ? "Your look is ready" : "Your look is ready"}
               </p>
               <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink sm:text-5xl">
-                {currentFlow === "match" ? "Styled from your inspiration." : "Your stylist edit."}
+                {currentFlow === "match" ? "Here is how you can wear this with your closet." : "Built from pieces already in your closet."}
               </h2>
             </div>
           </div>

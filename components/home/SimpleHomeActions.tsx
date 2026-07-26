@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowUpRight, Shirt, Sparkles } from "lucide-react";
 
 const actions = [
-  { title: "Ask your Stylist", body: "Get a grounded outfit idea from pieces you already own.", href: "/stylist", icon: Sparkles, primary: true, number: "01", cta: "Start chat" },
-  { title: "Add wardrobe pieces", body: "Photograph one item and let MyFitPick organize the details.", href: "/wardrobe/add", icon: Shirt, number: "02", cta: "Add a piece" }
+  { title: "Create a Look", body: "Start with an occasion, mood, weather, or favourite piece.", href: "/stylist/create-look", icon: Sparkles, primary: true, number: "01", cta: "Create a Look" },
+  { title: "Add a piece", body: "Add your first piece to begin styling your closet.", href: "/wardrobe/add", icon: Shirt, number: "02", cta: "Add a piece" }
 ];
 
 export function SimpleHomeActions() {

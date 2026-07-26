@@ -172,7 +172,7 @@ export function AdminSupportDashboard({ agentName }: { agentName: string }) {
         <header className="flex flex-col gap-4 rounded-xl4 border border-line bg-surface/90 p-5 shadow-card md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa"><Inbox size={14} /> Support inbox</p>
-            <h1 className="font-editorial text-4xl font-semibold leading-none tracking-editorial sm:text-5xl">FitPick Support</h1>
+            <h1 className="font-editorial text-4xl font-semibold leading-none tracking-editorial sm:text-5xl">MyFitPick Support</h1>
             <p className="mt-3 text-sm text-muted">Signed in as {agentName}. {totalUnread ? `${totalUnread} unread customer message${totalUnread === 1 ? "" : "s"}.` : "Inbox is clear."}</p>
           </div>
           <Button variant="secondary" onClick={loadConversations} disabled={loading}><RefreshCw size={16} /> Refresh</Button>

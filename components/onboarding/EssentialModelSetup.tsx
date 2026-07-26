@@ -147,11 +147,11 @@ export function EssentialModelSetup() {
 
     setSaving(false);
     if (!result.ok) {
-      setError("We could not save your My Model. Please choose again.");
+      setError("Choose your My Model to continue.");
       return;
     }
 
-    setMessage("");
+    setMessage("Your My Model is ready.");
     setSetupStep("style");
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   }
@@ -236,7 +236,7 @@ export function EssentialModelSetup() {
         {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
         <section>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">Choose gender</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">Choose a model type</p>
           <div className="grid grid-cols-2 gap-3">
             {(["male", "female"] as const).map((gender) => (
               <button
@@ -249,7 +249,7 @@ export function EssentialModelSetup() {
                 )}
                 aria-pressed={studioGender === gender}
               >
-                {gender}
+                {gender === "male" ? "Male" : "Female"}
               </button>
             ))}
           </div>
@@ -257,7 +257,7 @@ export function EssentialModelSetup() {
 
         {studioGender ? (
           <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">FitPick Studio Model</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">Use a Studio Model</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {modelOptions.map((option) => {
                 const selected = studioModelType === option.type;
@@ -298,6 +298,9 @@ export function EssentialModelSetup() {
         <Button type="button" className="w-full" disabled={saving || !studioGender || !studioModelType} onClick={() => void saveStudioModel()}>
           {saving ? "Saving..." : "Continue"}
         </Button>
+        <p className="text-center text-xs leading-5 text-muted">
+          Use a Studio Model for the cleanest preview, or upload your own full-body photo for a more personal result.
+        </p>
       </Card>
     );
   }
@@ -413,9 +416,9 @@ export function EssentialModelSetup() {
         <section className="rounded-2xl border border-olive/20 bg-olive/10 p-3">
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">
             <CheckCircle2 size={14} aria-hidden="true" />
-            My Model is ready
+            Your My Model is ready.
           </p>
-          <p className="mt-1 text-xs leading-5 text-muted">You can refine your Fitting Model later inside Profile.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">You can refine your My Model later inside Profile.</p>
         </section>
 
         <div>

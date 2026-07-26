@@ -23,7 +23,7 @@ export default function StylistPage() {
                 <p className="mt-8 max-w-full text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa sm:tracking-[0.24em]">Create a Look</p>
                 <h2 className="font-editorial mt-3 max-w-full break-words text-4xl font-semibold leading-[0.95] text-ink sm:text-5xl">Create from your closet.</h2>
                 <p className="mt-4 max-w-full text-[15px] leading-6 text-muted sm:max-w-md sm:text-sm">
-                  Start with an occasion, mood, weather, or favorite piece.
+                  Start with an occasion, mood, weather, or favourite piece.
                 </p>
               </div>
               <span className="inline-flex max-w-full items-center gap-2 text-sm font-bold text-ink">

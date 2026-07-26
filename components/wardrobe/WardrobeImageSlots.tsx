@@ -12,10 +12,10 @@ export type WardrobeImageSlotDefinition = {
 };
 
 const slotLabels: WardrobeImageSlotDefinition[] = [
-  { key: "front", label: "Main", helper: "Full item view", required: true },
-  { key: "back", label: "Angle", helper: "Back, side, or interior" },
-  { key: "fabricCloseUp", label: "Detail", helper: "Texture, pattern, or hardware" },
-  { key: "label", label: "Product details", helper: "Label, stamp, code, or care tag" }
+  { key: "front", label: "Front", helper: "Clear item view", required: true },
+  { key: "back", label: "Back", helper: "Back, side, or interior" },
+  { key: "fabricCloseUp", label: "Fabric close-up", helper: "Texture, pattern, or hardware" },
+  { key: "label", label: "Label or care tag", helper: "Size, material, brand, or care" }
 ];
 
 export function WardrobeImageSlots({

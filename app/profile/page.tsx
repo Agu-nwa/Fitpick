@@ -18,7 +18,7 @@ export default function ProfilePage() {
             Your MyFitPick profile.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Manage your personal details, appearance, style preferences, city, Credits, and account in one calm place.
+            Manage your account, style preferences, My Model, location, Credits, and privacy.
           </p>
         </div>
       </header>

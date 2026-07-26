@@ -330,7 +330,7 @@ export function OutfitResult({
         void pollAvatarPreviewJob(result.data.job.id);
         return;
       }
-      setToast(preview.cached ? "Avatar preview loaded." : "Avatar preview ready.");
+      setToast(preview.cached ? "Your preview is ready." : "Your preview is ready.");
       window.setTimeout(() => setToast(""), 1800);
       return;
     }
@@ -361,7 +361,7 @@ export function OutfitResult({
           setAvatarPreviewUrl(url);
           setAvatarPreviewOpen(true);
         }
-        setToast("Avatar preview ready.");
+        setToast("Your preview is ready.");
         window.setTimeout(() => setToast(""), 1800);
         return;
       }
@@ -373,7 +373,7 @@ export function OutfitResult({
       }
     }
 
-    setAvatarPreviewError("This avatar preview is still being prepared. Check back shortly.");
+    setAvatarPreviewError("This preview is still being prepared. Check back shortly.");
   }
 
   return (
@@ -447,7 +447,7 @@ export function OutfitResult({
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Virtual try-on" />
+        <SectionHeader title="Virtual Try-On" />
 
         <div className="mt-4">
           <DigitalHumanTryOnPanel

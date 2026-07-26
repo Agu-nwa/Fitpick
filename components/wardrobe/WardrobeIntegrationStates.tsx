@@ -10,15 +10,15 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export function WardrobeLoadingState() {
-  return <LoadingCard title="Loading wardrobe" />;
+  return <LoadingCard title="Loading closet" />;
 }
 
 export function WardrobeEmptyState() {
   return (
     <EmptyState
-      title="Your wardrobe starts here."
-      body="Add a few pieces you wear often. MyFitPick will begin learning what works together."
-      cta="Add your first item"
+      title="Your closet is ready for its first piece."
+      body="Add clothes, shoes, bags, or accessories so MyFitPick can start creating looks."
+      cta="Add your first piece"
       href="/wardrobe/add"
     />
   );
@@ -36,7 +36,7 @@ export function WardrobeApiErrorState({ onRetry }: { onRetry?: () => void | Prom
   return (
     <ApiErrorState
       title="Wardrobe unavailable"
-      message="MyFitPick could not load wardrobe details right now. You can try again in a moment."
+      message="MyFitPick could not load closet details right now. You can try again in a moment."
       onRetry={onRetry}
     />
   );

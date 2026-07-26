@@ -110,7 +110,7 @@ export function PaymentSuccessClient({ purchaseId }: { purchaseId?: string }) {
           </div>
           <div className="rounded-2xl border border-line bg-canvas/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Payment method</p>
-            <p className="mt-2 text-sm font-bold text-ink">{purchase.provider === "stripe" ? "Card or digital wallet" : "USDT"}</p>
+            <p className="mt-2 text-sm font-bold text-ink">{purchase.provider === "stripe" ? "Card" : "USDT"}</p>
           </div>
         </div>
       ) : null}

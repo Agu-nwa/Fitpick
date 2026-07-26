@@ -10,11 +10,11 @@ import { apiContracts } from "@/lib/api-contract";
 import { frontendReadiness } from "@/lib/frontend-readiness";
 
 const nextIntegrations = [
-  "Production hosting, network security, HTTPS readiness, and release checks",
-  "Production credit-purchase activation",
-  "Production AI tuning",
+  "Launch readiness and release checks",
+  "Credit purchase activation",
+  "Styling quality tuning",
   "Push notification delivery",
-  "App store packaging"
+  "Mobile app packaging"
 ];
 
 export default function FrontendCompletePage() {
@@ -25,13 +25,13 @@ export default function FrontendCompletePage() {
         <div className="relative max-w-4xl">
           <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
             <CheckCircle2 size={14} aria-hidden="true" />
-            Deployment ready
+            Status
           </p>
           <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
-            Frontend, backend, and testing complete.
+            MyFitPick product status.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            MyFitPick has completed the app frontend, backend, storage, AI tagging foundation, integration, and testing phases.
+            Core MyFitPick product areas are connected and ready for final review.
           </p>
         </div>
       </header>
@@ -41,21 +41,21 @@ export default function FrontendCompletePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-canvas/60">Product foundation</p>
           <StatusBadge tone="success">complete</StatusBadge>
         </div>
-        <h2 className="mt-4 font-editorial text-4xl font-semibold leading-none tracking-editorial">Ready for production deployment setup.</h2>
+        <h2 className="mt-4 font-editorial text-4xl font-semibold leading-none tracking-editorial">Ready for launch preparation.</h2>
         <p className="mt-3 text-sm leading-6 text-canvas/75">
-          Auth, wardrobe, uploads, AI tagging, outfits, previews, preferences, Credits, and one-time payment foundation are connected with safe fallbacks and QA scripts.
+          Account, closet, styling, previews, preferences, Credits, and payments are connected with clear fallback states.
         </p>
       </Card>
 
       <section className="mt-7">
-        <SectionHeader title="Frontend readiness checklist" />
+        <SectionHeader title="Product readiness checklist" />
         <div className="space-y-3">
           {frontendReadiness.map((item) => <ReadinessCard key={item.id} item={item} />)}
         </div>
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="Next integration work" />
+        <SectionHeader title="Next product work" />
         <Card className="p-4">
           <div className="space-y-3">
             {nextIntegrations.map((area) => (
@@ -65,12 +65,12 @@ export default function FrontendCompletePage() {
               </div>
             ))}
           </div>
-          <Link href="/backend-ready" className="mt-4 block text-sm font-semibold text-cocoa">Open integration readiness</Link>
+          <Link href="/backend-ready" className="mt-4 block text-sm font-semibold text-cocoa">Open product status</Link>
         </Card>
       </section>
 
       <section className="mt-7">
-        <SectionHeader title="API contracts available" />
+        <SectionHeader title="App connections" />
         <div className="space-y-3">
           {apiContracts.map((contract) => <BackendReadyCard key={contract.id} contract={contract} />)}
         </div>

@@ -305,7 +305,7 @@ export function AITagConfirmationForm({
     const fit = values.fit || (garmentFit !== "unknown" ? garmentFit : "");
     return [
       { label: "Category", ready: hasMeaningfulValue(values.category) },
-      { label: "Subtype", ready: hasMeaningfulValue(values.subcategory) },
+      { label: "Type", ready: hasMeaningfulValue(values.subcategory) },
       { label: "Colour", ready: hasMeaningfulValue(values.primaryColor) },
       { label: "Material", ready: hasMeaningfulValue(material) },
       { label: "Fit", ready: hasMeaningfulValue(fit) },
@@ -425,11 +425,11 @@ export function AITagConfirmationForm({
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
         <p className="text-sm font-semibold text-ink">Confirm what MyFitPick detected</p>
               <p className="mt-1 text-xs leading-5 text-muted">
-          Review the essentials. Category, subtype, colour, material, fit, occasion, weather, and readiness guide your stylist later.
+          Review the essentials. Category, type, colour, material, fit, occasion, weather, and readiness guide your stylist later.
         </p>
         {lowConfidenceCount ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
-            Low confidence - please verify {lowConfidenceCount} field{lowConfidenceCount === 1 ? "" : "s"}.
+            Please verify this detail.
           </p>
         ) : null}
         {!aiAnalysis ? (
@@ -475,7 +475,7 @@ export function AITagConfirmationForm({
 
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-ink">Review details</h3>
+          <h3 className="text-sm font-semibold text-ink">Style notes</h3>
           <p className="mt-1 text-xs leading-5 text-muted">Keep unknown details blank and update them later if needed.</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -550,7 +550,7 @@ export function AITagConfirmationForm({
           if (event.currentTarget.open) revealContent(event.currentTarget, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
         }}
       >
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Optional styling intelligence</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-ink">Care details</summary>
         <p className="mt-2 text-xs leading-5 text-muted">Add these when you know them. They help with season, layering, care, and richer outfit styling.</p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {optionalStylingFields.map((field) => {
@@ -672,7 +672,7 @@ export function AITagConfirmationForm({
           Confirm all
         </Button>
         <Button type="submit" disabled={disabled}>
-          Save to wardrobe
+          Save to closet
         </Button>
       </div>
     </form>

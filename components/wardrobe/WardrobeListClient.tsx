@@ -59,7 +59,7 @@ function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
 type SmartPanel = "color" | "occasion" | "weather" | "worn" | null;
 
 const smartFilters: Array<{ id: Exclude<SmartPanel, null>; label: string }> = [
-  { id: "color", label: "Color" },
+  { id: "color", label: "Colour" },
   { id: "occasion", label: "Occasion" },
   { id: "weather", label: "Weather" },
   { id: "worn", label: "Recently worn" }
@@ -243,7 +243,7 @@ function ActiveFilterChips({
 }) {
   const active = [
     filters.category !== "all" ? { key: "category", label: categoryLabel(filters.category), clear: () => updateFilters({ category: "all" }) } : null,
-    filters.color ? { key: "color", label: `Color: ${labelForOption(filters.color, colors)}`, clear: () => updateFilters({ color: "" }) } : null,
+    filters.color ? { key: "color", label: `Colour: ${labelForOption(filters.color, colors)}`, clear: () => updateFilters({ color: "" }) } : null,
     filters.occasion ? { key: "occasion", label: `Occasion: ${labelForOption(filters.occasion, occasions)}`, clear: () => updateFilters({ occasion: "" }) } : null,
     filters.weather ? { key: "weather", label: `Weather: ${labelForOption(filters.weather, weather)}`, clear: () => updateFilters({ weather: "" }) } : null,
     filters.worn ? { key: "worn", label: wornLabel(filters.worn), clear: () => updateFilters({ worn: "" }) } : null,
@@ -375,8 +375,8 @@ function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState
   const categoryCopy: Record<string, { title: string; body: string }> = {
     tops: { title: "No tops yet.", body: "Add your first shirt, tee, polo, or blouse." },
     bottoms: { title: "No bottoms yet.", body: "Add your first trouser, jean, skirt, or short." },
-    shoes: { title: "No shoes yet.", body: "Add your first sneaker, boot, loafer, or sandal." },
-    outerwear: { title: "No outerwear yet.", body: "Add your first jacket or coat." },
+    shoes: { title: "No shoes yet.", body: "Add footwear to complete more looks." },
+    outerwear: { title: "No outerwear yet.", body: "Add a jacket or coat for layered styling." },
     accessories: { title: "No accessories yet.", body: "Add your first bag, belt, jewelry, or finishing piece." }
   };
   const copy = onlyCategory ? categoryCopy[filters.category] : null;
@@ -391,7 +391,7 @@ function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <Link href="/wardrobe/add" className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-cocoa px-4 text-sm font-semibold text-canvas shadow-glow transition hover:bg-cocoa/90">
           <Plus size={16} aria-hidden="true" />
-          Add Piece
+          Add a piece
         </Link>
         {hasActiveWardrobeFilters(filters) ? (
           <button type="button" onClick={onClear} className="focus-ring min-h-11 rounded-2xl border border-line bg-white/80 px-4 text-sm font-semibold text-ink transition hover:border-olive/60">
@@ -407,7 +407,7 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
   const progress = summary.totalCount ? Math.min(100, Math.round((summary.readyCount / Math.max(summary.totalCount, 1)) * 100)) : 0;
   const body = summary.missingEssentials.length
     ? summary.missingEssentials.slice(0, 2).join(" ")
-    : `${summary.readyCount} ready items. Your wardrobe is set up for stronger outfit picks.`;
+    : `${summary.readyCount} ready items. Your closet is set up for stronger outfit picks.`;
 
   return (
     <div className="mt-7 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">

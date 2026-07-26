@@ -11,8 +11,8 @@ export default async function CreateLookPage() {
   return (
     <StylistStudioShell
       eyebrow="Create a Look"
-      title="Dress for what is next."
-      description="Tell MyFitPick the occasion, mood, weather, or piece you want to start with."
+      title="Create from your closet."
+      description="Tell MyFitPick what you are dressing for, and it will style a complete look from pieces you own."
       badge="Editor's pick"
     >
       <ContextualTip tipId="create-look" dismissedTips={auth.user.onboardingTipsDismissed}>

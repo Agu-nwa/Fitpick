@@ -13,10 +13,10 @@ export default function WalletPage() {
             Credits
           </p>
           <h1 className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl">
-            Your MyFitPick wallet.
+            Credits
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Use MyFitPick for free. Spend Credits only when premium chat, previews, or virtual try-on succeed.
+            Use Credits for AI Stylist replies and Virtual Try-On previews.
           </p>
         </div>
       </header>

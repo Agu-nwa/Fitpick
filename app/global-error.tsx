@@ -20,11 +20,11 @@ export default function GlobalError({
         <main className="flex min-h-screen items-center justify-center px-6">
           <section className="w-full max-w-md text-center">
             <h1 className="text-3xl font-semibold">
-              FitPick needs a quick refresh
+              MyFitPick needs a quick refresh
             </h1>
 
             <p className="mt-4 text-gray-600">
-              We could not finish loading this version of FitPick.
+              We could not finish loading MyFitPick.
             </p>
 
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -33,7 +33,7 @@ export default function GlobalError({
                 onClick={() => window.location.reload()}
                 className="rounded-full bg-black px-6 py-3 text-white"
               >
-                Reload FitPick
+                Reload MyFitPick
               </button>
 
               <button

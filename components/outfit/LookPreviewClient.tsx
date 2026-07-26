@@ -113,7 +113,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           setPreview(refreshed.data.preview);
           revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
         }
-        showToast("Avatar preview ready.");
+        showToast("Your preview is ready.");
         return;
       }
 
@@ -125,7 +125,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         return;
       }
     }
-    setError("This avatar preview is still being prepared. Check back shortly.");
+    setError("This preview is still being prepared. Check back shortly.");
   }
 
   async function handleGenerate(regenerate = false) {
@@ -139,7 +139,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     setGenerating(false);
 
     if (!result.ok) {
-      setError(safeUserMessage(result.error, "Unable to show it on your avatar right now."));
+      setError(safeUserMessage(result.error, "We couldn’t complete that right now. Please try again."));
       return;
     }
 
@@ -147,11 +147,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
     const jobId = result.data.job?.id;
     if (jobId && result.data.preview.status !== "ready") {
-      showToast("Avatar preview is being prepared.");
+      showToast("MyFitPick is preparing your look.");
       void pollPreviewJob(jobId);
       return;
     }
-    showToast("Avatar preview ready.");
+    showToast("Your preview is ready.");
   }
 
   async function handleSave() {
@@ -193,7 +193,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
       <div className="relative overflow-hidden rounded-xl4 border border-line/80 bg-surface/82 p-6 shadow-card backdrop-blur-xl sm:p-9">
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Fitting studio</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Preview this look</p>
         <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{outfit.title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{outfit.occasionFit || outfit.summary}</p>
         </div>
@@ -205,18 +205,18 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             {imageUrl ? (
               <ImageFrame
                 src={imageUrl}
-                alt={`${outfit.title} avatar preview`}
+                alt={`${outfit.title} Virtual Try-On preview`}
                 aspect="fullBody"
                 fit="contain"
-                placeholder="Avatar preview"
+                placeholder="Virtual Try-On preview"
                 className="min-h-[520px] rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-4 sm:min-h-[640px] lg:min-h-[720px]"
                 imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
               />
             ) : (
               <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
-                <p className="text-lg font-semibold text-ink">No virtual try-on yet.</p>
+                <p className="text-lg font-semibold text-ink">Preview this look</p>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                  Create a preview with the selected closet pieces.
+                  See how this outfit comes together on your My Model.
                 </p>
               </div>
             )}
@@ -236,7 +236,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
           {referenceItems.length ? (
             <Card className="space-y-3">
-              <p className="text-sm font-semibold text-ink">Uploaded photo anchor</p>
+              <p className="text-sm font-semibold text-ink">Inspiration</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
                 {referenceItems.map((item) => (
                   <article key={item.id} className="rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2">
@@ -285,7 +285,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             {previewProcessing ? (
               <div className="rounded-2xl border border-line bg-canvas/70 px-4 py-5 text-center">
                 <div className="mx-auto size-8 animate-spin rounded-full border-2 border-cocoa/20 border-t-cocoa" aria-hidden="true" />
-                <p className="mt-3 text-sm font-semibold text-ink">Creating your preview...</p>
+                <p className="mt-3 text-sm font-semibold text-ink">MyFitPick is preparing your look.</p>
               </div>
             ) : null}
 

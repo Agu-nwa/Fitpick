@@ -30,7 +30,7 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<ApiRespo
     const response = await fetch(path, { ...options, credentials: "include" });
     return (await response.json()) as ApiResponse<T>;
   } catch {
-    return { ok: false, error: { code: "INTERNAL_ERROR", message: "Support is not reachable right now." } };
+    return { ok: false, error: { code: "INTERNAL_ERROR", message: "We couldn’t send your message. Please try again." } };
   }
 }
 
@@ -69,7 +69,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
     setState("loading");
     const result = await api<InitialData>("/api/support/conversation", { cache: "no-store" });
     if (!result.ok) {
-      setFeedback(result.error.message);
+      setFeedback("We couldn’t load your messages. Please try again.");
       setState("error");
       return;
     }
@@ -130,7 +130,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
   const ensureConversation = useCallback(async () => {
     if (conversation) return conversation;
     const result = await api<{ conversation: SupportConversationSummary }>("/api/support/conversation", { method: "POST" });
-    if (!result.ok) throw new Error(result.error.message);
+    if (!result.ok) throw new Error("We couldn’t send your message. Please try again.");
     setConversation(result.data.conversation);
     socketRef.current?.emit("support:join", { conversationId: result.data.conversation.id });
     return result.data.conversation;
@@ -148,7 +148,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
       if (socketRef.current?.connected) {
         socketRef.current.emit("support:message:send", payload, async (ack: ApiResponse<SendAck>) => {
           const result = ack?.ok ? ack : await fallbackSend();
-          if (!result.ok) setFeedback(result.error.message);
+          if (!result.ok) setFeedback("We couldn’t send your message. Please try again.");
           if (result.ok) {
             setConversation(result.data.conversation);
             setMessages((current) => mergeMessage(current, result.data.message));
@@ -161,7 +161,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
         return;
       }
       const result = await fallbackSend();
-      if (!result.ok) setFeedback(result.error.message);
+      if (!result.ok) setFeedback("We couldn’t send your message. Please try again.");
       if (result.ok) {
         setConversation(result.data.conversation);
         setMessages((current) => mergeMessage(current, result.data.message));
@@ -170,7 +170,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
         scrollToLatest();
       }
     } catch {
-      setFeedback("Unable to send your message right now.");
+      setFeedback("We couldn’t send your message. Please try again.");
     } finally {
       if (!socketRef.current?.connected) setSending(false);
     }
@@ -185,38 +185,38 @@ export function SupportChatClient({ userName }: { userName: string }) {
     const result = await fetch("/api/support/attachments", { method: "POST", credentials: "include", body: formData });
     const payload = (await result.json()) as ApiResponse<{ attachment: SupportAttachment }>;
     if (payload.ok) setAttachments((current) => [...current, payload.data.attachment].slice(0, 4));
-    if (!payload.ok) setFeedback(payload.error.message);
+    if (!payload.ok) setFeedback("We couldn’t send your message. Please try again.");
     setUploading(false);
   }, []);
 
   const statusCopy = useMemo(() => {
-    if (disabled) return "Support chat is not available right now.";
-    if (supportOnline) return "FitPick Support";
-    return "The FitPick team is currently offline. Send a message and we will reply when we are back.";
+    if (disabled) return "Tell us what happened. We’ll take a look.";
+    if (supportOnline) return "MyFitPick Support";
+    return "Tell us what happened. We’ll take a look.";
   }, [disabled, supportOnline]);
 
   return (
     <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5">
       <header className="rounded-xl4 border border-line bg-surface/85 p-5 shadow-card sm:p-8">
         <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
-          <ShieldCheck size={14} aria-hidden="true" /> Human support
+          <ShieldCheck size={14} aria-hidden="true" /> Message support
         </p>
-        <h1 className="font-editorial text-4xl font-semibold leading-none tracking-editorial text-ink sm:text-5xl">Chat with Support</h1>
+        <h1 className="font-editorial text-4xl font-semibold leading-none tracking-editorial text-ink sm:text-5xl">Message support</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{statusCopy}</p>
       </header>
 
       <Card className="flex min-h-[62svh] flex-1 flex-col p-0">
         <div className="border-b border-line px-5 py-4">
-          <p className="text-sm font-semibold text-ink">FitPick Support</p>
-          <p className="mt-1 text-xs text-muted">{connection === "connected" ? "Online now" : connection === "connecting" ? "Connecting" : "Messages are saved securely"}</p>
+          <p className="text-sm font-semibold text-ink">MyFitPick Support</p>
+          <p className="mt-1 text-xs text-muted">{connection === "connected" ? "We’ll take a look." : connection === "connecting" ? "Connecting..." : "We’ll take a look."}</p>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
           {state === "loading" ? <p className="text-sm text-muted">Loading your conversation...</p> : null}
-          {state === "error" ? <p className="text-sm text-danger">{feedback || "Unable to load support right now."}</p> : null}
+          {state === "error" ? <p className="text-sm text-danger">{feedback || "We couldn’t load your messages. Please try again."}</p> : null}
           {state === "ready" && messages.length === 0 ? (
             <div className="rounded-xl3 border border-dashed border-line bg-canvas/60 p-5 text-sm leading-6 text-muted">
-              Hi {userName.split(" ")[0] || "there"}. Tell us what you need help with.
+              Tell us what happened. We’ll take a look.
             </div>
           ) : null}
           {messages.map((message) => {
@@ -239,7 +239,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
               </div>
             );
           })}
-          {typing ? <p className="text-xs font-semibold text-muted">Support is typing...</p> : null}
+          {typing ? <p className="text-xs font-semibold text-muted">Support is replying...</p> : null}
           <div ref={scrollRef} />
         </div>
 
@@ -270,7 +270,7 @@ export function SupportChatClient({ userName }: { userName: string }) {
               rows={1}
               maxLength={config?.messageMaxLength || 2000}
               disabled={disabled}
-              placeholder="Message FitPick Support"
+              placeholder="Describe the issue here..."
               className="focus-ring min-h-12 flex-1 resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm outline-none"
             />
             <Button onClick={sendMessage} disabled={sending || uploading || disabled || (!body.trim() && attachments.length === 0)} className="min-h-12 rounded-2xl px-4">

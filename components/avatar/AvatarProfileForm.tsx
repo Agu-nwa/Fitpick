@@ -47,12 +47,12 @@ export function AvatarProfileForm({
 
     setSaving(false);
     if (!result.ok) {
-      setError(safeUserMessage(result.error, "Unable to save your photo settings."));
+      setError(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
       return;
     }
 
     onSaved(result.data.profile);
-    setNotice("Photo settings saved.");
+    setNotice("Your preferences are saved.");
   }
 
   async function saveUploadedPhoto(publicUrl: string, storageKey: string) {
@@ -62,12 +62,12 @@ export function AvatarProfileForm({
       uploadedModelImageStorageKey: storageKey,
       consentAccepted
     });
-    if (!result.ok) throw new Error(safeUserMessage(result.error, "Unable to save your full-body photo."));
+    if (!result.ok) throw new Error(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
 
     onSaved(result.data.profile);
     setUploadedModelImageUrl(result.data.profile.uploadedModelImageUrl || publicUrl);
     setUploadedModelImageStorageKey(result.data.profile.uploadedModelImageStorageKey || storageKey);
-    setNotice("Full-body photo saved.");
+    setNotice("Your My Model is ready.");
   }
 
   async function handleModelPhoto(file: File) {
@@ -86,7 +86,7 @@ export function AvatarProfileForm({
 
       if (normalized.serverNormalizationRequired) {
         const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "Unable to upload your full-body photo."));
+        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
 
         await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
         URL.revokeObjectURL(normalized.previewUrl);
@@ -102,7 +102,7 @@ export function AvatarProfileForm({
 
       if (!signed.ok) {
         const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "Unable to upload your full-body photo."));
+        if (!fallback.ok) throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
 
         await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
         URL.revokeObjectURL(normalized.previewUrl);
@@ -111,7 +111,7 @@ export function AvatarProfileForm({
 
       const uploadAccess = signed.data.upload;
       if (!uploadAccess.ready || !uploadAccess.uploadUrl) {
-        throw new Error(safeUploadErrorMessage(uploadAccess.message, "Unable to upload your full-body photo."));
+        throw new Error(safeUploadErrorMessage(uploadAccess.message, "We couldn’t upload this image. Try another photo."));
       }
 
       const uploadResponse = await fetch(uploadAccess.uploadUrl, {
@@ -122,7 +122,7 @@ export function AvatarProfileForm({
 
       if (!uploadResponse.ok) {
         const fallback = await uploadImageViaServer({ file: normalized.file, purpose: "avatar_model" });
-        if (!fallback.ok) throw new Error("We could not upload your full-body photo.");
+        if (!fallback.ok) throw new Error("We couldn’t upload this image. Try another photo.");
 
         await saveUploadedPhoto(fallback.data.upload.publicUrl, fallback.data.upload.storageKey);
         URL.revokeObjectURL(normalized.previewUrl);
@@ -133,7 +133,7 @@ export function AvatarProfileForm({
       await saveUploadedPhoto(imageUrl, uploadAccess.storageKey);
       URL.revokeObjectURL(normalized.previewUrl);
     } catch (uploadError) {
-      setError(safeUploadErrorMessage(imageUploadErrorMessage(uploadError) || uploadError, "Unable to upload your full-body photo."));
+      setError(safeUploadErrorMessage(imageUploadErrorMessage(uploadError) || uploadError, "We couldn’t upload this image. Try another photo."));
     } finally {
       setUploadingModel(false);
     }
@@ -153,14 +153,14 @@ export function AvatarProfileForm({
 
     setSaving(false);
     if (!result.ok) {
-      setError(safeUserMessage(result.error, "Unable to remove your full-body photo."));
+      setError(safeUserMessage(result.error, "We couldn’t save your changes. Please try again."));
       return;
     }
 
     onSaved(result.data.profile);
     setUploadedModelImageUrl("");
     setUploadedModelImageStorageKey("");
-    setNotice("Full-body photo removed.");
+    setNotice("Your preferences are saved.");
   }
 
   const hasUploadedPhoto = Boolean(uploadedModelImageUrl);
@@ -171,11 +171,11 @@ export function AvatarProfileForm({
         <div>
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
             <Camera size={14} aria-hidden="true" />
-            Appearance
+            My Model
           </p>
-          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Refine your Fitting Model.</h2>
+          <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Choose your My Model</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Your FitPick Studio Model is ready. You can upload a personal full-body photo here when you want a more familiar preview.
+            Use a FitPick Studio Model, or upload your own full-body photo for a more personal result.
           </p>
         </div>
       </div>
@@ -222,7 +222,7 @@ export function AvatarProfileForm({
 
           <div className="grid gap-2 sm:grid-cols-2">
             <Button type="button" className="rounded-full" disabled={uploadingModel || saving} onClick={() => modelFileInputRef.current?.click()}>
-              {uploadingModel ? "Uploading..." : hasUploadedPhoto ? "Replace photo" : "Upload full-body photo"}
+              {uploadingModel ? "Uploading..." : hasUploadedPhoto ? "Replace photo" : "Upload my photo"}
             </Button>
             {hasUploadedPhoto ? (
               <Button type="button" variant="secondary" className="rounded-full" disabled={uploadingModel || saving} onClick={() => void removePhoto()}>
@@ -253,7 +253,7 @@ export function AvatarProfileForm({
       </label>
 
       <Button type="button" variant="secondary" className="w-full rounded-full" onClick={() => void saveProfile()} disabled={saving || uploadingModel}>
-        {saving ? "Saving..." : "Save photo settings"}
+        {saving ? "Saving..." : "Save changes"}
       </Button>
     </Card>
   );

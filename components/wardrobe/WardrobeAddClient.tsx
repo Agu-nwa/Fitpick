@@ -82,10 +82,10 @@ type FileTarget = {
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
 
 const stylistPhotoGuide = [
-  { title: "Main/front", body: "A clear full view anchors the item." },
-  { title: "Back or side", body: "Extra angles improve shape and structure." },
-  { title: "Fabric/detail", body: "Texture, pattern, and hardware help styling." },
-  { title: "Label", body: "Size, brand, material, and care details improve accuracy." }
+  { title: "Front", body: "A clear front photo works best." },
+  { title: "Back", body: "Add the back when shape or detail matters." },
+  { title: "Fabric close-up", body: "Show texture, pattern, or hardware." },
+  { title: "Label or care tag", body: "Add size, material, brand, or care details." }
 ];
 
 function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
@@ -118,7 +118,7 @@ function localSlotAssets(slotFiles: Partial<Record<WardrobeImagePurpose, SlotFil
 }
 
 function uploadFailureMessage(error: unknown) {
-  return safeUploadErrorMessage(imageUploadErrorMessage(error) || error, "We could not upload these photos. Try again.");
+  return safeUploadErrorMessage(imageUploadErrorMessage(error) || error, "We couldn’t upload this image. Try another photo.");
 }
 
 function selectedGroupCategories(groupId: IntakeGroupId | null) {
@@ -259,9 +259,9 @@ export function WardrobeAddClient() {
       onStage: (stage) => {
         setUploadStage(stage);
         if (stage === "selected") setMessage("Photo selected. Preparing it for MyFitPick...");
-        if (stage === "validating") setMessage("Checking photo format...");
+        if (stage === "validating") setMessage("Checking photo...");
         if (stage === "preparing") setMessage("Preparing photo...");
-        if (stage === "converting") setMessage("Converting iPhone photo for upload...");
+        if (stage === "converting") setMessage("Preparing iPhone photo...");
         if (stage === "generating-preview") setMessage("Creating preview...");
       }
     });
@@ -447,7 +447,7 @@ export function WardrobeAddClient() {
         });
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "server_normalization_failed" } });
-      throw new Error(safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again."));
+      throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
     }
 
     const signed = await requestSignedUploadUrl({
@@ -474,13 +474,13 @@ export function WardrobeAddClient() {
         });
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "upload_access_failed" } });
-      throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again.")));
+      throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo.")));
     }
 
     const uploadAccess = signed.data.upload;
     const uploadUrl = uploadAccess.uploadUrl;
     if (!uploadAccess.ready || !uploadUrl) {
-      throw new Error(safeUploadErrorMessage(uploadAccess.message, "We could not upload these photos. Try again."));
+      throw new Error(safeUploadErrorMessage(uploadAccess.message, "We couldn’t upload this image. Try another photo."));
     }
 
     try {
@@ -513,7 +513,7 @@ export function WardrobeAddClient() {
         });
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "direct_upload_failed" } });
-      throw new Error(safeUploadErrorMessage(fallback.error, "We could not upload these photos. Try again."));
+      throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
     }
   }
 
@@ -610,7 +610,7 @@ export function WardrobeAddClient() {
 
       if (!result.ok) {
         setStatus("idle");
-        setMessage(safeUserMessage(result.error, "MyFitPick could not save the upload. Try again."));
+        setMessage(safeUserMessage(result.error, "We couldn’t upload this image. Try another photo."));
         return;
       }
 
@@ -622,7 +622,7 @@ export function WardrobeAddClient() {
       setIsAnalyzing(false);
 
       if (!analysis.ok) {
-        setMessage("Upload saved, but the detail check did not finish. You can review the item on the next screen.");
+        setMessage("Your piece is ready for review.");
       }
 
       setUploadStage("completed");
@@ -656,8 +656,8 @@ export function WardrobeAddClient() {
         <Card className="border-cocoa/15 bg-surface/88 p-6 shadow-card sm:p-7">
           <div>
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">New piece</p>
-            <h2 className="font-editorial text-4xl font-semibold leading-none text-ink">Add to closet.</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">Start with the category. MyFitPick will ask only for what it needs next.</p>
+            <h2 className="font-editorial text-4xl font-semibold leading-none text-ink">Add a piece</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">Upload clear photos so MyFitPick can understand how to style this item.</p>
           </div>
 
           <div className="mt-6 space-y-4">
@@ -682,7 +682,7 @@ export function WardrobeAddClient() {
             </div>
 
             <div className="transition duration-200 ease-out">
-              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Subtype *</label>
+              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Type *</label>
               <div className="relative mt-2">
                 <select
                   id="wardrobe-intake-subtype"
@@ -693,7 +693,7 @@ export function WardrobeAddClient() {
                   onChange={(event) => selectCategoryById(event.target.value)}
                   disabled={!selectedGroupId || isSaving || isAnalyzing}
                 >
-                  <option value="">{selectedGroupId ? "Select subtype" : "Choose category first"}</option>
+                  <option value="">{selectedGroupId ? "Select type" : "Choose category first"}</option>
                   {categoryOptions.map((category) => (
                     <option key={category.id} value={category.id}>{category.title}</option>
                   ))}
@@ -710,9 +710,9 @@ export function WardrobeAddClient() {
                 <p className="mt-1 text-xs leading-5 text-muted">{selectedCategory.description}</p>
               </div>
             ) : selectedGroup ? (
-              <p className="text-xs leading-5 text-muted">Now choose the subtype that best matches the item.</p>
+              <p className="text-xs leading-5 text-muted">Now choose the type that best matches the item.</p>
             ) : (
-              <p className="text-xs leading-5 text-muted">Start with one simple choice. Clothing, shoes, bags, and accessories each unlock their own photo guidance.</p>
+              <p className="text-xs leading-5 text-muted">Choose the closest match. You can review details before saving.</p>
             )}
           </div>
 
@@ -725,7 +725,7 @@ export function WardrobeAddClient() {
 
           <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-6 flex justify-end rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
-              Continue
+              Continue to photos
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           </div>
@@ -738,11 +738,11 @@ export function WardrobeAddClient() {
             <div>
               <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                 <ImagePlus size={14} aria-hidden="true" />
-                Step 2
+                Photos
               </p>
-              <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Upload photos</h2>
+              <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Add item photos</h2>
               <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                Add a clear main photo. Extra angles help with shape, material, styling, and future try-on quality.
+                Front photos work best. Add extra angles if you have them.
               </p>
             </div>
             <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>
@@ -758,7 +758,7 @@ export function WardrobeAddClient() {
             <div className="rounded-2xl border border-line bg-canvas/60 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo guide</p>
               <p className="mt-2 text-xs leading-5 text-muted">
-                Add front, back, fabric/detail, and label photos when you have them. The main photo is required; the rest make styling and try-on smarter.
+                Add front, back, fabric close-up, and label photos when you have them.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {stylistPhotoGuide.map((guide) => (
@@ -786,7 +786,7 @@ export function WardrobeAddClient() {
                     <UploadCloud size={17} className="text-cocoa" aria-hidden="true" />
                     Camera, gallery, or drag and drop
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will organize them before review.</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will organise them before review.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
@@ -889,15 +889,15 @@ export function WardrobeAddClient() {
               <div>
                 <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
                   <Tag size={14} aria-hidden="true" />
-                  Recommended label intelligence
+                  Label or care tag
                 </p>
-                <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Would you like MyFitPick to read the item label?</h2>
+                <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Add label details</h2>
                 <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                  This helps identify materials, care instructions, size, product details, serials, and manufacturing text automatically.
+                  Add the label when you have it. It can improve size, material, brand, and care details.
                 </p>
               </div>
               <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={toggleLabelReading} disabled={isSaving || isAnalyzing}>
-                {labelEnabled ? "Label reading on" : "Add label slot"}
+                {labelEnabled ? "Label slot added" : "Add label slot"}
               </Button>
             </div>
 
@@ -916,7 +916,7 @@ export function WardrobeAddClient() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs leading-5 text-muted">Use the Label slot above for the clearest label photo. Extra label photos can be added as extra photos.</p>
+                <p className="text-xs leading-5 text-muted">Use the Label or care tag slot above for the clearest photo.</p>
               </div>
             ) : null}
           </Card>
@@ -926,7 +926,7 @@ export function WardrobeAddClient() {
       <section className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 rounded-[1.75rem] border border-line bg-surface/90 p-3 shadow-glow backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
         <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
           {isSaving || isAnalyzing || isPreparingImage ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-          {isPreparingImage ? "Preparing photo..." : isSaving ? "Uploading photos..." : isAnalyzing ? "Building garment intelligence..." : message && /could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Upload and review details"}
+          {isPreparingImage ? "Preparing photo..." : isSaving ? "Uploading photos..." : isAnalyzing ? "MyFitPick is reading your piece." : message && /couldn’t|could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Upload piece"}
         </Button>
         {message ? (
           <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">

@@ -23,7 +23,7 @@ export function WalletSummaryCard({ wallet }: { wallet: CreditWalletSummary | nu
             Credits
           </p>
           <p className="mt-2 text-4xl font-black tracking-[-0.05em] text-ink">{formatCredits(wallet?.balance)}</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Credits power premium chat, previews, and try-on. Basic outfit recommendations stay free.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Use Credits for AI Stylist replies and Virtual Try-On previews.</p>
         </div>
         <Badge tone="premium">Wallet</Badge>
       </div>
@@ -38,7 +38,7 @@ export function WalletSummaryCard({ wallet }: { wallet: CreditWalletSummary | nu
         </div>
       </div>
       <Link href="/wallet" className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-cocoa">
-        Open wallet
+        Top Up
         <ArrowUpRight size={14} aria-hidden="true" />
       </Link>
     </Card>

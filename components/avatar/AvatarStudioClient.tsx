@@ -33,22 +33,22 @@ export function AvatarStudioClient() {
     if (session.status === "authenticated") void loadProfile();
   }, [loadProfile, session.status]);
 
-  if (session.status === "loading" || status === "loading") return <LoadingState title="Loading appearance profile" />;
+  if (session.status === "loading" || status === "loading") return <LoadingState title="Loading My Model" />;
   if (session.status === "logged-out") return <AuthRequiredState />;
   if (session.status === "backend-unavailable" || status === "unavailable") {
     return <BackendUnavailableState onRetry={session.status === "backend-unavailable" ? session.refresh : loadProfile} />;
   }
   if (status === "error") {
-    return <ApiErrorState title="Appearance profile unavailable" message="Unable to load your appearance profile right now." onRetry={loadProfile} />;
+    return <ApiErrorState title="My Model unavailable" message="We couldn’t load your My Model right now." onRetry={loadProfile} />;
   }
 
   if (!profile) {
     return (
       <Card className="p-4">
-        <p className="text-sm font-semibold text-ink">Your Fitting Model is ready to refine.</p>
-        <p className="mt-2 text-sm leading-6 text-muted">Open your appearance setup to review or replace your Studio Model.</p>
+        <p className="text-sm font-semibold text-ink">Your My Model is ready.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Review or replace your Studio Model.</p>
         <Button type="button" className="mt-4 w-full" onClick={() => void loadProfile()}>
-          Open appearance setup
+          Open My Model setup
         </Button>
       </Card>
     );
