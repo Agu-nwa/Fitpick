@@ -23,7 +23,6 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import {
   WardrobeApiErrorState,
   WardrobeAuthRequiredState,
@@ -35,6 +34,7 @@ import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import {
   analyzeWardrobeUpload,
+  confirmWardrobeUploadTags,
   requestSignedUploadUrl,
   uploadImageViaServer,
   uploadWardrobeMetadata
@@ -167,6 +167,64 @@ function normalizeEssentials(input: UploadEssentials) {
   };
 }
 
+function autoItemName(category: WardrobeIntakeCategory, essentials: ReturnType<typeof normalizeEssentials>) {
+  return [essentials.primaryColor, category.subcategory || category.title]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function garmentFitFromIntake(fit: string) {
+  const normalized = fit.trim().toLowerCase().replace(/\s+/g, "_");
+  if (["slim", "regular", "relaxed", "oversized", "tailored", "flowing"].includes(normalized)) return normalized;
+  return "unknown";
+}
+
+function confirmedField(value: string | string[] | number | null) {
+  return {
+    value,
+    confidence: 1,
+    originalConfidence: 0,
+    source: "user_confirmed" as const
+  };
+}
+
+function autoConfirmPayload(category: WardrobeIntakeCategory, essentials: ReturnType<typeof normalizeEssentials>) {
+  const garmentFit = garmentFitFromIntake(essentials.fit);
+  return {
+    name: autoItemName(category, essentials) || category.title,
+    category: category.backendCategory,
+    subcategory: category.subcategory || category.title,
+    color: essentials.primaryColor,
+    pattern: "",
+    fabric: "",
+    fit: essentials.fit,
+    taggedSize: "unknown",
+    sizeSystem: "unknown",
+    garmentFit,
+    garmentMeasurements: {},
+    stretchLevel: "unknown",
+    fabricDrape: "unknown",
+    fitConfidence: garmentFit === "unknown" ? 0 : 1,
+    measurementSource: "user_confirmed",
+    formality: [essentials.formality].filter(Boolean),
+    occasions: essentials.occasions,
+    weather: essentials.weather,
+    condition: "ready",
+    verifiedFields: {
+      category: confirmedField(category.backendCategory),
+      subcategory: confirmedField(category.subcategory || category.title),
+      garmentType: confirmedField(category.title),
+      primaryColor: confirmedField(essentials.primaryColor),
+      fit: confirmedField(essentials.fit),
+      formalityScore: confirmedField(essentials.formality),
+      occasionSuitability: confirmedField(essentials.occasions),
+      weatherSuitability: confirmedField(essentials.weather),
+      condition: confirmedField("ready")
+    }
+  };
+}
+
 export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
@@ -215,13 +273,6 @@ export function WardrobeAddClient() {
   );
   const isPreparingImage = ["validating", "preparing", "converting", "generating-preview"].includes(uploadStage) && !isSaving && !isAnalyzing;
   const canContinue = Boolean(selectedCategory && essentialsComplete && !missingRequired.length && !isSaving && !isAnalyzing && !isPreparingImage);
-  const uploadSteps = [
-    { label: "Choose category", status: selectedCategory ? "complete" : "current" },
-    { label: "Add essentials", status: essentialsComplete ? "complete" : selectedCategory ? "current" : "pending" },
-    { label: "Add photos", status: selectedCategory && essentialsComplete && !missingRequired.length ? "complete" : selectedCategory && essentialsComplete ? "current" : "pending" },
-    { label: "Review details", status: isAnalyzing ? "current" : "pending" }
-  ] as const;
-
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(draftKey);
@@ -736,19 +787,28 @@ export function WardrobeAddClient() {
       }
 
       window.localStorage.removeItem(draftKey);
-      setIsSaving(false);
       setIsAnalyzing(true);
       setUploadStage("analyzing");
-      const analysis = await analyzeWardrobeUpload(result.data.upload.id);
+      const uploadId = result.data.upload.id;
+      const analysis = await analyzeWardrobeUpload(uploadId);
       setIsAnalyzing(false);
 
       if (!analysis.ok) {
-        setMessage("Your piece is ready for review.");
+        setMessage("Your piece is saved with the details you added.");
+      }
+
+      setIsSaving(true);
+      const saveResult = await confirmWardrobeUploadTags(uploadId, autoConfirmPayload(selectedCategory, normalizedEssentials));
+      setIsSaving(false);
+
+      if (!saveResult.ok) {
+        setStatus(saveResult.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
+        setMessage(safeUserMessage(saveResult.error, "We couldn’t save this piece. Please try again."));
+        return;
       }
 
       setUploadStage("completed");
-
-      router.push(`/wardrobe/${result.data.upload.id}/confirm`);
+      router.push(`/wardrobe/${saveResult.data.item.id}`);
     } catch (error) {
       setIsSaving(false);
       setIsAnalyzing(false);
@@ -833,7 +893,7 @@ export function WardrobeAddClient() {
             ) : selectedGroup ? (
               <p className="text-xs leading-5 text-muted">Now choose the type that best matches the item.</p>
             ) : (
-              <p className="text-xs leading-5 text-muted">Choose the closest match. You can review details before saving.</p>
+              <p className="text-xs leading-5 text-muted">Choose the closest match, then add the five styling details MyFitPick needs.</p>
             )}
           </div>
 
@@ -1006,10 +1066,6 @@ export function WardrobeAddClient() {
             </Badge>
           </div>
 
-          <div className="hidden sm:block">
-            <ProgressSteps steps={[...uploadSteps]} />
-          </div>
-
           {selectedCategory ? (
             <div className="rounded-2xl border border-line bg-canvas/60 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo guide</p>
@@ -1042,7 +1098,7 @@ export function WardrobeAddClient() {
                     <UploadCloud size={17} className="text-cocoa" aria-hidden="true" />
                     Camera, gallery, or drag and drop
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will organise them before review.</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will save the piece after the photos are uploaded.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
@@ -1183,7 +1239,7 @@ export function WardrobeAddClient() {
       <section className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 rounded-[1.75rem] border border-line bg-surface/90 p-3 shadow-glow backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
         <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
           {isSaving || isAnalyzing || isPreparingImage ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-          {isPreparingImage ? "Preparing photo..." : isSaving ? "Uploading photos..." : isAnalyzing ? "MyFitPick is reading your piece." : message && /couldn’t|could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Upload piece"}
+          {isPreparingImage ? "Preparing photo..." : isSaving ? "Saving piece..." : isAnalyzing ? "MyFitPick is reading your piece." : message && /couldn’t|could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Save piece"}
         </Button>
         {message ? (
           <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
