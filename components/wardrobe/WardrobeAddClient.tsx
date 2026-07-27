@@ -85,10 +85,6 @@ type UploadEssentials = {
   formality: string;
   occasions: string[];
   weather: string[];
-  material: string;
-  size: string;
-  brand: string;
-  condition: "ready" | "needs-care";
 };
 
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
@@ -147,18 +143,13 @@ const fitOptions = ["Slim", "Regular", "Relaxed", "Oversized", "Tailored", "Flow
 const formalityOptions = ["Casual", "Smart casual", "Business casual", "Formal", "Evening"];
 const occasionOptions = ["Work", "Dinner", "Date night", "Wedding", "Church", "Weekend", "Travel", "Party"];
 const weatherOptions = ["Hot", "Warm", "Mild", "Cold", "Rainy"];
-const materialOptions = ["Cotton", "Denim", "Linen", "Wool", "Leather", "Polyester", "Knit", "Silk"];
 
 const emptyEssentials: UploadEssentials = {
   primaryColor: "",
   fit: "",
   formality: "",
   occasions: [],
-  weather: [],
-  material: "",
-  size: "",
-  brand: "",
-  condition: "ready"
+  weather: []
 };
 
 function toggleStringValue(values: string[], value: string, max = 5) {
@@ -172,11 +163,7 @@ function normalizeEssentials(input: UploadEssentials) {
     fit: input.fit.trim(),
     formality: input.formality.trim(),
     occasions: input.occasions.map((item) => item.trim()).filter(Boolean).slice(0, 8),
-    weather: input.weather.map((item) => item.trim()).filter(Boolean).slice(0, 8),
-    material: input.material.trim(),
-    size: input.size.trim(),
-    brand: input.brand.trim(),
-    condition: input.condition
+    weather: input.weather.map((item) => item.trim()).filter(Boolean).slice(0, 8)
   };
 }
 
@@ -646,11 +633,11 @@ export function WardrobeAddClient() {
         formality: normalizedEssentials.formality,
         occasions: normalizedEssentials.occasions,
         weather: normalizedEssentials.weather,
-        fabric: normalizedEssentials.material,
-        material: normalizedEssentials.material,
-        size: normalizedEssentials.size,
-        brand: normalizedEssentials.brand,
-        condition: normalizedEssentials.condition,
+        fabric: "",
+        material: "",
+        size: "",
+        brand: "",
+        condition: "ready",
         source: "user_intake"
       };
       const result = await uploadWardrobeMetadata({
@@ -696,13 +683,13 @@ export function WardrobeAddClient() {
           occasions: normalizedEssentials.occasions,
           weather: normalizedEssentials.weather,
           fit: normalizedEssentials.fit,
-          material: normalizedEssentials.material
+          material: ""
         },
         virtualTryOnMetadata: {
           eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
           primaryImagePurpose: "front",
           fit: normalizedEssentials.fit,
-          size: normalizedEssentials.size
+          size: ""
         },
         searchMetadata: {
           seedTerms: [
@@ -712,8 +699,6 @@ export function WardrobeAddClient() {
             normalizedEssentials.primaryColor,
             normalizedEssentials.fit,
             normalizedEssentials.formality,
-            normalizedEssentials.material,
-            normalizedEssentials.brand,
             ...normalizedEssentials.occasions,
             ...normalizedEssentials.weather,
             ...selectedCategory.visionFocus
@@ -728,10 +713,10 @@ export function WardrobeAddClient() {
           formality: normalizedEssentials.formality,
           occasions: normalizedEssentials.occasions,
           weather: normalizedEssentials.weather,
-          fabric: normalizedEssentials.material,
-          size: normalizedEssentials.size,
-          brand: normalizedEssentials.brand,
-          condition: normalizedEssentials.condition,
+          fabric: "",
+          size: "",
+          brand: "",
+          condition: "ready",
           intakeCategoryId: selectedCategory.id,
           intakeGroup: selectedCategory.group
         },
@@ -879,7 +864,7 @@ export function WardrobeAddClient() {
                 </p>
                 <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Tell MyFitPick the basics</h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-                  These details help your stylist, outfit engine, and previews understand the piece before AI reads the photos.
+                  Five quick choices help your stylist understand the piece. Labels and AI can fill the rest.
                 </p>
               </div>
               <Badge tone={essentialsComplete ? "success" : "warning"}>
@@ -947,72 +932,6 @@ export function WardrobeAddClient() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="wardrobe-essential-condition" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Condition</label>
-                <div className="relative mt-2">
-                  <select
-                    id="wardrobe-essential-condition"
-                    className={selectClass(true)}
-                    value={essentials.condition}
-                    onChange={(event) => updateEssential("condition", event.target.value as UploadEssentials["condition"])}
-                    disabled={isSaving || isAnalyzing}
-                  >
-                    <option value="ready">Ready to wear</option>
-                    <option value="needs-care">Needs care</option>
-                  </select>
-                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="wardrobe-essential-material" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Material, if known</label>
-                <input
-                  id="wardrobe-essential-material"
-                  className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
-                  value={essentials.material}
-                  onChange={(event) => updateEssential("material", event.target.value)}
-                  placeholder="e.g. Cotton, leather, denim"
-                  disabled={isSaving || isAnalyzing}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {materialOptions.map((material) => (
-                    <button
-                      key={material}
-                      type="button"
-                      className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${essentials.material.toLowerCase() === material.toLowerCase() ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-line bg-white/70 text-muted hover:border-cocoa/35 hover:text-ink"}`}
-                      onClick={() => updateEssential("material", material)}
-                      disabled={isSaving || isAnalyzing}
-                    >
-                      {material}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="wardrobe-essential-size" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Size</label>
-                  <input
-                    id="wardrobe-essential-size"
-                    className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
-                    value={essentials.size}
-                    onChange={(event) => updateEssential("size", event.target.value)}
-                    placeholder="M, EU 43"
-                    disabled={isSaving || isAnalyzing}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="wardrobe-essential-brand" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Brand</label>
-                  <input
-                    id="wardrobe-essential-brand"
-                    className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
-                    value={essentials.brand}
-                    onChange={(event) => updateEssential("brand", event.target.value)}
-                    placeholder="Optional"
-                    disabled={isSaving || isAnalyzing}
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1052,9 +971,9 @@ export function WardrobeAddClient() {
             </div>
 
             <div className="rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Progressive intake</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Quick intake</p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                Review later should only correct uncertainty. These details become the starting point for MyFitPick intelligence.
+                If a label is available, add it with the photos. MyFitPick can read size, brand, material, and care details there.
               </p>
             </div>
 

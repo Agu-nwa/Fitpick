@@ -55,19 +55,22 @@ export type AITagConfirmationDefaults = {
   brand?: string;
 };
 
-const essentialFields: FieldConfig[] = [
+const reviewFields: FieldConfig[] = [
   { key: "category", label: "Category", kind: "category", required: true },
   { key: "subcategory", label: "Subcategory" },
-  { key: "brand", label: "Brand" },
   { key: "primaryColor", label: "Colour", required: true },
-  { key: "pattern", label: "Pattern" },
-  { key: "fabricComposition", label: "Material from details" },
-  { key: "fabricEstimate", label: "Material estimate" },
-  { key: "size", label: "Size" },
   { key: "fit", label: "Fit" },
   { key: "formalityScore", label: "Formality" },
   { key: "occasionSuitability", label: "Occasions", kind: "list" },
   { key: "weatherSuitability", label: "Weather suitability", kind: "list" }
+];
+
+const detectedDetailFields: FieldConfig[] = [
+  { key: "brand", label: "Brand" },
+  { key: "pattern", label: "Pattern" },
+  { key: "fabricComposition", label: "Material from label" },
+  { key: "fabricEstimate", label: "Material estimate" },
+  { key: "size", label: "Size" }
 ];
 
 const hiddenAiFields: FieldConfig[] = [
@@ -103,22 +106,8 @@ const hiddenAiFields: FieldConfig[] = [
   { key: "countryOfOrigin", label: "Manufacturing text" }
 ];
 
-const allFields = [...essentialFields, ...hiddenAiFields];
-const optionalStylingFields = hiddenAiFields.filter((field) => [
-  "secondaryColors",
-  "texture",
-  "thicknessEstimate",
-  "layeringSuitability",
-  "seasonSuitability",
-  "careInstructions",
-  "stylingNotes"
-].includes(field.key));
+const allFields = [...reviewFields, ...detectedDetailFields, ...hiddenAiFields];
 const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
-const conditionOptions: Array<{ value: WardrobeCondition; label: string; helper: string }> = [
-  { value: "ready", label: "Ready", helper: "Clean, wearable, and fully usable for styling." },
-  { value: "needs-care", label: "Needs care", helper: "Requires cleaning, repair, steaming, or attention before wearing." },
-  { value: "missing-tags", label: "Needs more detail", helper: "Keep this when important styling details are still uncertain." }
-];
 const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
 const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "custom"];
 const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];
@@ -319,33 +308,42 @@ export function AITagConfirmationForm({
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
   const [condition, setCondition] = useState<WardrobeCondition>("ready");
   const [error, setError] = useState("");
+  const [editDetails, setEditDetails] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
-  const fitDetailsRef = useRef<HTMLDetailsElement>(null);
   const revealContent = useRevealContent();
   const lowConfidenceCount = useMemo(() => {
     if (!aiAnalysis?.fields) return 0;
-    return essentialFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
+    return reviewFields.filter((field) => (fieldFromAnalysis(aiAnalysis, field.key)?.confidence ?? 0) < 0.65).length;
   }, [aiAnalysis]);
   const visibleMeasurementFields = useMemo(() => {
     const allowed = new Set(garmentMeasurementKeysForCategory(values.category || "tops", values.subcategory || ""));
     return garmentMeasurementFields.filter((field) => allowed.has(field.key));
   }, [values.category, values.subcategory]);
   const visibleMeasurementKeys = useMemo(() => visibleMeasurementFields.map((field) => field.key), [visibleMeasurementFields]);
-  const stylistReadinessChecks = useMemo(() => {
-    const material = values.fabricComposition || values.fabricEstimate;
-    const fit = values.fit || (garmentFit !== "unknown" ? garmentFit : "");
-    return [
-      { label: "Category", ready: hasMeaningfulValue(values.category) },
-      { label: "Type", ready: hasMeaningfulValue(values.subcategory) },
-      { label: "Colour", ready: hasMeaningfulValue(values.primaryColor) },
-      { label: "Material", ready: hasMeaningfulValue(material) },
-      { label: "Fit", ready: hasMeaningfulValue(fit) },
-      { label: "Occasion", ready: splitList(values.occasionSuitability || "").length > 0 },
-      { label: "Weather", ready: splitList(values.weatherSuitability || "").length > 0 },
-      { label: "Readiness", ready: Boolean(condition) }
-    ];
-  }, [condition, garmentFit, values]);
-  const stylistReadyCount = stylistReadinessChecks.filter((check) => check.ready).length;
+  const reviewSummary = useMemo(() => {
+    const itemType = [values.primaryColor, values.subcategory || values.garmentType || values.category]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const occasions = splitList(values.occasionSuitability || "");
+    const weather = splitList(values.weatherSuitability || "");
+    return {
+      title: itemType || "Closet item",
+      stylingLine: [values.fit, values.formalityScore].filter(Boolean).join(" · "),
+      occasionLine: occasions.length ? `Ready for ${occasions.slice(0, 3).join(", ")}` : "Occasion not set",
+      weatherLine: weather.length ? weather.slice(0, 3).join(", ") : "Weather not set"
+    };
+  }, [values]);
+  const reviewWarnings = useMemo(() => {
+    const warnings = [];
+    if (!hasMeaningfulValue(values.category)) warnings.push("Category needs review");
+    if (!hasMeaningfulValue(values.primaryColor)) warnings.push("Colour needs review");
+    if (!splitList(values.occasionSuitability || "").length) warnings.push("Occasion needs review");
+    if (!splitList(values.weatherSuitability || "").length) warnings.push("Weather needs review");
+    if (lowConfidenceCount) warnings.push("Some details are low confidence");
+    if (!aiAnalysis) warnings.push("AI details need review");
+    return warnings.slice(0, 5);
+  }, [aiAnalysis, lowConfidenceCount, values.category, values.occasionSuitability, values.primaryColor, values.weatherSuitability]);
 
   useEffect(() => {
     const next = initialValues;
@@ -454,18 +452,18 @@ export function AITagConfirmationForm({
       }}
     >
       <div className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <p className="text-sm font-semibold text-ink">Confirm what MyFitPick detected</p>
-              <p className="mt-1 text-xs leading-5 text-muted">
-          Review the essentials. Category, type, colour, material, fit, occasion, weather, and readiness guide your stylist later.
+        <p className="text-sm font-semibold text-ink">Quick review</p>
+        <p className="mt-1 text-xs leading-5 text-muted">
+          Save it if this looks right. Edit only what needs correction.
         </p>
         {lowConfidenceCount ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
-            Please verify this detail.
+            Some details may need a quick check.
           </p>
         ) : null}
         {!aiAnalysis ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
-            MyFitPick could not read enough details. Add the essentials below and save the piece.
+            MyFitPick could not read enough details. Review the basics and save the piece.
           </p>
         ) : null}
         <div className="mt-3">
@@ -477,230 +475,106 @@ export function AITagConfirmationForm({
 
       {error ? <p ref={errorRef} className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
-      <section className="rounded-2xl border border-olive/20 bg-olive/10 p-3">
+      <section className="rounded-[1.5rem] border border-olive/20 bg-olive/10 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-ink">Stylist-ready checklist</h3>
-            <p className="mt-1 text-xs leading-5 text-muted">Confirm what you know. Leave uncertain details blank instead of guessing.</p>
+            <h3 className="font-editorial text-2xl font-semibold leading-none text-ink">{reviewSummary.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted">{reviewSummary.stylingLine || "Styled with your upload details."}</p>
           </div>
-          <Badge tone={stylistReadyCount >= stylistReadinessChecks.length ? "success" : "warning"}>
-            {stylistReadyCount}/{stylistReadinessChecks.length}
+          <Badge tone={reviewWarnings.length ? "warning" : "success"}>
+            {reviewWarnings.length ? "Review suggested" : "Ready"}
           </Badge>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {stylistReadinessChecks.map((check) => (
-            <div key={check.label} className="rounded-2xl border border-line bg-white/75 px-3 py-2">
-              <p className="truncate text-xs font-bold text-ink">{check.label}</p>
-              <p className={`mt-1 text-[11px] font-semibold ${check.ready ? "text-success" : "text-muted"}`}>
-                {check.ready ? "Set" : "Review"}
-              </p>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {[reviewSummary.occasionLine, reviewSummary.weatherLine, values.category === "shoes" ? "Footwear" : values.category].filter((item): item is string => Boolean(item)).map((item) => (
+            <div key={item} className="rounded-2xl border border-line bg-white/75 px-3 py-2 text-xs font-bold text-ink">
+              {item}
             </div>
           ))}
         </div>
-        {values.category === "shoes" ? (
-          <p className="mt-3 rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
-            This item is saved as shoes, so MyFitPick can use it as footwear when completing outfits.
-          </p>
+
+        {reviewWarnings.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {reviewWarnings.map((warning) => (
+              <Badge key={warning} tone="warning">{warning}</Badge>
+            ))}
+          </div>
         ) : null}
       </section>
 
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold text-ink">Style notes</h3>
-          <p className="mt-1 text-xs leading-5 text-muted">Keep unknown details blank and update them later if needed.</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {essentialFields.map((field) => {
-            const fieldId = `ai-field-${field.key}`;
-            const original = fieldFromAnalysis(aiAnalysis, field.key);
-            return (
-              <FieldGroup key={field.key} label={field.label} htmlFor={fieldId} required={field.required}>
-                {original ? (
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <Badge tone={original.source === "ocr" && original.confidence >= 0.8 ? "success" : original.confidence < 0.65 ? "warning" : "neutral"}>
-                      {confidenceLabel(original.confidence, original.source)}
-                    </Badge>
-                    <span className="text-[11px] font-semibold text-muted">{sourceLabel(original.source)}</span>
-                  </div>
-                ) : null}
-                {field.kind === "category" ? (
-                  <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
-                    {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                ) : field.kind === "list" ? (
-                  <>
-                    <textarea
-                      id={fieldId}
-                      className={`${inputClass} min-h-20`}
-                      value={values[field.key] || ""}
-                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                      placeholder="Comma-separated"
-                    />
-                    <PresetButtons
-                      options={listPresets[field.key]}
-                      selected={splitList(values[field.key] || "")}
-                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: joinUniqueList(current[field.key] || "", option) }))}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <input
-                      id={fieldId}
-                      className={inputClass}
-                      value={values[field.key] || ""}
-                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                      placeholder={field.required ? "Required" : "Optional"}
-                      required={field.required}
-                    />
-                    <PresetButtons
-                      options={field.key === "subcategory" ? subtypePresets[(values.category || "tops") as WardrobeCategory] : scalarPresets[field.key]}
-                      selected={values[field.key] ? [values[field.key]] : []}
-                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: option }))}
-                    />
-                  </>
-                )}
-              </FieldGroup>
-            );
-          })}
-        </div>
-        <div className="mt-3">
-          <FieldGroup label="Readiness" htmlFor="ai-field-condition">
-            <select id="ai-field-condition" className={inputClass} value={condition} onChange={(event) => setCondition(event.target.value as WardrobeCondition)}>
-              {conditionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </FieldGroup>
-          <p className="mt-2 text-xs leading-5 text-muted">
-            {conditionOptions.find((option) => option.value === condition)?.helper}
-          </p>
-        </div>
+        <button
+          type="button"
+          className="focus-ring flex w-full items-center justify-between rounded-2xl px-2 py-2 text-left text-sm font-semibold text-ink"
+          onClick={() => setEditDetails((current) => !current)}
+          aria-expanded={editDetails}
+        >
+          Edit details
+          <span className="text-xs font-bold uppercase tracking-[0.14em] text-cocoa">{editDetails ? "Close" : "Optional"}</span>
+        </button>
+
+        {editDetails ? (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {reviewFields.map((field) => {
+              const fieldId = `ai-field-${field.key}`;
+              const original = fieldFromAnalysis(aiAnalysis, field.key);
+              return (
+                <FieldGroup key={field.key} label={field.label} htmlFor={fieldId} required={field.required}>
+                  {original ? (
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Badge tone={original.source === "ocr" && original.confidence >= 0.8 ? "success" : original.confidence < 0.65 ? "warning" : "neutral"}>
+                        {confidenceLabel(original.confidence, original.source)}
+                      </Badge>
+                      <span className="text-[11px] font-semibold text-muted">{sourceLabel(original.source)}</span>
+                    </div>
+                  ) : null}
+                  {field.kind === "category" ? (
+                    <select id={fieldId} className={inputClass} value={values[field.key] || "tops"} onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}>
+                      {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  ) : field.kind === "list" ? (
+                    <>
+                      <textarea
+                        id={fieldId}
+                        className={`${inputClass} min-h-20`}
+                        value={values[field.key] || ""}
+                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                        placeholder="Comma-separated"
+                      />
+                      <PresetButtons
+                        options={listPresets[field.key]}
+                        selected={splitList(values[field.key] || "")}
+                        onSelect={(option) => setValues((current) => ({ ...current, [field.key]: joinUniqueList(current[field.key] || "", option) }))}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        id={fieldId}
+                        className={inputClass}
+                        value={values[field.key] || ""}
+                        onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
+                        placeholder={field.required ? "Required" : "Optional"}
+                        required={field.required}
+                      />
+                      <PresetButtons
+                        options={field.key === "subcategory" ? subtypePresets[(values.category || "tops") as WardrobeCategory] : scalarPresets[field.key]}
+                        selected={values[field.key] ? [values[field.key]] : []}
+                        onSelect={(option) => setValues((current) => ({ ...current, [field.key]: option }))}
+                      />
+                    </>
+                  )}
+                </FieldGroup>
+              );
+            })}
+          </div>
+        ) : null}
       </section>
 
-      <details
-        className="rounded-2xl border border-line bg-canvas/60 p-3"
-        onToggle={(event) => {
-          if (event.currentTarget.open) revealContent(event.currentTarget, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
-        }}
-      >
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Care details</summary>
-        <p className="mt-2 text-xs leading-5 text-muted">Add these when you know them. They help with season, layering, care, and richer outfit styling.</p>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {optionalStylingFields.map((field) => {
-            const fieldId = `optional-ai-field-${field.key}`;
-            const original = fieldFromAnalysis(aiAnalysis, field.key);
-            return (
-              <FieldGroup key={field.key} label={field.label} htmlFor={fieldId}>
-                {original ? (
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <Badge tone={original.source === "ocr" && original.confidence >= 0.8 ? "success" : original.confidence < 0.65 ? "warning" : "neutral"}>
-                      {confidenceLabel(original.confidence, original.source)}
-                    </Badge>
-                    <span className="text-[11px] font-semibold text-muted">{sourceLabel(original.source)}</span>
-                  </div>
-                ) : null}
-                {field.kind === "list" ? (
-                  <>
-                    <textarea
-                      id={fieldId}
-                      className={`${inputClass} min-h-20`}
-                      value={values[field.key] || ""}
-                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                      placeholder="Comma-separated"
-                    />
-                    <PresetButtons
-                      options={listPresets[field.key]}
-                      selected={splitList(values[field.key] || "")}
-                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: joinUniqueList(current[field.key] || "", option) }))}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <input
-                      id={fieldId}
-                      className={inputClass}
-                      value={values[field.key] || ""}
-                      onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-                      placeholder="Optional"
-                    />
-                    <PresetButtons
-                      options={scalarPresets[field.key]}
-                      selected={values[field.key] ? [values[field.key]] : []}
-                      onSelect={(option) => setValues((current) => ({ ...current, [field.key]: option }))}
-                    />
-                  </>
-                )}
-              </FieldGroup>
-            );
-          })}
-        </div>
-      </details>
-
-      <details
-        ref={fitDetailsRef}
-        className="rounded-2xl border border-line bg-canvas/60 p-3"
-        onToggle={(event) => {
-          if (event.currentTarget.open) revealContent(fitDetailsRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
-        }}
-      >
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Improve fit accuracy</summary>
-        <p className="mt-2 text-xs leading-5 text-muted">Optional. Add size and measurement details only when you know them.</p>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FieldGroup label="Size" htmlFor="fit-tagged-size">
-            <select id="fit-tagged-size" className={inputClass} value={taggedSize} onChange={(event) => setTaggedSize(event.target.value as TaggedSize)}>
-              {taggedSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Size system" htmlFor="fit-size-system">
-            <select id="fit-size-system" className={inputClass} value={sizeSystem} onChange={(event) => setSizeSystem(event.target.value as SizeSystem)}>
-              {sizeSystemOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          <FieldGroup label="How does it fit?" htmlFor="fit-garment-fit">
-            <select id="fit-garment-fit" className={inputClass} value={garmentFit} onChange={(event) => setGarmentFit(event.target.value as GarmentFit)}>
-              {garmentFitOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Stretch" htmlFor="fit-stretch">
-            <select id="fit-stretch" className={inputClass} value={stretchLevel} onChange={(event) => setStretchLevel(event.target.value as StretchLevel)}>
-              {stretchOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Fabric drape" htmlFor="fit-drape">
-            <select id="fit-drape" className={inputClass} value={fabricDrape} onChange={(event) => setFabricDrape(event.target.value as FabricDrape)}>
-              {drapeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Size accuracy" htmlFor="fit-confidence">
-            <input id="fit-confidence" type="number" min="0" max="1" step="0.05" className={inputClass} value={fitConfidence} onChange={(event) => setFitConfidence(event.target.value)} />
-          </FieldGroup>
-          <FieldGroup label="How size was added" htmlFor="fit-source">
-            <select id="fit-source" className={inputClass} value={measurementSource} onChange={(event) => setMeasurementSource(event.target.value as MeasurementSource)}>
-              {measurementSourceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </FieldGroup>
-          {visibleMeasurementFields.length ? visibleMeasurementFields.map((field) => (
-            <FieldGroup key={field.key} label={`${field.label} (cm)`} htmlFor={`fit-${field.key}`}>
-              <input
-                id={`fit-${field.key}`}
-                type="number"
-                min="0"
-                step="0.1"
-                className={inputClass}
-                value={garmentMeasurements[field.key] || ""}
-                onChange={(event) => setGarmentMeasurements((current) => ({ ...current, [field.key]: event.target.value }))}
-                placeholder={field.placeholder}
-              />
-            </FieldGroup>
-          )) : (
-            <p className="rounded-2xl border border-line bg-white/70 p-3 text-xs font-semibold leading-5 text-muted sm:col-span-2">
-              No garment body measurements are needed for this category.
-            </p>
-          )}
-        </div>
-      </details>
-
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Button type="button" variant="secondary" onClick={submit} disabled={disabled}>
-          Confirm all
+        <Button type="button" variant="secondary" onClick={() => setEditDetails((current) => !current)} disabled={disabled}>
+          {editDetails ? "Hide edits" : "Edit details"}
         </Button>
         <Button type="submit" disabled={disabled}>
           Save to closet
