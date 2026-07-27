@@ -112,6 +112,68 @@ function mergeEntityRecognition(analysis: WardrobeAiAnalysis, extraction?: Dedic
   }
 }
 
+function metadataText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const text = value.trim().slice(0, 120);
+    if (text) return text;
+  }
+  return "";
+}
+
+function metadataList(...values: unknown[]) {
+  for (const value of values) {
+    if (!Array.isArray(value)) continue;
+    const list = value
+      .map((item) => (typeof item === "string" ? item.trim().slice(0, 80) : ""))
+      .filter(Boolean)
+      .slice(0, 12);
+    if (list.length) return list;
+  }
+  return [];
+}
+
+function applyUserIntakeMetadata(analysis: WardrobeAiAnalysis, input: AiTaggingInput) {
+  const userInput = input.userInputMetadata || {};
+  const recommendation = input.recommendationMetadata || {};
+  const virtualTryOn = input.virtualTryOnMetadata || {};
+  const fields = { ...analysis.fields };
+
+  const setText = (field: keyof typeof fields, value: string) => {
+    if (!value) return;
+    (fields as any)[field] = {
+      ...(fields as any)[field],
+      value,
+      confidence: Math.max((fields as any)[field]?.confidence || 0, 0.9),
+      source: "user_confirmed"
+    };
+  };
+
+  const setList = (field: keyof typeof fields, value: string[]) => {
+    if (!value.length) return;
+    (fields as any)[field] = {
+      ...(fields as any)[field],
+      value,
+      confidence: Math.max((fields as any)[field]?.confidence || 0, 0.9),
+      source: "user_confirmed"
+    };
+  };
+
+  setText("primaryColor", metadataText(userInput.primaryColor, userInput.color, recommendation.primaryColor));
+  setText("fit", metadataText(userInput.fit, recommendation.fit, virtualTryOn.fit));
+  setText("formalityScore", metadataText(userInput.formality, recommendation.formality));
+  setList("occasionSuitability", metadataList(userInput.occasions, recommendation.occasions));
+  setList("weatherSuitability", metadataList(userInput.weather, recommendation.weather));
+  setText("fabricEstimate", metadataText(userInput.fabric, userInput.material, recommendation.material));
+  setText("size", metadataText(userInput.size, virtualTryOn.size));
+  setText("brand", metadataText(userInput.brand));
+
+  return {
+    ...analysis,
+    fields
+  };
+}
+
 export function analysisToSuggestedTags(analysis: WardrobeAiAnalysis): AiSuggestedWardrobeTags {
   const fields = analysis.fields;
   const confidence = averageConfidence(analysis);
@@ -228,7 +290,10 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
               type: "input_text",
               text: buildWardrobeAnalysisPrompt({
                 selectedCategory: input.selectedCategory,
-                selectedCategoryLabel: input.selectedCategoryLabel
+                selectedCategoryLabel: input.selectedCategoryLabel,
+                userInputMetadata: input.userInputMetadata,
+                recommendationMetadata: input.recommendationMetadata,
+                virtualTryOnMetadata: input.virtualTryOnMetadata
               })
             },
             ...imageEntries.flatMap((entry) => [
@@ -256,7 +321,10 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     });
 
     const labelResult = await extractLabelMetadata(input.images?.label);
-    const mergedAnalysis = mergeEntityRecognition(mergeLabelExtraction(applySelectedCategory(visionAnalysis, input), labelResult.extraction), labelResult.extraction);
+    const mergedAnalysis = mergeEntityRecognition(
+      mergeLabelExtraction(applyUserIntakeMetadata(applySelectedCategory(visionAnalysis, input), input), labelResult.extraction),
+      labelResult.extraction
+    );
     const analysis = wardrobeAiAnalysisSchema.parse({
       ...mergedAnalysis,
       labelExtractionStatus: labelResult.status,

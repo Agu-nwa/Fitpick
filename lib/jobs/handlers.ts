@@ -91,6 +91,9 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
     images: (upload.images || {}) as any,
     selectedCategory: (upload.selectedCategory || "") as any,
     selectedCategoryLabel: upload.selectedCategoryLabel || "",
+    userInputMetadata: upload.userInputMetadata || {},
+    recommendationMetadata: upload.recommendationMetadata || {},
+    virtualTryOnMetadata: upload.virtualTryOnMetadata || {},
     suggestedTags: upload.suggestedTags || {}
   });
 

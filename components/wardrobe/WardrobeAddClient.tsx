@@ -79,6 +79,18 @@ type FileTarget = {
   camera?: boolean;
 };
 
+type UploadEssentials = {
+  primaryColor: string;
+  fit: string;
+  formality: string;
+  occasions: string[];
+  weather: string[];
+  material: string;
+  size: string;
+  brand: string;
+  condition: "ready" | "needs-care";
+};
+
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
 
 const stylistPhotoGuide = [
@@ -130,10 +142,49 @@ function selectClass(active = false) {
   return `focus-ring min-h-14 w-full appearance-none rounded-[1.35rem] border bg-white/85 px-4 py-3 pr-11 text-base font-semibold text-ink shadow-soft outline-none transition disabled:cursor-not-allowed disabled:opacity-55 ${active ? "border-cocoa/45" : "border-line hover:border-cocoa/30"}`;
 }
 
+const colorOptions = ["Black", "White", "Blue", "Brown", "Grey", "Green", "Red", "Pink", "Cream", "Beige"];
+const fitOptions = ["Slim", "Regular", "Relaxed", "Oversized", "Tailored", "Flowing", "Not applicable"];
+const formalityOptions = ["Casual", "Smart casual", "Business casual", "Formal", "Evening"];
+const occasionOptions = ["Work", "Dinner", "Date night", "Wedding", "Church", "Weekend", "Travel", "Party"];
+const weatherOptions = ["Hot", "Warm", "Mild", "Cold", "Rainy"];
+const materialOptions = ["Cotton", "Denim", "Linen", "Wool", "Leather", "Polyester", "Knit", "Silk"];
+
+const emptyEssentials: UploadEssentials = {
+  primaryColor: "",
+  fit: "",
+  formality: "",
+  occasions: [],
+  weather: [],
+  material: "",
+  size: "",
+  brand: "",
+  condition: "ready"
+};
+
+function toggleStringValue(values: string[], value: string, max = 5) {
+  if (values.includes(value)) return values.filter((item) => item !== value);
+  return [...values, value].slice(0, max);
+}
+
+function normalizeEssentials(input: UploadEssentials) {
+  return {
+    primaryColor: input.primaryColor.trim(),
+    fit: input.fit.trim(),
+    formality: input.formality.trim(),
+    occasions: input.occasions.map((item) => item.trim()).filter(Boolean).slice(0, 8),
+    weather: input.weather.map((item) => item.trim()).filter(Boolean).slice(0, 8),
+    material: input.material.trim(),
+    size: input.size.trim(),
+    brand: input.brand.trim(),
+    condition: input.condition
+  };
+}
+
 export function WardrobeAddClient() {
   const session = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const essentialsSectionRef = useRef<HTMLElement>(null);
   const uploadSectionRef = useRef<HTMLElement>(null);
   const selectedPhotosRef = useRef<HTMLDivElement>(null);
   const labelSectionRef = useRef<HTMLElement>(null);
@@ -141,6 +192,7 @@ export function WardrobeAddClient() {
   const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>("clothing");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const selectedCategory = findIntakeCategory(selectedCategoryId);
+  const [essentials, setEssentials] = useState<UploadEssentials>(emptyEssentials);
   const [activeTarget, setActiveTarget] = useState<FileTarget>({ purpose: "front" });
   const [slotFiles, setSlotFiles] = useState<Partial<Record<WardrobeImagePurpose, SlotFile>>>({});
   const [additionalFiles, setAdditionalFiles] = useState<SlotFile[]>([]);
@@ -165,11 +217,21 @@ export function WardrobeAddClient() {
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
   const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length + additionalFiles.length;
   const missingRequired = requiredSlots.filter((slot) => !slotFiles[slot.key]);
+  const normalizedEssentials = useMemo(() => normalizeEssentials(essentials), [essentials]);
+  const essentialsComplete = Boolean(
+    selectedCategory &&
+    normalizedEssentials.primaryColor &&
+    normalizedEssentials.fit &&
+    normalizedEssentials.formality &&
+    normalizedEssentials.occasions.length &&
+    normalizedEssentials.weather.length
+  );
   const isPreparingImage = ["validating", "preparing", "converting", "generating-preview"].includes(uploadStage) && !isSaving && !isAnalyzing;
-  const canContinue = Boolean(selectedCategory && !missingRequired.length && !isSaving && !isAnalyzing && !isPreparingImage);
+  const canContinue = Boolean(selectedCategory && essentialsComplete && !missingRequired.length && !isSaving && !isAnalyzing && !isPreparingImage);
   const uploadSteps = [
     { label: "Choose category", status: selectedCategory ? "complete" : "current" },
-    { label: "Add photos", status: selectedCategory && !missingRequired.length ? "complete" : selectedCategory ? "current" : "pending" },
+    { label: "Add essentials", status: essentialsComplete ? "complete" : selectedCategory ? "current" : "pending" },
+    { label: "Add photos", status: selectedCategory && essentialsComplete && !missingRequired.length ? "complete" : selectedCategory && essentialsComplete ? "current" : "pending" },
     { label: "Review details", status: isAnalyzing ? "current" : "pending" }
   ] as const;
 
@@ -177,11 +239,12 @@ export function WardrobeAddClient() {
     try {
       const raw = window.localStorage.getItem(draftKey);
       if (!raw) return;
-      const draft = JSON.parse(raw) as { selectedGroupId?: IntakeGroupId; selectedCategoryId?: string; labelEnabled?: boolean; selectedLabelKinds?: LabelPhotoKind[] };
+      const draft = JSON.parse(raw) as { selectedGroupId?: IntakeGroupId; selectedCategoryId?: string; labelEnabled?: boolean; selectedLabelKinds?: LabelPhotoKind[]; essentials?: Partial<UploadEssentials> };
       if (draft.selectedGroupId) setSelectedGroupId(draft.selectedGroupId);
       if (draft.selectedCategoryId) setSelectedCategoryId(draft.selectedCategoryId);
       if (typeof draft.labelEnabled === "boolean") setLabelEnabled(draft.labelEnabled);
       if (Array.isArray(draft.selectedLabelKinds) && draft.selectedLabelKinds.length) setSelectedLabelKinds(draft.selectedLabelKinds);
+      if (draft.essentials) setEssentials({ ...emptyEssentials, ...draft.essentials });
       setDraftNotice("Draft recovered. Add photos to continue.");
     } catch {
       window.localStorage.removeItem(draftKey);
@@ -192,16 +255,27 @@ export function WardrobeAddClient() {
     try {
       window.localStorage.setItem(
         draftKey,
-        JSON.stringify({ selectedGroupId, selectedCategoryId, labelEnabled, selectedLabelKinds })
+        JSON.stringify({ selectedGroupId, selectedCategoryId, labelEnabled, selectedLabelKinds, essentials })
       );
     } catch {
       // Draft recovery is helpful, not required for upload safety.
     }
-  }, [labelEnabled, selectedCategoryId, selectedGroupId, selectedLabelKinds]);
+  }, [essentials, labelEnabled, selectedCategoryId, selectedGroupId, selectedLabelKinds]);
+
+  useEffect(() => {
+    if (!selectedCategory) return;
+    revealContent(essentialsSectionRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
+  }, [revealContent, selectedCategory]);
+
+  useEffect(() => {
+    if (!essentialsComplete) return;
+    revealContent(uploadSectionRef, { delayMs: 160, topOffset: 24, bottomOffset: 136 });
+  }, [essentialsComplete, revealContent]);
 
   function selectGroup(groupId: IntakeGroupId) {
     setSelectedGroupId(groupId);
     setSelectedCategoryId("");
+    setEssentials(emptyEssentials);
     setMessage("");
     setStatus("idle");
   }
@@ -221,6 +295,10 @@ export function WardrobeAddClient() {
     setSelectedGroupId(category.group);
     setSelectedCategoryId(category.id);
     setActiveTarget({ purpose: "front" });
+    setEssentials((current) => ({
+      ...current,
+      fit: category.backendCategory === "bags" || category.backendCategory === "accessories" ? "Not applicable" : current.fit
+    }));
     setMessage("");
     setStatus("idle");
   }
@@ -236,7 +314,15 @@ export function WardrobeAddClient() {
 
   function continueToPhotos() {
     if (!selectedCategory) return;
+    if (!essentialsComplete) {
+      revealContent(essentialsSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
+      return;
+    }
     revealContent(uploadSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
+  }
+
+  function updateEssential<K extends keyof UploadEssentials>(key: K, value: UploadEssentials[K]) {
+    setEssentials((current) => ({ ...current, [key]: value }));
   }
 
   function openFilePicker(target: FileTarget) {
@@ -528,6 +614,12 @@ export function WardrobeAddClient() {
       return;
     }
 
+    if (!essentialsComplete) {
+      setMessage("Add the essential styling details before uploading.");
+      revealContent(essentialsSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
+      return;
+    }
+
     setIsSaving(true);
     setStatus("idle");
     setMessage("");
@@ -548,6 +640,19 @@ export function WardrobeAddClient() {
       if (!primary) throw new Error("Add a main photo before continuing.");
 
       const labelKinds = labelEnabled ? selectedLabelKinds : [];
+      const essentialsMetadata = {
+        primaryColor: normalizedEssentials.primaryColor,
+        fit: normalizedEssentials.fit,
+        formality: normalizedEssentials.formality,
+        occasions: normalizedEssentials.occasions,
+        weather: normalizedEssentials.weather,
+        fabric: normalizedEssentials.material,
+        material: normalizedEssentials.material,
+        size: normalizedEssentials.size,
+        brand: normalizedEssentials.brand,
+        condition: normalizedEssentials.condition,
+        source: "user_intake"
+      };
       const result = await uploadWardrobeMetadata({
         filename: primary.filename,
         mimeType: primary.mimeType,
@@ -571,6 +676,7 @@ export function WardrobeAddClient() {
           categoryId: selectedCategory.id,
           category: selectedCategory.backendCategory,
           subcategory: selectedCategory.subcategory,
+          ...essentialsMetadata,
           photoGuidance: selectedCategory.guidance,
           labelIntelligenceRequested: labelEnabled,
           labelPhotoKinds: labelKinds,
@@ -584,18 +690,48 @@ export function WardrobeAddClient() {
           allowedMeasurementKeys: selectedCategory.allowedMeasurementKeys
         },
         recommendationMetadata: {
-          outfitRoleHint: selectedCategory.backendCategory === "shoes" ? "footwear" : selectedCategory.backendCategory === "bags" || selectedCategory.backendCategory === "accessories" ? "finisher" : "garment"
+          outfitRoleHint: selectedCategory.backendCategory === "shoes" ? "footwear" : selectedCategory.backendCategory === "bags" || selectedCategory.backendCategory === "accessories" ? "finisher" : "garment",
+          primaryColor: normalizedEssentials.primaryColor,
+          formality: normalizedEssentials.formality,
+          occasions: normalizedEssentials.occasions,
+          weather: normalizedEssentials.weather,
+          fit: normalizedEssentials.fit,
+          material: normalizedEssentials.material
         },
         virtualTryOnMetadata: {
           eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
-          primaryImagePurpose: "front"
+          primaryImagePurpose: "front",
+          fit: normalizedEssentials.fit,
+          size: normalizedEssentials.size
         },
         searchMetadata: {
-          seedTerms: [selectedCategory.title, selectedCategory.subcategory, selectedCategory.backendCategory, ...selectedCategory.visionFocus]
+          seedTerms: [
+            selectedCategory.title,
+            selectedCategory.subcategory,
+            selectedCategory.backendCategory,
+            normalizedEssentials.primaryColor,
+            normalizedEssentials.fit,
+            normalizedEssentials.formality,
+            normalizedEssentials.material,
+            normalizedEssentials.brand,
+            ...normalizedEssentials.occasions,
+            ...normalizedEssentials.weather,
+            ...selectedCategory.visionFocus
+          ].filter(Boolean)
         },
         suggestedTags: {
           category: selectedCategory.backendCategory,
           subcategory: selectedCategory.subcategory,
+          color: normalizedEssentials.primaryColor,
+          primaryColor: normalizedEssentials.primaryColor,
+          fit: normalizedEssentials.fit,
+          formality: normalizedEssentials.formality,
+          occasions: normalizedEssentials.occasions,
+          weather: normalizedEssentials.weather,
+          fabric: normalizedEssentials.material,
+          size: normalizedEssentials.size,
+          brand: normalizedEssentials.brand,
+          condition: normalizedEssentials.condition,
           intakeCategoryId: selectedCategory.id,
           intakeGroup: selectedCategory.group
         },
@@ -732,6 +868,207 @@ export function WardrobeAddClient() {
         </Card>
       </section>
 
+      {selectedCategory ? (
+        <section ref={essentialsSectionRef} className="mx-auto max-w-[720px]">
+          <Card className="space-y-5 border-olive/20 bg-surface/90 p-5 shadow-card sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
+                  <Sparkles size={14} aria-hidden="true" />
+                  Styling essentials
+                </p>
+                <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Tell MyFitPick the basics</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+                  These details help your stylist, outfit engine, and previews understand the piece before AI reads the photos.
+                </p>
+              </div>
+              <Badge tone={essentialsComplete ? "success" : "warning"}>
+                {essentialsComplete ? "Ready for photos" : "Needs details"}
+              </Badge>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="wardrobe-essential-color" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Main colour *</label>
+                <input
+                  id="wardrobe-essential-color"
+                  className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
+                  value={essentials.primaryColor}
+                  onChange={(event) => updateEssential("primaryColor", event.target.value)}
+                  placeholder="e.g. Navy, black, cream"
+                  disabled={isSaving || isAnalyzing}
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${essentials.primaryColor.toLowerCase() === color.toLowerCase() ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white/70 text-muted hover:border-cocoa/35 hover:text-ink"}`}
+                      onClick={() => updateEssential("primaryColor", color)}
+                      disabled={isSaving || isAnalyzing}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="wardrobe-essential-fit" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Fit *</label>
+                <div className="relative mt-2">
+                  <select
+                    id="wardrobe-essential-fit"
+                    className={selectClass(Boolean(essentials.fit))}
+                    value={essentials.fit}
+                    onChange={(event) => updateEssential("fit", event.target.value)}
+                    disabled={isSaving || isAnalyzing}
+                  >
+                    <option value="">Select fit</option>
+                    {fitOptions.map((fit) => <option key={fit} value={fit}>{fit}</option>)}
+                  </select>
+                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="wardrobe-essential-formality" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Formality *</label>
+                <div className="relative mt-2">
+                  <select
+                    id="wardrobe-essential-formality"
+                    className={selectClass(Boolean(essentials.formality))}
+                    value={essentials.formality}
+                    onChange={(event) => updateEssential("formality", event.target.value)}
+                    disabled={isSaving || isAnalyzing}
+                  >
+                    <option value="">Select formality</option>
+                    {formalityOptions.map((formality) => <option key={formality} value={formality}>{formality}</option>)}
+                  </select>
+                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="wardrobe-essential-condition" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Condition</label>
+                <div className="relative mt-2">
+                  <select
+                    id="wardrobe-essential-condition"
+                    className={selectClass(true)}
+                    value={essentials.condition}
+                    onChange={(event) => updateEssential("condition", event.target.value as UploadEssentials["condition"])}
+                    disabled={isSaving || isAnalyzing}
+                  >
+                    <option value="ready">Ready to wear</option>
+                    <option value="needs-care">Needs care</option>
+                  </select>
+                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="wardrobe-essential-material" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Material, if known</label>
+                <input
+                  id="wardrobe-essential-material"
+                  className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
+                  value={essentials.material}
+                  onChange={(event) => updateEssential("material", event.target.value)}
+                  placeholder="e.g. Cotton, leather, denim"
+                  disabled={isSaving || isAnalyzing}
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {materialOptions.map((material) => (
+                    <button
+                      key={material}
+                      type="button"
+                      className={`focus-ring rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${essentials.material.toLowerCase() === material.toLowerCase() ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-line bg-white/70 text-muted hover:border-cocoa/35 hover:text-ink"}`}
+                      onClick={() => updateEssential("material", material)}
+                      disabled={isSaving || isAnalyzing}
+                    >
+                      {material}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="wardrobe-essential-size" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Size</label>
+                  <input
+                    id="wardrobe-essential-size"
+                    className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
+                    value={essentials.size}
+                    onChange={(event) => updateEssential("size", event.target.value)}
+                    placeholder="M, EU 43"
+                    disabled={isSaving || isAnalyzing}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="wardrobe-essential-brand" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Brand</label>
+                  <input
+                    id="wardrobe-essential-brand"
+                    className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
+                    value={essentials.brand}
+                    onChange={(event) => updateEssential("brand", event.target.value)}
+                    placeholder="Optional"
+                    disabled={isSaving || isAnalyzing}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Where would you wear it? *</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {occasionOptions.map((occasion) => (
+                    <button
+                      key={occasion}
+                      type="button"
+                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${essentials.occasions.includes(occasion) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:border-cocoa/35 hover:text-ink"}`}
+                      onClick={() => updateEssential("occasions", toggleStringValue(essentials.occasions, occasion))}
+                      disabled={isSaving || isAnalyzing}
+                    >
+                      {occasion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Best weather *</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {weatherOptions.map((weather) => (
+                    <button
+                      key={weather}
+                      type="button"
+                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${essentials.weather.includes(weather) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:border-cocoa/35 hover:text-ink"}`}
+                      onClick={() => updateEssential("weather", toggleStringValue(essentials.weather, weather))}
+                      disabled={isSaving || isAnalyzing}
+                    >
+                      {weather}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Progressive intake</p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                Review later should only correct uncertainty. These details become the starting point for MyFitPick intelligence.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!essentialsComplete || isSaving || isAnalyzing}>
+                Continue to photos
+                <ChevronRight size={16} aria-hidden="true" />
+              </Button>
+            </div>
+          </Card>
+        </section>
+      ) : null}
+
+      {selectedCategory && essentialsComplete ? (
       <section ref={uploadSectionRef}>
         <Card className="space-y-5 overflow-hidden p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
@@ -881,8 +1218,9 @@ export function WardrobeAddClient() {
           ) : null}
         </Card>
       </section>
+      ) : null}
 
-      {selectedCategory ? (
+      {selectedCategory && essentialsComplete ? (
         <section ref={labelSectionRef}>
           <Card className="space-y-4 border-cocoa/15 bg-gradient-to-br from-white via-canvas to-cocoa/8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

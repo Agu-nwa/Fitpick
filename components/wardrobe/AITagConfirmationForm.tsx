@@ -45,6 +45,14 @@ export type AITagConfirmationDefaults = {
   category?: WardrobeCategory | "";
   subcategory?: string;
   itemLabel?: string;
+  primaryColor?: string;
+  fit?: string;
+  formality?: string;
+  occasions?: string[];
+  weather?: string[];
+  fabric?: string;
+  size?: string;
+  brand?: string;
 };
 
 const essentialFields: FieldConfig[] = [
@@ -271,10 +279,33 @@ export function AITagConfirmationForm({
 
       if (selectedDefaults?.category) detected.category = selectedDefaults.category;
       if (selectedDefaults?.subcategory) detected.subcategory = selectedDefaults.subcategory;
+      if (selectedDefaults?.primaryColor) detected.primaryColor = selectedDefaults.primaryColor;
+      if (selectedDefaults?.fit) detected.fit = selectedDefaults.fit;
+      if (selectedDefaults?.formality) detected.formalityScore = selectedDefaults.formality;
+      if (selectedDefaults?.occasions?.length) detected.occasionSuitability = selectedDefaults.occasions.join(", ");
+      if (selectedDefaults?.weather?.length) detected.weatherSuitability = selectedDefaults.weather.join(", ");
+      if (selectedDefaults?.fabric) {
+        detected.fabricComposition = selectedDefaults.fabric;
+        detected.fabricEstimate = detected.fabricEstimate || selectedDefaults.fabric;
+      }
+      if (selectedDefaults?.size) detected.size = selectedDefaults.size;
+      if (selectedDefaults?.brand) detected.brand = selectedDefaults.brand;
 
       return detected;
     },
-    [aiAnalysis, selectedDefaults?.category, selectedDefaults?.subcategory]
+    [
+      aiAnalysis,
+      selectedDefaults?.brand,
+      selectedDefaults?.category,
+      selectedDefaults?.fabric,
+      selectedDefaults?.fit,
+      selectedDefaults?.formality,
+      selectedDefaults?.occasions,
+      selectedDefaults?.primaryColor,
+      selectedDefaults?.size,
+      selectedDefaults?.subcategory,
+      selectedDefaults?.weather
+    ]
   );
   const [name, setName] = useState("");
   const [values, setValues] = useState<Record<string, string>>(initialValues);

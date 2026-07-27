@@ -43,6 +43,9 @@ export type AiTaggingInput = {
   };
   selectedCategory?: WardrobeCategory;
   selectedCategoryLabel?: string;
+  userInputMetadata?: Record<string, unknown>;
+  recommendationMetadata?: Record<string, unknown>;
+  virtualTryOnMetadata?: Record<string, unknown>;
   suggestedTags?: Record<string, unknown>;
 };
 

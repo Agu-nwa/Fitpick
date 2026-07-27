@@ -55,6 +55,11 @@ function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function stringList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => stringValue(item)).filter(Boolean).slice(0, 12);
+}
+
 function categoryValue(value: unknown): WardrobeCategory | "" {
   const category = stringValue(value) as WardrobeCategory;
   return wardrobeCategories.includes(category) ? category : "";
@@ -73,9 +78,22 @@ function selectedDefaultsFromUpload(upload: WardrobeUploadRecord | null): AITagC
     stringValue(upload.suggestedTags?.subcategory) ||
     stringValue(upload.categorySpecificMetadata?.title);
   const itemLabel = stringValue(upload.categorySpecificMetadata?.title) || subcategory;
+  const userInput = upload.userInputMetadata || {};
 
   if (!category && !subcategory && !itemLabel) return undefined;
-  return { category, subcategory, itemLabel };
+  return {
+    category,
+    subcategory,
+    itemLabel,
+    primaryColor: stringValue(userInput.primaryColor) || stringValue(userInput.color),
+    fit: stringValue(userInput.fit),
+    formality: stringValue(userInput.formality),
+    occasions: stringList(userInput.occasions),
+    weather: stringList(userInput.weather),
+    fabric: stringValue(userInput.fabric) || stringValue(userInput.material),
+    size: stringValue(userInput.size),
+    brand: stringValue(userInput.brand)
+  };
 }
 
 export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) {
