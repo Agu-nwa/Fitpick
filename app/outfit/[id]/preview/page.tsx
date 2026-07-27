@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { DesktopNav } from "@/components/navigation/DesktopNav";
 import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { LookPreviewClient } from "@/components/outfit/LookPreviewClient";
+import { PreviewBackButton } from "@/components/outfit/PreviewBackButton";
 import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -17,9 +17,7 @@ export default async function OutfitPreviewPage({ params }: { params: Promise<{ 
       <DesktopNav />
       <div className="min-w-0 flex-1 overflow-y-auto pb-[calc(8rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))] lg:pb-10 lg:pt-10">
         <div className="mx-auto w-full max-w-[1480px] px-5 sm:px-8 lg:px-12 xl:px-16">
-          <Link href={`/outfit/${id}`} className="mb-5 inline-flex min-h-11 items-center rounded-2xl px-1 text-sm font-semibold text-cocoa">
-            Back to outfit
-          </Link>
+          <PreviewBackButton />
           <div className="mb-5">
             <ContextualTip tipId="virtual-try-on" dismissedTips={auth.user.onboardingTipsDismissed}>
               Choose your My Model for cleaner Virtual Try-On previews.
