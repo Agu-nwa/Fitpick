@@ -15,6 +15,7 @@ import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
+import { editorialLookCopy } from "@/lib/recommendation/editorial-look-copy";
 import { safeTryOnErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 import type { OutfitRecommendation, ReferenceFashionItemSummary } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
@@ -187,6 +188,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const previewProcessing = isPreviewProcessing(preview, generating);
   const previewFailed = !previewProcessing && isPreviewFailed(preview, error);
   const hasPreviewStarted = Boolean(preview && preview.status !== "not_started");
+  const displayCopy = editorialLookCopy(outfit);
 
   return (
     <div className="space-y-6">
@@ -194,8 +196,8 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Preview this look</p>
-        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{outfit.title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{outfit.occasionFit || outfit.summary}</p>
+        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{displayCopy.title}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{displayCopy.supportingCopy}</p>
         </div>
       </div>
 
@@ -205,7 +207,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             {imageUrl ? (
               <ImageFrame
                 src={imageUrl}
-                alt={`${outfit.title} Virtual Try-On preview`}
+                alt={`${displayCopy.title} Virtual Try-On preview`}
                 aspect="fullBody"
                 fit="contain"
                 placeholder="Virtual Try-On preview"
