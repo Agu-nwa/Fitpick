@@ -1,7 +1,7 @@
 import type { GarmentMeasurements, WardrobeCategory } from "@/types/wardrobe";
 import type { WardrobeImagePurpose } from "@/types/ai-tagging";
 
-export type IntakeGroupId = "clothing" | "shoes" | "bags" | "accessories";
+export type IntakeGroupId = "clothing" | "shoes" | "bags" | "accessories" | "hair";
 
 export type MeasurementKey = keyof GarmentMeasurements;
 
@@ -59,6 +59,12 @@ export const intakeGroups: Array<{ id: IntakeGroupId; title: string; description
     title: "Accessories",
     description: "Jewelry, watches, belts, scarves, sunglasses, hats, and finishing pieces.",
     image: "/fashion/editorial-teal-studio.png"
+  },
+  {
+    id: "hair",
+    title: "Women's Hair",
+    description: "Wigs, extensions, braids, ponytails, and finished hair looks.",
+    image: "/fashion/editorial-teal-studio.png"
   }
 ];
 
@@ -90,6 +96,12 @@ const accessorySlots: IntakePhotoSlot[] = [
   { key: "label", label: "Marking", helper: "Stamp, serial, hallmark, or tag" }
 ];
 
+const hairSlots: IntakePhotoSlot[] = [
+  { key: "front", label: "Main", helper: "Full style or product view", required: true },
+  { key: "back", label: "Back view", helper: "Back, length, or volume" },
+  { key: "label", label: "Label", helper: "Brand, colour, length, or care note" }
+];
+
 const topMeasurements: MeasurementKey[] = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm"];
 const bottomMeasurements: MeasurementKey[] = ["waistCm", "hipsCm", "inseamCm", "outseamCm"];
 const dressMeasurements: MeasurementKey[] = ["chestWidthCm", "shoulderWidthCm", "sleeveLengthCm", "bodyLengthCm", "waistCm", "hipsCm"];
@@ -104,10 +116,12 @@ export const wardrobeCategoryRules: Record<WardrobeCategory, WardrobeCategoryRul
   tops: { allowedMeasurementKeys: topMeasurements, garmentMeasurementKeys: topMeasurements },
   bottoms: { allowedMeasurementKeys: bottomMeasurements, garmentMeasurementKeys: bottomMeasurements },
   dresses: { allowedMeasurementKeys: dressMeasurements, garmentMeasurementKeys: dressMeasurements },
+  native: { allowedMeasurementKeys: [...dressMeasurements, ...bottomMeasurements], garmentMeasurementKeys: [...dressMeasurements, ...bottomMeasurements] },
   outerwear: { allowedMeasurementKeys: topMeasurements, garmentMeasurementKeys: topMeasurements },
   shoes: { allowedMeasurementKeys: shoeMeasurements, garmentMeasurementKeys: [] },
   bags: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] },
-  accessories: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] }
+  accessories: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] },
+  womens_hair: { allowedMeasurementKeys: [], garmentMeasurementKeys: [] }
 };
 
 function categoryRuleFor(category?: WardrobeCategory | string): WardrobeCategoryRule {
@@ -340,7 +354,7 @@ export const intakeCategories: WardrobeIntakeCategory[] = [
     id: "traditional_wear",
     group: "clothing",
     title: "Traditional Wear",
-    backendCategory: "dresses",
+    backendCategory: "native",
     subcategory: "Traditional Wear",
     description: "Occasion pieces, native wear, ceremonial sets, and special-occasion tailoring.",
     image: "/fashion/editorial-teal-studio.png",
@@ -349,6 +363,25 @@ export const intakeCategories: WardrobeIntakeCategory[] = [
     visionFocus: ["set pieces", "embroidery", "fabric drape", "occasion", "styling context"],
     allowedMeasurementKeys: [...dressMeasurements, ...bottomMeasurements]
   },
+  ...[
+    ["wigs", "Wigs", "Wigs, lace fronts, closures, and ready-to-wear hair units."],
+    ["braids", "Braids", "Box braids, knotless braids, cornrows, twists, and protective styles."],
+    ["extensions", "Extensions", "Bundles, clip-ins, tape-ins, weaves, and added-length pieces."],
+    ["ponytails", "Ponytails", "Drawstring ponytails, clip-on ponytails, and sleek pony styles."],
+    ["hair_pieces", "Hair Pieces", "Bangs, buns, toppers, and accent hair pieces."]
+  ].map(([id, title, description]) => ({
+    id,
+    group: "hair" as const,
+    title,
+    backendCategory: "womens_hair" as const,
+    subcategory: title,
+    description,
+    image: "/fashion/editorial-teal-studio.png",
+    slots: hairSlots,
+    guidance: ["Main view", "Back or length view", "Colour, texture, label, or care note"],
+    visionFocus: ["hair category", "colour", "length", "texture", "material", "installation type", "maintenance"],
+    allowedMeasurementKeys: []
+  })),
   ...[
     ["sneakers", "Sneakers", "Sneakers, trainers, lifestyle and athletic pairs."],
     ["boots", "Boots", "Ankle, Chelsea, combat, dress, and weather boots."],

@@ -107,7 +107,7 @@ const hiddenAiFields: FieldConfig[] = [
 ];
 
 const allFields = [...reviewFields, ...detectedDetailFields, ...hiddenAiFields];
-const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
+const categoryOptions: WardrobeCategory[] = ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"];
 const taggedSizeOptions: TaggedSize[] = ["unknown", "XS", "S", "M", "L", "XL", "XXL", "custom"];
 const sizeSystemOptions: SizeSystem[] = ["unknown", "international", "US", "UK", "EU", "custom"];
 const garmentFitOptions: GarmentFit[] = ["unknown", "slim", "regular", "relaxed", "oversized", "tailored", "flowing"];

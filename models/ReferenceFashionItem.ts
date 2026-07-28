@@ -27,7 +27,7 @@ const ReferenceFashionItemSchema = new Schema(
     },
     category: {
       type: String,
-      enum: ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories", ""],
+      enum: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair", ""],
       default: "",
       index: true
     },

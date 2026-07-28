@@ -133,7 +133,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         styles: referenceItem.styles || []
       },
       virtualTryOnMetadata: {
-        eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(referenceItem.category || ""),
+        eligibleHint: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes"].includes(referenceItem.category || ""),
         primaryImagePurpose: "front"
       },
       searchMetadata: {

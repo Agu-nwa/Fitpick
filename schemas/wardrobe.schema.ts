@@ -12,10 +12,12 @@ export const wardrobeCategorySchema = z.enum([
   "tops",
   "bottoms",
   "dresses",
+  "native",
   "outerwear",
   "shoes",
   "bags",
-  "accessories"
+  "accessories",
+  "womens_hair"
 ]);
 
 export const wardrobeConditionSchema = z.enum(["ready", "needs-care", "missing-tags"]);
@@ -163,7 +165,7 @@ export const wardrobeFiltersSchema = z.object({
 const allowedMimeTypes = NORMALIZED_STORAGE_IMAGE_MIME_TYPES;
 
 const imagePurposeSchema = z.enum(["front", "back", "fabricCloseUp", "label", "additional"]);
-const intakeGroupSchema = z.enum(["clothing", "shoes", "bags", "accessories"]);
+const intakeGroupSchema = z.enum(["clothing", "shoes", "bags", "accessories", "hair"]);
 const labelPhotoKindSchema = z.enum(["care_label", "brand_label", "size_tag", "serial_label", "barcode", "price_tag", "hang_tag"]);
 
 const safeMetadataSchema = z.record(

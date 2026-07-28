@@ -652,7 +652,7 @@ export function WardrobeAddClient() {
           material: ""
         },
         virtualTryOnMetadata: {
-          eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
+          eligibleHint: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
           primaryImagePurpose: "front",
           fit: normalizedEssentials.fit,
           size: normalizedEssentials.taggedSize

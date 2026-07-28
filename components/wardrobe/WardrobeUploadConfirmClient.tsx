@@ -49,7 +49,7 @@ function cleanItemPayload(values: AITagConfirmationValues) {
   };
 }
 
-const wardrobeCategories: WardrobeCategory[] = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"];
+const wardrobeCategories: WardrobeCategory[] = ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"];
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";

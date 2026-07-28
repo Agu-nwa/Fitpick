@@ -3,10 +3,12 @@ export type WardrobeCategory =
   | "tops"
   | "bottoms"
   | "dresses"
+  | "native"
   | "outerwear"
   | "shoes"
   | "bags"
-  | "accessories";
+  | "accessories"
+  | "womens_hair";
 
 import type { WardrobeImageAsset } from "@/types/ai-tagging";
 

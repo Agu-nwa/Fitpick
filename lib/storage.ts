@@ -107,13 +107,14 @@ export function assertStorageConfigured() {
 
 export function createStorageKey(input: { userId: string; filename: string; purpose?: string }) {
   const extension = input.filename.includes(".") ? input.filename.split(".").pop()?.toLowerCase() : "";
+  const domain = "wardrobe";
   const safeFilename = input.filename
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/-+/g, "-")
     .slice(0, 80);
 
-  return normalizeStorageKey(`wardrobe/${input.userId}/${input.purpose || "original"}-${Date.now()}-${crypto.randomUUID()}-${safeFilename || `upload.${extension || "jpg"}`}`);
+  return normalizeStorageKey(`${domain}/${input.userId}/${input.purpose || "original"}-${Date.now()}-${crypto.randomUUID()}-${safeFilename || `upload.${extension || "jpg"}`}`);
 }
 
 export function storageKeyBelongsToUser(input: { userId: string; storageKey?: string; prefix?: "wardrobe" | "generated-previews" | "avatar-previews" }) {

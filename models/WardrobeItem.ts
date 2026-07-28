@@ -66,7 +66,7 @@ const WardrobeItemSchema = new Schema(
     },
     category: {
       type: String,
-      enum: ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"],
+      enum: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"],
       required: true
     },
     subcategory: { type: String, default: "" },

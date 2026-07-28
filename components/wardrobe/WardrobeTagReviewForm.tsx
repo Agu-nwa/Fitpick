@@ -31,10 +31,12 @@ const categoryOptions: Array<{ value: WardrobeCategory; label: string }> = [
   { value: "tops", label: "Tops" },
   { value: "bottoms", label: "Bottoms" },
   { value: "dresses", label: "Dresses" },
+  { value: "native", label: "Native" },
   { value: "outerwear", label: "Outerwear" },
   { value: "shoes", label: "Shoes" },
   { value: "bags", label: "Bags" },
-  { value: "accessories", label: "Accessories" }
+  { value: "accessories", label: "Accessories" },
+  { value: "womens_hair", label: "Women's Hair" }
 ];
 
 const conditionOptions: Array<{ value: WardrobeCondition; label: string }> = [

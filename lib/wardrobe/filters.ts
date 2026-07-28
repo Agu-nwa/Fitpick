@@ -1,6 +1,6 @@
 import type { WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
-export type WardrobeCategoryFilter = "all" | "tops" | "bottoms" | "shoes" | "outerwear" | "accessories";
+export type WardrobeCategoryFilter = "all" | WardrobeCategory;
 export type WardrobeWornFilter = "" | "today" | "7d" | "30d" | "never";
 
 export type WardrobeFilterState = {
@@ -37,9 +37,13 @@ export const wardrobeCategoryFilters: Array<{ id: WardrobeCategoryFilter; label:
   { id: "all", label: "All" },
   { id: "tops", label: "Tops" },
   { id: "bottoms", label: "Bottoms" },
-  { id: "shoes", label: "Shoes" },
+  { id: "dresses", label: "Dresses" },
+  { id: "native", label: "Native" },
   { id: "outerwear", label: "Outerwear" },
-  { id: "accessories", label: "Accessories" }
+  { id: "shoes", label: "Shoes" },
+  { id: "bags", label: "Bags" },
+  { id: "accessories", label: "Accessories" },
+  { id: "womens_hair", label: "Women's Hair" }
 ];
 
 export const wardrobeWornFilters: Array<{ id: Exclude<WardrobeWornFilter, "">; label: string }> = [
@@ -123,7 +127,6 @@ function daysAgo(date: Date, now: Date) {
 
 function matchesCategory(category: WardrobeCategory, filter: WardrobeCategoryFilter) {
   if (filter === "all") return true;
-  if (filter === "accessories") return category === "accessories" || category === "bags";
   return category === filter;
 }
 

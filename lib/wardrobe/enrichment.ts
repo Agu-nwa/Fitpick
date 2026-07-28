@@ -68,7 +68,7 @@ export function buildVirtualTryOnMetadata(item: any) {
   const category = cleanToken(item.category);
   return {
     version: "virtual-tryon-metadata-v1",
-    eligible: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(category),
+    eligible: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes"].includes(category),
     preferredImagePurpose: item.images?.front?.url ? "front" : "original",
     hasLabelOnlyImage: Boolean(item.images?.label?.url) && !item.images?.front?.url,
     needsGarmentCutout: Boolean(item.images?.front?.url),

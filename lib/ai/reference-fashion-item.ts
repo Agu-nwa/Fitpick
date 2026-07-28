@@ -14,7 +14,7 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import type { WardrobeCategory } from "@/types/wardrobe";
 
-const wardrobeCategories = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories"] as const;
+const wardrobeCategories = ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"] as const;
 const referenceStatuses = ["uploaded", "analyzing", "needs-selection", "needs_clarification", "ready", "failed", "expired", "converted_to_wardrobe"] as const;
 const publicSourceSchema = z.enum(["camera", "upload"]);
 
@@ -374,7 +374,7 @@ Rules:
 - If one clear anchor item is visible, set requiresSelection false and fill the item attributes.
 - Never invent brand, size, price, or label text.
 - Use "unknown" or null when uncertain.
-- Map category to one of: tops, bottoms, dresses, outerwear, shoes, bags, accessories, unknown.
+- Map category to one of: tops, bottoms, dresses, native, outerwear, shoes, bags, accessories, womens_hair, unknown.
 - Evaluate image quality for matching and virtual try-on.
 - Public user messaging will be generated elsewhere, so do not include technical provider details.
 
