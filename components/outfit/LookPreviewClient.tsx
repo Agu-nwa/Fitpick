@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
+import { ImagePreviewDialog, type ImagePreviewDialogImage } from "@/components/ui/ImagePreviewDialog";
 import { Toast } from "@/components/ui/Toast";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
@@ -67,6 +68,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const [viewingImage, setViewingImage] = useState<ImagePreviewDialogImage | null>(null);
   const previewStageRef = useRef<HTMLElement>(null);
   const revealContent = useRevealContent();
 
@@ -256,7 +258,23 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
               {outfit.items.map((item) => (
                 <article key={item.id} className="rounded-2xl border border-line bg-canvas/60 p-2">
-                  <ImageFrame src={itemImage(item)} alt={item.name} aspect="square" placeholder={item.category} className="mb-2" />
+                  <button
+                    type="button"
+                    className="focus-ring block w-full rounded-2xl text-left"
+                    onClick={() => {
+                      const src = itemImage(item);
+                      if (!src) return;
+                      setViewingImage({
+                        src,
+                        alt: item.name,
+                        title: item.name,
+                        subtitle: [item.color, item.category].filter(Boolean).join(" · ")
+                      });
+                    }}
+                    aria-label={`View ${item.name}`}
+                  >
+                    <ImageFrame src={itemImage(item)} alt={item.name} aspect="square" placeholder={item.category} className="mb-2" />
+                  </button>
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
                   <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
                 </article>
@@ -301,11 +319,12 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             ) : null}
 
             {!hasPreviewStarted && !previewProcessing && !previewFailed ? (
-              <Button onClick={() => void handleGenerate(false)}>Generate Virtual Try-On</Button>
+              <Button onClick={() => void handleGenerate(false)}>Virtual Try-On</Button>
             ) : null}
           </Card>
         </aside>
       </div>
+      <ImagePreviewDialog image={viewingImage} onClose={() => setViewingImage(null)} />
       <Toast show={Boolean(toast)} message={toast} />
     </div>
   );

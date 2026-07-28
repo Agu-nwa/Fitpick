@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
+import { ImagePreviewDialog, type ImagePreviewDialogImage } from "@/components/ui/ImagePreviewDialog";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import {
@@ -412,6 +413,8 @@ function RecommendationDetailsDrawer({
   open: boolean;
   onClose: () => void;
 }) {
+  const [viewingImage, setViewingImage] = useState<ImagePreviewDialogImage | null>(null);
+
   if (!open) return null;
   const notes = [outfit.summary, outfit.occasionFit, outfit.colorNote, assistantNote].filter(Boolean);
 
@@ -454,12 +457,28 @@ function RecommendationDetailsDrawer({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {outfit.items.slice(0, 8).map((item) => (
                   <div key={item.id} className="overflow-hidden rounded-2xl border border-line bg-canvas/70">
-                    <ImageFrame
-                      src={item.thumbnailUrl || item.imageUrl}
-                      alt={item.name}
-                      placeholder={item.category}
-                      className="h-28 rounded-none border-0"
-                    />
+                    <button
+                      type="button"
+                      className="focus-ring block w-full text-left"
+                      onClick={() => {
+                        const src = item.thumbnailUrl || item.imageUrl;
+                        if (!src) return;
+                        setViewingImage({
+                          src,
+                          alt: item.name,
+                          title: item.name,
+                          subtitle: [item.color, item.category].filter(Boolean).join(" · ")
+                        });
+                      }}
+                      aria-label={`View ${item.name}`}
+                    >
+                      <ImageFrame
+                        src={item.thumbnailUrl || item.imageUrl}
+                        alt={item.name}
+                        placeholder={item.category}
+                        className="h-28 rounded-none border-0"
+                      />
+                    </button>
                     <div className="px-3 py-2">
                       <p className="truncate text-xs font-semibold text-ink">{item.name}</p>
                       <p className="truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" • ")}</p>
@@ -487,6 +506,7 @@ function RecommendationDetailsDrawer({
           </div>
         </div>
       </section>
+      <ImagePreviewDialog image={viewingImage} onClose={() => setViewingImage(null)} />
     </div>
   );
 }

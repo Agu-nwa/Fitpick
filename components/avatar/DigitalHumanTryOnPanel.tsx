@@ -157,7 +157,7 @@ export function DigitalHumanTryOnPanel({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button type="button" onClick={onGenerateFitLocked} disabled={isGenerating || previewStatus === "generating"}>
-            {isGenerating ? "MyFitPick is preparing your look" : previewUrl ? "Try another look" : "Generate Virtual Try-On"}
+            {isGenerating ? "MyFitPick is preparing your look" : previewUrl ? "Try another look" : "Virtual Try-On"}
           </Button>
           {previewUrl && previewStatus === "ready" ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
           <Link href={`/outfit/${outfit.id}/preview`}>
