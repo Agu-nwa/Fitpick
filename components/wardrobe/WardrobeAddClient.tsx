@@ -7,17 +7,11 @@ import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import {
   AlertCircle,
-  ArrowDown,
-  ArrowUp,
   Camera,
   CheckCircle2,
   ChevronRight,
   ImagePlus,
-  Images,
-  PencilLine,
   Sparkles,
-  Tag,
-  Trash2,
   UploadCloud
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -46,12 +40,11 @@ import {
   findIntakeCategory,
   intakeCategories,
   intakeGroups,
-  labelPhotoKinds,
   type IntakeGroupId,
-  type LabelPhotoKind,
   type WardrobeIntakeCategory
 } from "@/lib/wardrobe/category-intelligence";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
+import type { TaggedSize } from "@/types/wardrobe";
 
 type SlotFile = {
   id: string;
@@ -81,19 +74,20 @@ type FileTarget = {
 
 type UploadEssentials = {
   primaryColor: string;
+  taggedSize: TaggedSize;
   fit: string;
-  formality: string;
-  occasions: string[];
-  weather: string[];
 };
 
 const draftKey = "myfitpick:wardrobe-intake-draft:v1";
 
 const stylistPhotoGuide = [
-  { title: "Front", body: "A clear front photo works best." },
-  { title: "Back", body: "Add the back when shape or detail matters." },
-  { title: "Fabric close-up", body: "Show texture, pattern, or hardware." },
-  { title: "Label or care tag", body: "Add size, material, brand, or care details." }
+  { title: "Front", body: "Full front view." },
+  { title: "Back", body: "Full back view." }
+];
+
+const simplePhotoSlots: WardrobeImageSlotDefinition[] = [
+  { key: "front", label: "Front view", helper: "Show the complete front", required: true },
+  { key: "back", label: "Back view", helper: "Show the complete back" }
 ];
 
 function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
@@ -139,31 +133,29 @@ function selectClass(active = false) {
 }
 
 const colorOptions = ["Black", "White", "Blue", "Brown", "Grey", "Green", "Red", "Pink", "Cream", "Beige"];
-const fitOptions = ["Slim", "Regular", "Relaxed", "Oversized", "Tailored", "Flowing", "Not applicable"];
-const formalityOptions = ["Casual", "Smart casual", "Business casual", "Formal", "Evening"];
-const occasionOptions = ["Work", "Dinner", "Date night", "Wedding", "Church", "Weekend", "Travel", "Party"];
-const weatherOptions = ["Hot", "Warm", "Mild", "Cold", "Rainy"];
+const fitOptions = ["Slim", "Regular", "Relaxed", "Oversized", "Not sure"];
+const clothingSizeOptions: Array<{ value: TaggedSize; label: string }> = [
+  { value: "XS", label: "XS" },
+  { value: "S", label: "S" },
+  { value: "M", label: "M" },
+  { value: "L", label: "L" },
+  { value: "XL", label: "XL" },
+  { value: "XXL", label: "XXL" },
+  { value: "custom", label: "Custom" }
+];
+const oneSizeOptions: Array<{ value: TaggedSize; label: string }> = [];
 
 const emptyEssentials: UploadEssentials = {
   primaryColor: "",
-  fit: "",
-  formality: "",
-  occasions: [],
-  weather: []
+  taggedSize: "unknown",
+  fit: ""
 };
-
-function toggleStringValue(values: string[], value: string, max = 5) {
-  if (values.includes(value)) return values.filter((item) => item !== value);
-  return [...values, value].slice(0, max);
-}
 
 function normalizeEssentials(input: UploadEssentials) {
   return {
     primaryColor: input.primaryColor.trim(),
-    fit: input.fit.trim(),
-    formality: input.formality.trim(),
-    occasions: input.occasions.map((item) => item.trim()).filter(Boolean).slice(0, 8),
-    weather: input.weather.map((item) => item.trim()).filter(Boolean).slice(0, 8)
+    taggedSize: input.taggedSize,
+    fit: input.fit.trim()
   };
 }
 
@@ -176,7 +168,7 @@ function autoItemName(category: WardrobeIntakeCategory, essentials: ReturnType<t
 
 function garmentFitFromIntake(fit: string) {
   const normalized = fit.trim().toLowerCase().replace(/\s+/g, "_");
-  if (["slim", "regular", "relaxed", "oversized", "tailored", "flowing"].includes(normalized)) return normalized;
+  if (["slim", "regular", "relaxed", "oversized"].includes(normalized)) return normalized;
   return "unknown";
 }
 
@@ -199,27 +191,25 @@ function autoConfirmPayload(category: WardrobeIntakeCategory, essentials: Return
     pattern: "",
     fabric: "",
     fit: essentials.fit,
-    taggedSize: "unknown",
-    sizeSystem: "unknown",
+    taggedSize: essentials.taggedSize || "unknown",
+    sizeSystem: essentials.taggedSize === "unknown" ? "unknown" : "international",
     garmentFit,
     garmentMeasurements: {},
     stretchLevel: "unknown",
     fabricDrape: "unknown",
     fitConfidence: garmentFit === "unknown" ? 0 : 1,
     measurementSource: "user_confirmed",
-    formality: [essentials.formality].filter(Boolean),
-    occasions: essentials.occasions,
-    weather: essentials.weather,
+    formality: [],
+    occasions: [],
+    weather: [],
     condition: "ready",
     verifiedFields: {
       category: confirmedField(category.backendCategory),
       subcategory: confirmedField(category.subcategory || category.title),
       garmentType: confirmedField(category.title),
       primaryColor: confirmedField(essentials.primaryColor),
+      taggedSize: confirmedField(essentials.taggedSize || "unknown"),
       fit: confirmedField(essentials.fit),
-      formalityScore: confirmedField(essentials.formality),
-      occasionSuitability: confirmedField(essentials.occasions),
-      weatherSuitability: confirmedField(essentials.weather),
       condition: confirmedField("ready")
     }
   };
@@ -232,7 +222,6 @@ export function WardrobeAddClient() {
   const essentialsSectionRef = useRef<HTMLElement>(null);
   const uploadSectionRef = useRef<HTMLElement>(null);
   const selectedPhotosRef = useRef<HTMLDivElement>(null);
-  const labelSectionRef = useRef<HTMLElement>(null);
   const revealContent = useRevealContent();
   const [selectedGroupId, setSelectedGroupId] = useState<IntakeGroupId | null>("clothing");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -240,9 +229,6 @@ export function WardrobeAddClient() {
   const [essentials, setEssentials] = useState<UploadEssentials>(emptyEssentials);
   const [activeTarget, setActiveTarget] = useState<FileTarget>({ purpose: "front" });
   const [slotFiles, setSlotFiles] = useState<Partial<Record<WardrobeImagePurpose, SlotFile>>>({});
-  const [additionalFiles, setAdditionalFiles] = useState<SlotFile[]>([]);
-  const [labelEnabled, setLabelEnabled] = useState(true);
-  const [selectedLabelKinds, setSelectedLabelKinds] = useState<LabelPhotoKind[]>(["care_label", "brand_label", "size_tag"]);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [draftNotice, setDraftNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -250,26 +236,22 @@ export function WardrobeAddClient() {
   const [status, setStatus] = useState<"idle" | "unavailable" | "error">("idle");
   const [message, setMessage] = useState("");
   const [uploadStage, setUploadStage] = useState<ImageUploadStage>("selected");
+  const [uploadStep, setUploadStep] = useState<"details" | "photos">("details");
 
   const groupOptions = intakeGroups;
-  const selectedGroup = groupOptions.find((group) => group.id === selectedGroupId);
   const categoryOptions = selectedGroupCategories(selectedGroupId);
-  const activeSlots = useMemo(() => {
-    const slots = selectedCategory?.slots || [];
-    return labelEnabled ? slots : slots.filter((slot) => slot.key !== "label");
-  }, [labelEnabled, selectedCategory]);
+  const sizeOptions = selectedCategory?.backendCategory === "bags" || selectedCategory?.backendCategory === "accessories" ? oneSizeOptions : clothingSizeOptions;
+  const activeSlots = useMemo(() => selectedCategory ? simplePhotoSlots : [], [selectedCategory]);
   const requiredSlots = activeSlots.filter((slot) => slot.required);
   const slotImages = useMemo(() => localSlotAssets(slotFiles), [slotFiles]);
-  const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length + additionalFiles.length;
+  const selectedCount = activeSlots.filter((slot) => slotFiles[slot.key]).length;
   const missingRequired = requiredSlots.filter((slot) => !slotFiles[slot.key]);
   const normalizedEssentials = useMemo(() => normalizeEssentials(essentials), [essentials]);
   const essentialsComplete = Boolean(
     selectedCategory &&
     normalizedEssentials.primaryColor &&
-    normalizedEssentials.fit &&
-    normalizedEssentials.formality &&
-    normalizedEssentials.occasions.length &&
-    normalizedEssentials.weather.length
+    (selectedCategory.backendCategory === "bags" || selectedCategory.backendCategory === "accessories" || normalizedEssentials.taggedSize !== "unknown") &&
+    normalizedEssentials.fit
   );
   const isPreparingImage = ["validating", "preparing", "converting", "generating-preview"].includes(uploadStage) && !isSaving && !isAnalyzing;
   const canContinue = Boolean(selectedCategory && essentialsComplete && !missingRequired.length && !isSaving && !isAnalyzing && !isPreparingImage);
@@ -277,11 +259,9 @@ export function WardrobeAddClient() {
     try {
       const raw = window.localStorage.getItem(draftKey);
       if (!raw) return;
-      const draft = JSON.parse(raw) as { selectedGroupId?: IntakeGroupId; selectedCategoryId?: string; labelEnabled?: boolean; selectedLabelKinds?: LabelPhotoKind[]; essentials?: Partial<UploadEssentials> };
+      const draft = JSON.parse(raw) as { selectedGroupId?: IntakeGroupId; selectedCategoryId?: string; essentials?: Partial<UploadEssentials> };
       if (draft.selectedGroupId) setSelectedGroupId(draft.selectedGroupId);
       if (draft.selectedCategoryId) setSelectedCategoryId(draft.selectedCategoryId);
-      if (typeof draft.labelEnabled === "boolean") setLabelEnabled(draft.labelEnabled);
-      if (Array.isArray(draft.selectedLabelKinds) && draft.selectedLabelKinds.length) setSelectedLabelKinds(draft.selectedLabelKinds);
       if (draft.essentials) setEssentials({ ...emptyEssentials, ...draft.essentials });
       setDraftNotice("Draft recovered. Add photos to continue.");
     } catch {
@@ -293,12 +273,12 @@ export function WardrobeAddClient() {
     try {
       window.localStorage.setItem(
         draftKey,
-        JSON.stringify({ selectedGroupId, selectedCategoryId, labelEnabled, selectedLabelKinds, essentials })
+        JSON.stringify({ selectedGroupId, selectedCategoryId, essentials })
       );
     } catch {
       // Draft recovery is helpful, not required for upload safety.
     }
-  }, [essentials, labelEnabled, selectedCategoryId, selectedGroupId, selectedLabelKinds]);
+  }, [essentials, selectedCategoryId, selectedGroupId]);
 
   useEffect(() => {
     if (!selectedCategory) return;
@@ -314,6 +294,7 @@ export function WardrobeAddClient() {
     setSelectedGroupId(groupId);
     setSelectedCategoryId("");
     setEssentials(emptyEssentials);
+    setUploadStep("details");
     setMessage("");
     setStatus("idle");
   }
@@ -321,7 +302,8 @@ export function WardrobeAddClient() {
   function selectGroupById(groupId: string) {
     if (!groupId) {
       setSelectedGroupId(null);
-      setSelectedCategoryId("");
+    setSelectedCategoryId("");
+      setUploadStep("details");
       setMessage("");
       setStatus("idle");
       return;
@@ -335,8 +317,10 @@ export function WardrobeAddClient() {
     setActiveTarget({ purpose: "front" });
     setEssentials((current) => ({
       ...current,
-      fit: category.backendCategory === "bags" || category.backendCategory === "accessories" ? "Not applicable" : current.fit
+      taggedSize: category.backendCategory === "bags" || category.backendCategory === "accessories" ? "unknown" : current.taggedSize,
+      fit: category.backendCategory === "bags" || category.backendCategory === "accessories" ? "Not sure" : current.fit
     }));
+    setUploadStep("details");
     setMessage("");
     setStatus("idle");
   }
@@ -356,6 +340,7 @@ export function WardrobeAddClient() {
       revealContent(essentialsSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
       return;
     }
+    setUploadStep("photos");
     revealContent(uploadSectionRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
   }
 
@@ -412,25 +397,6 @@ export function WardrobeAddClient() {
     });
   }
 
-  async function handleAdditionalFiles(files: File[], source: ImageUploadSource) {
-    const nextFiles: SlotFile[] = [];
-    for (const file of files) {
-      const normalized = await normalizeSelectedFile(file, source);
-      nextFiles.push({
-        id: fileId(normalized.file),
-        file: normalized.file,
-        previewUrl: normalized.previewUrl,
-        width: normalized.width,
-        height: normalized.height,
-        original: normalized.original,
-        serverNormalizationRequired: normalized.serverNormalizationRequired,
-        source
-      });
-    }
-
-    setAdditionalFiles((current) => [...current, ...nextFiles].slice(0, 8));
-  }
-
   async function handleFiles(files: FileList | File[]) {
     const selected = Array.from(files);
     if (!selected.length) {
@@ -441,14 +407,7 @@ export function WardrobeAddClient() {
 
     try {
       const source = sourceForTarget(activeTarget);
-      if (activeTarget.multiple || activeTarget.purpose === "additional") {
-        const [first, ...rest] = selected;
-        if (first && !slotFiles.front) await handleSlotFile("front", first, source);
-        if (rest.length) await handleAdditionalFiles(rest, source);
-        if (first && slotFiles.front) await handleAdditionalFiles(selected, source);
-      } else {
-        await handleSlotFile(activeTarget.purpose, selected[0], source);
-      }
+      await handleSlotFile(activeTarget.purpose, selected[0], source);
 
       setMessage("Photo ready.");
       setUploadStage("completed");
@@ -464,7 +423,7 @@ export function WardrobeAddClient() {
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     if (!selectedCategory) return;
-    setActiveTarget({ purpose: "additional", multiple: true });
+    setActiveTarget({ purpose: "front" });
     void handleFiles(event.dataTransfer.files);
   }
 
@@ -475,50 +434,6 @@ export function WardrobeAddClient() {
       delete next[purpose];
       return next;
     });
-  }
-
-  function removeAdditional(id: string) {
-    setAdditionalFiles((current) => {
-      const match = current.find((file) => file.id === id);
-      if (match?.previewUrl) URL.revokeObjectURL(match.previewUrl);
-      return current.filter((file) => file.id !== id);
-    });
-  }
-
-  function moveAdditional(id: string, direction: -1 | 1) {
-    setAdditionalFiles((current) => {
-      const index = current.findIndex((file) => file.id === id);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
-      const [item] = next.splice(index, 1);
-      next.splice(nextIndex, 0, item);
-      return next;
-    });
-  }
-
-  function makePrimaryFromAdditional(id: string) {
-    const selected = additionalFiles.find((file) => file.id === id);
-    if (!selected) return;
-    const previousFront = slotFiles.front;
-    setSlotFiles((current) => ({ ...current, front: selected }));
-    setAdditionalFiles((current) => {
-      const rest = current.filter((file) => file.id !== id);
-      return previousFront ? [previousFront, ...rest].slice(0, 8) : rest;
-    });
-  }
-
-  function toggleLabelKind(kind: LabelPhotoKind) {
-    setSelectedLabelKinds((current) => {
-      if (current.includes(kind)) return current.filter((item) => item !== kind);
-      return [...current, kind].slice(0, 7);
-    });
-  }
-
-  function toggleLabelReading() {
-    const next = !labelEnabled;
-    setLabelEnabled(next);
-    revealContent(next ? uploadSectionRef : labelSectionRef, { delayMs: next ? 120 : 80, topOffset: 24, bottomOffset: 136 });
   }
 
   async function uploadSlot(purpose: WardrobeImagePurpose, slot: SlotFile): Promise<UploadedSlot> {
@@ -668,22 +583,21 @@ export function WardrobeAddClient() {
       const slotEntries = activeSlots
         .map((slot) => ({ purpose: slot.key, slot: slotFiles[slot.key] }))
         .filter((entry): entry is { purpose: WardrobeImagePurpose; slot: SlotFile } => Boolean(entry.slot));
-      const additionalEntries = additionalFiles.map((slot) => ({ purpose: "additional" as const, slot }));
-      const uploaded = await Promise.all([...slotEntries, ...additionalEntries].map((entry) => uploadSlot(entry.purpose, entry.slot)));
+      const uploaded = await Promise.all(slotEntries.map((entry) => uploadSlot(entry.purpose, entry.slot)));
       const standardUploads = uploaded.filter((asset) => asset.purpose !== "additional");
-      const additionalUploads = uploaded.filter((asset) => asset.purpose === "additional");
       const byPurpose = Object.fromEntries(standardUploads.map((asset) => [asset.purpose, asset])) as Partial<Record<WardrobeImagePurpose, UploadedSlot>>;
       const primary = byPurpose.front || uploaded[0];
 
       if (!primary) throw new Error("Add a main photo before continuing.");
 
-      const labelKinds = labelEnabled ? selectedLabelKinds : [];
+      const labelKinds: string[] = [];
       const essentialsMetadata = {
         primaryColor: normalizedEssentials.primaryColor,
         fit: normalizedEssentials.fit,
-        formality: normalizedEssentials.formality,
-        occasions: normalizedEssentials.occasions,
-        weather: normalizedEssentials.weather,
+        taggedSize: normalizedEssentials.taggedSize,
+        formality: "",
+        occasions: [],
+        weather: [],
         fabric: "",
         material: "",
         size: "",
@@ -716,7 +630,7 @@ export function WardrobeAddClient() {
           subcategory: selectedCategory.subcategory,
           ...essentialsMetadata,
           photoGuidance: selectedCategory.guidance,
-          labelIntelligenceRequested: labelEnabled,
+          labelIntelligenceRequested: false,
           labelPhotoKinds: labelKinds,
           primaryImagePurpose: "front",
           photoCount: uploaded.length
@@ -730,17 +644,18 @@ export function WardrobeAddClient() {
         recommendationMetadata: {
           outfitRoleHint: selectedCategory.backendCategory === "shoes" ? "footwear" : selectedCategory.backendCategory === "bags" || selectedCategory.backendCategory === "accessories" ? "finisher" : "garment",
           primaryColor: normalizedEssentials.primaryColor,
-          formality: normalizedEssentials.formality,
-          occasions: normalizedEssentials.occasions,
-          weather: normalizedEssentials.weather,
+          formality: "",
+          occasions: [],
+          weather: [],
           fit: normalizedEssentials.fit,
+          size: normalizedEssentials.taggedSize,
           material: ""
         },
         virtualTryOnMetadata: {
           eligibleHint: ["tops", "bottoms", "dresses", "outerwear", "shoes"].includes(selectedCategory.backendCategory),
           primaryImagePurpose: "front",
           fit: normalizedEssentials.fit,
-          size: ""
+          size: normalizedEssentials.taggedSize
         },
         searchMetadata: {
           seedTerms: [
@@ -749,9 +664,7 @@ export function WardrobeAddClient() {
             selectedCategory.backendCategory,
             normalizedEssentials.primaryColor,
             normalizedEssentials.fit,
-            normalizedEssentials.formality,
-            ...normalizedEssentials.occasions,
-            ...normalizedEssentials.weather,
+            normalizedEssentials.taggedSize,
             ...selectedCategory.visionFocus
           ].filter(Boolean)
         },
@@ -761,11 +674,12 @@ export function WardrobeAddClient() {
           color: normalizedEssentials.primaryColor,
           primaryColor: normalizedEssentials.primaryColor,
           fit: normalizedEssentials.fit,
-          formality: normalizedEssentials.formality,
-          occasions: normalizedEssentials.occasions,
-          weather: normalizedEssentials.weather,
+          formality: "",
+          occasions: [],
+          weather: [],
           fabric: "",
-          size: "",
+          size: normalizedEssentials.taggedSize,
+          taggedSize: normalizedEssentials.taggedSize,
           brand: "",
           condition: "ready",
           intakeCategoryId: selectedCategory.id,
@@ -774,9 +688,7 @@ export function WardrobeAddClient() {
         images: {
           ...(toImageAsset(byPurpose.front) ? { front: toImageAsset(byPurpose.front) } : {}),
           ...(toImageAsset(byPurpose.back) ? { back: toImageAsset(byPurpose.back) } : {}),
-          ...(toImageAsset(byPurpose.fabricCloseUp) ? { fabricCloseUp: toImageAsset(byPurpose.fabricCloseUp) } : {}),
-          ...(labelEnabled && toImageAsset(byPurpose.label) ? { label: toImageAsset(byPurpose.label) } : {}),
-          additional: additionalUploads.map((asset) => toImageAsset(asset)).filter(Boolean)
+          additional: []
         }
       });
 
@@ -833,114 +745,67 @@ export function WardrobeAddClient() {
         </p>
       ) : null}
 
-      <section className="mx-auto max-w-[540px]">
-        <Card className="border-cocoa/15 bg-surface/88 p-6 shadow-card sm:p-7">
-          <div>
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">New piece</p>
-            <h2 className="font-editorial text-4xl font-semibold leading-none text-ink">Add a piece</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">Upload clear photos so MyFitPick can understand how to style this item.</p>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="wardrobe-intake-group" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Category *</label>
-              <div className="relative mt-2">
-                <select
-                  id="wardrobe-intake-group"
-                  aria-label="Wardrobe category"
-                  className={selectClass(Boolean(selectedGroupId))}
-                  value={selectedGroupId || ""}
-                  onChange={(event) => selectGroupById(event.target.value)}
-                  disabled={isSaving || isAnalyzing}
-                >
-                  <option value="">Select category</option>
-                  {groupOptions.map((group) => (
-                    <option key={group.id} value={group.id}>{group.title}</option>
-                  ))}
-                </select>
-                <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+      {uploadStep === "details" ? (
+        <section ref={essentialsSectionRef} className="mx-auto max-w-[560px]">
+          <Card className="border-cocoa/15 bg-surface/90 p-6 shadow-card sm:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">1 of 2</p>
+                <h2 className="font-editorial text-4xl font-semibold leading-none text-ink">Tell your stylist what this is</h2>
+                <p className="mt-3 text-sm leading-6 text-muted">Five quick details are all we need.</p>
               </div>
+              <Badge tone={essentialsComplete ? "success" : "warning"}>{essentialsComplete ? "Ready" : "Required"}</Badge>
             </div>
 
-            <div className="transition duration-200 ease-out">
-              <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Type *</label>
-              <div className="relative mt-2">
-                <select
-                  id="wardrobe-intake-subtype"
-                  aria-label="Wardrobe subtype"
-                  aria-describedby="wardrobe-intake-help"
-                  className={selectClass(Boolean(selectedCategoryId))}
-                  value={selectedCategoryId}
-                  onChange={(event) => selectCategoryById(event.target.value)}
-                  disabled={!selectedGroupId || isSaving || isAnalyzing}
-                >
-                  <option value="">{selectedGroupId ? "Select type" : "Choose category first"}</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category.id} value={category.id}>{category.title}</option>
-                  ))}
-                </select>
-                <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
-              </div>
-            </div>
-          </div>
-
-          <div id="wardrobe-intake-help" className="sr-only">
-            {selectedCategory ? (
+            <div className="mt-7 space-y-4">
               <div>
-                <p className="text-sm font-semibold text-ink">{selectedGroup?.title} · {selectedCategory.title}</p>
-                <p className="mt-1 text-xs leading-5 text-muted">{selectedCategory.description}</p>
+                <label htmlFor="wardrobe-intake-group" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Category *</label>
+                <div className="relative mt-2">
+                  <select
+                    id="wardrobe-intake-group"
+                    aria-label="Wardrobe category"
+                    className={selectClass(Boolean(selectedGroupId))}
+                    value={selectedGroupId || ""}
+                    onChange={(event) => selectGroupById(event.target.value)}
+                    disabled={isSaving || isAnalyzing}
+                  >
+                    <option value="">Select category</option>
+                    {groupOptions.map((group) => (
+                      <option key={group.id} value={group.id}>{group.title}</option>
+                    ))}
+                  </select>
+                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                </div>
               </div>
-            ) : selectedGroup ? (
-              <p className="text-xs leading-5 text-muted">Now choose the type that best matches the item.</p>
-            ) : (
-              <p className="text-xs leading-5 text-muted">Choose the closest match, then add the five styling details MyFitPick needs.</p>
-            )}
-          </div>
 
-          <div className="mt-5 rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Stylist priority</p>
-            <p className="mt-1 text-xs leading-5 text-muted">
-              Shoes, bottoms, outerwear, and versatile basics make styling stronger as your closet grows.
-            </p>
-          </div>
-
-          <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-2 mt-6 flex justify-end rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-            <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!selectedCategory || isSaving || isAnalyzing}>
-              Continue to photos
-              <ChevronRight size={16} aria-hidden="true" />
-            </Button>
-          </div>
-        </Card>
-      </section>
-
-      {selectedCategory ? (
-        <section ref={essentialsSectionRef} className="mx-auto max-w-[720px]">
-          <Card className="space-y-5 border-olive/20 bg-surface/90 p-5 shadow-card sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
-                  <Sparkles size={14} aria-hidden="true" />
-                  Styling essentials
-                </p>
-                <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Tell MyFitPick the basics</h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-                  Five quick choices help your stylist understand the piece. Labels and AI can fill the rest.
-                </p>
+                <label htmlFor="wardrobe-intake-subtype" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Subtype *</label>
+                <div className="relative mt-2">
+                  <select
+                    id="wardrobe-intake-subtype"
+                    aria-label="Wardrobe subtype"
+                    className={selectClass(Boolean(selectedCategoryId))}
+                    value={selectedCategoryId}
+                    onChange={(event) => selectCategoryById(event.target.value)}
+                    disabled={!selectedGroupId || isSaving || isAnalyzing}
+                  >
+                    <option value="">{selectedGroupId ? "Select subtype" : "Choose category first"}</option>
+                    {categoryOptions.map((category) => (
+                      <option key={category.id} value={category.id}>{category.title}</option>
+                    ))}
+                  </select>
+                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                </div>
               </div>
-              <Badge tone={essentialsComplete ? "success" : "warning"}>
-                {essentialsComplete ? "Ready for photos" : "Needs details"}
-              </Badge>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="wardrobe-essential-color" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Main colour *</label>
+                <label htmlFor="wardrobe-essential-color" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Primary colour *</label>
                 <input
                   id="wardrobe-essential-color"
                   className="focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted"
                   value={essentials.primaryColor}
                   onChange={(event) => updateEssential("primaryColor", event.target.value)}
-                  placeholder="e.g. Navy, black, cream"
+                  placeholder="e.g. Black, navy, cream"
                   disabled={isSaving || isAnalyzing}
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -958,86 +823,46 @@ export function WardrobeAddClient() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="wardrobe-essential-fit" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Fit *</label>
-                <div className="relative mt-2">
-                  <select
-                    id="wardrobe-essential-fit"
-                    className={selectClass(Boolean(essentials.fit))}
-                    value={essentials.fit}
-                    onChange={(event) => updateEssential("fit", event.target.value)}
-                    disabled={isSaving || isAnalyzing}
-                  >
-                    <option value="">Select fit</option>
-                    {fitOptions.map((fit) => <option key={fit} value={fit}>{fit}</option>)}
-                  </select>
-                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="wardrobe-essential-formality" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Formality *</label>
-                <div className="relative mt-2">
-                  <select
-                    id="wardrobe-essential-formality"
-                    className={selectClass(Boolean(essentials.formality))}
-                    value={essentials.formality}
-                    onChange={(event) => updateEssential("formality", event.target.value)}
-                    disabled={isSaving || isAnalyzing}
-                  >
-                    <option value="">Select formality</option>
-                    {formalityOptions.map((formality) => <option key={formality} value={formality}>{formality}</option>)}
-                  </select>
-                  <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
-                </div>
-              </div>
-
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Where would you wear it? *</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {occasionOptions.map((occasion) => (
-                    <button
-                      key={occasion}
-                      type="button"
-                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${essentials.occasions.includes(occasion) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:border-cocoa/35 hover:text-ink"}`}
-                      onClick={() => updateEssential("occasions", toggleStringValue(essentials.occasions, occasion))}
-                      disabled={isSaving || isAnalyzing}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="wardrobe-essential-size" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Size *</label>
+                  <div className="relative mt-2">
+                    <select
+                      id="wardrobe-essential-size"
+                      className={selectClass(Boolean(essentials.taggedSize))}
+                      value={essentials.taggedSize}
+                      onChange={(event) => updateEssential("taggedSize", event.target.value as TaggedSize)}
+                      disabled={!selectedCategory || isSaving || isAnalyzing}
                     >
-                      {occasion}
-                    </button>
-                  ))}
+                      <option value="unknown">
+                        {selectedCategory?.backendCategory === "bags" || selectedCategory?.backendCategory === "accessories" ? "One size / not applicable" : selectedCategory ? "Select size" : "Choose subtype first"}
+                      </option>
+                      {sizeOptions.map((size) => <option key={size.value} value={size.value}>{size.label}</option>)}
+                    </select>
+                    <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Best weather *</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {weatherOptions.map((weather) => (
-                    <button
-                      key={weather}
-                      type="button"
-                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${essentials.weather.includes(weather) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:border-cocoa/35 hover:text-ink"}`}
-                      onClick={() => updateEssential("weather", toggleStringValue(essentials.weather, weather))}
-                      disabled={isSaving || isAnalyzing}
+                <div>
+                  <label htmlFor="wardrobe-essential-fit" className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Fit *</label>
+                  <div className="relative mt-2">
+                    <select
+                      id="wardrobe-essential-fit"
+                      className={selectClass(Boolean(essentials.fit))}
+                      value={essentials.fit}
+                      onChange={(event) => updateEssential("fit", event.target.value)}
+                      disabled={!selectedCategory || isSaving || isAnalyzing}
                     >
-                      {weather}
-                    </button>
-                  ))}
+                      <option value="">Select fit</option>
+                      {fitOptions.map((fit) => <option key={fit} value={fit}>{fit}</option>)}
+                    </select>
+                    <ChevronRight size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-cocoa" aria-hidden="true" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-olive/20 bg-olive/10 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Quick intake</p>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                If a label is available, add it with the photos. MyFitPick can read size, brand, material, and care details there.
-              </p>
-            </div>
-
-            <div className="flex justify-end">
+            <div className="mt-7 flex justify-end">
               <Button type="button" className="w-full rounded-full sm:w-auto" onClick={continueToPhotos} disabled={!essentialsComplete || isSaving || isAnalyzing}>
                 Continue to photos
                 <ChevronRight size={16} aria-hidden="true" />
@@ -1047,96 +872,71 @@ export function WardrobeAddClient() {
         </section>
       ) : null}
 
-      {selectedCategory && essentialsComplete ? (
-      <section ref={uploadSectionRef}>
-        <Card className="space-y-5 overflow-hidden p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
-                <ImagePlus size={14} aria-hidden="true" />
-                Photos
-              </p>
-              <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Add item photos</h2>
-              <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                Front photos work best. Add extra angles if you have them.
-              </p>
-            </div>
-            <Badge tone={selectedCategory && !missingRequired.length ? "success" : "warning"}>
-              {selectedCategory ? `${selectedCount} added` : "Pick category"}
-            </Badge>
-          </div>
-
-          {selectedCategory ? (
-            <div className="rounded-2xl border border-line bg-canvas/60 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Photo guide</p>
-              <p className="mt-2 text-xs leading-5 text-muted">
-                Add front, back, fabric close-up, and label photos when you have them.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {stylistPhotoGuide.map((guide) => (
-                  <div key={guide.title} className="rounded-2xl border border-line bg-white/70 p-3">
-                    <p className="text-xs font-bold text-ink">{guide.title}</p>
-                    <p className="mt-1 text-[11px] leading-4 text-muted">{guide.body}</p>
-                  </div>
-                ))}
+      {uploadStep === "photos" && selectedCategory ? (
+        <section ref={uploadSectionRef} className="mx-auto max-w-[680px]">
+          <Card className="space-y-5 overflow-hidden p-5 shadow-card sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
+                  <ImagePlus size={14} aria-hidden="true" />
+                  2 of 2
+                </p>
+                <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Add clear item photos</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">Use a full front and back view.</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedCategory.guidance.map((guide) => <Badge key={guide} tone="neutral">{guide}</Badge>)}
-              </div>
+              <Badge tone={!missingRequired.length ? "success" : "warning"}>{selectedCount} added</Badge>
             </div>
-          ) : null}
 
-          {selectedCategory ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {stylistPhotoGuide.map((guide) => (
+                <div key={guide.title} className="rounded-2xl border border-line bg-canvas/60 p-3">
+                  <p className="text-xs font-bold text-ink">{guide.title}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted">{guide.body}</p>
+                </div>
+              ))}
+            </div>
+
             <div
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleDrop}
-              className="rounded-[1.75rem] border border-dashed border-cocoa/30 bg-gradient-to-br from-cocoa/8 via-white/70 to-olive/10 p-4"
+              className="rounded-[1.5rem] border border-dashed border-cocoa/25 bg-canvas/60 p-4"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="inline-flex items-center gap-2 text-sm font-bold text-ink">
                     <UploadCloud size={17} className="text-cocoa" aria-hidden="true" />
-                    Camera, gallery, or drag and drop
+                    Add the front photo first
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-muted">You can upload photos you already have. MyFitPick will save the piece after the photos are uploaded.</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">You can take a new photo or choose one from your gallery.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button type="button" variant="secondary" className="rounded-full" onClick={() => openFilePicker({ purpose: "front", camera: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
                     <Camera size={15} aria-hidden="true" />
                     Camera
                   </Button>
-                  <Button type="button" className="rounded-full" onClick={() => openFilePicker({ purpose: "additional", multiple: true })} disabled={isSaving || isAnalyzing || isPreparingImage}>
-                    <Images size={15} aria-hidden="true" />
+                  <Button type="button" className="rounded-full" onClick={() => openFilePicker({ purpose: "front" })} disabled={isSaving || isAnalyzing || isPreparingImage}>
                     Gallery
                   </Button>
                 </div>
               </div>
             </div>
-          ) : null}
 
-          {selectedCategory ? (
             <WardrobeImageSlots images={slotImages} onSelect={(purpose) => openFilePicker({ purpose })} disabled={isSaving || isAnalyzing || isPreparingImage} slots={activeSlots as WardrobeImageSlotDefinition[]} />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-line bg-canvas/60 px-4 py-8 text-center text-sm font-semibold text-muted">
-              Choose a category to see the right photo slots.
-            </div>
-          )}
 
-          <input
-            ref={fileInputRef}
-            className="sr-only"
-            type="file"
-            accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
-            multiple={Boolean(activeTarget.multiple)}
-            capture={activeTarget.camera ? "environment" : undefined}
-            onChange={(event) => {
-              const selected = Array.from(event.target.files || []);
-              event.currentTarget.value = "";
-              if (selected.length) void handleFiles(selected);
-            }}
-          />
+            <input
+              ref={fileInputRef}
+              className="sr-only"
+              type="file"
+              accept={IMAGE_UPLOAD_POLICY.acceptAttribute}
+              multiple={false}
+              capture={activeTarget.camera ? "environment" : undefined}
+              onChange={(event) => {
+                const selected = Array.from(event.target.files || []);
+                event.currentTarget.value = "";
+                if (selected.length) void handleFiles(selected);
+              }}
+            />
 
-          {selectedCategory ? (
             <div ref={selectedPhotosRef} className="space-y-3">
               {activeSlots.map((slot) => {
                 const selected = slotFiles[slot.key];
@@ -1146,108 +946,42 @@ export function WardrobeAddClient() {
                   <div key={slot.key} className="rounded-2xl border border-line bg-canvas/60 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}{slot.key === "front" ? " · Primary" : ""}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">{slot.label}{slot.required ? " · Required" : " · Optional"}</p>
                         <p className="mt-1 break-words text-[11px] leading-4 text-muted">{selected.file.name}</p>
                       </div>
                       {progress ? <Badge tone={progress >= 100 ? "success" : "warning"}>{progress >= 100 ? "Uploaded" : `${progress}%`}</Badge> : null}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <Button type="button" variant="secondary" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => openFilePicker({ purpose: slot.key })} disabled={isSaving || isAnalyzing || isPreparingImage}>
-                        <PencilLine size={13} aria-hidden="true" />
                         Replace
                       </Button>
                       <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-2 py-2 text-[11px]" onClick={() => removeSlot(slot.key)} disabled={!selected || isSaving || isAnalyzing || isPreparingImage}>
-                        Clear
+                        Remove
                       </Button>
                     </div>
                   </div>
                 );
               })}
-
-              {additionalFiles.length ? (
-                <div className="rounded-2xl border border-line bg-canvas/60 p-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Extra photos</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {additionalFiles.map((file, index) => {
-                      const progress = uploadProgress[`additional:${file.id}`];
-                      return (
-                        <div key={file.id} className="flex items-center gap-3 rounded-2xl bg-white/70 p-2">
-                          <div className="size-16 shrink-0 rounded-xl bg-cover bg-center" style={{ backgroundImage: `url(${file.previewUrl})` }} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-bold text-ink">{file.file.name}</p>
-                            <p className="text-[11px] text-muted">Extra angle {index + 1}{progress ? ` · ${progress >= 100 ? "Uploaded" : `${progress}%`}` : ""}</p>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-cocoa" onClick={() => makePrimaryFromAdditional(file.id)} disabled={isSaving || isAnalyzing}>Make primary</button>
-                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-muted" onClick={() => moveAdditional(file.id, -1)} disabled={index === 0 || isSaving || isAnalyzing} aria-label="Move photo up"><ArrowUp size={12} /></button>
-                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-muted" onClick={() => moveAdditional(file.id, 1)} disabled={index === additionalFiles.length - 1 || isSaving || isAnalyzing} aria-label="Move photo down"><ArrowDown size={12} /></button>
-                              <button type="button" className="focus-ring rounded-full px-2 py-1 text-[11px] font-bold text-danger" onClick={() => removeAdditional(file.id)} disabled={isSaving || isAnalyzing} aria-label="Delete photo"><Trash2 size={12} /></button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
             </div>
-          ) : null}
-        </Card>
-      </section>
-      ) : null}
 
-      {selectedCategory && essentialsComplete ? (
-        <section ref={labelSectionRef}>
-          <Card className="space-y-4 border-cocoa/15 bg-gradient-to-br from-white via-canvas to-cocoa/8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa">
-                  <Tag size={14} aria-hidden="true" />
-                  Label or care tag
-                </p>
-                <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">Add label details</h2>
-                <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">
-                  Add the label when you have it. It can improve size, material, brand, and care details.
-                </p>
-              </div>
-              <Button type="button" variant={labelEnabled ? "primary" : "secondary"} className="rounded-full" onClick={toggleLabelReading} disabled={isSaving || isAnalyzing}>
-                {labelEnabled ? "Label slot added" : "Add label slot"}
+            <div className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 -mx-1 rounded-[1.5rem] border border-line bg-surface/95 p-2 shadow-glow backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+              <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
+                {isSaving || isAnalyzing || isPreparingImage ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+                {isPreparingImage ? "Preparing photo..." : isSaving || isAnalyzing ? "Adding to your wardrobe..." : message && /couldn’t|could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Upload item"}
               </Button>
+              {message ? (
+                <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
+                  <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+                  {message}
+                </p>
+              ) : null}
+              <button type="button" className="focus-ring mt-3 w-full rounded-full px-4 py-2 text-sm font-semibold text-cocoa" onClick={() => setUploadStep("details")} disabled={isSaving || isAnalyzing}>
+                Back to details
+              </button>
             </div>
-
-            {labelEnabled ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {labelPhotoKinds.map((kind) => (
-                    <button
-                      key={kind.id}
-                      type="button"
-                      title={kind.helper}
-                      onClick={() => toggleLabelKind(kind.id)}
-                      className={`focus-ring rounded-full border px-3 py-2 text-xs font-bold transition ${selectedLabelKinds.includes(kind.id) ? "border-cocoa bg-cocoa text-canvas" : "border-line bg-white text-muted hover:text-ink"}`}
-                    >
-                      {kind.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs leading-5 text-muted">Use the Label or care tag slot above for the clearest photo.</p>
-              </div>
-            ) : null}
           </Card>
         </section>
       ) : null}
-
-      <section className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 rounded-[1.75rem] border border-line bg-surface/90 p-3 shadow-glow backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
-        <Button type="button" className="w-full rounded-full" onClick={() => void handlePhotoUpload()} disabled={!canContinue}>
-          {isSaving || isAnalyzing || isPreparingImage ? <Sparkles size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-          {isPreparingImage ? "Preparing photo..." : isSaving ? "Saving piece..." : isAnalyzing ? "MyFitPick is reading your piece." : message && /couldn’t|could not|too large|try again|icloud/i.test(message) ? "Retry upload" : "Save piece"}
-        </Button>
-        {message ? (
-          <p className="mt-3 inline-flex items-start gap-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold leading-5 text-ink">
-            <AlertCircle size={14} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-            {message}
-          </p>
-        ) : null}
-      </section>
 
       <Link href="/wardrobe" className="block pb-3 text-center text-sm font-semibold text-cocoa">
         Back to closet
