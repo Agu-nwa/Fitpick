@@ -541,17 +541,17 @@ function EditorialRecommendationCard({
           {outfit.summary ? <p className="mt-3 max-w-xl truncate text-sm leading-6 text-muted">{outfit.summary}</p> : null}
         </div>
         <div className="grid gap-2 lg:min-w-80">
-          <Link href={`/outfit/${outfit.id}/preview`} className="block">
-            <Button type="button" className="w-full">
-              Virtual Try-On
-            </Button>
-          </Link>
           {showRegenerate && onRegenerate ? (
             <Button type="button" variant="secondary" onClick={() => onRegenerate()} disabled={loading}>
               <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" />
               {loading ? "Regenerating..." : "Regenerate Look"}
             </Button>
           ) : null}
+          <Link href={`/outfit/${outfit.id}/preview`} className="block">
+            <Button type="button" className="w-full">
+              Virtual Try-On
+            </Button>
+          </Link>
           {previewReady ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
           <Button type="button" variant="ghost" onClick={() => setDetailsOpen(true)}>
             View Details
