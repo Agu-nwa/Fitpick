@@ -14,6 +14,7 @@ import {
   analyzeReferenceFashionItem,
   clearReferenceFashionItem,
   createReferenceFashionItem,
+  getReferenceFashionRecommendations,
   getJobStatus,
   requestSignedUploadUrl,
   selectReferenceFashionItem,
@@ -192,11 +193,11 @@ function StylistProductCard({
 function MatchFlowVisual() {
   const steps = ["Photo", "Closet options", "Styled look"];
   return (
-    <div className="grid grid-cols-3 gap-2" aria-label="Match an Outfit flow">
+    <div className="grid min-w-0 grid-cols-3 gap-2" aria-label="Match an Outfit flow">
       {steps.map((step, index) => (
-        <div key={step} className="rounded-2xl border border-line bg-white/65 px-3 py-3 text-center">
+        <div key={step} className="min-w-0 rounded-2xl border border-line bg-white/65 px-2 py-3 text-center sm:px-3">
           <span className="mx-auto flex size-8 items-center justify-center rounded-full bg-olive/10 text-xs font-bold text-olive">{index + 1}</span>
-          <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{step}</p>
+          <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-muted sm:text-[11px] sm:tracking-[0.12em]">{step}</p>
         </div>
       ))}
     </div>
@@ -225,9 +226,9 @@ function DetectedPiecesPanel({
       : [];
 
   return (
-    <div className="rounded-2xl border border-line bg-canvas/65 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Pieces in your inspiration</p>
+    <div className="min-w-0 rounded-2xl border border-line bg-canvas/65 p-3">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-semibold text-ink">Pieces in your inspiration</p>
         <Badge tone={reference?.status === "ready" ? "success" : busy ? "premium" : "neutral"}>
           {busy ? "Studying" : reference?.status === "ready" ? "Ready" : "Reviewing"}
         </Badge>
@@ -237,7 +238,7 @@ function DetectedPiecesPanel({
       ) : (
         <div className="mt-3 grid gap-2">
           {pieces.slice(0, 5).map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface/80 px-3 py-2">
+            <div key={item.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line bg-surface/80 px-3 py-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">{item.label}</p>
                 <p className="truncate text-xs text-muted">{[item.primaryColor, item.subcategory || item.category].filter(Boolean).join(" • ") || "Fashion piece"}</p>
@@ -261,8 +262,8 @@ function ReferenceImageCard({
   busy?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-cocoa/15 bg-canvas/70 p-3">
-      <div className="flex gap-3">
+    <div className="min-w-0 rounded-2xl border border-cocoa/15 bg-canvas/70 p-3">
+      <div className="flex min-w-0 gap-3">
         <ImageFrame
           src={reference.imageUrl}
           alt={`${referenceLabel(reference)} reference`}
@@ -273,7 +274,7 @@ function ReferenceImageCard({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Inspiration photo</p>
           <p className="mt-1 truncate text-sm font-semibold text-ink">{referenceLabel(reference)}</p>
           <p className="mt-1 text-xs leading-5 text-muted">{referenceStatusCopy(reference)}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
             {reference.category ? <Badge tone="neutral">{reference.category}</Badge> : null}
             {reference.formality ? <Badge tone="neutral">{reference.formality}</Badge> : null}
             {reference.usableForTryOn ? <Badge tone="success">Ready</Badge> : null}
@@ -498,7 +499,8 @@ function EditorialRecommendationCard({
   assistantNote,
   reference,
   onRegenerate,
-  showRegenerate
+  showRegenerate,
+  showRefinementChips
 }: {
   outfit: OutfitRecommendation;
   index: number;
@@ -508,6 +510,7 @@ function EditorialRecommendationCard({
   reference?: ReferenceFashionItemSummary | null;
   onRegenerate?: (refinement?: string) => void;
   showRegenerate?: boolean;
+  showRefinementChips?: boolean;
 }) {
   const featured = index === 0;
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -568,7 +571,7 @@ function EditorialRecommendationCard({
           </div>
         </div>
       ) : null}
-      {showRegenerate && onRegenerate ? (
+      {showRegenerate && onRegenerate && showRefinementChips ? (
         <div className="border-t border-line/70 px-1 py-4 sm:px-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Refine the next look</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -622,7 +625,8 @@ function EditorialRecommendationStack({
           assistantNote={index === 0 ? assistantNote : undefined}
           reference={index === 0 ? reference : null}
           onRegenerate={onRegenerate}
-          showRegenerate={mode === "create" && index === 0}
+          showRegenerate={Boolean(onRegenerate) && index === 0}
+          showRefinementChips={mode === "create"}
         />
       ))}
     </div>
@@ -1043,6 +1047,41 @@ export function StylistChat({
     }
   }
 
+  async function handleRegenerateMatch(entry: ChatMessage, refinement?: string) {
+    if (loading || referenceBusy || isRegeneratingLooks) return;
+    const reference = entry.referenceItem || entry.outfit?.referenceItems?.[0] || activeReference;
+    if (!reference?.id) return;
+
+    const currentItems = (entry.referenceRecommendations?.[0]?.items || entry.outfit?.items || [])
+      .map((item) => item.name)
+      .filter(Boolean)
+      .join(", ");
+    const prompt = [
+      entry.content || "Style this photo with my closet.",
+      refinement ? `Refinement: ${refinement}.` : "",
+      currentItems ? `Create a fresh alternative and avoid repeating this exact combination: ${currentItems}.` : "Create a fresh alternative."
+    ].filter(Boolean).join("\n");
+
+    setIsRegeneratingLooks(true);
+    setError("");
+    try {
+      const result = await getReferenceFashionRecommendations(reference.id, { message: prompt });
+      if (!result.ok) {
+        setError(safeUserMessage(result.error, "We couldn’t refresh this match right now. Please try again."));
+        return;
+      }
+
+      patchMessage(entry.id, {
+        referenceItem: result.data.referenceItem || reference,
+        referenceRecommendations: result.data.recommendations || entry.referenceRecommendations || []
+      });
+      showToast("New match ready.");
+      revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
+    } finally {
+      setIsRegeneratingLooks(false);
+    }
+  }
+
   function renderLookStudio(entry: ChatMessage) {
     const outfit = entry.outfit;
     const reference = entry.referenceItem || outfit?.referenceItems?.[0] || null;
@@ -1067,7 +1106,7 @@ export function StylistChat({
           preview={preview}
           assistantNote={entry.content}
           reference={reference}
-          onRegenerate={!reference ? (refinement) => void handleRegenerateLooks(entry, refinement) : undefined}
+          onRegenerate={reference ? (refinement) => void handleRegenerateMatch(entry, refinement) : (refinement) => void handleRegenerateLooks(entry, refinement)}
         />
       </>
     );
@@ -1228,9 +1267,9 @@ export function StylistChat({
         ) : null}
 
         {currentFlow === "match" ? (
-          <Card className="space-y-4 overflow-hidden border-cocoa/25 bg-surface/88 p-5 sm:p-6">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-4">
+          <Card className="min-w-0 space-y-4 overflow-hidden border-cocoa/25 bg-surface/88 p-4 sm:p-6">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="min-w-0 space-y-4">
                 <div>
                   <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
                     <ImagePlus size={14} aria-hidden="true" />
@@ -1240,7 +1279,7 @@ export function StylistChat({
                   <p className="mt-2 text-sm leading-6 text-muted">Upload a product photo, screenshot, or outfit reference and build a look from your closet.</p>
                 </div>
                 <MatchFlowVisual />
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2">
                   <Button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy}>
                     <UploadCloud size={16} aria-hidden="true" />
                     Upload inspiration
@@ -1253,9 +1292,9 @@ export function StylistChat({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 {activeReference ? (
-                  <div className="space-y-3" aria-live="polite">
+                  <div className="min-w-0 space-y-3" aria-live="polite">
                     <ReferenceImageCard
                       reference={activeReference}
                       onClear={() => void clearActiveReference()}
@@ -1271,8 +1310,8 @@ export function StylistChat({
                     <DetectedPiecesPanel reference={activeReference} busy={referenceBusy} />
                   </div>
                 ) : referencePreviewUrl ? (
-                  <div className="rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
-                    <div className="flex items-center gap-3">
+                  <div className="min-w-0 rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
+                    <div className="flex min-w-0 items-center gap-3">
                       <ImageFrame
                         src={referencePreviewUrl}
                         alt="Selected fashion photo preview"
@@ -1307,7 +1346,7 @@ export function StylistChat({
                 ) : null}
 
                 <form
-                  className="space-y-3"
+                  className="min-w-0 space-y-3"
                   onSubmit={(event) => {
                     event.preventDefault();
                     void submitStylistMessage();
@@ -1322,8 +1361,8 @@ export function StylistChat({
                     placeholder="Ask your stylist..."
                     className="focus-ring min-h-20 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
+                  <div className="grid min-w-0 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                    <label className="inline-flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted sm:tracking-[0.14em]">
                       <input
                         type="checkbox"
                         checked={includeVisualization}
@@ -1332,7 +1371,7 @@ export function StylistChat({
                       />
                       Virtual Try-On
                     </label>
-                    <Button type="submit" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
+                    <Button type="submit" className="w-full sm:w-auto" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
                       <Sparkles size={16} aria-hidden="true" />
                       {loading ? "MyFitPick is finding closet matches." : "Match an Outfit"}
                     </Button>

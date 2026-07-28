@@ -84,7 +84,10 @@ function categoryCandidates(items: any[], category: string, max = 8) {
 }
 
 function optionalCandidates(items: any[], category: string, max = 3) {
-  return [null, ...categoryCandidates(items, category, max)];
+  const candidates = categoryCandidates(items, category, max);
+  const isFinisher = category === "bags" || category === "accessories";
+  if (isFinisher && candidates.length) return candidates;
+  return [null, ...candidates];
 }
 
 function referenceSimilarityScore(anchor: any, candidate: any, occasionName = "", weatherContext = "") {

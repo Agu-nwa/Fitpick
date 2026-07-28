@@ -23,17 +23,17 @@ export function inferOccasionGroup(input: { name?: string; group?: string; weath
 export function structureFor(group: OccasionGroup) {
   switch (group) {
     case "work":
-      return ["tops", "bottoms", "shoes", "outerwear", "accessories"];
+      return ["tops", "bottoms", "shoes", "outerwear", "bags", "accessories"];
     case "formal":
-      return ["dresses", "tops", "bottoms", "shoes", "outerwear", "accessories"];
+      return ["dresses", "tops", "bottoms", "shoes", "outerwear", "bags", "accessories"];
     case "event":
-      return ["dresses", "tops", "bottoms", "shoes", "outerwear", "accessories"];
+      return ["dresses", "tops", "bottoms", "shoes", "outerwear", "bags", "accessories"];
     case "weather":
-      return ["tops", "bottoms", "shoes", "outerwear"];
+      return ["tops", "bottoms", "shoes", "outerwear", "bags", "accessories"];
     case "travel":
-      return ["tops", "bottoms", "shoes", "bags", "outerwear"];
+      return ["tops", "bottoms", "shoes", "bags", "outerwear", "accessories"];
     default:
-      return ["tops", "bottoms", "shoes", "accessories"];
+      return ["tops", "bottoms", "shoes", "bags", "accessories"];
   }
 }
 

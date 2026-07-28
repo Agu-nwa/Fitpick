@@ -18,8 +18,10 @@ function sortedByFreshness(items: any[]) {
   });
 }
 
-function optionalCandidates(items: any[], max = 4) {
-  return [null, ...items.slice(0, max)];
+function optionalCandidates(items: any[], max = 4, requiredWhenAvailable = false) {
+  const candidates = items.slice(0, max);
+  if (requiredWhenAvailable && candidates.length) return candidates;
+  return [null, ...candidates];
 }
 
 export function generateCombinations(
@@ -66,8 +68,8 @@ export function generateCombinations(
   for (const dress of byCategory("dresses")) {
     for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
       for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-        for (const accessory of optionalCandidates(byCategory("accessories"), 3)) {
-          for (const bag of optionalCandidates(byCategory("bags"), 3)) {
+        for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
+          for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
             pushOutfit([dress, shoe, outerwear, accessory, bag]);
           }
         }
@@ -79,8 +81,8 @@ export function generateCombinations(
     for (const bottom of byCategory("bottoms").length ? byCategory("bottoms") : [null]) {
       for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
         for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-          for (const accessory of optionalCandidates(byCategory("accessories"), 3)) {
-            for (const bag of optionalCandidates(byCategory("bags"), 3)) {
+          for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
+            for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
               pushOutfit([top, bottom, shoe, outerwear, accessory, bag]);
             }
           }
