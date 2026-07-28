@@ -10,6 +10,7 @@ export type WardrobeFilterState = {
   weather: string;
   worn: WardrobeWornFilter;
   needsCare: boolean;
+  review: boolean;
 };
 
 export type WardrobeFacetOption = {
@@ -59,7 +60,8 @@ const defaultFilters: WardrobeFilterState = {
   occasion: "",
   weather: "",
   worn: "",
-  needsCare: false
+  needsCare: false,
+  review: false
 };
 
 const categoryIds = new Set(wardrobeCategoryFilters.map((filter) => filter.id));
@@ -162,6 +164,7 @@ export function filtersFromSearchParams(params: SearchParamsLike): WardrobeFilte
   const category = normalizeWardrobeFacet(params.get("category")) as WardrobeCategoryFilter;
   const worn = normalizeWardrobeFacet(params.get("worn"));
   const care = normalizeWardrobeFacet(params.get("care"));
+  const review = normalizeWardrobeFacet(params.get("review"));
 
   return {
     category: categoryIds.has(category) ? category : "all",
@@ -169,7 +172,8 @@ export function filtersFromSearchParams(params: SearchParamsLike): WardrobeFilte
     occasion: normalizeWardrobeFacet(params.get("occasion")),
     weather: normalizeWardrobeFacet(params.get("weather")),
     worn: wornIds.has(worn as Exclude<WardrobeWornFilter, "">) ? worn as WardrobeWornFilter : "",
-    needsCare: care === "needs-care" || care === "true" || care === "1"
+    needsCare: care === "needs-care" || care === "true" || care === "1",
+    review: review === "true" || review === "1" || review === "review"
   };
 }
 
@@ -192,6 +196,9 @@ export function writeFiltersToSearchParams(params: URLSearchParams, filters: War
   if (filters.needsCare) params.set("care", "needs-care");
   else params.delete("care");
 
+  if (filters.review) params.set("review", "true");
+  else params.delete("review");
+
   return params;
 }
 
@@ -202,7 +209,8 @@ export function hasActiveWardrobeFilters(filters: WardrobeFilterState) {
     Boolean(filters.occasion) ||
     Boolean(filters.weather) ||
     Boolean(filters.worn) ||
-    filters.needsCare
+    filters.needsCare ||
+    filters.review
   );
 }
 
@@ -260,6 +268,7 @@ export function filterWardrobeIndex(indexedItems: IndexedWardrobeItem[], filters
     (!filters.occasion || indexed.occasions.includes(filters.occasion)) &&
     (!filters.weather || indexed.weather.includes(filters.weather)) &&
     (!filters.needsCare || indexed.needsCare) &&
+    (!filters.review || indexed.item.condition === "missing-tags" || indexed.item.condition === "needs-care") &&
     matchesWornFilter(indexed, filters.worn, now)
   ));
 }

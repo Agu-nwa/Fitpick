@@ -70,26 +70,37 @@ const wardrobe: WardrobeItem[] = [
     occasions: ["work"],
     weather: ["all season"],
     timesWorn: 0
+  }),
+  item({
+    id: "review-1",
+    name: "Blue skirt",
+    category: "bottoms",
+    color: "Blue",
+    condition: "missing-tags",
+    timesWorn: 0
   })
 ];
 
 const index = buildWardrobeFilterIndex(wardrobe);
 const facets = buildWardrobeFacetOptions(index);
+const baseFilters = { category: "all" as const, color: "", occasion: "", weather: "", worn: "" as const, needsCare: false, review: false };
 
-assert(facets.colors.map((option) => option.label).join(",") === "Black,Camel,White", "color facets should be alphabetical");
-assert(filterWardrobeIndex(index, { category: "shoes", color: "", occasion: "", weather: "", worn: "", needsCare: false }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "Shoes category should filter immediately");
-assert(filterWardrobeIndex(index, { category: "accessories", color: "", occasion: "", weather: "", worn: "", needsCare: false }, now).map((entry) => entry.item.id).join(",") === "bag-1", "Accessories should include bags");
-assert(filterWardrobeIndex(index, { category: "shoes", color: "black", occasion: "", weather: "winter", worn: "", needsCare: false }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "combined category, color, and weather filters should work");
-assert(filterWardrobeIndex(index, { category: "all", color: "", occasion: "", weather: "", worn: "today", needsCare: false }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "recently worn today should work");
-assert(filterWardrobeIndex(index, { category: "all", color: "", occasion: "", weather: "", worn: "7d", needsCare: false }, now).length === 2, "last 7 days worn filter should work");
-assert(filterWardrobeIndex(index, { category: "all", color: "", occasion: "", weather: "", worn: "never", needsCare: false }, now).map((entry) => entry.item.id).join(",") === "coat-1,bag-1", "never worn filter should work");
-assert(filterWardrobeIndex(index, { category: "all", color: "", occasion: "", weather: "", worn: "", needsCare: true }, now).map((entry) => entry.item.id).join(",") === "coat-1", "needs care filter should work");
+assert(facets.colors.map((option) => option.label).join(",") === "Black,Blue,Camel,White", "color facets should be alphabetical");
+assert(filterWardrobeIndex(index, { ...baseFilters, category: "shoes" }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "Shoes category should filter immediately");
+assert(filterWardrobeIndex(index, { ...baseFilters, category: "bags" }, now).map((entry) => entry.item.id).join(",") === "bag-1", "Bags category should filter independently");
+assert(filterWardrobeIndex(index, { ...baseFilters, category: "accessories" }, now).length === 0, "Accessories should not include bags");
+assert(filterWardrobeIndex(index, { ...baseFilters, category: "shoes", color: "black", weather: "winter" }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "combined category, color, and weather filters should work");
+assert(filterWardrobeIndex(index, { ...baseFilters, worn: "today" }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "recently worn today should work");
+assert(filterWardrobeIndex(index, { ...baseFilters, worn: "7d" }, now).length === 2, "last 7 days worn filter should work");
+assert(filterWardrobeIndex(index, { ...baseFilters, worn: "never" }, now).map((entry) => entry.item.id).join(",") === "coat-1,bag-1,review-1", "never worn filter should work");
+assert(filterWardrobeIndex(index, { ...baseFilters, needsCare: true }, now).map((entry) => entry.item.id).join(",") === "coat-1", "needs care filter should work");
+assert(filterWardrobeIndex(index, { ...baseFilters, review: true }, now).map((entry) => entry.item.id).join(",") === "coat-1,review-1", "review filter should include needs-care and missing-tags items");
 
-const parsed = filtersFromSearchParams(new URLSearchParams("category=tops&color=black&worn=never&care=needs-care"));
-assert(parsed.category === "tops" && parsed.color === "black" && parsed.worn === "never" && parsed.needsCare, "URL params should restore filters");
+const parsed = filtersFromSearchParams(new URLSearchParams("category=tops&color=black&worn=never&care=needs-care&review=true"));
+assert(parsed.category === "tops" && parsed.color === "black" && parsed.worn === "never" && parsed.needsCare && parsed.review, "URL params should restore filters");
 assert(hasActiveWardrobeFilters(parsed), "active filter detection should work");
 const query = writeFiltersToSearchParams(new URLSearchParams(), parsed).toString();
-assert(query.includes("category=tops") && query.includes("color=black") && query.includes("care=needs-care"), "filters should serialize back to URL params");
+assert(query.includes("category=tops") && query.includes("color=black") && query.includes("care=needs-care") && query.includes("review=true"), "filters should serialize back to URL params");
 
 const page = read("app/wardrobe/page.tsx");
 const client = read("components/wardrobe/WardrobeListClient.tsx");

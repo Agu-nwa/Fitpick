@@ -182,7 +182,7 @@ export function outfitRoleBalanceScore(items: any[], desiredCategories: string[]
   const hasTopBottom = categories.has("tops") && categories.has("bottoms");
   const hasShoes = categories.has("shoes");
   const hasOuterwear = categories.has("outerwear");
-  const hasAccessoryOrBag = categories.has("accessories") || categories.has("bags");
+  const hasAccessoryOrBag = categories.has("accessories") || categories.has("bags") || categories.has("womens_hair");
 
   let score = 0;
   if (hasDress || hasTopBottom) score += 12;
@@ -191,7 +191,7 @@ export function outfitRoleBalanceScore(items: any[], desiredCategories: string[]
   else if (desiredCategories.includes("shoes")) score -= 16;
   if (hasOuterwear && desiredCategories.includes("outerwear")) score += 4;
   if (hasAccessoryOrBag) score += 3;
-  if (items.filter((item) => item.category === "accessories" || item.category === "bags").length > 2) score -= 4;
+  if (items.filter((item) => item.category === "accessories" || item.category === "bags" || item.category === "womens_hair").length > 4) score -= 4;
   return score;
 }
 

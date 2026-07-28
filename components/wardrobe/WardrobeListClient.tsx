@@ -247,7 +247,8 @@ function ActiveFilterChips({
     filters.occasion ? { key: "occasion", label: `Occasion: ${labelForOption(filters.occasion, occasions)}`, clear: () => updateFilters({ occasion: "" }) } : null,
     filters.weather ? { key: "weather", label: `Weather: ${labelForOption(filters.weather, weather)}`, clear: () => updateFilters({ weather: "" }) } : null,
     filters.worn ? { key: "worn", label: wornLabel(filters.worn), clear: () => updateFilters({ worn: "" }) } : null,
-    filters.needsCare ? { key: "care", label: "Needs care", clear: () => updateFilters({ needsCare: false }) } : null
+    filters.needsCare ? { key: "care", label: "Needs care", clear: () => updateFilters({ needsCare: false }) } : null,
+    filters.review ? { key: "review", label: "Review", clear: () => updateFilters({ review: false }) } : null
   ].filter(Boolean) as Array<{ key: string; label: string; clear: () => void }>;
 
   if (!active.length) return null;
@@ -341,7 +342,7 @@ function FilterToolbar({
             </FilterButton>
           );
         })}
-        <FilterButton active={filters.needsCare} onClick={() => applyFilters({ needsCare: !filters.needsCare })}>
+        <FilterButton active={filters.needsCare} onClick={() => applyFilters({ needsCare: !filters.needsCare, review: false })}>
           Needs care
         </FilterButton>
       </div>
@@ -371,15 +372,21 @@ function FilterToolbar({
 }
 
 function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState; onClear: () => void }) {
-  const onlyCategory = filters.category !== "all" && !filters.color && !filters.occasion && !filters.weather && !filters.worn && !filters.needsCare;
+  const onlyCategory = filters.category !== "all" && !filters.color && !filters.occasion && !filters.weather && !filters.worn && !filters.needsCare && !filters.review;
   const categoryCopy: Record<string, { title: string; body: string }> = {
     tops: { title: "No tops yet.", body: "Add your first shirt, tee, polo, or blouse." },
     bottoms: { title: "No bottoms yet.", body: "Add your first trouser, jean, skirt, or short." },
+    dresses: { title: "No dresses yet.", body: "Add your first dress or jumpsuit." },
+    native: { title: "No native pieces yet.", body: "Add traditional or occasion-ready pieces." },
     shoes: { title: "No shoes yet.", body: "Add footwear to complete more looks." },
     outerwear: { title: "No outerwear yet.", body: "Add a jacket or coat for layered styling." },
-    accessories: { title: "No accessories yet.", body: "Add your first bag, belt, jewelry, or finishing piece." }
+    bags: { title: "No bags yet.", body: "Add a tote, clutch, crossbody, or travel piece." },
+    accessories: { title: "No accessories yet.", body: "Add your first belt, watch, jewelry, or finishing piece." },
+    womens_hair: { title: "No women's hair yet.", body: "Add a wig, braids, extensions, or hair piece." }
   };
-  const copy = onlyCategory ? categoryCopy[filters.category] : null;
+  const copy = filters.review
+    ? { title: "No pieces need review.", body: "Everything visible here is already ready for styling." }
+    : onlyCategory ? categoryCopy[filters.category] : null;
 
   return (
     <Card className="border-dashed border-cocoa/20 p-7 text-center">
@@ -403,11 +410,12 @@ function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState
   );
 }
 
-function SummaryCard({ summary }: { summary: WardrobeSummary }) {
+function SummaryCard({ summary, onReviewClick }: { summary: WardrobeSummary; onReviewClick: () => void }) {
   const progress = summary.totalCount ? Math.min(100, Math.round((summary.readyCount / Math.max(summary.totalCount, 1)) * 100)) : 0;
   const body = summary.missingEssentials.length
     ? summary.missingEssentials.slice(0, 2).join(" ")
     : `${summary.readyCount} ready items. Your closet is set up for stronger outfit picks.`;
+  const reviewCount = summary.missingTagsCount + summary.needsCareCount;
 
   return (
     <div className="mt-7 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -424,11 +432,17 @@ function SummaryCard({ summary }: { summary: WardrobeSummary }) {
             <p className="mt-4 text-2xl font-black text-success">{summary.readyCount}</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Ready</p>
           </div>
-          <div className="rounded-xl2 border border-warning/20 bg-warning/10 p-3">
+          <button
+            type="button"
+            onClick={onReviewClick}
+            disabled={reviewCount === 0}
+            className="focus-ring rounded-xl2 border border-warning/20 bg-warning/10 p-3 text-left transition hover:-translate-y-0.5 hover:border-warning/45 hover:bg-warning/15 disabled:cursor-default disabled:hover:translate-y-0"
+            aria-label={`View ${reviewCount} closet items needing review`}
+          >
             <AlertCircle size={16} className="text-warning" aria-hidden="true" />
-            <p className="mt-4 text-2xl font-black text-warning">{summary.missingTagsCount + summary.needsCareCount}</p>
+            <p className="mt-4 text-2xl font-black text-warning">{reviewCount}</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Review</p>
-          </div>
+          </button>
         </div>
       </Card>
     </div>
@@ -487,6 +501,14 @@ export function WardrobeListClient() {
     revealContent(resultsRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
   }, [revealContent]);
 
+  const showReviewItems = useCallback(() => {
+    const next = { ...clearWardrobeFilters(), review: true };
+    const params = writeFiltersToSearchParams(new URLSearchParams(searchParams.toString()), next);
+    const query = params.toString();
+    router.push(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
+    revealResults();
+  }, [pathname, revealResults, router, searchParams]);
+
   if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
     return <WardrobeLoadingState />;
   }
@@ -515,7 +537,7 @@ export function WardrobeListClient() {
           clearFilters={clearFilters}
           revealResults={revealResults}
         />
-        <SummaryCard summary={displaySummary} />
+        <SummaryCard summary={displaySummary} onReviewClick={showReviewItems} />
         <section ref={resultsRef} className="mt-10">
           <SectionHeader title="Style archive" eyebrow="All pieces" />
           <WardrobeEmptyState />
@@ -535,7 +557,7 @@ export function WardrobeListClient() {
         clearFilters={clearFilters}
         revealResults={revealResults}
       />
-      <SummaryCard summary={displaySummary} />
+      <SummaryCard summary={displaySummary} onReviewClick={showReviewItems} />
       <section ref={resultsRef} className="mt-10">
         <SectionHeader
           title="Style archive"

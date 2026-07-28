@@ -100,6 +100,30 @@ const wardrobe = [
       weatherSuitability: field(["dry", "cool"]),
       formalityScore: field(["polished"])
     }
+  }),
+  wardrobeItem("200000000000000000000004", "bags", "Black evening clutch", "black", {
+    subcategory: "Clutch",
+    fabric: "leather",
+    verifiedMetadata: {
+      primaryColor: field("black"),
+      fabricEstimate: field("leather"),
+      fit: field("structured"),
+      occasionSuitability: field(["dinner", "date night", "smart casual"]),
+      weatherSuitability: field(["dry", "cool"]),
+      formalityScore: field(["polished"])
+    }
+  }),
+  wardrobeItem("200000000000000000000005", "accessories", "Silver wristwatch", "silver", {
+    subcategory: "Watches",
+    fabric: "stainless steel",
+    verifiedMetadata: {
+      primaryColor: field("silver"),
+      fabricEstimate: field("stainless steel"),
+      fit: field("regular"),
+      occasionSuitability: field(["dinner", "date night", "smart casual"]),
+      weatherSuitability: field(["dry", "cool"]),
+      formalityScore: field(["polished"])
+    }
   })
 ];
 
@@ -131,6 +155,9 @@ assert.ok(recommendations.length >= 1, "photo anchor should produce recommendati
 const first = recommendations[0];
 assert.ok(first.items.length >= 3, "photo anchor outfit should include supporting wardrobe items");
 assert.ok(first.items.every((item: any) => wardrobe.some((owned) => String(owned._id) === String(item._id))), "recommendation items must remain saved wardrobe items only");
+assert.ok(first.items.some((item: any) => item.category === "bags"), "photo match should complete the look with an owned bag when suitable");
+assert.ok(first.items.some((item: any) => /watch/i.test(`${item.name} ${item.subcategory}`)), "photo match should include the strongest owned wrist accessory when suitable");
+assert.ok(first.items.filter((item: any) => /watch|bracelet|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should avoid conflicting wrist accessories");
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "reference-upload" && piece.referenceItemId === referenceItem._id), "outfit pieces must include the uploaded reference source");
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "wardrobe" && piece.wardrobeItemId), "outfit pieces must include saved wardrobe sources");
 assert.equal(first.referenceItems[0]?.id, referenceItem._id);

@@ -128,6 +128,45 @@ const wardrobe = [
       weatherSuitability: field(["rain", "wind", "cool"]),
       luxuryScore: field(0.45)
     }
+  }),
+  item("000000000000000000000008", "bags", "Black leather tote", "black", {
+    subcategory: "Tote",
+    fabric: "leather",
+    verifiedMetadata: {
+      primaryColor: field("black"),
+      fabricEstimate: field("leather"),
+      fit: field("structured"),
+      formalityScore: field(["polished", "formal"]),
+      occasionSuitability: field(["business casual", "work", "church", "dinner"]),
+      weatherSuitability: field(["dry", "indoor"]),
+      luxuryScore: field(0.82)
+    }
+  }),
+  item("000000000000000000000009", "accessories", "Silver dress watch", "silver", {
+    subcategory: "Watches",
+    fabric: "stainless steel",
+    verifiedMetadata: {
+      primaryColor: field("silver"),
+      fabricEstimate: field("stainless steel"),
+      fit: field("regular"),
+      formalityScore: field(["polished", "formal"]),
+      occasionSuitability: field(["business casual", "work", "church", "dinner"]),
+      weatherSuitability: field(["dry", "indoor"]),
+      luxuryScore: field(0.86)
+    }
+  }),
+  item("000000000000000000000010", "accessories", "Gold bracelet", "gold", {
+    subcategory: "Jewelry",
+    fabric: "gold tone",
+    verifiedMetadata: {
+      primaryColor: field("gold"),
+      fabricEstimate: field("gold tone"),
+      fit: field("regular"),
+      formalityScore: field(["polished"]),
+      occasionSuitability: field(["dinner", "date night"]),
+      weatherSuitability: field(["dry", "indoor"]),
+      luxuryScore: field(0.7)
+    }
   })
 ];
 
@@ -149,8 +188,11 @@ const businessLook = buildRecommendation({
 assert.equal(businessLook.recommendationMode, "business_ready");
 assert.ok(businessLook.items.length >= 3, "business casual recommendation should include owned core items");
 assert.ok(businessLook.items.every((entry: any) => wardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must only use fixture-owned items");
-assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v3");
+assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v4");
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
+assert.ok(businessLook.items.some((entry: any) => entry.category === "bags"), "business recommendation should complete the look with an owned bag when suitable");
+assert.ok(businessLook.items.some((entry: any) => /watch/i.test(`${entry.name} ${entry.subcategory}`)), "business recommendation should include the strongest owned wrist accessory when suitable");
+assert.ok(businessLook.items.filter((entry: any) => /watch|bracelet|smartwatch/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should avoid conflicting wrist accessories");
 
 const priorSignature = signature(businessLook as any);
 const differentLook = buildRecommendation({

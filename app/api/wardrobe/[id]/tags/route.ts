@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     item.condition = inferCondition({
       category: item.category,
       color: item.color,
+      fit: item.fit || item.garmentFit,
       occasions: item.occasions,
       condition: parsed.data.condition
     });

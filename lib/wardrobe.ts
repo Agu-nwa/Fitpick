@@ -8,13 +8,16 @@ export function isObjectId(value: string) {
 export function inferCondition(input: {
   category?: string;
   color?: string;
+  fit?: string;
   occasions?: string[];
   condition?: "ready" | "needs-care" | "missing-tags";
 }) {
   if (input.condition === "needs-care") return "needs-care";
-  if (input.condition === "missing-tags") return "missing-tags";
 
-  const hasMinimumTags = Boolean(input.category && input.color && input.occasions?.length);
+  const hasCoreDetails = Boolean(input.category && input.color);
+  const hasSimplifiedUploadEssentials = hasCoreDetails && Boolean(input.fit?.trim());
+  const hasLegacyEssentials = hasCoreDetails && Boolean(input.occasions?.length);
+  const hasMinimumTags = hasSimplifiedUploadEssentials || hasLegacyEssentials;
   return hasMinimumTags ? "ready" : "missing-tags";
 }
 
@@ -48,6 +51,14 @@ function recognizedEntityFromItem(item: any) {
 
 export function serializeWardrobeItem(item: any) {
   const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const condition = inferCondition({
+    category: item.category,
+    color: item.color,
+    fit: item.fit || item.garmentFit,
+    occasions: item.occasions,
+    condition: item.condition
+  });
+
   return {
     id: String(item._id),
     name: item.name,
@@ -76,7 +87,7 @@ export function serializeWardrobeItem(item: any) {
     searchMetadata: item.searchMetadata || {},
     enrichmentStatus: item.enrichmentStatus || "not_started",
     verifiedMetadata: item.verifiedMetadata || {},
-    condition: item.condition,
+    condition,
     timesWorn: item.timesWorn || 0,
     recommendationCount: item.recommendationCount || 0,
     lastRecommendedAt: item.lastRecommendedAt ? new Date(item.lastRecommendedAt).toISOString() : null,
@@ -139,6 +150,13 @@ export function serializeWardrobeUpload(upload: any) {
 
 export function wardrobeSummary(items: any[]) {
   const countsByCategory: Record<string, number> = {};
+  const conditions = items.map((item) => inferCondition({
+    category: item.category,
+    color: item.color,
+    fit: item.fit || item.garmentFit,
+    occasions: item.occasions,
+    condition: item.condition
+  }));
 
   for (const item of items) {
     countsByCategory[item.category] = (countsByCategory[item.category] || 0) + 1;
@@ -154,9 +172,9 @@ export function wardrobeSummary(items: any[]) {
 
   return {
     totalCount: items.length,
-    readyCount: items.filter((item) => item.condition === "ready").length,
-    needsCareCount: items.filter((item) => item.condition === "needs-care").length,
-    missingTagsCount: items.filter((item) => item.condition === "missing-tags").length,
+    readyCount: conditions.filter((condition) => condition === "ready").length,
+    needsCareCount: conditions.filter((condition) => condition === "needs-care").length,
+    missingTagsCount: conditions.filter((condition) => condition === "missing-tags").length,
     countsByCategory,
     missingEssentials: required
       .filter((essential) => !countsByCategory[essential.key])

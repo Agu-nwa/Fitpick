@@ -20,11 +20,12 @@ export type AccessoryRole =
   | "carry"
   | "head"
   | "face"
+  | "hair"
   | "formal-detail"
   | "weather"
   | "accent";
 
-export const MAX_ACCESSORIES_PER_LOOK = 3;
+export const MAX_ACCESSORIES_PER_LOOK = 4;
 
 export const maxPerAccessoryRole: Record<AccessoryRole, number> = {
   wrist: 1,
@@ -33,6 +34,7 @@ export const maxPerAccessoryRole: Record<AccessoryRole, number> = {
   carry: 1,
   head: 1,
   face: 1,
+  hair: 1,
   "formal-detail": 1,
   weather: 1,
   accent: 1
@@ -87,6 +89,7 @@ export function accessoryRoleFor(item: any): AccessoryRole {
   if (/\b(tie\s?clip|cufflinks?|pocket\s?square|lapel\s?pin)\b/.test(text)) return "formal-detail";
   if (/\b(necklace|chain|tie|bow\s?tie|scarf|shawl)\b/.test(text)) return "neck";
   if (/\b(handbag|tote|crossbody|clutch|backpack|purse|bag)\b/.test(text)) return "carry";
+  if (/\b(women'?s hair|wig|wigs|braids?|extensions?|ponytails?|closures?|frontals?|bundles?|hair pieces?)\b/.test(text)) return "hair";
   if (/\b(hat|cap|beanie|headwrap|headwear)\b/.test(text)) return "head";
   if (/\b(sunglasses|eyewear|glasses|shades)\b/.test(text)) return "face";
   if (/\b(umbrella|gloves|raincoat)\b/.test(text)) return "weather";
@@ -95,9 +98,10 @@ export function accessoryRoleFor(item: any): AccessoryRole {
 }
 
 export function isAccessoryCandidate(item: any) {
+  if (item?.category === "womens_hair") return true;
   const slot = normalizeOutfitSlot(item);
   if (slot === "bag" || slot === "accessory") return true;
-  return /\b(watch|watches|smartwatch|bracelet|belt|bag|handbag|tote|clutch|crossbody|backpack|necklace|chain|tie|bow\s?tie|scarf|hat|cap|sunglasses|pocket\s?square|cufflinks?|umbrella|gloves)\b/.test(itemText(item));
+  return /\b(watch|watches|smartwatch|bracelet|belt|bag|handbag|tote|clutch|crossbody|backpack|necklace|chain|tie|bow\s?tie|scarf|hat|cap|sunglasses|pocket\s?square|cufflinks?|umbrella|gloves|wig|braids?|extensions?|ponytails?|closures?|frontals?|bundles?)\b/.test(itemText(item));
 }
 
 export function buildWardrobeCandidatePools(items: any[]) {
@@ -108,7 +112,8 @@ export function buildWardrobeCandidatePools(items: any[]) {
     shoes: items.filter((item) => normalizeOutfitSlot(item) === "shoes"),
     outerwear: items.filter((item) => normalizeOutfitSlot(item) === "outerwear"),
     bags: items.filter((item) => normalizeOutfitSlot(item) === "bag"),
-    accessories: items.filter((item) => isAccessoryCandidate(item))
+    accessories: items.filter((item) => isAccessoryCandidate(item)),
+    womensHair: items.filter((item) => accessoryRoleFor(item) === "hair")
   };
 }
 
@@ -123,6 +128,7 @@ function accessoryTypeBonus(item: any, role: AccessoryRole, occasionName = "", w
   if (/\b(bracelet|bangle)\b/.test(text)) bonus += 12;
   if (/\b(belt)\b/.test(text)) bonus += /work|business|office|formal|interview|dinner/.test(occasion) ? 18 : 11;
   if (role === "carry") bonus += /work|business|travel|dinner|date|wedding|formal|church/.test(occasion) ? 18 : 12;
+  if (role === "hair") bonus += /date|dinner|wedding|church|formal|party|event|vacation|photo|preview/.test(occasion) ? 14 : 8;
   if (/\b(tie|bow\s?tie|pocket\s?square|cufflinks?)\b/.test(text)) bonus += /formal|wedding|business|interview|church|event|office/.test(occasion) ? 19 : 4;
   if (/\b(sunglasses)\b/.test(text)) bonus += /sun|summer|vacation|travel|outdoor/.test(`${occasion} ${weather}`) ? 17 : 6;
   if (/\b(scarf|gloves|umbrella|beanie)\b/.test(text)) bonus += /cold|rain|wind|winter/.test(weather) ? 18 : 5;
@@ -138,7 +144,21 @@ function restraintPenalty(item: any, role: AccessoryRole, occasionName = "") {
   if (/gym|workout|sport/.test(occasion) && /\b(tie|pocket\s?square|cufflinks?|clutch)\b/.test(text)) return 24;
   if (/formal|business|interview|office/.test(occasion) && role === "head") return 12;
   if (/church|wedding|formal/.test(occasion) && /\b(cap|backpack|sport)\b/.test(text)) return 16;
+  if (role === "hair" && /masculine|male/.test(itemText(item))) return 20;
   return 0;
+}
+
+function minimumScoreForRole(role: AccessoryRole, occasionName = "", weatherContext = "") {
+  const context = `${occasionName} ${weatherContext}`.toLowerCase();
+  if (role === "carry") return 34;
+  if (role === "wrist") return 34;
+  if (role === "waist") return /work|business|office|formal|interview|dinner|date|church/.test(context) ? 33 : 39;
+  if (role === "hair") return /date|dinner|wedding|church|formal|party|event|vacation|photo|preview/.test(context) ? 36 : 44;
+  if (role === "weather") return /cold|rain|wind|winter|snow|storm|drizzle/.test(context) ? 30 : 44;
+  if (role === "formal-detail") return /formal|wedding|business|interview|church|event|office/.test(context) ? 32 : 46;
+  if (role === "face") return /sun|summer|vacation|travel|outdoor/.test(context) ? 34 : 44;
+  if (role === "head") return /casual|weekend|travel|vacation|streetwear|sun/.test(context) ? 36 : 46;
+  return 42;
 }
 
 function scoreAccessoryCandidate(input: {
@@ -239,7 +259,15 @@ export function selectAccessoryCompletion(input: {
   const scored = candidateItems
     .map((item) => scoreAccessoryCandidate({ ...input, item }))
     .sort((a, b) => b.score - a.score);
-  const shortlisted = scored.filter((candidate) => candidate.score >= 45).slice(0, 12);
+  const bestByRole = new Map<AccessoryRole, AccessoryCandidate>();
+  for (const candidate of scored) {
+    const current = bestByRole.get(candidate.role);
+    if (!current || candidate.score > current.score) bestByRole.set(candidate.role, candidate);
+  }
+  const shortlisted = Array.from(bestByRole.values())
+    .filter((candidate) => candidate.score >= minimumScoreForRole(candidate.role, input.occasionName, input.weatherContext))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12);
   const selected: AccessoryCandidate[] = [];
   const selectedRoles = new Set<AccessoryRole>(existingRoles);
   const omitted: Array<{ itemId: string; role: AccessoryRole; reason: string }> = [];
