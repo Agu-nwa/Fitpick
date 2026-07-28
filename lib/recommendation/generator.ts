@@ -2,6 +2,8 @@ import { scoreOutfitDetailed } from "@/lib/recommendation/scoring";
 import { calculatePreferenceBoost } from "@/lib/recommendation/learning";
 import { calculateWeatherScore }
   from "@/lib/weather/weather-scoring";
+import { scoreItemForOccasionProfile } from "@/lib/recommendation/occasion-profiles";
+import { scoreItemForTemplate } from "@/lib/recommendation/outfit-templates";
 import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 
 function idFor(item: any) {
@@ -55,6 +57,10 @@ export function generateCombinations(
     for (const item of uniqueItems) {
       score += calculateWeatherScore(item, scoringInput.weather || null);
       score += calculatePreferenceBoost(item, scoringInput.preferences);
+      score += scoreItemForTemplate(item, scoringInput.outfitTemplate);
+      if (scoringInput.occasionProfile) {
+        score += scoreItemForOccasionProfile(item, scoringInput.occasionProfile);
+      }
     }
 
     outfits.push({
@@ -70,7 +76,9 @@ export function generateCombinations(
       for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
         for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
           for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-            pushOutfit([dress, shoe, outerwear, accessory, bag]);
+            for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
+              pushOutfit([dress, shoe, outerwear, accessory, bag, hair]);
+            }
           }
         }
       }
@@ -83,7 +91,9 @@ export function generateCombinations(
         for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
           for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
             for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-              pushOutfit([top, bottom, shoe, outerwear, accessory, bag]);
+              for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
+                pushOutfit([top, bottom, shoe, outerwear, accessory, bag, hair]);
+              }
             }
           }
         }

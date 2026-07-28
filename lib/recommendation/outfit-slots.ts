@@ -8,7 +8,7 @@ const slotPatterns: Array<{ slot: OutfitSlot; pattern: RegExp }> = [
   { slot: "bottom", pattern: /\b(bottoms?|trousers?|pants?|jeans?|shorts?|skirts?|chinos?)\b/i },
   { slot: "shoes", pattern: /\b(shoes?|sneakers?|loafers?|boots?|sandals?|heels?|slippers?|trainers?)\b/i },
   { slot: "bag", pattern: /\b(bags?|handbags?|purses?|clutches?|totes?|backpacks?)\b/i },
-  { slot: "accessory", pattern: /\b(accessories|watch|watches|jewelry|jewellery|belts?|caps?|hats?|sunglasses|scarves?|ties?)\b/i },
+  { slot: "accessory", pattern: /\b(accessories|watch|watches|jewelry|jewellery|belts?|caps?|hats?|sunglasses|scarves?|ties?|women'?s hair|womens_hair|wigs?|braids?|extensions?|ponytails?)\b/i },
   { slot: "top", pattern: /\b(tops?|shirts?|t[-\s]?shirts?|tees?|blouses?|polos?|sweaters?|sweatshirts?|hoodies?|knits?)\b/i }
 ];
 
@@ -84,7 +84,7 @@ export function sanitizeOutfitItems(items: any[] = []) {
     }
 
     const updatedExisting = selectedBySlot.get(slot) || [];
-    const limit = slot === "accessory" ? 3 : slot === "unknown" ? Number.POSITIVE_INFINITY : 1;
+    const limit = slot === "accessory" ? 4 : slot === "unknown" ? Number.POSITIVE_INFINITY : 1;
     if (updatedExisting.length >= limit) {
       removeItem(item, slot, "duplicate_outfit_slot");
       continue;

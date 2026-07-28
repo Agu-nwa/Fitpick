@@ -188,7 +188,10 @@ const businessLook = buildRecommendation({
 assert.equal(businessLook.recommendationMode, "business_ready");
 assert.ok(businessLook.items.length >= 3, "business casual recommendation should include owned core items");
 assert.ok(businessLook.items.every((entry: any) => wardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must only use fixture-owned items");
-assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v4");
+assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v5");
+assert.equal(businessLook.similarityMetadata?.outfitTemplateId, "business_casual");
+assert.equal(businessLook.similarityMetadata?.occasionProfileId, "business");
+assert.equal(businessLook.scoreBreakdown?.stylingValidation?.valid, true);
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
 assert.ok(businessLook.items.some((entry: any) => entry.category === "bags"), "business recommendation should complete the look with an owned bag when suitable");
 assert.ok(businessLook.items.some((entry: any) => /watch/i.test(`${entry.name} ${entry.subcategory}`)), "business recommendation should include the strongest owned wrist accessory when suitable");
@@ -209,6 +212,7 @@ const differentLook = buildRecommendation({
 });
 
 assert.notEqual(signature(differentLook as any), priorSignature, "something_different should avoid exact recent outfits when viable alternatives exist");
+assert.ok(differentLook.similarityMetadata?.editorialReview, "regenerated recommendations should carry editorial ranking metadata");
 
 const smallWardrobeLook = buildRecommendation({
   wardrobeItems: wardrobe.slice(0, 2),
@@ -229,6 +233,97 @@ const rainyLook = buildRecommendation({
 });
 
 assert.ok(rainyLook.items.some((entry: any) => entry.category === "outerwear"), "rain-ready recommendation should include owned weather outerwear when available");
+
+const brunchWardrobe = [
+  item("000000000000000000000051", "dresses", "Cream midi dress", "cream", {
+    verifiedMetadata: {
+      primaryColor: field("cream"),
+      fabricEstimate: field("linen blend"),
+      fit: field("regular"),
+      formalityScore: field(["balanced", "polished"]),
+      occasionSuitability: field(["brunch", "dinner", "date night"]),
+      weatherSuitability: field(["dry", "warm"]),
+      luxuryScore: field(0.72)
+    }
+  }),
+  item("000000000000000000000052", "shoes", "Nude block heels", "nude", {
+    subcategory: "Heels",
+    verifiedMetadata: {
+      primaryColor: field("nude"),
+      fabricEstimate: field("leather"),
+      fit: field("regular"),
+      formalityScore: field(["polished"]),
+      occasionSuitability: field(["brunch", "dinner", "date night"]),
+      weatherSuitability: field(["dry", "warm"]),
+      luxuryScore: field(0.68)
+    }
+  }),
+  item("000000000000000000000053", "bags", "Taupe shoulder bag", "taupe", {
+    subcategory: "Shoulder Bag",
+    verifiedMetadata: {
+      primaryColor: field("taupe"),
+      fabricEstimate: field("leather"),
+      fit: field("structured"),
+      formalityScore: field(["balanced", "polished"]),
+      occasionSuitability: field(["brunch", "dinner"]),
+      weatherSuitability: field(["dry", "warm"]),
+      luxuryScore: field(0.7)
+    }
+  }),
+  item("000000000000000000000054", "womens_hair", "Soft wave wig", "black", {
+    subcategory: "Women's Hair",
+    verifiedMetadata: {
+      primaryColor: field("black"),
+      fit: field("regular"),
+      formalityScore: field(["balanced", "polished"]),
+      occasionSuitability: field(["brunch", "dinner", "date night"]),
+      weatherSuitability: field(["dry", "warm"]),
+      luxuryScore: field(0.6)
+    }
+  }),
+  item("000000000000000000000055", "accessories", "Pearl necklace", "pearl", {
+    subcategory: "Jewelry",
+    verifiedMetadata: {
+      primaryColor: field("pearl"),
+      fit: field("regular"),
+      formalityScore: field(["polished"]),
+      occasionSuitability: field(["brunch", "dinner", "date night"]),
+      weatherSuitability: field(["dry", "warm"]),
+      luxuryScore: field(0.75)
+    }
+  })
+];
+
+const brunchLook = buildRecommendation({
+  wardrobeItems: brunchWardrobe,
+  occasionName: "brunch",
+  formality: "polished",
+  styleProfile: {
+    genderPresentation: "feminine",
+    styleWords: ["elegant"],
+    fashionRiskLevel: "balanced"
+  }
+});
+
+assert.equal(brunchLook.similarityMetadata?.outfitTemplateId, "female_brunch");
+assert.ok(brunchLook.items.some((entry: any) => entry.category === "womens_hair"), "women's hair should be selected only as an optional styling enhancement when suitable");
+assert.ok(brunchLook.items.every((entry: any) => brunchWardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "women's hair recommendation must still use owned wardrobe IDs only");
+
+const streetwearLook = buildRecommendation({
+  wardrobeItems: [
+    item("000000000000000000000061", "tops", "Oversized graphic tee", "black", { fit: "oversized" }),
+    item("000000000000000000000062", "bottoms", "Olive cargo pants", "olive", { subcategory: "Cargo" }),
+    item("000000000000000000000063", "shoes", "Chunky sneakers", "white", { subcategory: "Sneakers" }),
+    item("000000000000000000000064", "bags", "Black crossbody bag", "black", { subcategory: "Crossbody" }),
+    item("000000000000000000000065", "accessories", "Black cap", "black", { subcategory: "Cap" })
+  ],
+  occasionName: "streetwear weekend",
+  recommendationMode: "statement_look"
+});
+
+assert.equal(streetwearLook.similarityMetadata?.outfitTemplateId, "streetwear");
+assert.equal(streetwearLook.similarityMetadata?.occasionProfileId, "everyday");
+assert.ok(streetwearLook.items.some((entry: any) => /crossbody/i.test(`${entry.name} ${entry.subcategory}`)), "streetwear should include a carry accessory when suitable");
 
 const duplicateBottomWardrobe = [
   item("000000000000000000000011", "shirts", "White dress shirt", "white"),

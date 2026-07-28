@@ -158,6 +158,10 @@ assert.ok(first.items.every((item: any) => wardrobe.some((owned) => String(owned
 assert.ok(first.items.some((item: any) => item.category === "bags"), "photo match should complete the look with an owned bag when suitable");
 assert.ok(first.items.some((item: any) => /watch/i.test(`${item.name} ${item.subcategory}`)), "photo match should include the strongest owned wrist accessory when suitable");
 assert.ok(first.items.filter((item: any) => /watch|bracelet|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should avoid conflicting wrist accessories");
+assert.equal(first.similarityMetadata?.outfitTemplateId, "casual");
+assert.equal(first.similarityMetadata?.occasionProfileId, "dinner");
+assert.ok(first.similarityMetadata?.editorialReview, "photo match should include deterministic editorial ranking metadata");
+assert.equal(first.scoreBreakdown?.stylingValidation?.valid, true);
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "reference-upload" && piece.referenceItemId === referenceItem._id), "outfit pieces must include the uploaded reference source");
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "wardrobe" && piece.wardrobeItemId), "outfit pieces must include saved wardrobe sources");
 assert.equal(first.referenceItems[0]?.id, referenceItem._id);

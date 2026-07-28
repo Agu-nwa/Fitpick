@@ -1,11 +1,16 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
 import { isAccessoryCandidate, selectAccessoryCompletion } from "@/lib/recommendation/accessory-completion";
+import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
 import { evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { diversifyOutfits } from "@/lib/recommendation/diversity";
+import { rankCandidatesForEditorialReview } from "@/lib/recommendation/editorial-ranking";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
+import { resolveOutfitArchitecture } from "@/lib/recommendation/outfit-architecture";
 import { inferOccasionGroup } from "@/lib/recommendation/outfit-structures";
 import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
+import { scoreItemForOccasionProfile } from "@/lib/recommendation/occasion-profiles";
+import { scoreItemForTemplate } from "@/lib/recommendation/outfit-templates";
 import {
   fabricCompatibilityScore,
   metadataList,
@@ -162,10 +167,15 @@ function makeCombinations(input: {
       const withAnchor = [input.anchor, ...unique];
       const detailed = scoreOutfitDetailed(withAnchor, input.scoringInput);
       const score = detailed.total + colorCompatibilityScore(withAnchor) + fabricCompatibilityScore(withAnchor) + silhouetteBalanceScore(withAnchor);
+      const architectureScore = unique.reduce((sum, item) => {
+        return sum +
+          scoreItemForTemplate(item, input.scoringInput.outfitTemplate) +
+          (input.scoringInput.occasionProfile ? scoreItemForOccasionProfile(item, input.scoringInput.occasionProfile) : 0);
+      }, 0);
       outfits.push({
         items: unique,
         itemsWithAnchor: withAnchor,
-        score: Math.round(score * 10) / 10,
+        score: Math.round((score + architectureScore) * 10) / 10,
         scoreBreakdown: detailed.breakdown,
         itemSignature: unique.map(itemId).filter(Boolean).sort().join("|")
       });
@@ -269,6 +279,13 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     return true;
   });
   const plan = categoryPlanFor(referenceItem.category || "", occasion);
+  const architecture = resolveOutfitArchitecture({
+    occasionName: occasion,
+    weatherContext: input.weatherContext,
+    recommendationMode: input.recommendationMode || "photo_match",
+    styleProfile: input.styleProfile
+  });
+  const { occasionProfile, outfitTemplate } = architecture;
   const scoringInput = {
     occasionName: occasion,
     weatherContext: input.weatherContext,
@@ -280,7 +297,9 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     memorySummary: input.memorySummary,
     outfitHistorySummary: input.outfitHistorySummary,
     allowRecentRepeat: /repeat|again|same look|rewear/i.test(occasion),
-    recommendationMode: input.recommendationMode || "photo_match"
+    recommendationMode: input.recommendationMode || "photo_match",
+    occasionProfile,
+    outfitTemplate
   };
   const combinations = makeCombinations({
     anchor,
@@ -290,7 +309,26 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     weatherContext: input.weatherContext,
     scoringInput
   });
-  const diverse = diversifyOutfits(combinations, { limit: input.limit || 3, historySummary: input.outfitHistorySummary, diversityWeight: 0.38 });
+  const validatedCombinations = combinations.map((candidate) => ({
+    ...candidate,
+    stylingValidation: validateRecommendationCandidate({
+      items: candidate.items,
+      template: outfitTemplate,
+      profile: occasionProfile,
+      allowIncomplete: false
+    })
+  }));
+  const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
+  const rankedCombinations = rankCandidatesForEditorialReview(
+    validCombinations.length ? validCombinations : validatedCombinations,
+    {
+      template: outfitTemplate,
+      profile: occasionProfile,
+      styleProfile: input.styleProfile,
+      limit: 80
+    }
+  );
+  const diverse = diversifyOutfits(rankedCombinations, { limit: input.limit || 3, historySummary: input.outfitHistorySummary, diversityWeight: 0.48 });
   const selected = diverse.length ? diverse : combinations.slice(0, input.limit || 3);
   const readiness = wardrobeReadiness(available);
   const gapInsights = wardrobeGapInsights(available, occasion);
@@ -324,8 +362,17 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       freshnessCue: "Freshness starts after more photo matches are generated.",
       wardrobeReadiness: readiness,
       gapInsights,
-      scoreBreakdown: {},
-      similarityMetadata: { referenceItemId: String(referenceItem._id), source: "reference-upload" },
+      scoreBreakdown: {
+        outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label },
+        occasionProfile: { id: occasionProfile.id, label: occasionProfile.label }
+      },
+      similarityMetadata: {
+        referenceItemId: String(referenceItem._id),
+        source: "reference-upload",
+        outfitStructure: outfitTemplate.stylingFamily,
+        outfitTemplateId: outfitTemplate.id,
+        occasionProfileId: occasionProfile.id
+      },
       candidateCount: combinations.length,
       diverseCandidateCount: selected.length,
       alternatives: [],
@@ -353,6 +400,12 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
     const completedItemsWithAnchor = [anchor, ...completedItems];
     const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor);
+    const finalValidation = validateRecommendationCandidate({
+      items: completedItems,
+      template: outfitTemplate,
+      profile: occasionProfile,
+      allowIncomplete: false
+    });
     const missing = completeness.missingCategories;
     const notes = explanation({ referenceItem, items: completedItems, itemsWithAnchor: completedItemsWithAnchor, occasion, missingCategories: missing });
     const chips = buildReasonChips({
@@ -394,14 +447,27 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       gapInsights,
       scoreBreakdown: {
         ...(candidate.scoreBreakdown || {}),
-        accessoryCompletion: accessoryCompletion.decision
+        accessoryCompletion: accessoryCompletion.decision,
+        outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
+        occasionProfile: { id: occasionProfile.id, label: occasionProfile.label },
+        stylingValidation: finalValidation
       },
       similarityMetadata: {
+        ...(candidate.similarityMetadata || {}),
         referenceItemId: String(referenceItem._id),
         source: "reference-upload",
         anchorCategory: referenceItem.category || "",
         itemSignature: completedItems.map(itemId).filter(Boolean).sort().join("|"),
-        accessoryDecision: accessoryCompletion.decision
+        accessoryDecision: accessoryCompletion.decision,
+        outfitStructure: outfitTemplate.stylingFamily,
+        outfitTemplateId: outfitTemplate.id,
+        occasionProfileId: occasionProfile.id,
+        stylingValidation: {
+          valid: finalValidation.valid,
+          warnings: finalValidation.warnings,
+          rejectReason: finalValidation.rejectReason,
+          structure: finalValidation.structure
+        }
       },
       candidateCount: combinations.length,
       diverseCandidateCount: selected.length,

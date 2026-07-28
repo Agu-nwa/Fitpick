@@ -2,11 +2,14 @@ import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
 import { isAccessoryCandidate, selectAccessoryCompletion } from "@/lib/recommendation/accessory-completion";
 import { completenessLabel, evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { diversifyOutfits, noveltyScore } from "@/lib/recommendation/diversity";
+import { rankCandidatesForEditorialReview } from "@/lib/recommendation/editorial-ranking";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
-import { inferOccasionGroup, missingCoreCategories, structureFor } from "@/lib/recommendation/outfit-structures";
+import { resolveOutfitArchitecture } from "@/lib/recommendation/outfit-architecture";
+import { missingCoreCategories } from "@/lib/recommendation/outfit-structures";
 import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/policy";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
 import {
   metadataList,
   metadataValue,
@@ -155,13 +158,14 @@ export function buildRecommendation(input: EngineInput) {
   const recommendationMode = normalizeRecommendationMode(input.recommendationMode || input.styleDirection || input.occasionName || "todays_best");
   const modeTitle = modeLabel(recommendationMode);
 
-  const occasionGroup = inferOccasionGroup({
-    name: input.occasionName,
-    group: input.occasionGroup,
-    weatherContext: input.weatherContext
+  const architecture = resolveOutfitArchitecture({
+    occasionName: input.occasionName,
+    occasionGroup: input.occasionGroup,
+    weatherContext: input.weatherContext,
+    recommendationMode,
+    styleProfile: input.styleProfile
   });
-
-  const desiredStructure = structureFor(occasionGroup);
+  const { occasionGroup, occasionProfile, outfitTemplate, desiredStructure } = architecture;
 
   const available = input.wardrobeItems.filter((item) => {
     if (item.archivedAt) return false;
@@ -207,19 +211,41 @@ export function buildRecommendation(input: EngineInput) {
       allowRecentRepeat,
       previousLooks: input.previousLooks || [],
       recommendationMode,
+      occasionProfile,
+      outfitTemplate,
       weather: input.weather,
       preferences: input.preferences,
       maxCandidates: 650
     }
   );
 
-  const diverseOutfits = diversifyOutfits(combinations, {
+  const validatedCombinations = combinations.map((candidate) => ({
+    ...candidate,
+    stylingValidation: validateRecommendationCandidate({
+      items: candidate.items,
+      template: outfitTemplate,
+      profile: occasionProfile,
+      allowIncomplete: readiness.isSmallWardrobe
+    })
+  }));
+  const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
+  const rankedCombinations = rankCandidatesForEditorialReview(
+    validCombinations.length ? validCombinations : validatedCombinations,
+    {
+      template: outfitTemplate,
+      profile: occasionProfile,
+      styleProfile: input.styleProfile,
+      limit: 80
+    }
+  );
+
+  const diverseOutfits = diversifyOutfits(rankedCombinations, {
     limit: 3,
     historySummary: input.outfitHistorySummary,
-    diversityWeight: recommendationMode === "todays_best" ? 0.3 : 0.42
+    diversityWeight: recommendationMode === "todays_best" ? 0.34 : 0.5
   });
 
-  const bestOutfit = diverseOutfits[0] || combinations[0];
+  const bestOutfit = diverseOutfits[0] || rankedCombinations[0] || combinations[0];
 
   const outfitSanitization = sanitizeOutfitItems(bestOutfit?.items || []);
   const sanitizedItems: any[] = outfitSanitization.items;
@@ -260,8 +286,15 @@ export function buildRecommendation(input: EngineInput) {
       gapInsights,
       candidateCount: combinations.length,
       diverseCandidateCount: diverseOutfits.length,
-      scoreBreakdown: {},
-      similarityMetadata: {},
+      scoreBreakdown: {
+        outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label },
+        occasionProfile: { id: occasionProfile.id, label: occasionProfile.label }
+      },
+      similarityMetadata: {
+        outfitStructure: outfitTemplate.stylingFamily,
+        outfitTemplateId: outfitTemplate.id,
+        occasionProfileId: occasionProfile.id
+      },
       alternatives: []
     };
   }
@@ -281,6 +314,12 @@ export function buildRecommendation(input: EngineInput) {
   });
   const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
   const completeness = evaluateOutfitCompleteness(completedItems);
+  const finalValidation = validateRecommendationCandidate({
+    items: completedItems,
+    template: outfitTemplate,
+    profile: occasionProfile,
+    allowIncomplete: readiness.isSmallWardrobe
+  });
   const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
 
   const score = scoreOutfit(completedItems, {
@@ -402,18 +441,35 @@ export function buildRecommendation(input: EngineInput) {
     gapInsights,
     scoreBreakdown: {
       ...(bestOutfit.scoreBreakdown || {}),
-      accessoryCompletion: accessoryCompletion.decision
+      accessoryCompletion: accessoryCompletion.decision,
+      outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
+      occasionProfile: { id: occasionProfile.id, label: occasionProfile.label },
+      stylingValidation: finalValidation
     },
     similarityMetadata: {
       ...(bestOutfit.similarityMetadata || {}),
-      accessoryDecision: accessoryCompletion.decision
+      accessoryDecision: accessoryCompletion.decision,
+      outfitStructure: outfitTemplate.stylingFamily,
+      outfitTemplateId: outfitTemplate.id,
+      occasionProfileId: occasionProfile.id,
+      stylingValidation: {
+        valid: finalValidation.valid,
+        warnings: finalValidation.warnings,
+        rejectReason: finalValidation.rejectReason,
+        structure: finalValidation.structure
+      }
     },
     candidateCount: combinations.length,
     diverseCandidateCount: diverseOutfits.length,
     alternatives: diverseOutfits.slice(1).map((outfit) => ({
       title: `${modeTitle} alternative`,
       itemIds: sanitizeOutfitItems(outfit.items).items.map((item: any) => String(item._id || item.id)),
-      similarityMetadata: outfit.similarityMetadata || {}
+      similarityMetadata: {
+        ...(outfit.similarityMetadata || {}),
+        outfitStructure: outfitTemplate.stylingFamily,
+        outfitTemplateId: outfitTemplate.id,
+        occasionProfileId: occasionProfile.id
+      }
     }))
   };
 }
