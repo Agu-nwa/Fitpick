@@ -514,7 +514,6 @@ function EditorialRecommendationCard({
 }) {
   const featured = index === 0;
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const previewFailed = featured && preview?.status === "failed";
   const previewReady = featured && Boolean(preview?.imageUrl);
 
   return (
@@ -559,18 +558,6 @@ function EditorialRecommendationCard({
         </div>
       </div>
 
-      {previewFailed ? (
-        <div className="mx-1 mb-4 rounded-2xl border border-warning/20 bg-warning/10 p-4 sm:mx-2">
-          <p className="font-semibold text-ink">Your outfit is ready.</p>
-          <p className="mt-1 text-sm leading-6 text-muted">The preview couldn&apos;t be generated. You can try again without rebuilding the outfit.</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Link href={`/outfit/${outfit.id}/preview`} className="block">
-              <Button type="button" className="w-full">Generate Preview Again</Button>
-            </Link>
-            <Button type="button" variant="secondary" onClick={() => setDetailsOpen(true)}>View Outfit</Button>
-          </div>
-        </div>
-      ) : null}
       {showRegenerate && onRegenerate && showRefinementChips ? (
         <div className="border-t border-line/70 px-1 py-4 sm:px-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Refine the next look</p>
