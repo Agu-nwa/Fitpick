@@ -2,10 +2,22 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientRecovery from "@/components/system/ClientRecovery";
 import GlobalNotificationListener from "@/components/notifications/GlobalNotificationListener";
+import PwaServiceWorker from "@/components/system/PwaServiceWorker";
 
 export const metadata: Metadata = {
   title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
   description: "Your wardrobe, styled intelligently. Preview outfits and dress with confidence.",
+  applicationName: "MyFitPick",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/myfitpick-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/myfitpick-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/myfitpick-icon-180.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     title: "MyFitPick",
@@ -32,6 +44,7 @@ export default function RootLayout({
       <body className="font-sans">
         <ClientRecovery />
         <GlobalNotificationListener />
+        <PwaServiceWorker />
 
         <a
           href="#main-content"
