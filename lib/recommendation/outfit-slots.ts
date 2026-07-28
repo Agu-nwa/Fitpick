@@ -84,7 +84,7 @@ export function sanitizeOutfitItems(items: any[] = []) {
     }
 
     const updatedExisting = selectedBySlot.get(slot) || [];
-    const limit = slot === "accessory" ? 2 : slot === "unknown" ? Number.POSITIVE_INFINITY : 1;
+    const limit = slot === "accessory" ? 3 : slot === "unknown" ? Number.POSITIVE_INFINITY : 1;
     if (updatedExisting.length >= limit) {
       removeItem(item, slot, "duplicate_outfit_slot");
       continue;

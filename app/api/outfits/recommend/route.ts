@@ -265,6 +265,13 @@ export async function POST(request: NextRequest) {
         swapGroups:
           built.swapGroups,
 
+        reasoningMetadata: {
+          accessoryDecision:
+            built.scoreBreakdown?.accessoryCompletion ||
+            built.similarityMetadata?.accessoryDecision ||
+            null
+        },
+
         source: "outfit_page"
       });
 

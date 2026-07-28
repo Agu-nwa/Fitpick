@@ -339,6 +339,10 @@ export async function createOrReuseStylistOutfitRecommendation(
           gapInsights: recommendationResult?.gapInsights || [],
           scoreBreakdown: recommendationResult?.scoreBreakdown || {},
           similarityMetadata: recommendationResult?.similarityMetadata || {},
+          accessoryDecision:
+            recommendationResult?.scoreBreakdown?.accessoryCompletion ||
+            recommendationResult?.similarityMetadata?.accessoryDecision ||
+            null,
           candidateCount: recommendationResult?.candidateCount || 0,
           diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
           alternatives: recommendationResult?.alternatives || [],

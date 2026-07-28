@@ -455,7 +455,7 @@ function RecommendationDetailsDrawer({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Closet items</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {outfit.items.slice(0, 8).map((item) => (
+                {outfit.items.map((item) => (
                   <div key={item.id} className="overflow-hidden rounded-2xl border border-line bg-canvas/70">
                     <button
                       type="button"

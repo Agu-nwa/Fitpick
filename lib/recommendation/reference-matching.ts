@@ -1,4 +1,5 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
+import { isAccessoryCandidate, selectAccessoryCompletion } from "@/lib/recommendation/accessory-completion";
 import { evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { diversifyOutfits } from "@/lib/recommendation/diversity";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
@@ -334,16 +335,33 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
   }
 
   return selected.map((candidate, index) => {
-    const completeness = evaluateOutfitCompleteness(candidate.itemsWithAnchor);
+    const candidateItems = sanitizeOutfitItems(candidate.items || []).items;
+    const coreOnlyItems = candidateItems.filter((item) => !isAccessoryCandidate(item));
+    const coreItems = coreOnlyItems.length ? coreOnlyItems : candidateItems;
+    const accessoryCompletion = selectAccessoryCompletion({
+      selectedItems: coreItems,
+      wardrobeItems: available,
+      occasionName: occasion,
+      weatherContext: input.weatherContext,
+      repeatDays: 14,
+      allowNeedsCare: input.allowNeedsCare,
+      allowRecentRepeat: /repeat|again|same look|rewear/i.test(occasion),
+      styleProfile: input.styleProfile,
+      memorySummary: input.memorySummary,
+      outfitHistorySummary: input.outfitHistorySummary
+    });
+    const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
+    const completedItemsWithAnchor = [anchor, ...completedItems];
+    const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor);
     const missing = completeness.missingCategories;
-    const notes = explanation({ referenceItem, items: candidate.items, itemsWithAnchor: candidate.itemsWithAnchor, occasion, missingCategories: missing });
+    const notes = explanation({ referenceItem, items: completedItems, itemsWithAnchor: completedItemsWithAnchor, occasion, missingCategories: missing });
     const chips = buildReasonChips({
-      occasionReady: candidate.items.length >= 2,
-      colorBalanced: colorCompatibilityScore(candidate.itemsWithAnchor) >= 13,
+      occasionReady: completedItems.length >= 2,
+      colorBalanced: colorCompatibilityScore(completedItemsWithAnchor) >= 13,
       weatherAware: Boolean(input.weatherContext),
       fresh: true,
-      comfort: candidate.itemsWithAnchor.some((item: any) => /comfort|soft|relaxed/i.test(`${item.fit || ""} ${metadataValue(item, "fabricEstimate") || ""}`)),
-      polished: candidate.itemsWithAnchor.some((item: any) => ["shoes", "outerwear", "accessories", "bags"].includes(item.category)),
+      comfort: completedItemsWithAnchor.some((item: any) => /comfort|soft|relaxed/i.test(`${item.fit || ""} ${metadataValue(item, "fabricEstimate") || ""}`)),
+      polished: completedItemsWithAnchor.some((item: any) => ["shoes", "outerwear", "accessories", "bags"].includes(item.category)),
       eventAware: /wedding|dinner|formal|church|event/i.test(occasion)
     });
 
@@ -352,13 +370,17 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       occasion,
       confidence: confidenceFromScore(candidate.score),
       summary: `${notes.whyItWorks}${missing.length ? ` Missing ${missing.join(", ")} keeps it from being fully complete.` : ""}`,
-      items: candidate.items,
+      items: completedItems,
       reasonChips: ["Photo anchor", ...chips].slice(0, 8),
       weatherContext: input.weatherContext || "",
       repetitionNote: "Photo matches are rotated as you keep styling.",
-      careNote: candidate.items.some((item: any) => item.condition === "needs-care") ? "One closet item may need care before wearing." : "Selected closet items are marked ready.",
-      colorNote: colorNote(candidate.itemsWithAnchor),
+      careNote: completedItems.some((item: any) => item.condition === "needs-care") ? "One closet item may need care before wearing." : "Selected closet items are marked ready.",
+      colorNote: colorNote(completedItemsWithAnchor),
       ...notes,
+      stylingTips: [
+        accessoryCompletion.decision.status === "included" ? accessoryCompletion.decision.reason : "",
+        ...(notes.stylingTips || [])
+      ].filter(Boolean),
       addLater: missing.length ? `Optional add later: ${missing[0]}.` : "",
       confidenceScore: boundedConfidence(candidate.score),
       completenessStatus: completeness.completenessStatus,
@@ -370,12 +392,16 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       freshnessCue: "Built as a fresh photo-led closet match.",
       wardrobeReadiness: readiness,
       gapInsights,
-      scoreBreakdown: candidate.scoreBreakdown || {},
+      scoreBreakdown: {
+        ...(candidate.scoreBreakdown || {}),
+        accessoryCompletion: accessoryCompletion.decision
+      },
       similarityMetadata: {
         referenceItemId: String(referenceItem._id),
         source: "reference-upload",
         anchorCategory: referenceItem.category || "",
-        itemSignature: candidate.itemSignature
+        itemSignature: completedItems.map(itemId).filter(Boolean).sort().join("|"),
+        accessoryDecision: accessoryCompletion.decision
       },
       candidateCount: combinations.length,
       diverseCandidateCount: selected.length,
@@ -384,7 +410,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
         itemIds: alternative.items.map(itemId),
         similarityMetadata: { referenceItemId: String(referenceItem._id), source: "reference-upload" }
       })),
-      outfitPieces: outfitPieces(referenceItem, candidate.items),
+      outfitPieces: outfitPieces(referenceItem, completedItems),
       referenceItems: [serializeReferenceFashionItem(referenceItem)]
     };
   });
