@@ -9,6 +9,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem, serializeWardrobeUpload } from "@/lib/wardrobe";
 import { cleanGarmentMeasurements } from "@/lib/wardrobe/category-intelligence";
+import { sanitizeCategorySpecificMetadata } from "@/lib/wardrobe/metadata-validation";
 import {
   buildRecommendationMetadata,
   buildVirtualTryOnMetadata,
@@ -98,6 +99,16 @@ function labelMetadataFromAnalysis(aiAnalysis: any) {
   };
 }
 
+function buildCategorySpecificMetadata(upload: any, data: any) {
+  return {
+    ...(upload.categorySpecificMetadata || {}),
+    inferred: sanitizeCategorySpecificMetadata(upload.aiAnalysis?.categorySpecificMetadata || {}, data.category),
+    metadataVersion: "category-specific-v1",
+    category: data.category,
+    subtype: data.subcategory || ""
+  };
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const meta = requestMeta(request);
   const limited = rateLimitRequest({ key: `wardrobe-upload-review:${meta.ip}`, limit: 30, windowMs: 60 * 1000 });
@@ -154,7 +165,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       thumbnailUrl: upload.thumbnailUrl || "",
       images: upload.images || {},
       userInputMetadata: upload.userInputMetadata || {},
-      categorySpecificMetadata: upload.categorySpecificMetadata || {},
+      categorySpecificMetadata: buildCategorySpecificMetadata(upload, parsed.data),
       ocrMetadata: {
         ...(upload.ocrMetadata || {}),
         ...labelMetadataFromAnalysis(upload.aiAnalysis),

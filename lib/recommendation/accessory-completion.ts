@@ -73,6 +73,9 @@ function itemText(item: any) {
     metadataValue(item, "subcategory"),
     metadataValue(item, "garmentType"),
     metadataValue(item, "brand"),
+    metadataValue(item, "role"),
+    metadataValue(item, "metalTone"),
+    metadataValue(item, "hardwareFinish"),
     metadataList(item, "occasionSuitability").join(" "),
     metadataList(item, "weatherSuitability").join(" ")
   ]

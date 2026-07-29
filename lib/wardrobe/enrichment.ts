@@ -1,4 +1,5 @@
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { normaliseWardrobeItemMetadata } from "@/lib/wardrobe/metadata-normaliser";
 
 function cleanToken(value: unknown) {
   return String(value || "")
@@ -21,6 +22,7 @@ function unique(values: unknown[]) {
 }
 
 export function buildWardrobeSearchMetadata(item: any) {
+  const normalised = normaliseWardrobeItemMetadata(item);
   const tokens = unique([
     item.name,
     item.category,
@@ -32,6 +34,8 @@ export function buildWardrobeSearchMetadata(item: any) {
     fieldValue(item, "brand"),
     fieldValue(item, "recognizedEntity"),
     fieldValue(item, "fabricComposition"),
+    ...Object.values(normalised.universal),
+    ...Object.values(normalised.specific),
     ...list(item.occasions),
     ...list(item.weather),
     ...list(item.formality),
@@ -51,10 +55,13 @@ export function buildWardrobeSearchMetadata(item: any) {
 
 export function buildRecommendationMetadata(item: any) {
   const category = cleanToken(item.category);
+  const normalised = normaliseWardrobeItemMetadata(item);
   return {
     version: "recommendation-metadata-v1",
     baseCategory: category,
     outfitRole: category === "shoes" ? "footwear" : category === "bags" || category === "accessories" ? "finisher" : "garment",
+    universal: normalised.universal,
+    specific: normalised.specific,
     colors: unique([item.color, ...list(item.verifiedMetadata?.secondaryColors?.value)]),
     occasions: unique([...(item.occasions || []), ...list(item.verifiedMetadata?.occasionSuitability?.value)]),
     weather: unique([...(item.weather || []), ...list(item.verifiedMetadata?.weatherSuitability?.value)]),

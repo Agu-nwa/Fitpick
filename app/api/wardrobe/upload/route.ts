@@ -11,6 +11,7 @@ import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
 import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { findIntakeCategory } from "@/lib/wardrobe/category-intelligence";
+import { profileForCategory } from "@/lib/wardrobe/category-attribute-profiles";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
 
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
     const imageUrl = parsed.data.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
     const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
     const intakeCategory = findIntakeCategory(parsed.data.intakeCategoryId || "");
+    const attributeProfile = profileForCategory(parsed.data.selectedCategory || intakeCategory?.backendCategory || "");
     const labelPhotoKinds = Array.from(new Set(parsed.data.labelPhotoKinds || [])).slice(0, 7);
     const imageBundle = parsed.data.images;
     const photoCount = [imageBundle?.front, imageBundle?.back, imageBundle?.fabricCloseUp, imageBundle?.label].filter(Boolean).length +
@@ -137,6 +139,11 @@ export async function POST(request: NextRequest) {
     };
     const categorySpecificMetadata = {
       ...(parsed.data.categorySpecificMetadata || {}),
+      metadataVersion: "category-specific-v1",
+      category: parsed.data.selectedCategory || intakeCategory?.backendCategory || "",
+      subtype: parsed.data.selectedCategoryLabel || intakeCategory?.subcategory || "",
+      attributeProfile: attributeProfile?.label || "",
+      allowedSpecificFields: attributeProfile?.allowedSpecificFields || [],
       guidance: intakeCategory?.guidance || [],
       visionFocus: intakeCategory?.visionFocus || [],
       allowedMeasurementKeys: intakeCategory?.allowedMeasurementKeys || []

@@ -13,6 +13,15 @@ function asList(value: unknown): string[] {
 }
 
 export function metadataValue(item: any, key: string): any {
+  const normalisedSpecific = item.normalisedMetadata?.specific?.[key] ?? item.recommendationMetadata?.specific?.[key];
+  if (normalisedSpecific !== undefined && normalisedSpecific !== null && normalisedSpecific !== "") return normalisedSpecific;
+
+  const normalisedUniversal = item.normalisedMetadata?.universal?.[key] ?? item.recommendationMetadata?.universal?.[key];
+  if (normalisedUniversal !== undefined && normalisedUniversal !== null && !(Array.isArray(normalisedUniversal) && normalisedUniversal.length === 0) && normalisedUniversal !== "") return normalisedUniversal;
+
+  const directSpecific = item.categorySpecificMetadata?.inferred?.[key] ?? item.categorySpecificMetadata?.[key];
+  if (directSpecific !== undefined && directSpecific !== null && directSpecific !== "") return directSpecific;
+
   const verified = item.verifiedMetadata?.[key]?.value;
   if (verified !== undefined && verified !== null && !(Array.isArray(verified) && verified.length === 0) && verified !== "") return verified;
 

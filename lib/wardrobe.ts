@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import type { WardrobeCategory } from "@/types/wardrobe";
+import { normaliseWardrobeItemMetadata } from "@/lib/wardrobe/metadata-normaliser";
 
 export function isObjectId(value: string) {
   return mongoose.Types.ObjectId.isValid(value);
@@ -51,6 +52,7 @@ function recognizedEntityFromItem(item: any) {
 
 export function serializeWardrobeItem(item: any) {
   const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const normalisedMetadata = normaliseWardrobeItemMetadata(item);
   const condition = inferCondition({
     category: item.category,
     color: item.color,
@@ -85,6 +87,7 @@ export function serializeWardrobeItem(item: any) {
     recommendationMetadata: item.recommendationMetadata || {},
     virtualTryOnMetadata: item.virtualTryOnMetadata || {},
     searchMetadata: item.searchMetadata || {},
+    normalisedMetadata,
     enrichmentStatus: item.enrichmentStatus || "not_started",
     verifiedMetadata: item.verifiedMetadata || {},
     condition,

@@ -6,6 +6,7 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { buildWardrobeAnalysisPrompt } from "@/lib/ai/prompts";
 import { safeAIError } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
+import { sanitizeCategorySpecificMetadata } from "@/lib/wardrobe/metadata-validation";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { resolveGarmentEntity, serializeEntityRecognition } from "@/lib/garment-intelligence/entity-resolver";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
@@ -315,6 +316,10 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
       provider: "openai",
       model,
       status: "suggested",
+      categorySpecificMetadata: sanitizeCategorySpecificMetadata(
+        (validated.data as any).categorySpecificMetadata || {},
+        input.selectedCategory || (validated.data as any).fields?.category?.value
+      ),
       labelExtractionStatus: input.images?.label?.url ? "pending" : "not_provided",
       labelWarnings: [],
       analyzedAt: new Date().toISOString()

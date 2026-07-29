@@ -58,6 +58,12 @@ export type WardrobeItem = {
   recommendationMetadata?: Record<string, unknown>;
   virtualTryOnMetadata?: Record<string, unknown>;
   searchMetadata?: Record<string, unknown>;
+  normalisedMetadata?: {
+    universal: Record<string, unknown>;
+    specific: Record<string, unknown>;
+    confidence: Record<string, number>;
+    source: "structured" | "legacy" | "mixed";
+  };
   enrichmentStatus?: "not_started" | "queued" | "completed" | "failed" | string;
   verifiedMetadata?: Record<string, unknown>;
   condition: WardrobeCondition;

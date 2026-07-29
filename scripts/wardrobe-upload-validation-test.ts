@@ -23,7 +23,11 @@ function expectMeasurements(payload: Record<string, unknown>, expected: Record<s
   if (parsed.success) assert.deepEqual(parsed.data.garmentMeasurements, expected, `${message}: measurements should match category rules`);
 }
 
-assert.deepEqual(Object.keys(wardrobeCategoryRules).sort(), ["accessories", "bags", "bottoms", "dresses", "outerwear", "shoes", "tops"], "all backend categories must have central measurement rules");
+assert.deepEqual(
+  Object.keys(wardrobeCategoryRules).sort(),
+  ["accessories", "bags", "bottoms", "dresses", "native", "outerwear", "shoes", "tops", "womens_hair"],
+  "all backend categories must have central measurement rules"
+);
 
 expectStripped({
   category: "shoes",

@@ -29,6 +29,15 @@ export const fabricDrapeSchema = z.enum(["structured", "soft", "flowing", "heavy
 export const measurementSourceSchema = z.enum(["label_ocr", "user_confirmed", "ai_estimated", "manual", "unknown"]);
 
 const tagList = z.array(z.string().trim().min(1).max(40)).max(20);
+const editableMetadataValueSchema = z.union([
+  z.string().trim().max(500),
+  z.number().finite(),
+  z.boolean(),
+  z.null(),
+  z.array(z.string().trim().max(160)).max(40),
+  z.record(z.unknown())
+]);
+const editableMetadataSchema = z.record(editableMetadataValueSchema).default({});
 const confirmedScalar = z.union([z.string().trim().max(500), z.number().min(0).max(10), z.null()]);
 const confirmedList = z.array(z.string().trim().min(1).max(120)).max(30);
 const confirmedFieldSchema = z
@@ -73,6 +82,7 @@ const wardrobeFields = {
   formality: tagList.default([]),
   occasions: tagList.default([]),
   weather: tagList.default([]),
+  categorySpecificMetadata: editableMetadataSchema.optional(),
   condition: wardrobeConditionSchema.optional()
 };
 

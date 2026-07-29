@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { wardrobeCategorySchema } from "@/schemas/wardrobe.schema";
+import { categorySpecificMetadataSchema } from "@/lib/wardrobe/metadata-validation";
 
 export const aiFieldSourceSchema = z.enum([
   "vision",
@@ -93,6 +94,7 @@ export const wardrobeAiAnalysisSchema = z.object({
   status: z.enum(["pending", "suggested", "needs-review", "confirmed", "failed"]),
   labelExtractionStatus: z.enum(["not_provided", "pending", "completed", "partial", "failed"]).default("not_provided"),
   labelWarnings: z.array(z.string().trim().min(1).max(180)).max(10).default([]),
+  categorySpecificMetadata: categorySpecificMetadataSchema.default({}),
   analyzedAt: z.string().datetime().optional(),
   rawSummary: z.string().trim().max(1200).default(""),
   fields: wardrobeAiFieldsSchema
