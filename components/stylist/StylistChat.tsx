@@ -1023,13 +1023,15 @@ export function StylistChat({
     });
     revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
 
-    if (jobId && avatarPreview.status !== "ready" && !response.data.redirectTo) {
+    const shouldFollowRedirect = Boolean(response.data.redirectTo && productMode !== "create");
+
+    if (jobId && avatarPreview.status !== "ready" && !shouldFollowRedirect) {
       void pollAvatarJob(assistantId, jobId);
     }
 
     if (response.data.outfitRecommendationId && !referenceForMessage) {
-      showToast("MyFitPick is preparing your look.");
-      if (response.data.redirectTo) router.push(response.data.redirectTo);
+      showToast(productMode === "create" ? "Your look is ready." : "MyFitPick is preparing your look.");
+      if (shouldFollowRedirect && response.data.redirectTo) router.push(response.data.redirectTo);
     }
   }
 
