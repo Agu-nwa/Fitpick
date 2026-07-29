@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -39,9 +40,29 @@ export function WelcomeScreen() {
   }
 
   return (
-    <main className="relative isolate flex min-h-[100svh] items-center justify-center overflow-hidden bg-canvas px-5 py-[calc(2rem+var(--safe-top))] text-ink">
+    <main className="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-canvas px-5 py-[calc(1rem+var(--safe-top))] text-ink">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_12%,rgba(85,124,120,0.14),transparent_30%),radial-gradient(circle_at_80%_24%,rgba(216,185,140,0.18),transparent_28%)]" />
-      <section className="w-full max-w-[620px] rounded-[34px] border border-line bg-surface/88 p-6 shadow-card backdrop-blur-xl sm:p-10">
+      <header className="mx-auto mb-5 w-full max-w-[620px] rounded-[1.45rem] border border-line/75 bg-canvas/88 px-2 py-2 shadow-soft backdrop-blur-xl">
+        <div className="grid min-h-12 grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="focus-ring inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface/90 text-muted shadow-card transition hover:text-ink active:scale-[0.97]"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+          <p className="min-w-0 truncate text-center text-sm font-bold text-ink sm:text-base">Welcome</p>
+          <Link
+            href="/home"
+            className="focus-ring inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface/90 text-muted shadow-card transition hover:text-ink active:scale-[0.97]"
+            aria-label="Close welcome"
+          >
+            <X size={18} aria-hidden="true" />
+          </Link>
+        </div>
+      </header>
+      <section className="mx-auto my-auto w-full max-w-[620px] rounded-[34px] border border-line bg-surface/88 p-6 shadow-card backdrop-blur-xl sm:p-10">
         <BrandLogo size="lg" priority />
         <p className="mt-10 text-[10px] font-bold uppercase tracking-[0.32em] text-cocoa">First fitting</p>
         <h1 className="mt-3 font-editorial text-5xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-6xl">

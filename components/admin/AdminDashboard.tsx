@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ApiErrorState } from "@/components/integration/ApiErrorState";
 import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -221,7 +222,8 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
             <section>
               <SectionHeader title="Production Actions" />
-              <Card className="p-4">
+              <div className="grid gap-3 lg:grid-cols-3">
+              <Card className="p-4 lg:col-span-2">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-ink">Seed global content</p>
@@ -237,6 +239,19 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                   </Button>
                 </div>
               </Card>
+              <Card className="p-4">
+                <p className="text-sm font-semibold text-ink">Support consoles</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Open customer support or the external API support console.</p>
+                <div className="mt-4 grid gap-2">
+                  <Link href="/admin/support">
+                    <Button variant="secondary" className="w-full">FitPick inbox</Button>
+                  </Link>
+                  <Link href="/admin/support-api">
+                    <Button variant="secondary" className="w-full">Support API console</Button>
+                  </Link>
+                </div>
+              </Card>
+              </div>
             </section>
           </div>
         ) : null}
