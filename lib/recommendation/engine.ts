@@ -1,14 +1,22 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
 import { isAccessoryCandidate, selectAccessoryCompletion } from "@/lib/recommendation/accessory-completion";
 import { completenessLabel, evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
+import { computeRecommendationConfidence } from "@/lib/recommendation/confidence";
+import { collectionFamilyFor } from "@/lib/recommendation/collections";
 import { diversifyOutfits, noveltyScore } from "@/lib/recommendation/diversity";
 import { rankCandidatesForEditorialReview } from "@/lib/recommendation/editorial-ranking";
+import { buildExplainabilityBreakdown } from "@/lib/recommendation/explainability";
+import { fashionKnowledgeScore, marketplaceExtensionPoints } from "@/lib/recommendation/fashion-knowledge";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
+import { buildLearningSignals, learningSignalScore } from "@/lib/recommendation/learning-engine";
 import { resolveOutfitArchitecture } from "@/lib/recommendation/outfit-architecture";
 import { missingCoreCategories } from "@/lib/recommendation/outfit-structures";
 import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/policy";
+import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
+import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
 import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { buildInternalStyleProfile } from "@/lib/recommendation/style-profile";
 import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
 import {
   metadataList,
@@ -187,6 +195,17 @@ export function buildRecommendation(input: EngineInput) {
         (item) => item.condition === "missing-tags"
       )
     );
+  const internalStyleProfile = buildInternalStyleProfile({
+    styleProfile: input.styleProfile,
+    wardrobeItems: readyFirst,
+    memorySummary: input.memorySummary,
+    outfitHistorySummary: input.outfitHistorySummary
+  });
+  const learningSignals = buildLearningSignals({
+    items: readyFirst,
+    memorySummary: input.memorySummary,
+    outfitHistorySummary: input.outfitHistorySummary
+  });
 
   // Generate and score outfit combinations
 
@@ -205,7 +224,7 @@ export function buildRecommendation(input: EngineInput) {
       repeatDays,
       allowNeedsCare: input.allowNeedsCare,
       desiredCategories: desiredStructure,
-      styleProfile: input.styleProfile,
+      styleProfile: internalStyleProfile,
       memorySummary: input.memorySummary,
       outfitHistorySummary: input.outfitHistorySummary,
       allowRecentRepeat,
@@ -213,6 +232,7 @@ export function buildRecommendation(input: EngineInput) {
       recommendationMode,
       occasionProfile,
       outfitTemplate,
+      wardrobeItems: readyFirst,
       weather: input.weather,
       preferences: input.preferences,
       maxCandidates: 650
@@ -234,7 +254,7 @@ export function buildRecommendation(input: EngineInput) {
     {
       template: outfitTemplate,
       profile: occasionProfile,
-      styleProfile: input.styleProfile,
+      styleProfile: internalStyleProfile,
       limit: 80
     }
   );
@@ -308,7 +328,7 @@ export function buildRecommendation(input: EngineInput) {
     repeatDays,
     allowNeedsCare: input.allowNeedsCare,
     allowRecentRepeat,
-    styleProfile: input.styleProfile,
+    styleProfile: internalStyleProfile,
     memorySummary: input.memorySummary,
     outfitHistorySummary: input.outfitHistorySummary
   });
@@ -330,11 +350,47 @@ export function buildRecommendation(input: EngineInput) {
     repeatDays,
     allowNeedsCare: input.allowNeedsCare,
     desiredCategories: desiredStructure,
-    styleProfile: input.styleProfile,
+    styleProfile: internalStyleProfile,
     memorySummary: input.memorySummary,
     outfitHistorySummary: input.outfitHistorySummary,
     allowRecentRepeat,
     recommendationMode
+  }) +
+    personalPreferenceScore(completedItems, {
+      styleProfile: internalStyleProfile,
+      memorySummary: input.memorySummary,
+      outfitHistorySummary: input.outfitHistorySummary
+    }) +
+    learningSignalScore(completedItems, learningSignals) +
+    wardrobeRotationScore(completedItems, input.outfitHistorySummary) +
+    fashionKnowledgeScore(completedItems, {
+      occasionName: input.occasionName,
+      weatherContext: input.weatherContext,
+      occasionProfile
+    });
+  const confidenceEngine = computeRecommendationConfidence({
+    score,
+    candidateCount: combinations.length,
+    validation: finalValidation,
+    wardrobeReadiness: readiness,
+    completenessStatus: completeness.completenessStatus,
+    weatherContext: input.weatherContext
+  });
+  const collectionFamily = collectionFamilyFor({
+    occasionName: input.occasionName,
+    recommendationMode,
+    outfitTemplateId: outfitTemplate.id
+  });
+  const preferenceScore = personalPreferenceScore(completedItems, {
+    styleProfile: internalStyleProfile,
+    memorySummary: input.memorySummary,
+    outfitHistorySummary: input.outfitHistorySummary
+  });
+  const rotationIntelligenceScore = wardrobeRotationScore(completedItems, input.outfitHistorySummary);
+  const knowledgeScore = fashionKnowledgeScore(completedItems, {
+    occasionName: input.occasionName,
+    weatherContext: input.weatherContext,
+    occasionProfile
   });
 
   const confidence = confidenceFromScore(score);
@@ -423,7 +479,7 @@ export function buildRecommendation(input: EngineInput) {
     careNote: careNote(completedItems),
     colorNote: colorNote(completedItems),
     swapGroups: buildSwapGroups(completedItems, available),
-    confidenceScore: boundedConfidenceScore(score),
+    confidenceScore: Math.max(boundedConfidenceScore(score), confidenceEngine.overallConfidence / 100),
     ...explanation,
     stylingTips: [
       accessoryCompletion.decision.status === "included" ? accessoryCompletion.decision.reason : "",
@@ -444,7 +500,22 @@ export function buildRecommendation(input: EngineInput) {
       accessoryCompletion: accessoryCompletion.decision,
       outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
       occasionProfile: { id: occasionProfile.id, label: occasionProfile.label },
-      stylingValidation: finalValidation
+      stylingValidation: finalValidation,
+      personalPreference: preferenceScore,
+      learningSignals: learningSignalScore(completedItems, learningSignals),
+      wardrobeRotation: rotationIntelligenceScore,
+      fashionKnowledge: knowledgeScore,
+      confidenceEngine,
+      explainability: buildExplainabilityBreakdown({
+        scoreBreakdown: bestOutfit.scoreBreakdown || {},
+        confidence: confidenceEngine,
+        validation: finalValidation,
+        rotationScore: rotationIntelligenceScore,
+        personalPreferenceScore: preferenceScore,
+        fashionKnowledgeScore: knowledgeScore
+      }),
+      marketplaceExtensionPoints: marketplaceExtensionPoints(completedItems, { missingCategories: completenessMissing }),
+      collectionFamily
     },
     similarityMetadata: {
       ...(bestOutfit.similarityMetadata || {}),
@@ -452,6 +523,11 @@ export function buildRecommendation(input: EngineInput) {
       outfitStructure: outfitTemplate.stylingFamily,
       outfitTemplateId: outfitTemplate.id,
       occasionProfileId: occasionProfile.id,
+      collectionFamily,
+      personalStyleProfile: {
+        inferredFrom: internalStyleProfile.inferredFrom || [],
+        learningWeight: learningSignals.recentWeight
+      },
       stylingValidation: {
         valid: finalValidation.valid,
         warnings: finalValidation.warnings,

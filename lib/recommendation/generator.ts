@@ -4,6 +4,10 @@ import { calculateWeatherScore }
   from "@/lib/weather/weather-scoring";
 import { scoreItemForOccasionProfile } from "@/lib/recommendation/occasion-profiles";
 import { scoreItemForTemplate } from "@/lib/recommendation/outfit-templates";
+import { buildLearningSignals, learningSignalScore } from "@/lib/recommendation/learning-engine";
+import { fashionKnowledgeScore } from "@/lib/recommendation/fashion-knowledge";
+import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
+import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
 import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 
 function idFor(item: any) {
@@ -52,7 +56,16 @@ export function generateCombinations(
     if (!uniqueItems.length) return;
 
     const detailed = scoreOutfitDetailed(uniqueItems, scoringInput);
-    let score = detailed.total;
+    const learningSignals = buildLearningSignals({
+      items: scoringInput.wardrobeItems || [],
+      memorySummary: scoringInput.memorySummary,
+      outfitHistorySummary: scoringInput.outfitHistorySummary
+    });
+    const personalScore = personalPreferenceScore(uniqueItems, scoringInput);
+    const learningScore = learningSignalScore(uniqueItems, learningSignals);
+    const rotationScore = wardrobeRotationScore(uniqueItems, scoringInput.outfitHistorySummary);
+    const knowledgeScore = fashionKnowledgeScore(uniqueItems, scoringInput);
+    let score = detailed.total + personalScore + learningScore + rotationScore + knowledgeScore;
 
     for (const item of uniqueItems) {
       score += calculateWeatherScore(item, scoringInput.weather || null);
@@ -66,7 +79,13 @@ export function generateCombinations(
     outfits.push({
       items: uniqueItems,
       score: Math.round(score * 10) / 10,
-      scoreBreakdown: detailed.breakdown,
+      scoreBreakdown: {
+        ...detailed.breakdown,
+        personalPreference: personalScore,
+        learningSignals: learningScore,
+        wardrobeRotation: rotationScore,
+        fashionKnowledge: knowledgeScore
+      },
       itemSignature: uniqueItems.map(idFor).filter(Boolean).sort().join("|")
     });
   }

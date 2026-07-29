@@ -188,10 +188,16 @@ const businessLook = buildRecommendation({
 assert.equal(businessLook.recommendationMode, "business_ready");
 assert.ok(businessLook.items.length >= 3, "business casual recommendation should include owned core items");
 assert.ok(businessLook.items.every((entry: any) => wardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must only use fixture-owned items");
-assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v5");
+assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v6");
 assert.equal(businessLook.similarityMetadata?.outfitTemplateId, "business_casual");
 assert.equal(businessLook.similarityMetadata?.occasionProfileId, "business");
 assert.equal(businessLook.scoreBreakdown?.stylingValidation?.valid, true);
+assert.ok(typeof businessLook.scoreBreakdown?.personalPreference === "number", "recommendation should include personal preference scoring");
+assert.ok(typeof businessLook.scoreBreakdown?.wardrobeRotation === "number", "recommendation should include wardrobe rotation scoring");
+assert.ok(typeof businessLook.scoreBreakdown?.fashionKnowledge === "number", "recommendation should include fashion knowledge scoring");
+assert.ok(businessLook.scoreBreakdown?.confidenceEngine?.overallConfidence >= 0, "recommendation should include internal confidence engine output");
+assert.ok(businessLook.scoreBreakdown?.explainability?.overallConfidence >= 0, "recommendation should include explainability breakdown");
+assert.equal(businessLook.scoreBreakdown?.collectionFamily, "Business Week");
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
 assert.ok(businessLook.items.some((entry: any) => entry.category === "bags"), "business recommendation should complete the look with an owned bag when suitable");
 assert.ok(businessLook.items.some((entry: any) => /watch/i.test(`${entry.name} ${entry.subcategory}`)), "business recommendation should include the strongest owned wrist accessory when suitable");
@@ -324,6 +330,23 @@ const streetwearLook = buildRecommendation({
 assert.equal(streetwearLook.similarityMetadata?.outfitTemplateId, "streetwear");
 assert.equal(streetwearLook.similarityMetadata?.occasionProfileId, "everyday");
 assert.ok(streetwearLook.items.some((entry: any) => /crossbody/i.test(`${entry.name} ${entry.subcategory}`)), "streetwear should include a carry accessory when suitable");
+
+const learningAwareLook = buildRecommendation({
+  wardrobeItems: wardrobe,
+  occasionName: "business casual",
+  recommendationMode: "business_ready",
+  outfitHistorySummary: {
+    eventCount: 20,
+    savedItemIds: ["000000000000000000000001", "000000000000000000000002"],
+    rejectedItemIds: ["000000000000000000000004"],
+    recentRecommendedItemIds: ["000000000000000000000004"],
+    regeneratedItemIds: ["000000000000000000000004"]
+  }
+});
+
+assert.ok(learningAwareLook.similarityMetadata?.personalStyleProfile?.learningWeight > 0, "long-term history should activate internal learning weight");
+assert.ok(learningAwareLook.scoreBreakdown?.learningSignals !== 0, "history events should influence ranking");
+assert.ok(Array.isArray(learningAwareLook.scoreBreakdown?.marketplaceExtensionPoints), "recommendations should expose future marketplace extension points internally");
 
 const duplicateBottomWardrobe = [
   item("000000000000000000000011", "shirts", "White dress shirt", "white"),

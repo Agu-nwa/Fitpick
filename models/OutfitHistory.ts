@@ -20,6 +20,7 @@ const OutfitHistorySchema = new Schema(
     similarityMetadata: { type: Schema.Types.Mixed, default: {} },
     generatedAt: { type: Date, default: Date.now, index: true },
     viewedAt: { type: Date, default: null },
+    downloadedAt: { type: Date, default: null },
     expandedAt: { type: Date, default: null },
     savedAt: { type: Date, default: null },
     acceptedAt: { type: Date, default: null },

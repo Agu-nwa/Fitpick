@@ -1,4 +1,4 @@
-export const RECOMMENDATION_SCORING_VERSION = "stylist-score-v5";
+export const RECOMMENDATION_SCORING_VERSION = "stylist-score-v6";
 
 export type RecommendationMode =
   | "todays_best"
