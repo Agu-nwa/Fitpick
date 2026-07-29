@@ -28,6 +28,7 @@ import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
+import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 
 import { outfitRecommendationRequestSchema }
   from "@/schemas/outfit.schema";
@@ -139,6 +140,11 @@ export async function POST(request: NextRequest) {
       occasion?.name ||
       "Today";
     const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
+    const compatibilityEdges = await getCompatibilityEdgesForItems({
+      userId: String(auth.user._id),
+      itemIds: wardrobeItems.map((item: any) => String(item._id)),
+      minScore: 45
+    });
 
     const built = buildRecommendation({
       occasionName,
@@ -170,6 +176,7 @@ export async function POST(request: NextRequest) {
       memorySummary: serializeMemorySummary(memorySummary),
       outfitHistorySummary,
       recommendationMode: parsed.data.recommendationMode,
+      compatibilityEdges,
       wardrobeItems,
       wornLooks
     });

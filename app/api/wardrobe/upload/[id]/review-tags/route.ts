@@ -15,6 +15,10 @@ import {
   buildVirtualTryOnMetadata,
   buildWardrobeSearchMetadata
 } from "@/lib/wardrobe/enrichment";
+import {
+  detectLikelyDuplicate,
+  refreshCompatibilityGraphForItem
+} from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { markReferenceItemConvertedToWardrobe } from "@/lib/ai/reference-fashion-item";
 import { WardrobeItem } from "@/models/WardrobeItem";
@@ -139,6 +143,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       parsed.data.category,
       parsed.data.subcategory || ""
     );
+    const existingItems = await WardrobeItem.find({
+      userId: auth.user._id,
+      archivedAt: null
+    })
+      .limit(500)
+      .lean();
+    const duplicateDetection = detectLikelyDuplicate({
+      candidate: {
+        ...parsed.data,
+        color: parsed.data.color,
+        fabric: parsed.data.fabric,
+        fit: parsed.data.fit,
+        verifiedMetadata: verifiedMetadata(verifiedFields),
+        aiAnalysis: upload.aiAnalysis
+      },
+      existingItems
+    });
     const item = await WardrobeItem.create({
       name: parsed.data.name,
       category: parsed.data.category,
@@ -171,7 +192,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         ...labelMetadataFromAnalysis(upload.aiAnalysis),
         labelPhotoKinds: upload.labelPhotoKinds || []
       },
-      recommendationMetadata: upload.recommendationMetadata || {},
+      recommendationMetadata: {
+        ...(upload.recommendationMetadata || {}),
+        duplicateDetection,
+        uploadIntelligence: upload.aiAnalysis?.uploadIntelligence || null
+      },
       virtualTryOnMetadata: upload.virtualTryOnMetadata || {},
       searchMetadata: upload.searchMetadata || {},
       enrichmentStatus: backgroundJobsEnabled() ? "queued" : "completed",
@@ -188,6 +213,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       item.virtualTryOnMetadata = buildVirtualTryOnMetadata(item);
       item.enrichmentStatus = "completed";
       await item.save();
+      await refreshCompatibilityGraphForItem({
+        userId: String(auth.user._id),
+        wardrobeItemId: String(item._id)
+      });
     }
 
     upload.createdItemId = item._id;
@@ -205,6 +234,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ...(upload.ocrMetadata || {}),
       ...labelMetadataFromAnalysis(upload.aiAnalysis),
       labelPhotoKinds: upload.labelPhotoKinds || []
+    };
+    upload.recommendationMetadata = {
+      ...(upload.recommendationMetadata || {}),
+      duplicateDetection,
+      uploadIntelligence: upload.aiAnalysis?.uploadIntelligence || null
     };
     upload.enrichmentStatus = backgroundJobsEnabled() ? "queued" : "completed";
     await upload.save();

@@ -9,6 +9,7 @@ import { fashionKnowledgeScore } from "@/lib/recommendation/fashion-knowledge";
 import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
 import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 
 function idFor(item: any) {
   return String(item?._id || item?.id || "");
@@ -65,7 +66,8 @@ export function generateCombinations(
     const learningScore = learningSignalScore(uniqueItems, learningSignals);
     const rotationScore = wardrobeRotationScore(uniqueItems, scoringInput.outfitHistorySummary);
     const knowledgeScore = fashionKnowledgeScore(uniqueItems, scoringInput);
-    let score = detailed.total + personalScore + learningScore + rotationScore + knowledgeScore;
+    const graphScore = scoreCompatibilityGraph(uniqueItems, scoringInput.compatibilityEdges || []);
+    let score = detailed.total + personalScore + learningScore + rotationScore + knowledgeScore + graphScore.score;
 
     for (const item of uniqueItems) {
       score += calculateWeatherScore(item, scoringInput.weather || null);
@@ -84,7 +86,8 @@ export function generateCombinations(
         personalPreference: personalScore,
         learningSignals: learningScore,
         wardrobeRotation: rotationScore,
-        fashionKnowledge: knowledgeScore
+        fashionKnowledge: knowledgeScore,
+        compatibilityGraph: graphScore
       },
       itemSignature: uniqueItems.map(idFor).filter(Boolean).sort().join("|")
     });

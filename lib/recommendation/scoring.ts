@@ -1,6 +1,7 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { outfitItemSignature } from "@/lib/recommendation/history";
 import { RECOMMENDATION_SCORING_VERSION, scoringWeightsForMode } from "@/lib/recommendation/policy";
+import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
@@ -352,6 +353,7 @@ type ScoreInput = {
   outfitHistorySummary?: any;
   allowRecentRepeat?: boolean;
   recommendationMode?: string;
+  compatibilityEdges?: any[];
 };
 
 export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
@@ -388,7 +390,8 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     readiness: itemBreakdown.readiness,
     comfort: comfortScore(items, input.styleProfile),
     luxury: luxuryAestheticScore(items, input.styleProfile),
-    outfitRoles: outfitRoleBalanceScore(items, input.desiredCategories || [])
+    outfitRoles: outfitRoleBalanceScore(items, input.desiredCategories || []),
+    compatibilityGraph: scoreCompatibilityGraph(items, input.compatibilityEdges || [])
   };
 
   const total =
@@ -409,7 +412,7 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     breakdown.comfort * weights.comfort +
     breakdown.luxury * weights.luxury;
 
-  const roleAdjustedTotal = total + breakdown.outfitRoles;
+  const roleAdjustedTotal = total + breakdown.outfitRoles + breakdown.compatibilityGraph.score;
 
   return {
     total: Math.round(roleAdjustedTotal * 10) / 10,

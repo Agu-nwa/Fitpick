@@ -17,6 +17,7 @@ import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCredit
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
+import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { getWeatherForecast, isWeatherSensitiveMessage, weatherErrorMetadata } from "@/lib/weather/weather-service";
 import {
@@ -192,6 +193,11 @@ export async function POST(request: NextRequest) {
     }
     let referenceRecommendations: any[] = [];
     let deterministicRecommendation: any;
+    const compatibilityEdges = await getCompatibilityEdgesForItems({
+      userId: String(auth.user._id),
+      itemIds: wardrobe.map((item: any) => String(item._id)),
+      minScore: 45
+    });
     if (referenceItem) {
       logReferenceItemEvent({ event: "wardrobe_match_started", userId: String(auth.user._id), referenceItemId: String(referenceItem._id), status: referenceItem.status, category: referenceItem.category });
       try {
@@ -204,6 +210,7 @@ export async function POST(request: NextRequest) {
           styleProfile: serializedStyleProfile,
           memorySummary: serializedMemorySummary,
           outfitHistorySummary,
+          compatibilityEdges,
           limit: 3
         });
         deterministicRecommendation = referenceRecommendations[0];
@@ -221,6 +228,7 @@ export async function POST(request: NextRequest) {
         styleProfile: serializedStyleProfile,
         memorySummary: serializedMemorySummary,
         outfitHistorySummary,
+        compatibilityEdges,
         wardrobeItems: wardrobe,
         wornLooks: []
       });

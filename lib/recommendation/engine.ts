@@ -150,6 +150,7 @@ export type EngineInput = {
   styleProfile?: any;
   memorySummary?: any;
   wardrobeItems: any[];
+  compatibilityEdges?: any[];
   previousLooks?: any[];
   wornLooks?: any[];
   weather?: any;
@@ -233,6 +234,7 @@ export function buildRecommendation(input: EngineInput) {
       occasionProfile,
       outfitTemplate,
       wardrobeItems: readyFirst,
+      compatibilityEdges: input.compatibilityEdges || [],
       weather: input.weather,
       preferences: input.preferences,
       maxCandidates: 650
@@ -354,7 +356,8 @@ export function buildRecommendation(input: EngineInput) {
     memorySummary: input.memorySummary,
     outfitHistorySummary: input.outfitHistorySummary,
     allowRecentRepeat,
-    recommendationMode
+    recommendationMode,
+    compatibilityEdges: input.compatibilityEdges || []
   }) +
     personalPreferenceScore(completedItems, {
       styleProfile: internalStyleProfile,

@@ -16,6 +16,7 @@ const confidence = z.number().min(0).max(1);
 const textValue = z.string().trim().max(500).nullable();
 const numberValue = z.number().min(0).max(1).nullable();
 const textListValue = z.array(z.string().trim().min(1).max(80)).max(20).default([]);
+const nullableBoolean = z.boolean().nullable();
 
 export const aiTextFieldSchema = z.object({
   value: textValue,
@@ -95,6 +96,50 @@ export const wardrobeAiAnalysisSchema = z.object({
   labelExtractionStatus: z.enum(["not_provided", "pending", "completed", "partial", "failed"]).default("not_provided"),
   labelWarnings: z.array(z.string().trim().min(1).max(180)).max(10).default([]),
   categorySpecificMetadata: categorySpecificMetadataSchema.default({}),
+  uploadIntelligence: z.object({
+    imageQuality: z.object({
+      blurry: nullableBoolean,
+      lowResolution: z.boolean(),
+      excessiveCompression: nullableBoolean,
+      poorLighting: nullableBoolean,
+      heavyShadows: nullableBoolean,
+      overexposed: nullableBoolean,
+      underexposed: nullableBoolean,
+      confidence
+    }),
+    garmentVisibility: z.object({
+      frontVisible: z.boolean(),
+      backVisible: z.boolean(),
+      sideOnly: nullableBoolean,
+      cropped: nullableBoolean,
+      folded: nullableBoolean,
+      hiddenAreas: nullableBoolean,
+      confidence
+    }),
+    backgroundQuality: z.object({
+      plainBackground: nullableBoolean,
+      clutteredBackground: nullableBoolean,
+      mannequin: nullableBoolean,
+      hanger: nullableBoolean,
+      flatLay: nullableBoolean,
+      worn: nullableBoolean,
+      mirrorSelfie: nullableBoolean,
+      confidence
+    }),
+    cleanliness: z.object({
+      wrinkles: nullableBoolean,
+      stains: nullableBoolean,
+      creases: nullableBoolean,
+      reflections: nullableBoolean,
+      obstruction: nullableBoolean,
+      confidence
+    }),
+    multipleGarments: z.object({
+      status: z.enum(["single", "multiple", "accessories_mixed", "unknown"]),
+      confidence
+    }),
+    warnings: z.array(z.string().trim().min(1).max(180)).max(12).default([])
+  }).optional(),
   analyzedAt: z.string().datetime().optional(),
   rawSummary: z.string().trim().max(1200).default(""),
   fields: wardrobeAiFieldsSchema

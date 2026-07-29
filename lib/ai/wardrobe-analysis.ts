@@ -9,6 +9,7 @@ import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/sche
 import { sanitizeCategorySpecificMetadata } from "@/lib/wardrobe/metadata-validation";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { resolveGarmentEntity, serializeEntityRecognition } from "@/lib/garment-intelligence/entity-resolver";
+import { buildImageQualityIntelligence, mergeUploadIntelligence } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
 
 function averageConfidence(analysis: WardrobeAiAnalysis) {
@@ -311,6 +312,7 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     const validated = validateJsonResponse(wardrobeAiAnalysisSchema.partial({ provider: true, model: true, status: true }), json.data);
     if (!validated.ok) throw new Error(validated.reason);
 
+    const fallbackUploadIntelligence = buildImageQualityIntelligence({ images: input.images });
     const visionAnalysis = wardrobeAiAnalysisSchema.parse({
       ...validated.data,
       provider: "openai",
@@ -320,6 +322,7 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
         (validated.data as any).categorySpecificMetadata || {},
         input.selectedCategory || (validated.data as any).fields?.category?.value
       ),
+      uploadIntelligence: mergeUploadIntelligence((validated.data as any).uploadIntelligence, fallbackUploadIntelligence),
       labelExtractionStatus: input.images?.label?.url ? "pending" : "not_provided",
       labelWarnings: [],
       analyzedAt: new Date().toISOString()
@@ -332,6 +335,7 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     );
     const analysis = wardrobeAiAnalysisSchema.parse({
       ...mergedAnalysis,
+      uploadIntelligence: mergeUploadIntelligence((mergedAnalysis as any).uploadIntelligence, fallbackUploadIntelligence),
       labelExtractionStatus: labelResult.status,
       labelWarnings: [...mergedAnalysis.labelWarnings, ...labelResult.warnings].slice(0, 10)
     });

@@ -26,6 +26,7 @@ import {
   scoreOutfitDetailed,
   silhouetteBalanceScore
 } from "@/lib/recommendation/scoring";
+import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { referenceItemToPseudoWardrobeItem, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 
 type ReferenceMatchInput = {
@@ -39,6 +40,7 @@ type ReferenceMatchInput = {
   outfitHistorySummary?: any;
   allowNeedsCare?: boolean;
   recommendationMode?: string;
+  compatibilityEdges?: any[];
   limit?: number;
 };
 
@@ -189,16 +191,18 @@ function makeCombinations(input: {
       const learningScore = learningSignalScore(unique, learningSignals);
       const rotationScore = wardrobeRotationScore(unique, input.scoringInput.outfitHistorySummary);
       const knowledgeScore = fashionKnowledgeScore(withAnchor, input.scoringInput);
+      const graphScore = scoreCompatibilityGraph(unique, input.scoringInput.compatibilityEdges || []);
       outfits.push({
         items: unique,
         itemsWithAnchor: withAnchor,
-        score: Math.round((score + architectureScore + personalScore + learningScore + rotationScore + knowledgeScore) * 10) / 10,
+        score: Math.round((score + architectureScore + personalScore + learningScore + rotationScore + knowledgeScore + graphScore.score) * 10) / 10,
         scoreBreakdown: {
           ...detailed.breakdown,
           personalPreference: personalScore,
           learningSignals: learningScore,
           wardrobeRotation: rotationScore,
-          fashionKnowledge: knowledgeScore
+          fashionKnowledge: knowledgeScore,
+          compatibilityGraph: graphScore
         },
         itemSignature: unique.map(itemId).filter(Boolean).sort().join("|")
       });
@@ -334,7 +338,8 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     recommendationMode: input.recommendationMode || "photo_match",
     occasionProfile,
     outfitTemplate,
-    wardrobeItems: available
+    wardrobeItems: available,
+    compatibilityEdges: input.compatibilityEdges || []
   };
   const combinations = makeCombinations({
     anchor,

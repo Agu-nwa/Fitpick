@@ -13,6 +13,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
+import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
 
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       getRecentOutfitHistory(auth.user._id, 60)
     ]);
 
+    const compatibilityEdges = await getCompatibilityEdgesForItems({
+      userId: String(auth.user._id),
+      itemIds: wardrobe.map((item: any) => String(item._id)),
+      minScore: 45
+    });
+
     const recommendations = buildReferenceOutfitRecommendations({
       referenceItem,
       wardrobeItems: wardrobe,
@@ -59,6 +66,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       styleProfile: serializeStyleProfile(styleProfile),
       memorySummary: serializeMemorySummary(memorySummary),
       outfitHistorySummary: buildOutfitHistorySummary(outfitHistory),
+      compatibilityEdges,
       limit: 3
     });
 

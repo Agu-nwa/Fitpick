@@ -1,5 +1,11 @@
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { normaliseWardrobeItemMetadata } from "@/lib/wardrobe/metadata-normaliser";
+import {
+  analyseColourValue,
+  analyseMaterialValue,
+  normalizeBrandSignal,
+  refreshCompatibilityGraphForItem
+} from "@/lib/wardrobe/compatibility/compatibility-graph";
 
 function cleanToken(value: unknown) {
   return String(value || "")
@@ -56,6 +62,13 @@ export function buildWardrobeSearchMetadata(item: any) {
 export function buildRecommendationMetadata(item: any) {
   const category = cleanToken(item.category);
   const normalised = normaliseWardrobeItemMetadata(item);
+  const brandSignal = normalizeBrandSignal({
+    value: fieldValue(item, "brand"),
+    confidence: item.verifiedMetadata?.brand?.confidence ?? item.aiAnalysis?.fields?.brand?.confidence ?? 0,
+    signals: item.aiAnalysis?.fields?.brandSignals?.value
+  });
+  const colour = analyseColourValue(item.color || fieldValue(item, "primaryColor"));
+  const material = analyseMaterialValue(item.fabric || fieldValue(item, "fabricComposition") || fieldValue(item, "fabricEstimate"));
   return {
     version: "recommendation-metadata-v1",
     baseCategory: category,
@@ -63,10 +76,16 @@ export function buildRecommendationMetadata(item: any) {
     universal: normalised.universal,
     specific: normalised.specific,
     colors: unique([item.color, ...list(item.verifiedMetadata?.secondaryColors?.value)]),
+    primaryColorFamily: colour.family,
+    specificShade: colour.shade,
+    colourConfidence: colour.confidence,
     occasions: unique([...(item.occasions || []), ...list(item.verifiedMetadata?.occasionSuitability?.value)]),
     weather: unique([...(item.weather || []), ...list(item.verifiedMetadata?.weatherSuitability?.value)]),
     formality: unique(item.formality || []),
     material: cleanToken(item.fabric || fieldValue(item, "fabricComposition") || fieldValue(item, "fabricEstimate")),
+    materialFamily: material.family,
+    materialConfidence: material.confidence,
+    brandRecognition: brandSignal,
     updatedAt: new Date().toISOString()
   };
 }
@@ -112,11 +131,16 @@ export async function runWardrobeEnrichmentJob(input: { userId: string; wardrobe
   item.virtualTryOnMetadata = virtualTryOnMetadata;
   item.enrichmentStatus = "completed";
   await item.save();
+  const graphResult = await refreshCompatibilityGraphForItem({
+    userId: input.userId,
+    wardrobeItemId: input.wardrobeItemId
+  });
 
   return {
     wardrobeItemId: String(item._id),
     searchTokens: searchMetadata.tokens.length,
     outfitRole: recommendationMetadata.outfitRole,
-    tryOnEligible: virtualTryOnMetadata.eligible
+    tryOnEligible: virtualTryOnMetadata.eligible,
+    compatibilityEdgesRefreshed: graphResult.refreshed
   };
 }
