@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
+import { appStorePurchasesAvailable, loadAppStoreProducts, purchaseAppStoreCreditPack, type AppStoreProductSummary } from "@/lib/payments/app-store-client";
 import {
   getWallet,
   startStripeCheckout,
@@ -156,6 +157,8 @@ export function WalletClient() {
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
   const [routeNotice, setRouteNotice] = useState("");
+  const [nativeProducts, setNativeProducts] = useState<Map<string, AppStoreProductSummary>>(new Map());
+  const [nativeMode, setNativeMode] = useState(false);
   const creditPacksRef = useRef<HTMLElement>(null);
   const revealContent = useRevealContent();
 
@@ -188,6 +191,19 @@ export function WalletClient() {
   }, [revealContent]);
 
   const stripeConfigured = Boolean(data?.providers?.stripe?.configured);
+  const appStoreConfigured = Boolean(data?.providers?.appStore?.configured);
+
+  useEffect(() => {
+    if (!data || !session.user?.id || !appStorePurchasesAvailable()) {
+      setNativeMode(false);
+      return;
+    }
+
+    setNativeMode(true);
+    void loadAppStoreProducts(data.packs, session.user.id)
+      .then(setNativeProducts)
+      .catch(() => setNativeProducts(new Map()));
+  }, [data, session.user?.id]);
 
   const startCardPayment = async (pack: CreditPackSummary) => {
     setCheckoutPackId(pack.id);
@@ -201,6 +217,21 @@ export function WalletClient() {
     setCheckoutMessage(result.ok ? "We couldn’t complete the payment. Please try again." : safeUserMessage(result.error, "We couldn’t complete the payment. Please try again."));
     setCheckoutPackId("");
     await loadWallet();
+  };
+
+  const startAppStorePayment = async (pack: CreditPackSummary) => {
+    if (!session.user?.id) return;
+    setCheckoutPackId(pack.id);
+    setCheckoutMessage("");
+    try {
+      await purchaseAppStoreCreditPack({ pack, userId: session.user.id });
+      setCheckoutMessage("Purchase complete. Your Credits will appear once the App Store confirmation finishes.");
+      await loadWallet();
+    } catch {
+      setCheckoutMessage("We couldn’t complete the App Store purchase. Please try again.");
+    } finally {
+      setCheckoutPackId("");
+    }
   };
 
   if (session.status === "loading" || state === "loading") return <LoadingCard title="Loading wallet" />;
@@ -277,17 +308,34 @@ export function WalletClient() {
                 {pack.id === "popular" ? <Badge tone="premium">Popular</Badge> : <Badge tone="neutral">{pack.amountLabel}</Badge>}
               </div>
               <p className="text-3xl font-black tracking-[-0.05em] text-ink">{pack.credits}</p>
-              <p className="text-xs leading-5 text-muted">{pack.amountLabel} one-time purchase. Purchased Credits do not expire.</p>
-              <Button className="w-full" disabled={!stripeConfigured || Boolean(checkoutPackId)} variant={pack.id === "popular" ? "primary" : "secondary"} onClick={() => void startCardPayment(pack)}>
+              <p className="text-xs leading-5 text-muted">
+                {nativeMode
+                  ? `${nativeProducts.get(pack.appStoreProductId || "")?.priceLabel || pack.amountLabel} App Store purchase. Purchased Credits do not expire.`
+                  : `${pack.amountLabel} one-time purchase. Purchased Credits do not expire.`}
+              </p>
+              <Button
+                className="w-full"
+                disabled={nativeMode ? (!appStoreConfigured || Boolean(checkoutPackId) || !pack.appStoreProductId) : (!stripeConfigured || Boolean(checkoutPackId))}
+                variant={pack.id === "popular" ? "primary" : "secondary"}
+                onClick={() => void (nativeMode ? startAppStorePayment(pack) : startCardPayment(pack))}
+              >
                 <CreditCard size={16} aria-hidden="true" />
-                {checkoutPackId === pack.id ? "Opening checkout" : "Top Up"}
+                {checkoutPackId === pack.id ? (nativeMode ? "Opening App Store" : "Opening checkout") : "Top Up"}
               </Button>
             </Card>
           ))}
         </div>
-        {checkoutMessage ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-3 text-xs leading-5 text-danger">{checkoutMessage}</p> : null}
-        <PaymentMethodSummary onCryptoClick={() => setCryptoModalOpen(true)} />
-        {cryptoModalOpen ? (
+        {checkoutMessage ? <p className="rounded-2xl border border-cocoa/20 bg-cocoa/5 p-3 text-xs leading-5 text-ink">{checkoutMessage}</p> : null}
+        {nativeMode ? (
+          <Card className="border-cocoa/20 bg-gradient-to-br from-white via-canvas to-cocoa/5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Payment method</p>
+            <p className="mt-2 text-sm font-semibold text-ink">App Store purchase</p>
+            <p className="mt-2 text-xs leading-5 text-muted">Credits purchased in the iOS app are processed securely by Apple.</p>
+          </Card>
+        ) : (
+          <PaymentMethodSummary onCryptoClick={() => setCryptoModalOpen(true)} />
+        )}
+        {!nativeMode && cryptoModalOpen ? (
           <CryptoComingSoonModal
             onClose={() => setCryptoModalOpen(false)}
             onContinueWithCard={() => {

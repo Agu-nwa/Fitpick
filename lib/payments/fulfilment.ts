@@ -14,7 +14,7 @@ function ledgerReference(purchaseId: string | Types.ObjectId) {
 
 function safePurchaseMetadata(input: {
   packId: string;
-  provider: "stripe" | "coinpayments";
+  provider: "stripe" | "coinpayments" | "app_store";
   providerReference?: string | null;
 }) {
   return {
@@ -27,7 +27,7 @@ function safePurchaseMetadata(input: {
 
 export async function grantPurchasedCredits(input: {
   purchaseId: string | Types.ObjectId;
-  provider: "stripe" | "coinpayments";
+  provider: "stripe" | "coinpayments" | "app_store";
   providerReference?: string | null;
 }) {
   const purchase = await CreditPurchase.findById(input.purchaseId);

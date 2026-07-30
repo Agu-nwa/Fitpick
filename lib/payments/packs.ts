@@ -8,6 +8,7 @@ export type CreditPack = {
   amountMinor: number;
   currency: "USD";
   amountLabel: string;
+  appStoreProductId: string;
 };
 
 export const creditPacks: Record<CreditPackId, CreditPack> = {
@@ -18,7 +19,8 @@ export const creditPacks: Record<CreditPackId, CreditPack> = {
     credits: 50,
     amountMinor: 499,
     currency: "USD",
-    amountLabel: "$4.99"
+    amountLabel: "$4.99",
+    appStoreProductId: "myfitpick_credits_starter"
   },
   popular: {
     id: "popular",
@@ -27,7 +29,8 @@ export const creditPacks: Record<CreditPackId, CreditPack> = {
     credits: 150,
     amountMinor: 999,
     currency: "USD",
-    amountLabel: "$9.99"
+    amountLabel: "$9.99",
+    appStoreProductId: "myfitpick_credits_popular"
   },
   pro: {
     id: "pro",
@@ -36,7 +39,8 @@ export const creditPacks: Record<CreditPackId, CreditPack> = {
     credits: 400,
     amountMinor: 1999,
     currency: "USD",
-    amountLabel: "$19.99"
+    amountLabel: "$19.99",
+    appStoreProductId: "myfitpick_credits_pro"
   },
   creator: {
     id: "creator",
@@ -45,7 +49,8 @@ export const creditPacks: Record<CreditPackId, CreditPack> = {
     credits: 1000,
     amountMinor: 3999,
     currency: "USD",
-    amountLabel: "$39.99"
+    amountLabel: "$39.99",
+    appStoreProductId: "myfitpick_credits_creator"
   }
 };
 
@@ -61,8 +66,13 @@ export function serializeCreditPacks() {
     amountMinor: pack.amountMinor,
     currency: pack.currency,
     amountLabel: pack.amountLabel,
+    appStoreProductId: pack.appStoreProductId,
     status: "available" as const
   }));
+}
+
+export function getCreditPackByAppStoreProductId(productId: string) {
+  return Object.values(creditPacks).find((pack) => pack.appStoreProductId === productId) || null;
 }
 
 export function formatUsdMinor(amountMinor: number) {

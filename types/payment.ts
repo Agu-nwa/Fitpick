@@ -1,5 +1,5 @@
-export type PaymentProvider = "stripe" | "coinpayments";
-export type PaymentMethod = "fiat" | "usdt";
+export type PaymentProvider = "stripe" | "coinpayments" | "app_store";
+export type PaymentMethod = "fiat" | "usdt" | "apple_iap";
 export type CreditPurchaseStatus =
   | "created"
   | "pending"
@@ -59,6 +59,8 @@ export type CreditPurchaseSummary = {
   creditedAt: string | null;
   refundedAt: string | null;
   checkoutUrl?: string | null;
+  appStoreProductId?: string | null;
+  appStoreTransactionId?: string | null;
   usdtNetwork?: string | null;
   expectedUsdtAmount?: string | null;
   receivedUsdtAmount?: string | null;

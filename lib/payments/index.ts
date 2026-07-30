@@ -1,5 +1,6 @@
 import { serializeCreditPacks } from "@/lib/payments/packs";
 import { cryptoPaymentsComingSoon } from "@/lib/payments/crypto-availability";
+import { appStoreProviderReadiness } from "@/lib/payments/providers/app-store";
 import { coinpaymentsProviderReadiness, parseUsdtNetworks } from "@/lib/payments/providers/coinpayments";
 import { stripeProviderReadiness } from "@/lib/payments/providers/stripe";
 
@@ -7,6 +8,7 @@ export function providerReadiness() {
   const coinpayments = coinpaymentsProviderReadiness();
   return {
     stripe: stripeProviderReadiness(),
+    appStore: appStoreProviderReadiness(),
     coinpayments: cryptoPaymentsComingSoon()
       ? {
           ...coinpayments,
@@ -19,7 +21,7 @@ export function providerReadiness() {
 
 export function paymentsReady() {
   const readiness = providerReadiness();
-  return readiness.stripe.configured || readiness.coinpayments.configured;
+  return readiness.stripe.configured || readiness.appStore.configured || readiness.coinpayments.configured;
 }
 
 export function paymentOverview() {

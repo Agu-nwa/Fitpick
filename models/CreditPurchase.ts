@@ -49,6 +49,21 @@ const CoinPaymentsPurchaseSchema = new Schema(
   { _id: false }
 );
 
+const AppStorePurchaseSchema = new Schema(
+  {
+    productId: { type: String, trim: true },
+    transactionId: { type: String, trim: true },
+    originalTransactionId: { type: String, trim: true },
+    revenueCatEventId: { type: String, trim: true },
+    revenueCatAppUserId: { type: String, trim: true },
+    store: { type: String, trim: true },
+    environment: { type: String, trim: true },
+    amountReceived: { type: Number, min: 0 },
+    currencyReceived: { type: String, trim: true, uppercase: true }
+  },
+  { _id: false }
+);
+
 const RefundSchema = new Schema(
   {
     providerRefundId: { type: String, trim: true },
@@ -67,12 +82,13 @@ const CreditPurchaseSchema = new Schema(
     credits: { type: Number, required: true, min: 1 },
     amountMinor: { type: Number, required: true, min: 1 },
     currency: { type: String, enum: ["USD"], default: "USD" },
-    provider: { type: String, enum: ["stripe", "coinpayments"], required: true, index: true },
-    paymentMethod: { type: String, enum: ["fiat", "usdt"], required: true },
+    provider: { type: String, enum: ["stripe", "coinpayments", "app_store"], required: true, index: true },
+    paymentMethod: { type: String, enum: ["fiat", "usdt", "apple_iap"], required: true },
     status: { type: String, enum: creditPurchaseStatuses, default: "created", index: true },
     providerReference: { type: String, trim: true },
     stripe: { type: StripePurchaseSchema, default: undefined },
     coinpayments: { type: CoinPaymentsPurchaseSchema, default: undefined },
+    appStore: { type: AppStorePurchaseSchema, default: undefined },
     paidAt: { type: Date },
     creditedAt: { type: Date },
     cancelledAt: { type: Date },
@@ -98,6 +114,14 @@ CreditPurchaseSchema.index(
 CreditPurchaseSchema.index(
   { "coinpayments.invoiceId": 1 },
   { unique: true, partialFilterExpression: { "coinpayments.invoiceId": { $type: "string" } } }
+);
+CreditPurchaseSchema.index(
+  { "appStore.transactionId": 1 },
+  { unique: true, partialFilterExpression: { "appStore.transactionId": { $type: "string" } } }
+);
+CreditPurchaseSchema.index(
+  { "appStore.revenueCatEventId": 1 },
+  { unique: true, partialFilterExpression: { "appStore.revenueCatEventId": { $type: "string" } } }
 );
 CreditPurchaseSchema.index(
   { providerReference: 1 },

@@ -598,6 +598,7 @@ export type CreditPackSummary = {
   amountMinor: number;
   currency: "USD";
   amountLabel: string;
+  appStoreProductId?: string;
   status: "available";
 };
 
@@ -609,14 +610,16 @@ export type CreditPurchaseSummary = {
   amountMinor: number;
   amountLabel: string;
   currency: "USD";
-  provider: "stripe" | "coinpayments";
-  paymentMethod: "fiat" | "usdt";
+  provider: "stripe" | "coinpayments" | "app_store";
+  paymentMethod: "fiat" | "usdt" | "apple_iap";
   status: string;
   createdAt: string | null;
   paidAt: string | null;
   creditedAt: string | null;
   refundedAt: string | null;
   checkoutUrl?: string | null;
+  appStoreProductId?: string | null;
+  appStoreTransactionId?: string | null;
   usdtNetwork?: string | null;
   expectedUsdtAmount?: string | null;
   receivedUsdtAmount?: string | null;
@@ -726,11 +729,11 @@ export type CheckoutData = {
     checkoutUrl?: string | null;
     purchaseId?: string;
     invoiceId?: string;
-    paymentMethod?: "fiat" | "usdt";
+    paymentMethod?: "fiat" | "usdt" | "apple_iap";
     network?: UsdtNetworkSummary;
     warning?: string;
     currency?: string;
-    provider?: "stripe" | "coinpayments";
+    provider?: "stripe" | "coinpayments" | "app_store";
     message?: string;
     nextAction?: string;
   };

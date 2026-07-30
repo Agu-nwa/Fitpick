@@ -37,11 +37,19 @@
     "reconcile:tryon-credits": "tsx scripts/reconcile-tryon-credits.ts",
     "deploy:check": "node scripts/deploy-check.mjs",
     "test:qa": "npm run check:routes && npm run test:safety-copy && npm run test:secret-scan && npm run build",
-    "qa": "npm run test:qa"
+    "qa": "npm run test:qa",
+    "ios:add": "cap add ios",
+    "ios:sync": "cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@revenuecat/purchases-capacitor": "^13.2.5",
     "@sentry/nextjs": "^10.67.0",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
