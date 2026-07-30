@@ -9,9 +9,9 @@ import { logSafeError } from "@/lib/security/safe-log";
 import {
   authenticateSupportApiRequest,
   createExternalSupportConversation,
-  evaluateSupportApiQuota,
   listExternalSupportConversations,
   recordSupportApiUsage,
+  reserveSupportApiQuota,
   supportApiHasScope
 } from "@/lib/support-api/support-api-service";
 import { readJson, validateBody } from "@/lib/validation";
@@ -30,13 +30,13 @@ export async function GET(request: NextRequest) {
       await recordSupportApiUsage({ auth, operation: "conversations.list", method: "GET", path: request.nextUrl.pathname, statusCode: 403, billableUnits: 0 });
       return apiError("FORBIDDEN", "This API key cannot access that support API action.");
     }
-    const quota = await evaluateSupportApiQuota(auth);
+    const parsed = validateBody(supportApiConversationListQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
+    if (!parsed.ok) return parsed.response;
+    const quota = await reserveSupportApiQuota(auth);
     if (!quota.allowed) {
       await recordSupportApiUsage({ auth, operation: "conversations.list", method: "GET", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
       return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
     }
-    const parsed = validateBody(supportApiConversationListQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
-    if (!parsed.ok) return parsed.response;
 
     const conversations = await listExternalSupportConversations({
       tenantId: String(auth.tenant._id),
@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
       await recordSupportApiUsage({ auth, operation: "conversations.create", method: "POST", path: request.nextUrl.pathname, statusCode: 403, billableUnits: 0 });
       return apiError("FORBIDDEN", "This API key cannot access that support API action.");
     }
-    const quota = await evaluateSupportApiQuota(auth);
+    const parsed = validateBody(supportApiConversationCreateSchema, await readJson(request));
+    if (!parsed.ok) return parsed.response;
+    const quota = await reserveSupportApiQuota(auth);
     if (!quota.allowed) {
       await recordSupportApiUsage({ auth, operation: "conversations.create", method: "POST", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
       return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
     }
-    const parsed = validateBody(supportApiConversationCreateSchema, await readJson(request));
-    if (!parsed.ok) return parsed.response;
 
     const result = await createExternalSupportConversation({
       tenantId: String(auth.tenant._id),

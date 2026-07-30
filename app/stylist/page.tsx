@@ -35,19 +35,19 @@ export default function StylistPage() {
         </Link>
 
         <Link href="/stylist/match" className="focus-ring group block min-w-0 max-w-full rounded-xl3">
-          <Card className="min-h-[22rem] w-full min-w-0 overflow-hidden border-olive/25 bg-surface/88 p-6 shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:border-cocoa/40 sm:min-h-[24rem] sm:p-7">
+          <Card className="min-h-[22rem] w-full min-w-0 overflow-hidden border-cocoa/25 bg-[#FBF3EC] p-6 shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:border-cocoa/40 sm:min-h-[24rem] sm:p-7">
             <div className="flex h-full min-w-0 flex-col justify-between gap-8 sm:gap-10">
               <div className="min-w-0">
                 <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-espresso text-canvas shadow-soft">
                   <ImagePlus size={20} aria-hidden="true" />
                 </span>
-                <p className="mt-8 max-w-full text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa sm:tracking-[0.24em]">Match an Outfit</p>
+                <p className="mt-8 max-w-full text-[10px] font-bold uppercase tracking-[0.18em] text-espresso sm:tracking-[0.24em]">Match an Outfit</p>
                 <h2 className="font-editorial mt-3 max-w-full break-words text-4xl font-semibold leading-[0.95] text-ink sm:text-5xl">Style a look you admire.</h2>
                 <p className="mt-4 max-w-full text-[15px] leading-6 text-muted sm:max-w-md sm:text-sm">
                   Upload a photo or screenshot and build a closet-led look around it.
                 </p>
               </div>
-              <span className="inline-flex max-w-full items-center gap-2 text-sm font-bold text-ink">
+              <span className="inline-flex max-w-full items-center gap-2 text-sm font-bold text-espresso">
                 Match a look
                 <ArrowUpRight size={17} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
               </span>

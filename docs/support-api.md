@@ -214,6 +214,8 @@ Authenticated support API calls create lightweight usage events. Events store:
 
 Request and response payloads are not stored in usage events.
 
+Usage events are the audit trail. Monthly quota enforcement uses an atomic per-tenant usage counter so concurrent requests cannot overshoot the configured allowance.
+
 Admin usage inspection:
 
 ```http
@@ -238,7 +240,9 @@ Default:
 10000 units per calendar month
 ```
 
-Successful authenticated support API calls count toward the monthly limit. Forbidden, not found, validation, and over-quota events are recorded with `0` billable units where the API key is known.
+Successful authenticated support API calls count toward the monthly limit. Forbidden, validation, and over-quota events are recorded with `0` billable units where the API key is known.
+
+Quota reservations are atomic. Before a billable public API request proceeds, MyFitPick increments the tenant's current monthly usage counter only if the increment still fits within the tenant allowance.
 
 When a tenant reaches its monthly allowance, public API endpoints return:
 
@@ -261,7 +265,9 @@ The admin usage endpoint returns both raw events and the current-month summary:
     "periodStart": "2026-07-01T00:00:00.000Z",
     "periodEnd": "2026-08-01T00:00:00.000Z",
     "totalUnits": 42,
-    "totalCalls": 42
+    "totalCalls": 42,
+    "counterUnits": 42,
+    "limitSnapshot": 10000
   }
 }
 ```

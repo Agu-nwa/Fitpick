@@ -5,6 +5,7 @@ import { SupportTenant, type SupportTenantDocument } from "@/models/SupportTenan
 import { ExternalSupportConversation, type ExternalSupportConversationDocument } from "@/models/ExternalSupportConversation";
 import { ExternalSupportCustomer, type ExternalSupportCustomerDocument } from "@/models/ExternalSupportCustomer";
 import { ExternalSupportMessage, type ExternalSupportMessageDocument } from "@/models/ExternalSupportMessage";
+import { SupportApiUsageCounter, type SupportApiUsageCounterDocument } from "@/models/SupportApiUsageCounter";
 import { SupportApiUsageEvent, type SupportApiUsageEventDocument } from "@/models/SupportApiUsageEvent";
 import { enqueueSupportWebhookEvent, generateWebhookSigningSecret } from "@/lib/support-api/webhooks";
 
@@ -78,14 +79,23 @@ export function supportApiHasScope(auth: SupportApiAuth, scope: SupportApiScope)
 
 function currentUsageWindow() {
   const now = new Date();
+  const periodKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   return {
+    periodKey,
     start: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)),
     end: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0))
   };
 }
 
+function serializeSupportApiUsageCounter(counter: SupportApiUsageCounterDocument | null) {
+  return {
+    usedUnits: counter?.usedUnits || 0,
+    limitSnapshot: counter?.limitSnapshot || 0
+  };
+}
+
 export async function getSupportApiUsageSummary(input: { tenantId?: string }) {
-  const { start, end } = currentUsageWindow();
+  const { periodKey, start, end } = currentUsageWindow();
   const match: Record<string, unknown> = {
     createdAt: { $gte: start, $lt: end },
     statusCode: { $gte: 200, $lt: 400 }
@@ -97,29 +107,91 @@ export async function getSupportApiUsageSummary(input: { tenantId?: string }) {
     { $group: { _id: null, totalUnits: { $sum: "$billableUnits" }, totalCalls: { $sum: 1 } } }
   ]);
 
+  const counter = input.tenantId
+    ? await SupportApiUsageCounter.findOne({ tenantId: asObjectId(input.tenantId), periodKey })
+    : null;
+  const serializedCounter = serializeSupportApiUsageCounter(counter);
+  const totalUnits = input.tenantId ? Math.max(serializedCounter.usedUnits, summary?.totalUnits || 0) : summary?.totalUnits || 0;
+
   return {
+    periodKey,
     periodStart: start.toISOString(),
     periodEnd: end.toISOString(),
-    totalUnits: summary?.totalUnits || 0,
-    totalCalls: summary?.totalCalls || 0
+    totalUnits,
+    totalCalls: summary?.totalCalls || 0,
+    counterUnits: serializedCounter.usedUnits,
+    limitSnapshot: serializedCounter.limitSnapshot
   };
 }
 
-export async function evaluateSupportApiQuota(auth: SupportApiAuth, nextUnits = 1) {
+async function ensureSupportApiUsageCounter(auth: SupportApiAuth) {
+  const { periodKey, start, end } = currentUsageWindow();
+  const tenantId = auth.tenant._id;
+  const monthlyUsageLimit = Math.max(auth.tenant.monthlyUsageLimit ?? 10000, 0);
+  const existing = await SupportApiUsageCounter.findOne({ tenantId, periodKey });
+  if (existing) return existing;
+
+  const summary = await getSupportApiUsageSummary({ tenantId: String(tenantId) });
+  try {
+    return await SupportApiUsageCounter.create({
+      tenantId,
+      periodKey,
+      periodStart: start,
+      periodEnd: end,
+      usedUnits: summary.totalUnits,
+      limitSnapshot: monthlyUsageLimit
+    });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && (error as { code?: number }).code === 11000) {
+      return SupportApiUsageCounter.findOne({ tenantId, periodKey }).orFail();
+    }
+    throw error;
+  }
+}
+
+export async function reserveSupportApiQuota(auth: SupportApiAuth, nextUnits = 1) {
+  const { periodKey } = currentUsageWindow();
   const monthlyUsageLimit = Math.max(auth.tenant.monthlyUsageLimit ?? 10000, 0);
   if (monthlyUsageLimit === 0) {
     return { allowed: false, monthlyUsageLimit, usedUnits: 0, remainingUnits: 0 };
   }
 
-  const summary = await getSupportApiUsageSummary({ tenantId: String(auth.tenant._id) });
-  const usedUnits = summary.totalUnits;
-  const remainingUnits = Math.max(monthlyUsageLimit - usedUnits, 0);
+  const units = Math.max(nextUnits, 0);
+  const counter = await ensureSupportApiUsageCounter(auth);
+  const updated = await SupportApiUsageCounter.findOneAndUpdate(
+    {
+      _id: counter._id,
+      tenantId: auth.tenant._id,
+      periodKey,
+      usedUnits: { $lte: Math.max(monthlyUsageLimit - units, 0) }
+    },
+    { $inc: { usedUnits: units }, $set: { limitSnapshot: monthlyUsageLimit } },
+    { new: true }
+  );
+
+  if (!updated) {
+    const latest = await SupportApiUsageCounter.findById(counter._id);
+    const usedUnits = latest?.usedUnits || counter.usedUnits || 0;
+    return { allowed: false, monthlyUsageLimit, usedUnits, remainingUnits: Math.max(monthlyUsageLimit - usedUnits, 0) };
+  }
+
+  const usedUnits = updated.usedUnits || 0;
   return {
-    allowed: usedUnits + Math.max(nextUnits, 0) <= monthlyUsageLimit,
+    allowed: true,
     monthlyUsageLimit,
     usedUnits,
-    remainingUnits
+    remainingUnits: Math.max(monthlyUsageLimit - usedUnits, 0)
   };
+}
+
+export async function releaseSupportApiQuota(auth: SupportApiAuth, units = 1) {
+  const { periodKey } = currentUsageWindow();
+  const safeUnits = Math.max(units, 0);
+  if (!safeUnits) return;
+  await SupportApiUsageCounter.updateOne(
+    { tenantId: auth.tenant._id, periodKey, usedUnits: { $gte: safeUnits } },
+    { $inc: { usedUnits: -safeUnits } }
+  );
 }
 
 export function serializeSupportApiUsageEvent(event: SupportApiUsageEventDocument) {

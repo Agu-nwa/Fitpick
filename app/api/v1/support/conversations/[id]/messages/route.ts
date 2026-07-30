@@ -9,9 +9,9 @@ import { logSafeError } from "@/lib/security/safe-log";
 import {
   authenticateSupportApiRequest,
   createExternalSupportMessage,
-  evaluateSupportApiQuota,
   listExternalSupportMessages,
   recordSupportApiUsage,
+  reserveSupportApiQuota,
   supportApiHasScope
 } from "@/lib/support-api/support-api-service";
 import { readJson, validateBody } from "@/lib/validation";
@@ -30,15 +30,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       await recordSupportApiUsage({ auth, operation: "messages.list", method: "GET", path: request.nextUrl.pathname, statusCode: 403, billableUnits: 0 });
       return apiError("FORBIDDEN", "This API key cannot access that support API action.");
     }
-    const quota = await evaluateSupportApiQuota(auth);
-    if (!quota.allowed) {
-      await recordSupportApiUsage({ auth, operation: "messages.list", method: "GET", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
-      return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
-    }
     const parsedParams = validateBody(supportApiConversationIdSchema, await params);
     if (!parsedParams.ok) return parsedParams.response;
     const parsedQuery = validateBody(supportApiMessageListQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!parsedQuery.ok) return parsedQuery.response;
+    const quota = await reserveSupportApiQuota(auth);
+    if (!quota.allowed) {
+      await recordSupportApiUsage({ auth, operation: "messages.list", method: "GET", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
+      return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
+    }
 
     const result = await listExternalSupportMessages({
       tenantId: String(auth.tenant._id),
@@ -67,15 +67,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await recordSupportApiUsage({ auth, operation: "messages.create", method: "POST", path: request.nextUrl.pathname, statusCode: 403, billableUnits: 0 });
       return apiError("FORBIDDEN", "This API key cannot access that support API action.");
     }
-    const quota = await evaluateSupportApiQuota(auth);
-    if (!quota.allowed) {
-      await recordSupportApiUsage({ auth, operation: "messages.create", method: "POST", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
-      return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
-    }
     const parsedParams = validateBody(supportApiConversationIdSchema, await params);
     if (!parsedParams.ok) return parsedParams.response;
     const parsedBody = validateBody(supportApiMessageCreateSchema, await readJson(request));
     if (!parsedBody.ok) return parsedBody.response;
+    const quota = await reserveSupportApiQuota(auth);
+    if (!quota.allowed) {
+      await recordSupportApiUsage({ auth, operation: "messages.create", method: "POST", path: request.nextUrl.pathname, statusCode: 429, billableUnits: 0 });
+      return apiError("RATE_LIMITED", "This support API tenant has reached its monthly usage limit.");
+    }
 
     const message = await createExternalSupportMessage({
       tenantId: String(auth.tenant._id),
