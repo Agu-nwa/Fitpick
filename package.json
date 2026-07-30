@@ -50,8 +50,12 @@
     "@capacitor/ios": "^8.4.2",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+<<<<<<< HEAD
     "@revenuecat/purchases-capacitor": "^13.2.5",
     "@sentry/nextjs": "^10.67.0",
+=======
+    "@sentry/nextjs": "^10.68.0",
+>>>>>>> 2c2a668 (Update production dependencies)
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -63,7 +67,7 @@
     "js-yaml": "^4.3.0",
     "lucide-react": "^1.24.0",
     "mongoose": "^8.5.1",
-    "next": "^15.5.21",
+    "next": "^15.5.22",
     "openai": "^6.45.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
