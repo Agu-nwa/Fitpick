@@ -50,12 +50,9 @@
     "@capacitor/ios": "^8.4.2",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
-<<<<<<< HEAD
     "@revenuecat/purchases-capacitor": "^13.2.5",
     "@sentry/nextjs": "^10.67.0",
-=======
     "@sentry/nextjs": "^10.68.0",
->>>>>>> 2c2a668 (Update production dependencies)
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
