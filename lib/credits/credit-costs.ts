@@ -3,22 +3,22 @@ export const INITIAL_COMPLIMENTARY_CREDITS = 20;
 export const creditCosts = {
   ai_stylist_chat: {
     label: "AI Stylist Chat",
-    credits: 0.67,
+    credits: 0.0,
     description: "A successful wardrobe-grounded AI stylist response."
   },
   outfit_preview: {
     label: "Premium Outfit Preview",
-    credits: 0.67,
+    credits: 0.0,
     description: "A successful AI-generated outfit image preview."
   },
   virtual_try_on: {
     label: "Virtual Try-On",
-    credits: 0.67,
+    credits: 2,
     description: "A successful avatar or virtual try-on preview."
   },
   regenerate_try_on: {
     label: "Regenerate Try-On",
-    credits: 0.67,
+    credits: 2,
     description: "A successful regenerated avatar or outfit preview."
   }
 } as const;

@@ -1,4 +1,4 @@
-export type CreditPackId = "starter" | "popular" | "pro" | "creator";
+export type CreditPackId = "essential" | "popular" | "pro" | "creator";
 
 export type CreditPack = {
   id: CreditPackId;
@@ -12,44 +12,44 @@ export type CreditPack = {
 };
 
 export const creditPacks: Record<CreditPackId, CreditPack> = {
-  starter: {
-    id: "starter",
-    name: "Starter",
-    label: "Starter",
-    credits: 50,
-    amountMinor: 499,
+  essential: {
+    id: "essential",
+    name: "Essential",
+    label: "Essential",
+    credits: 80,
+    amountMinor: 1199,
     currency: "USD",
-    amountLabel: "$4.99",
-    appStoreProductId: "myfitpick_credits_starter"
+    amountLabel: "$11.99",
+    appStoreProductId: "myfitpick_credits_essential"
   },
   popular: {
     id: "popular",
     name: "Popular",
     label: "Popular",
-    credits: 150,
-    amountMinor: 999,
+    credits: 160,
+    amountMinor: 2399,
     currency: "USD",
-    amountLabel: "$9.99",
+    amountLabel: "$23.99",
     appStoreProductId: "myfitpick_credits_popular"
   },
   pro: {
     id: "pro",
     name: "Pro",
     label: "Pro",
-    credits: 400,
-    amountMinor: 1999,
+    credits: 320,
+    amountMinor: 4799,
     currency: "USD",
-    amountLabel: "$19.99",
+    amountLabel: "$47.99",
     appStoreProductId: "myfitpick_credits_pro"
   },
   creator: {
     id: "creator",
     name: "Creator",
     label: "Creator",
-    credits: 1000,
-    amountMinor: 3999,
+    credits: 640,
+    amountMinor: 9599,
     currency: "USD",
-    amountLabel: "$39.99",
+    amountLabel: "$95.99",
     appStoreProductId: "myfitpick_credits_creator"
   }
 };
