@@ -148,7 +148,7 @@ function makeCombinations(input: {
   const optionalGroups = input.plan.optional.map((category) => ({
     category,
     items: optionalCandidates(sorted, category, 3)
-  }));
+  })).filter((group) => group.category !== "bags" && group.category !== "accessories");
 
   const outfits: any[] = [];
 
@@ -349,18 +349,21 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     weatherContext: input.weatherContext,
     scoringInput
   });
+  const eligibleFootwear = available.filter((item) => normalizeOutfitSlot(item) === "shoes");
+  const anchorProvidesFootwear = normalizeOutfitSlot(anchor) === "shoes";
+  const missingFootwearAllowed = !anchorProvidesFootwear && eligibleFootwear.length === 0;
   const validatedCombinations = combinations.map((candidate) => ({
     ...candidate,
     stylingValidation: validateRecommendationCandidate({
-      items: candidate.items,
+      items: candidate.itemsWithAnchor,
       template: outfitTemplate,
       profile: occasionProfile,
-      allowIncomplete: false
+      allowIncomplete: missingFootwearAllowed
     })
   }));
   const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
   const rankedCombinations = rankCandidatesForEditorialReview(
-    validCombinations.length ? validCombinations : validatedCombinations,
+    validCombinations,
     {
       template: outfitTemplate,
       profile: occasionProfile,
@@ -369,7 +372,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     }
   );
   const diverse = diversifyOutfits(rankedCombinations, { limit: input.limit || 3, historySummary: input.outfitHistorySummary, diversityWeight: 0.48 });
-  const selected = diverse.length ? diverse : combinations.slice(0, input.limit || 3);
+  const selected = diverse.length ? diverse : rankedCombinations.slice(0, input.limit || 3);
   const readiness = wardrobeReadiness(available);
   const gapInsights = wardrobeGapInsights(available, occasion);
 
@@ -426,7 +429,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const coreOnlyItems = candidateItems.filter((item) => !isAccessoryCandidate(item));
     const coreItems = coreOnlyItems.length ? coreOnlyItems : candidateItems;
     const accessoryCompletion = selectAccessoryCompletion({
-      selectedItems: coreItems,
+      selectedItems: [anchor, ...coreItems],
       wardrobeItems: available,
       occasionName: occasion,
       weatherContext: input.weatherContext,
@@ -435,16 +438,18 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       allowRecentRepeat: /repeat|again|same look|rewear/i.test(occasion),
       styleProfile: input.styleProfile,
       memorySummary: input.memorySummary,
-      outfitHistorySummary: input.outfitHistorySummary
+      outfitHistorySummary: input.outfitHistorySummary,
+      occasionProfile,
+      outfitTemplate
     });
     const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
     const completedItemsWithAnchor = [anchor, ...completedItems];
     const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor);
     const finalValidation = validateRecommendationCandidate({
-      items: completedItems,
+      items: completedItemsWithAnchor,
       template: outfitTemplate,
       profile: occasionProfile,
-      allowIncomplete: false
+      allowIncomplete: missingFootwearAllowed
     });
     const missing = completeness.missingCategories;
     const notes = explanation({ referenceItem, items: completedItems, itemsWithAnchor: completedItemsWithAnchor, occasion, missingCategories: missing });
@@ -529,7 +534,16 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
           fashionKnowledgeScore: knowledgeScore
         }),
         marketplaceExtensionPoints: marketplaceExtensionPoints(completedItems, { missingCategories: missing }),
-        collectionFamily
+        collectionFamily,
+        matchRecommendationDiagnostics: {
+          anchorProvidesFootwear,
+          ownedShoeCount: input.wardrobeItems.filter((item) => normalizeOutfitSlot(item) === "shoes").length,
+          eligibleShoeCount: eligibleFootwear.length,
+          needsCareShoeCount: input.wardrobeItems.filter((item) => normalizeOutfitSlot(item) === "shoes" && item.condition === "needs-care").length,
+          footwearRequirementSatisfied: anchorProvidesFootwear || completeness.footwearIncluded || missingFootwearAllowed,
+          accessorySelectionMode: accessoryCompletion.decision.selectionMode,
+          accessoryItemDecisions: accessoryCompletion.decision.itemDecisions
+        }
       },
       similarityMetadata: {
         ...(candidate.similarityMetadata || {}),

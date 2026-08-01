@@ -1,6 +1,6 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { normalizeOutfitSlot } from "@/lib/recommendation/outfit-slots";
-import { accessorySubtypeFor, resolveAccessorySubtype, type AccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
+import { ACCESSORY_SUBTYPE_SCORE_MULTIPLIERS, accessorySubtypeFor, resolveAccessorySubtype, type AccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 import type { OccasionProfile } from "@/lib/recommendation/occasion-profiles";
 import type { OutfitTemplate } from "@/lib/recommendation/outfit-templates";
 import {
@@ -50,6 +50,7 @@ type AccessoryCandidate = {
   score: number;
   compatibilityScore: number;
   metadataConfidence: "high" | "medium" | "low";
+  confidenceScore: number;
   threshold: number;
   reasons: string[];
 };
@@ -73,6 +74,10 @@ export type AccessoryCompletionDecision = {
     threshold: number;
     selected: boolean;
     rejectionReason: string;
+    usedAsGenericAccent: boolean;
+    usedProbableSubtype: boolean;
+    explanationSpecificity: "specific" | "generic";
+    confidenceScore: number;
   }>;
 };
 
@@ -104,7 +109,8 @@ function itemText(item: any) {
 }
 
 export function accessoryRoleFor(item: any): AccessoryRole {
-  const subtype = accessorySubtypeFor(item);
+  const resolution = resolveAccessorySubtype(item);
+  const subtype = resolution.subtype;
   if (["watch", "bracelet", "bangle", "cuff"].includes(subtype || "")) return "wrist";
   if (subtype === "belt") return "waist";
   if (["necklace", "pendant", "scarf", "tie"].includes(subtype || "")) return "neck";
@@ -113,6 +119,7 @@ export function accessoryRoleFor(item: any): AccessoryRole {
   if (subtype === "hat") return "head";
   if (subtype === "sunglasses") return "face";
   if (subtype === "gloves") return "weather";
+  if (item?.category === "accessories" && !subtype) return "accent";
   const text = itemText(item);
 
   if (/\b(watch|watches|smartwatch|bracelet|bangle|cuff)\b/.test(text)) return "wrist";
@@ -155,9 +162,8 @@ function accessoryTypeBonus(item: any, role: AccessoryRole, occasionName = "", w
   const weather = weatherContext.toLowerCase();
   let bonus = 0;
 
-  if (/\b(watch|watches)\b/.test(text)) bonus += 22;
-  if (/\b(smartwatch)\b/.test(text)) bonus += /gym|sport|casual|travel|weekend/.test(occasion) ? 18 : 9;
-  if (/\b(bracelet|bangle)\b/.test(text)) bonus += 12;
+  if (subtype === "watch") bonus += /\bsmartwatch\b/.test(text) ? (/gym|sport|casual|travel|weekend/.test(occasion) ? 18 : 9) : 22;
+  if (subtype === "bracelet" || subtype === "bangle") bonus += 12;
   if (subtype === "necklace" || subtype === "pendant") bonus += /dinner|date|wedding|formal|church|party/.test(occasion) ? 18 : 10;
   if (subtype === "earrings") bonus += /dinner|date|wedding|formal|church|party/.test(occasion) ? 18 : 9;
   if (subtype === "ring" || subtype === "anklet") bonus += 9;
@@ -217,8 +223,8 @@ function scoreAccessoryCandidate(input: {
   const subtype = resolution.subtype;
   const colorScore = colorCompatibilityScore([...input.selectedItems, input.item]);
   const occasionPreference = input.occasionProfile?.preferredAccessoryRoles.includes(role) ? 12 : 0;
-  const templatePreference = input.outfitTemplate?.accessoryTerms.some((term) => itemText(input.item).includes(term.toLowerCase())) ? 12 : 0;
-  const compatibilityScore =
+  const templatePreference = subtype && input.outfitTemplate?.accessoryTerms.some((term) => itemText(input.item).includes(term.toLowerCase())) ? 12 : 0;
+  const rawCompatibilityScore =
     occasionScore(input.item, input.occasionName || "") +
     formalityScore(input.item, input.formality) +
     weatherScore(input.item, input.weatherContext || "") +
@@ -230,9 +236,8 @@ function scoreAccessoryCandidate(input: {
     colorScore + occasionPreference + templatePreference +
     accessoryTypeBonus(input.item, role, input.occasionName, input.weatherContext) -
     restraintPenalty(input.item, role, input.occasionName);
-  const metadataConfidence = resolution.confidence === "authoritative" || resolution.confidence === "high"
-    ? "high" as const
-    : resolution.confidence === "ambiguous" ? "medium" as const : "low" as const;
+  const compatibilityScore = rawCompatibilityScore * ACCESSORY_SUBTYPE_SCORE_MULTIPLIERS[resolution.confidenceLevel];
+  const metadataConfidence = resolution.confidenceLevel === "high" ? "high" as const : resolution.confidenceLevel === "medium" ? "medium" as const : "low" as const;
   const threshold = minimumScoreForRole(role, input.occasionName, input.weatherContext);
 
   const reasons = [
@@ -249,6 +254,7 @@ function scoreAccessoryCandidate(input: {
     score: Math.round(compatibilityScore * 10) / 10,
     compatibilityScore: Math.round(compatibilityScore * 10) / 10,
     metadataConfidence,
+    confidenceScore: resolution.confidenceScore,
     threshold,
     reasons
   };
@@ -298,7 +304,7 @@ export function validateAccessoryRoles(items: any[]) {
     }
   }
 
-  const candidates = items.filter(isAccessoryCandidate).map((item) => ({ item, role: accessoryRoleFor(item), subtype: accessorySubtypeFor(item), score: 0, compatibilityScore: 0, metadataConfidence: "low" as const, threshold: 0, reasons: [] }));
+  const candidates = items.filter(isAccessoryCandidate).map((item) => ({ item, role: accessoryRoleFor(item), subtype: accessorySubtypeFor(item), score: 0, compatibilityScore: 0, metadataConfidence: "low" as const, confidenceScore: 0, threshold: 0, reasons: [] }));
   const conflict = setConflict(candidates);
   if (conflict && !invalid.length && candidates.length) invalid.push({ itemId: itemId(candidates[candidates.length - 1].item), role: candidates[candidates.length - 1].role, reason: conflict });
   return { valid: invalid.length === 0, invalid };
@@ -366,7 +372,7 @@ export function selectAccessoryCompletion(input: {
   const selectionMode = ideal ? "ideal" as const : safeFallback ? "safe-fallback" as const : "none" as const;
   const selectedIdsForDecision = new Set(selected.map((candidate) => itemId(candidate.item)));
   const omitted = finalists.filter((candidate) => !selectedIdsForDecision.has(itemId(candidate.item))).map((candidate) => ({ itemId: itemId(candidate.item), role: candidate.role, reason: candidate.score < candidate.threshold ? "below_ideal_threshold" : "stronger_compatible_set_selected" }));
-  const itemDecisions = scored.map((candidate) => ({ itemId: itemId(candidate.item), accessorySubtype: candidate.subtype, accessoryRole: candidate.role, metadataConfidence: candidate.metadataConfidence, compatibilityScore: candidate.compatibilityScore, threshold: candidate.threshold, selected: selectedIdsForDecision.has(itemId(candidate.item)), rejectionReason: selectedIdsForDecision.has(itemId(candidate.item)) ? "" : omitted.find((entry) => entry.itemId === itemId(candidate.item))?.reason || "not_shortlisted" }));
+  const itemDecisions = scored.map((candidate) => ({ itemId: itemId(candidate.item), accessorySubtype: candidate.subtype, accessoryRole: candidate.role, metadataConfidence: candidate.metadataConfidence, confidenceScore: candidate.confidenceScore, compatibilityScore: candidate.compatibilityScore, threshold: candidate.threshold, selected: selectedIdsForDecision.has(itemId(candidate.item)), rejectionReason: selectedIdsForDecision.has(itemId(candidate.item)) ? "" : omitted.find((entry) => entry.itemId === itemId(candidate.item))?.reason || "not_shortlisted", usedAsGenericAccent: !candidate.subtype, usedProbableSubtype: candidate.metadataConfidence === "medium", explanationSpecificity: candidate.metadataConfidence === "high" && Boolean(candidate.subtype) ? "specific" as const : "generic" as const }));
 
   if (!selected.length) {
     return {
@@ -388,14 +394,19 @@ export function selectAccessoryCompletion(input: {
     ? selected.map((candidate) => candidate.item)
     : selected.filter((candidate) => !roleValidation.invalid.some((entry) => entry.itemId === itemId(candidate.item))).map((candidate) => candidate.item);
   const validRoles = validItems.map(accessoryRoleFor);
+  const selectedSpecific = selected.find((candidate) => candidate.metadataConfidence === "high" && candidate.subtype);
+  const selectedGeneric = selected.some((candidate) => candidate.metadataConfidence !== "high" || !candidate.subtype);
+  const reason = selectedGeneric
+    ? validItems.length === 1 ? "One of your accessories adds a subtle finishing touch." : "Your accessories add polish without competing with the outfit."
+    : selectedSpecific
+      ? `Your ${String(selectedSpecific.item.color || "").trim().toLowerCase() ? `${String(selectedSpecific.item.color).trim().toLowerCase()} ` : ""}${selectedSpecific.subtype} adds a polished finishing touch.`
+      : "Added a restrained finishing detail.";
 
   return {
     items: validItems,
     decision: {
       status: "included" as const,
-      reason: validItems.length === 1
-        ? "Added one restrained accessory to finish the look."
-        : `Added ${validItems.length} restrained accessories across distinct styling roles.`,
+      reason,
       selectedCount: validItems.length,
       candidateCount: candidateItems.length,
       shortlistedCount: finalists.length,

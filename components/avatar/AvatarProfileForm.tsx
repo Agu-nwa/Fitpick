@@ -77,7 +77,7 @@ export function AvatarProfileForm({
       if (requestId !== appearanceRequest.current) return;
       if (!generated.ok) {
         setAppearanceStatus("error");
-        setError("Your appearance was saved, but the preview couldn’t be refreshed. Your last preview is still available.");
+        setError(safeUserMessage(generated.error, "Your appearance was saved, but the preview couldn’t be refreshed. Your last preview is still available."));
         return;
       }
       const image = new window.Image();

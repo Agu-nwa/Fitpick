@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import type { WardrobeCategory } from "@/types/wardrobe";
 import { normaliseWardrobeItemMetadata } from "@/lib/wardrobe/metadata-normaliser";
+import { needsAccessorySubtypeConfirmation, resolveAccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 
 export function isObjectId(value: string) {
   return mongoose.Types.ObjectId.isValid(value);
@@ -86,6 +87,7 @@ export function serializeWardrobeItem(item: any) {
     occasions: item.occasions,
     condition: item.condition
   });
+  const subtypeResolution = item.category === "accessories" ? resolveAccessorySubtype(item) : null;
 
   return {
     id: String(item._id),
@@ -93,6 +95,12 @@ export function serializeWardrobeItem(item: any) {
     category: item.category,
     subcategory: item.subcategory || "",
     accessorySubtype: item.accessorySubtype || null,
+    accessorySubtypeResolution: subtypeResolution ? {
+      status: item.accessorySubtypeResolution?.status || (subtypeResolution.status === "resolved" ? "inferred-high" : subtypeResolution.status === "conflicting" ? "needs-user-confirmation" : "unresolved"),
+      confidenceLevel: subtypeResolution.confidenceLevel,
+      resolvedBy: item.accessorySubtypeResolution?.resolvedBy || null,
+      needsConfirmation: needsAccessorySubtypeConfirmation(item)
+    } : null,
     color: item.color || "",
     pattern: item.pattern || "",
     fabric: item.fabric || "",

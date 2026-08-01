@@ -17,8 +17,9 @@ import {
   WardrobeSaveSuccessState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { useSession } from "@/hooks/use-session";
-import { archiveWardrobeItem, getWardrobeItem, retryWardrobeBackgroundRemoval, updateWardrobeItem } from "@/lib/api-client";
+import { archiveWardrobeItem, confirmWardrobeAccessorySubtype, getWardrobeItem, retryWardrobeBackgroundRemoval, updateWardrobeItem } from "@/lib/api-client";
 import { intakeCategories } from "@/lib/wardrobe/category-intelligence";
+import type { AccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 import { cn } from "@/lib/utils";
 import type { GarmentFit, TaggedSize, WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
@@ -46,6 +47,12 @@ const sizeOptions: Array<{ value: TaggedSize; label: string }> = [
 ];
 
 const fitOptions = ["Slim", "Regular", "Relaxed", "Oversized", "Not sure"];
+const accessoryConfirmationOptions: Array<{ value: AccessorySubtype; label: string }> = [
+  { value: "watch", label: "Watch" }, { value: "necklace", label: "Necklace" }, { value: "bracelet", label: "Bracelet" },
+  { value: "bangle", label: "Bangle" }, { value: "earrings", label: "Earrings" }, { value: "ring", label: "Ring" },
+  { value: "belt", label: "Belt" }, { value: "scarf", label: "Scarf" }, { value: "hair-accessory", label: "Hair accessory" },
+  { value: "other", label: "Something else" }
+];
 const inputClass = "focus-ring mt-2 min-h-12 w-full rounded-2xl border border-line bg-white/85 px-4 py-3 text-sm font-semibold text-ink outline-none placeholder:text-muted";
 
 function garmentFitFromFit(fit: string): GarmentFit {
@@ -277,6 +284,19 @@ export function WardrobeDetailClient({ id }: { id: string }) {
     setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
   }
 
+  async function confirmAccessorySubtype(accessorySubtype: AccessorySubtype | null) {
+    setIsSaving(true);
+    setNotice(null);
+    const result = await confirmWardrobeAccessorySubtype(id, accessorySubtype);
+    setIsSaving(false);
+    if (result.ok) {
+      setItem(result.data.item);
+      setNotice(accessorySubtype ? "Accessory type saved." : "You can confirm the accessory type later.");
+      return;
+    }
+    setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
+  }
+
   async function handleArchive() {
     setIsSaving(true);
     setNotice(null);
@@ -345,6 +365,25 @@ export function WardrobeDetailClient({ id }: { id: string }) {
         </Card>
       ) : null}
       <ItemDetails item={item} />
+
+      {item.category === "accessories" && item.accessorySubtypeResolution?.needsConfirmation ? (
+        <section className="mt-7" aria-labelledby="accessory-type-question">
+          <Card className="border-cocoa/20 bg-cocoa/5 p-4">
+            <p id="accessory-type-question" className="text-sm font-semibold text-ink">What type of accessory is this?</p>
+            <p className="mt-1 text-xs leading-5 text-muted">Confirming this helps MyFitPick finish outfits more accurately. You can skip it for now.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-labelledby="accessory-type-question">
+              {accessoryConfirmationOptions.map((option) => (
+                <Button key={option.value} type="button" variant="secondary" className="min-h-11 px-3" disabled={isSaving} onClick={() => void confirmAccessorySubtype(option.value)}>
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <Button type="button" variant="ghost" className="mt-2 min-h-11 w-full" disabled={isSaving} onClick={() => void confirmAccessorySubtype(null)}>
+              Not sure
+            </Button>
+          </Card>
+        </section>
+      ) : null}
 
       {isEditable ? <section className="mt-7">
         <SectionHeader title="Edit item" />

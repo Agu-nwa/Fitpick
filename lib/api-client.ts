@@ -806,6 +806,8 @@ export const createWardrobeItem = (body: unknown) => apiRequest<WardrobeItemData
 export const getWardrobeItem = (id: string) => apiRequest<WardrobeItemData>(`/api/wardrobe/${id}`, { cache: "no-store" });
 export const updateWardrobeItem = (id: string, body: unknown) =>
   apiRequest<WardrobeItemData>(`/api/wardrobe/${id}`, { method: "PATCH", body });
+export const confirmWardrobeAccessorySubtype = (id: string, accessorySubtype: import("@/lib/wardrobe/accessory-subtypes").AccessorySubtype | null) =>
+  apiRequest<WardrobeItemData>(`/api/wardrobe/${id}/accessory-subtype`, { method: "PATCH", body: { accessorySubtype } });
 export const retryWardrobeBackgroundRemoval = (id: string) =>
   apiRequest<WardrobeItemData & { completed: boolean }>(`/api/wardrobe/${id}/background-removal`, { method: "POST" });
 export const updateWardrobeTags = (id: string, body: unknown) =>

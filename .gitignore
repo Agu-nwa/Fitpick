@@ -22,6 +22,7 @@ pnpm-debug.log*
 # Local tooling and deployment state
 .vercel/
 .pm2/
+reports/accessory-subtype-migrations/
 
 # OS files
 .DS_Store

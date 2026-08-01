@@ -115,6 +115,7 @@ const wardrobe = [
   }),
   wardrobeItem("200000000000000000000005", "accessories", "Silver wristwatch", "silver", {
     subcategory: "Watches",
+    accessorySubtype: "watch",
     fabric: "stainless steel",
     verifiedMetadata: {
       primaryColor: field("silver"),
@@ -124,7 +125,9 @@ const wardrobe = [
       weatherSuitability: field(["dry", "cool"]),
       formalityScore: field(["polished"])
     }
-  })
+  }),
+  wardrobeItem("200000000000000000000006", "accessories", "Silver necklace", "silver", { subcategory: "Necklace", accessorySubtype: "necklace" }),
+  wardrobeItem("200000000000000000000007", "accessories", "Gold Jewelry", "gold", { subcategory: "Jewelry" })
 ];
 
 const pseudo = referenceItemToPseudoWardrobeItem(referenceItem);
@@ -157,7 +160,10 @@ assert.ok(first.items.length >= 3, "photo anchor outfit should include supportin
 assert.ok(first.items.every((item: any) => wardrobe.some((owned) => String(owned._id) === String(item._id))), "recommendation items must remain saved wardrobe items only");
 assert.ok(first.items.some((item: any) => item.category === "bags"), "photo match should complete the look with an owned bag when suitable");
 assert.ok(first.items.some((item: any) => /watch/i.test(`${item.name} ${item.subcategory}`)), "photo match should include the strongest owned wrist accessory when suitable");
-assert.ok(first.items.filter((item: any) => /watch|bracelet|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should avoid conflicting wrist accessories");
+assert.ok(first.items.filter((item: any) => /watch|bracelet|bangle|cuff|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 2, "photo match should enforce bounded wrist accessories");
+assert.ok(first.items.some((item: any) => item.category === "shoes"), "photo match must include eligible owned footwear when the uploaded anchor is not footwear");
+assert.equal(first.scoreBreakdown?.matchRecommendationDiagnostics?.eligibleShoeCount, 1);
+assert.ok(first.scoreBreakdown?.matchRecommendationDiagnostics?.accessoryItemDecisions?.length >= 1, "photo match should expose shared accessory decisions internally");
 assert.equal(first.similarityMetadata?.outfitTemplateId, "casual");
 assert.equal(first.similarityMetadata?.occasionProfileId, "dinner");
 assert.ok(first.similarityMetadata?.editorialReview, "photo match should include deterministic editorial ranking metadata");
@@ -174,5 +180,24 @@ assert.equal(typeof markReferenceItemsSavedWithOutfit, "function", "saved looks 
 assert.equal(typeof markReferenceItemConvertedToWardrobe, "function", "explicit closet conversion must mark reference records");
 assert.equal(typeof clearReferenceFashionItem, "function", "clearing a reference must be lifecycle-aware");
 assert.equal(typeof expireStaleReferenceFashionItems, "function", "abandoned temporary references must have cleanup support");
+
+const shoeReference = { ...referenceItem, _id: "100000000000000000000002", category: "shoes", subcategory: "red heels", primaryColor: "red" };
+const shoeAnchorMatch = buildReferenceOutfitRecommendations({
+  referenceItem: shoeReference,
+  wardrobeItems: wardrobe.filter((entry) => entry.category !== "shoes"),
+  occasionName: "dinner",
+  limit: 1
+})[0];
+assert.equal(shoeAnchorMatch.completenessStatus, "complete", "uploaded footwear anchor must satisfy footwear completeness");
+assert.equal(shoeAnchorMatch.footwearIncluded, true);
+assert.equal(shoeAnchorMatch.scoreBreakdown?.matchRecommendationDiagnostics?.anchorProvidesFootwear, true);
+
+const incompleteMatch = buildReferenceOutfitRecommendations({
+  referenceItem: { ...referenceItem, _id: "100000000000000000000003", category: "tops", subcategory: "shirt" },
+  wardrobeItems: wardrobe.filter((entry) => entry.category === "shoes"),
+  occasionName: "dinner",
+  limit: 1
+})[0];
+assert.equal(incompleteMatch.items.length, 0, "a top anchor without an owned bottom must not return a structurally invalid match");
 
 console.log("Stylist reference item checks passed.");

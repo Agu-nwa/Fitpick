@@ -10,7 +10,7 @@ import { generateCombinations } from "@/lib/recommendation/generator";
 const accessory = (id: string, name: string, subtype?: string, extra: Record<string, unknown> = {}) => ({ _id: id, name, category: "accessories", subcategory: subtype || "Jewelry", accessorySubtype: subtype || null, color: "gold", condition: "ready", occasions: ["wedding", "dinner", "business"], formality: ["formal"], ...extra });
 
 assert.equal(accessorySubtypeFor(accessory("1", "Gold Necklace")), "necklace");
-assert.equal(resolveAccessorySubtype(accessory("2", "Gold Jewelry")).confidence, "ambiguous");
+assert.equal(resolveAccessorySubtype(accessory("2", "Gold Jewelry")).confidenceLevel, "low");
 assert.equal(accessorySubtypeFor(accessory("3", "Diamond Stud Earrings")), "earrings");
 assert.equal(accessorySubtypeFor(accessory("4", "Silver Bangle")), "bangle");
 assert.equal(accessorySubtypeFor(accessory("5", "Leather Cuff")), "cuff");

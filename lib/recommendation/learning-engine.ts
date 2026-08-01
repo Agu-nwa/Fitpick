@@ -1,5 +1,5 @@
 import { metadataValue } from "@/lib/recommendation/scoring";
-import { accessorySubtypeFor } from "@/lib/wardrobe/accessory-subtypes";
+import { accessorySubtypeFor, resolveAccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 
 export type LearningEventSignal = {
   positiveItemIds: string[];
@@ -64,7 +64,10 @@ export function buildLearningSignals(input: {
     avoidedColors: topValues(negativeItems.map((item) => metadataValue(item, "primaryColor") || item.color)),
     preferredCategories: topValues(positiveItems.map((item) => item.category)),
     avoidedCategories: repeatedValues(negativeItems.map((item) => item.category)),
-    avoidedAccessorySubtypes: repeatedValues(negativeItems.map((item) => accessorySubtypeFor(item) || ""), 2),
+    avoidedAccessorySubtypes: repeatedValues(negativeItems.map((item) => {
+      const resolution = resolveAccessorySubtype(item);
+      return resolution.confidenceLevel === "high" ? accessorySubtypeFor(item) || "" : "";
+    }), 2),
     recentWeight: history.eventCount ? Math.min(1, Math.max(0.2, 30 / Math.max(30, Number(history.eventCount)))) : 0
   };
 }

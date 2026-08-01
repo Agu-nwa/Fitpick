@@ -549,6 +549,14 @@ export function buildRecommendation(input: EngineInput) {
         eligibleAccessoryCount: eligibleAccessories.length,
         shoeCoverage,
         accessoryItemDecisions: accessoryCompletion.decision.itemDecisions,
+        accessoryConfidenceCounts: {
+          high: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.metadataConfidence === "high").length,
+          medium: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.metadataConfidence === "medium").length,
+          lowOrUnresolved: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.metadataConfidence === "low").length,
+          genericFallbackSelections: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.selected && entry.usedAsGenericAccent).length,
+          probableSubtypeSelections: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.selected && entry.usedProbableSubtype).length,
+          canonicalSubtypeSelections: accessoryCompletion.decision.itemDecisions.filter((entry) => entry.selected && entry.explanationSpecificity === "specific").length
+        },
         selectedAccessorySet: accessoryCompletion.items.map((item) => String(item._id || item.id || "")),
         accessorySelectionMode: accessoryCompletion.decision.selectionMode,
         coreCompleteness: { hasRequiredClothing: !["missing_core_item", "missing_bottom"].includes(completeness.completenessStatus), hasFootwearWhenAvailable: !eligibleShoes.length || completeness.footwearIncluded },

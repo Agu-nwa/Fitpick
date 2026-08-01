@@ -22,7 +22,7 @@ import {
 import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { markReferenceItemConvertedToWardrobe } from "@/lib/ai/reference-fashion-item";
 import { WardrobeItem } from "@/models/WardrobeItem";
-import { resolveAccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
+import { resolveAccessorySubtype, resolutionMetadata, userConfirmedResolution } from "@/lib/wardrobe/accessory-subtypes";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadTagReviewSchema } from "@/schemas/wardrobe.schema";
 
@@ -167,6 +167,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       category: parsed.data.category,
       subcategory: parsed.data.subcategory || "",
       accessorySubtype: parsed.data.accessorySubtype || subtype.subtype || null,
+      accessorySubtypeResolution: parsed.data.accessorySubtype ? userConfirmedResolution(parsed.data.accessorySubtype) : resolutionMetadata(subtype),
       color: parsed.data.color,
       pattern: parsed.data.pattern || "",
       fabric: parsed.data.fabric || "",

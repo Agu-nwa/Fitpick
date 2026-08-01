@@ -23,12 +23,15 @@ const schema = z.object({
 }).strict();
 
 function providerFailure(error: unknown) {
-  const providerError = error as { status?: unknown; code?: unknown };
+  const providerError = error as { status?: unknown; code?: unknown; error?: { code?: unknown } };
   const statusCode = typeof providerError?.status === "number" ? providerError.status : undefined;
-  const providerCode = typeof providerError?.code === "string" ? providerError.code.slice(0, 60) : undefined;
-  const failureCode = statusCode === 401 || statusCode === 403
+  const rawProviderCode = typeof providerError?.code === "string" ? providerError.code : providerError?.error?.code;
+  const providerCode = typeof rawProviderCode === "string" ? rawProviderCode.slice(0, 60) : undefined;
+  const failureCode = providerCode === "local_missing_api_key" || providerCode === "local_unsupported_image_model"
+    ? "setup_required"
+    : statusCode === 401 || statusCode === 403
     ? "authentication_failed"
-    : statusCode === 429 || providerCode === "insufficient_quota"
+    : statusCode === 429 || providerCode === "insufficient_quota" || providerCode === "billing_hard_limit_reached"
       ? "rate_limited"
       : statusCode && statusCode >= 400 && statusCode < 500
         ? "request_rejected"
@@ -67,11 +70,13 @@ export async function POST(request: NextRequest) {
       providerStatusCode: failure.statusCode,
       providerCode: failure.providerCode
     });
-    const message = failure.failureCode === "authentication_failed"
+    const message = failure.failureCode === "setup_required"
+      ? "Model preview generation is not configured correctly. Your selected appearance was still saved."
+      : failure.failureCode === "authentication_failed"
       ? "Model preview generation is not authorized right now. Your selected appearance was still saved."
       : failure.failureCode === "rate_limited"
         ? "Model preview generation is temporarily at capacity. Your selected appearance was still saved; try again shortly."
         : "We couldn’t generate the updated model preview. Your selected appearance was still saved.";
-    return apiError("INTERNAL_ERROR", message);
+    return apiError(failure.failureCode === "setup_required" ? "SETUP_REQUIRED" : failure.failureCode === "rate_limited" ? "RATE_LIMITED" : "INTERNAL_ERROR", message);
   }
 }

@@ -39,6 +39,12 @@ export type WardrobeItem = {
   category: WardrobeCategory;
   subcategory?: string;
   accessorySubtype?: AccessorySubtype | null;
+  accessorySubtypeResolution?: {
+    status: "canonical" | "inferred-high" | "inferred-medium" | "inferred-low" | "needs-user-confirmation" | "unresolved";
+    confidenceLevel?: "high" | "medium" | "low" | "unresolved" | null;
+    resolvedBy?: "user" | "system" | "migration" | null;
+    needsConfirmation: boolean;
+  } | null;
   color: string;
   pattern?: string;
   fabric?: string;

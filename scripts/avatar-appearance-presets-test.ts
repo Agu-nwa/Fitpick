@@ -67,6 +67,7 @@ assert.match(form, /window\.setTimeout\([\s\S]*650/, "Appearance persistence mus
 assert.match(form, /appearanceRequest\.current/, "Rapid selections must use a latest-request guard.");
 assert.match(form, /controller\.abort\(\)/, "Superseded preview requests must be cancelled.");
 assert.match(form, /previewUrl \|\| currentModel\.imagePath/, "The existing preview must remain visible while updating or after failure.");
+assert.match(form, /safeUserMessage\(generated\.error/, "Preview failures must show the server's safe actionable message.");
 assert.match(form, /aria-live="polite"/, "Appearance status must be announced accessibly.");
 assert.match(source("components/avatar/AppearancePresetPicker.tsx"), /aria-pressed=\{selected\}/, "Swatches must expose their selected state.");
 assert.match(source("components/layout/AppShell.tsx"), /pb-\[calc\(10rem\+var\(--safe-bottom\)\)\]/, "Mobile content must clear the bottom navigation and safe area.");
@@ -75,5 +76,9 @@ assert.match(previewPipeline, /skinTonePreset/, "Virtual try-on cache/prompt inp
 assert.match(previewPipeline, /hairColorPreset/, "Virtual try-on cache/prompt inputs must include hair color.");
 assert.match(previewPipeline, /image: \[selectedModelReference!/, "Internal try-on must attach the selected model as its first image reference.");
 assert.match(previewPipeline, /mandatory person\/model reference/, "The try-on prompt must prohibit replacing the selected model.");
+const appearancePipeline = source("lib/avatar/appearance-preview.ts");
+assert.match(appearancePipeline, /size: "1024x1536"/, "Appearance previews must preserve a portrait full-body frame.");
+assert.match(appearancePipeline, /quality: "high"/, "Appearance edits must request high quality.");
+assert.match(appearancePipeline, /supportsAppearanceEditing/, "Appearance edits must reject incompatible image models safely.");
 
 process.stdout.write("Avatar appearance preset regression checks passed.\n");
