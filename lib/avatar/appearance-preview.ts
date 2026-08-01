@@ -4,11 +4,11 @@ import path from "path";
 import { toFile } from "openai";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { openai } from "@/lib/ai/openai";
-import { appearancePresetLabel, hairColorPresets, skinTonePresets, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
+import { appearancePresetLabel, hairColorPresets, hairStylePresets, skinTonePresets, type HairColorPreset, type HairStylePreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 import { resolveStudioModelImagePath, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 
-export const appearancePreviewPromptVersion = "studio-appearance-v3";
+export const appearancePreviewPromptVersion = "studio-appearance-v4-safe-clothing";
 
 const skinTonePrompts: Partial<Record<SkinTonePreset, string>> = {
   deep: "a deep neutral-brown skin tone with natural warm undertones",
@@ -40,11 +40,11 @@ function configurationError(code: string) {
   return Object.assign(new Error("appearance_preview_not_configured"), { code });
 }
 
-export function appearancePreviewKey(input: { gender: StudioModelGender; modelType: StudioModelType; skinTone: SkinTonePreset; hairColor: HairColorPreset }) {
+export function appearancePreviewKey(input: { gender: StudioModelGender; modelType: StudioModelType; skinTone: SkinTonePreset; hairStyle: HairStylePreset; hairColor: HairColorPreset }) {
   return crypto.createHash("sha256").update(JSON.stringify({ ...input, version: appearancePreviewPromptVersion })).digest("hex");
 }
 
-export async function createAppearancePreview(userId: string, input: { gender: StudioModelGender; modelType: StudioModelType; skinTone: SkinTonePreset; hairColor: HairColorPreset }) {
+export async function createAppearancePreview(userId: string, input: { gender: StudioModelGender; modelType: StudioModelType; skinTone: SkinTonePreset; hairStyle: HairStylePreset; hairColor: HairColorPreset }) {
   if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_ADMIN_KEY) throw configurationError("local_missing_api_key");
   const model = getAiModel("imageGeneration");
   if (!supportsAppearanceEditing(model)) throw configurationError("local_unsupported_image_model");
@@ -53,13 +53,15 @@ export async function createAppearancePreview(userId: string, input: { gender: S
   const source = await readFile(path.join(process.cwd(), "public", imagePath.replace(/^\//, "")));
   const key = appearancePreviewKey(input);
   const skin = input.skinTone === "no-preference" ? "Preserve the source skin tone exactly." : `Change the visible skin tone to ${skinTonePrompts[input.skinTone] || appearancePresetLabel(input.skinTone, skinTonePresets)}.`;
+  const hairStyle = input.hairStyle === "no-preference" ? "Preserve the source hairstyle exactly." : `Change the hairstyle to ${appearancePresetLabel(input.hairStyle, hairStylePresets)}, keeping a natural hairline and realistic texture.`;
   const hair = input.hairColor === "no-preference" ? "Preserve the source hair color exactly." : `Change the hair color to ${hairColorPrompts[input.hairColor] || appearancePresetLabel(input.hairColor, hairColorPresets)}.`;
   const prompt = `Edit this fictional adult digital studio model used for a fashion fitting application.
 
 ${skin}
+${hairStyle}
 ${hair}
 
-Preserve the facial identity and structure, body shape and proportions, pose, hairstyle shape, hairline and texture, clothing and clothing color, framing, lighting, shadows, studio background, and camera angle. Keep natural realistic skin shading across every visible area and realistic hair roots, highlights, and shadows. Change only the two requested visible appearance attributes. Do not add or remove garments, accessories, text, or objects. Produce a photorealistic full-body fashion studio image.`;
+Preserve the facial identity and structure, body shape and proportions, pose, clothing and clothing color, framing, lighting, shadows, studio background, and camera angle. Except for the selected hairstyle, preserve all anatomy and facial features. Keep natural realistic skin shading across every visible area and realistic hair roots, highlights, and shadows. Change only the requested visible appearance attributes. Do not add or remove garments, accessories, text, or objects. Produce a photorealistic full-body fashion studio image.`;
   const result = await openai.images.edit({
     model,
     image: await toFile(source, "studio-model.png", { type: "image/png" }),

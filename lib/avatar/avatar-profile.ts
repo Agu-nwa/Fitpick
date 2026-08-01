@@ -7,7 +7,7 @@ import {
   type StudioModelGender,
   type StudioModelType
 } from "@/lib/avatar/studio-models";
-import { hairColorPresetValues, skinTonePresetValues, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
+import { hairColorPresetValues, hairStylePresetValues, skinTonePresetValues, type HairColorPreset, type HairStylePreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 import { appearancePreviewKey } from "@/lib/avatar/appearance-preview";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
@@ -25,7 +25,7 @@ export type AvatarProfilePatch = Partial<{
   bodyPreset: BodyPreset;
   heightPreset: HeightPreset;
   skinTonePreset: SkinTonePreset | null;
-  hairStylePreset: string | null;
+  hairStylePreset: HairStylePreset | null;
   hairColorPreset: HairColorPreset | null;
   posePreset: PosePreset;
   visualizationStyle: VisualizationStyle;
@@ -69,6 +69,7 @@ const bodyMeasurementSources = new Set(["manual", "estimated", "body_scan", "unk
 const bodyFitPreferences = new Set(["true_to_size", "slim", "regular", "relaxed", "oversized"]);
 const skinTonePresets = new Set<string>(skinTonePresetValues);
 const hairColorPresets = new Set<string>(hairColorPresetValues);
+const hairStylePresets = new Set<string>(hairStylePresetValues);
 
 const measurementRanges: Record<string, [number, number]> = {
   heightCm: [90, 240],
@@ -161,6 +162,7 @@ export function preferredTryOnModelImageUrl(profile: any) {
       gender: profile.studioModelGender,
       modelType: profile.studioModelType,
       skinTone: profile.skinTonePreset || "no-preference",
+      hairStyle: profile.hairStylePreset || "no-preference",
       hairColor: profile.hairColorPreset || "no-preference"
     });
     if (profile.generatedModelAppearanceKey === currentAppearanceKey) return profile.generatedModelImageUrl;
@@ -200,7 +202,9 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   if ("skinTonePreset" in patch) {
     cleaned.skinTonePreset = patch.skinTonePreset && skinTonePresets.has(patch.skinTonePreset) ? patch.skinTonePreset : null;
   }
-  if ("hairStylePreset" in patch) cleaned.hairStylePreset = cleanString(patch.hairStylePreset);
+  if ("hairStylePreset" in patch) {
+    cleaned.hairStylePreset = patch.hairStylePreset && hairStylePresets.has(patch.hairStylePreset) ? patch.hairStylePreset : null;
+  }
   if ("hairColorPreset" in patch) {
     cleaned.hairColorPreset = patch.hairColorPreset && hairColorPresets.has(patch.hairColorPreset) ? patch.hairColorPreset : null;
   }

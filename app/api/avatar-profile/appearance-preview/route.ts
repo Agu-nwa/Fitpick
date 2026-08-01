@@ -7,7 +7,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
 import { createAppearancePreview, appearancePreviewKey, appearancePreviewPromptVersion } from "@/lib/avatar/appearance-preview";
-import { hairColorPresetValues, skinTonePresetValues } from "@/lib/avatar/appearance-presets";
+import { hairColorPresetValues, hairStylePresetValues, skinTonePresetValues } from "@/lib/avatar/appearance-presets";
 import { serializeAvatarProfile } from "@/lib/avatar/avatar-profile";
 import { isValidStudioModelSelection } from "@/lib/avatar/studio-models";
 import { rateLimitRequest } from "@/lib/rate-limit";
@@ -19,6 +19,7 @@ const schema = z.object({
   gender: z.enum(["male", "female"]),
   modelType: z.enum(["standard", "petite", "athletic", "broad", "curvy", "plus-size", "maternity"]),
   skinTone: z.enum(skinTonePresetValues),
+  hairStyle: z.enum(hairStylePresetValues),
   hairColor: z.enum(hairColorPresetValues)
 }).strict();
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
     const generated = await createAppearancePreview(String(auth.user._id), input);
     const profile = await AvatarProfile.findOneAndUpdate(
-      { userId: auth.user._id, studioModelGender: input.gender, studioModelType: input.modelType, skinTonePreset: input.skinTone, hairColorPreset: input.hairColor },
+      { userId: auth.user._id, studioModelGender: input.gender, studioModelType: input.modelType, skinTonePreset: input.skinTone, hairStylePreset: input.hairStyle, hairColorPreset: input.hairColor },
       { $set: { generatedModelImageUrl: generated.url, generatedModelImageStorageKey: generated.storageKey, generatedModelAppearanceKey: key, generatedModelPromptVersion: appearancePreviewPromptVersion, generatedModelAt: new Date() } },
       { new: true }
     );

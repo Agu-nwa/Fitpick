@@ -435,7 +435,7 @@ export type AvatarProfileData = {
     bodyPreset: "slim" | "average" | "athletic" | "curvy" | "plus";
     heightPreset: "short" | "average" | "tall" | null;
     skinTonePreset: import("@/lib/avatar/appearance-presets").SkinTonePreset | null;
-    hairStylePreset: string | null;
+    hairStylePreset: import("@/lib/avatar/appearance-presets").HairStylePreset | null;
     hairColorPreset: import("@/lib/avatar/appearance-presets").HairColorPreset | null;
     posePreset: "standing" | "walking" | "editorial" | "runway" | "casual" | "side" | "back";
     visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial";

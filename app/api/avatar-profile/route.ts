@@ -10,7 +10,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
-import { hairColorPresetValues, skinTonePresetValues } from "@/lib/avatar/appearance-presets";
+import { hairColorPresetValues, hairStylePresetValues, skinTonePresetValues } from "@/lib/avatar/appearance-presets";
 
 const nullablePreset = (max = 60) => z.union([safeShortText(max), z.null()]).optional();
 const nullableMeasurement = (min: number, max: number) => z.union([z.number().min(min).max(max), z.null()]).optional();
@@ -21,7 +21,7 @@ const avatarProfilePatchSchema = z
     bodyPreset: z.enum(["slim", "average", "athletic", "curvy", "plus"]).optional(),
     heightPreset: z.enum(["short", "average", "tall"]).nullable().optional(),
     skinTonePreset: z.enum(skinTonePresetValues).nullable().optional(),
-    hairStylePreset: nullablePreset(),
+    hairStylePreset: z.enum(hairStylePresetValues).nullable().optional(),
     hairColorPreset: z.enum(hairColorPresetValues).nullable().optional(),
     posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual", "side", "back"]).optional(),
     visualizationStyle: z.enum(["minimal", "luxury", "streetwear", "editorial"]).optional(),

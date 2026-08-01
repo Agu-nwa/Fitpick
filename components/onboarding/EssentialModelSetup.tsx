@@ -15,7 +15,7 @@ import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { updateAvatarProfile, updateCurrentUser, updatePreferences } from "@/lib/api-client";
 import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
-import { hairColorPresets, skinTonePresets, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
+import { hairColorPresets, hairStylePresets, skinTonePresets, type HairColorPreset, type HairStylePreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -85,6 +85,7 @@ export function EssentialModelSetup() {
   const [studioGender, setStudioGender] = useState<StudioModelGender | "">("");
   const [studioModelType, setStudioModelType] = useState<StudioModelType | "">("");
   const [skinTonePreset, setSkinTonePreset] = useState<SkinTonePreset>("no-preference");
+  const [hairStylePreset, setHairStylePreset] = useState<HairStylePreset>("no-preference");
   const [hairColorPreset, setHairColorPreset] = useState<HairColorPreset>("no-preference");
   const [name, setName] = useState("");
   const [styleIdentity, setStyleIdentity] = useState("clean, polished");
@@ -148,6 +149,7 @@ export function EssentialModelSetup() {
       studioModelGender: studioGender,
       studioModelType,
       skinTonePreset,
+      hairStylePreset,
       hairColorPreset
     });
 
@@ -265,6 +267,7 @@ export function EssentialModelSetup() {
           <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="mb-5 grid gap-5">
               <AppearancePresetPicker label="Skin tone" value={skinTonePreset} presets={skinTonePresets} onChange={setSkinTonePreset} />
+              <AppearancePresetPicker label="Hair style" value={hairStylePreset} presets={hairStylePresets} onChange={setHairStylePreset} />
               <AppearancePresetPicker label="Hair color" value={hairColorPreset} presets={hairColorPresets} onChange={setHairColorPreset} />
               <p className="text-xs leading-5 text-muted">These appearance preferences are applied to generated previews. The Studio Model thumbnail represents body shape and pose.</p>
             </div>

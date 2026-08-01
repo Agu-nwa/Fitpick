@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { AppearancePresetPicker } from "@/components/avatar/AppearancePresetPicker";
 import { generateAppearancePreview, updateAvatarProfile, type AvatarProfileData } from "@/lib/api-client";
-import { hairColorPresets, skinTonePresets, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
+import { hairColorPresets, hairStylePresets, skinTonePresets, type HairColorPreset, type HairStylePreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
 import { safeUserMessage } from "@/lib/user-facing-errors";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ export function AvatarProfileForm({
   const [studioGender, setStudioGender] = useState<StudioModelGender | "">(profile.studioModelGender || "");
   const [studioModelType, setStudioModelType] = useState<StudioModelType | "">(profile.studioModelType || "");
   const [skinTonePreset, setSkinTonePreset] = useState<SkinTonePreset>(profile.skinTonePreset || "no-preference");
+  const [hairStylePreset, setHairStylePreset] = useState<HairStylePreset>(profile.hairStylePreset || "no-preference");
   const [hairColorPreset, setHairColorPreset] = useState<HairColorPreset>(profile.hairColorPreset || "no-preference");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -59,7 +60,7 @@ export function AvatarProfileForm({
     const timer = window.setTimeout(async () => {
       setAppearanceStatus("saving");
       setError("");
-      const saved = await updateAvatarProfile({ skinTonePreset, hairColorPreset });
+      const saved = await updateAvatarProfile({ skinTonePreset, hairStylePreset, hairColorPreset });
       if (requestId !== appearanceRequest.current) return;
       if (!saved.ok) {
         setAppearanceStatus("error");
@@ -72,6 +73,7 @@ export function AvatarProfileForm({
         gender,
         modelType,
         skinTone: skinTonePreset,
+        hairStyle: hairStylePreset,
         hairColor: hairColorPreset
       }, controller.signal);
       if (requestId !== appearanceRequest.current) return;
@@ -94,7 +96,7 @@ export function AvatarProfileForm({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [hairColorPreset, skinTonePreset, profile.studioModelGender, profile.studioModelType]);
+  }, [hairColorPreset, hairStylePreset, skinTonePreset, profile.studioModelGender, profile.studioModelType]);
 
   function chooseGender(value: StudioModelGender) {
     setStudioGender(value);
@@ -118,6 +120,7 @@ export function AvatarProfileForm({
       studioModelGender: studioGender,
       studioModelType,
       skinTonePreset,
+      hairStylePreset,
       hairColorPreset
     });
 
@@ -190,6 +193,7 @@ export function AvatarProfileForm({
 
           <div className="grid gap-5 rounded-2xl border border-line bg-surface/75 p-3">
             <AppearancePresetPicker label="Skin tone" value={skinTonePreset} presets={skinTonePresets} onChange={setSkinTonePreset} />
+            <AppearancePresetPicker label="Hair style" value={hairStylePreset} presets={hairStylePresets} onChange={setHairStylePreset} />
             <AppearancePresetPicker label="Hair color" value={hairColorPreset} presets={hairColorPresets} onChange={setHairColorPreset} />
             <p className="text-xs leading-5 text-muted" aria-live="polite">
               {appearanceStatus === "saved" ? "Appearance saved." : appearanceStatus === "error" ? "The last good preview is shown." : "Changes save automatically and update your generated previews."}

@@ -22,11 +22,31 @@ export const hairColorPresets = [
   { value: "no-preference", label: "No preference", swatch: "linear-gradient(135deg,#171412,#eeeae2)" }
 ] as const;
 
+export const hairStylePresets = [
+  { value: "short-straight", label: "Short straight", swatch: "#8b735f" },
+  { value: "short-wavy", label: "Short wavy", swatch: "#796451" },
+  { value: "short-curly", label: "Short curly", swatch: "#685443" },
+  { value: "short-coily", label: "Short coily", swatch: "#574538" },
+  { value: "buzz-cut", label: "Buzz cut", swatch: "#463a32" },
+  { value: "bald", label: "Bald", swatch: "#c99570" },
+  { value: "long-straight", label: "Long straight", swatch: "#8b735f" },
+  { value: "long-wavy", label: "Long wavy", swatch: "#796451" },
+  { value: "long-curly", label: "Long curly", swatch: "#685443" },
+  { value: "afro", label: "Afro", swatch: "#574538" },
+  { value: "braids", label: "Braids", swatch: "#463a32" },
+  { value: "locs", label: "Locs", swatch: "#3d322b" },
+  { value: "bun", label: "Bun", swatch: "#796451" },
+  { value: "ponytail", label: "Ponytail", swatch: "#685443" },
+  { value: "no-preference", label: "No preference", swatch: "linear-gradient(135deg,#463a32,#c99570)" }
+] as const;
+
 export type SkinTonePreset = typeof skinTonePresets[number]["value"];
 export type HairColorPreset = typeof hairColorPresets[number]["value"];
+export type HairStylePreset = typeof hairStylePresets[number]["value"];
 
 export const skinTonePresetValues = skinTonePresets.map((preset) => preset.value) as [SkinTonePreset, ...SkinTonePreset[]];
 export const hairColorPresetValues = hairColorPresets.map((preset) => preset.value) as [HairColorPreset, ...HairColorPreset[]];
+export const hairStylePresetValues = hairStylePresets.map((preset) => preset.value) as [HairStylePreset, ...HairStylePreset[]];
 
 export function appearancePresetLabel(value: string | null | undefined, presets: ReadonlyArray<{ value: string; label: string }>) {
   return presets.find((preset) => preset.value === value)?.label || "No preference";

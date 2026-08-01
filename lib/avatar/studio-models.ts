@@ -15,77 +15,77 @@ export const studioModelOptions = [
     type: "standard",
     label: "Standard",
     description: "Balanced body proportions.",
-    imagePath: "/models/studio/male-standard.png"
+    imagePath: "/models/studio/male-standard-safe-v2.png"
   },
   {
     gender: "male",
     type: "petite",
     label: "Petite",
     description: "Smaller frame and shorter height proportions.",
-    imagePath: "/models/studio/male-petite.png"
+    imagePath: "/models/studio/male-petite-safe-v2.png"
   },
   {
     gender: "male",
     type: "athletic",
     label: "Athletic",
     description: "Toned, sporty body shape.",
-    imagePath: "/models/studio/male-athletic.png"
+    imagePath: "/models/studio/male-athletic-safe-v2.png"
   },
   {
     gender: "male",
     type: "broad",
     label: "Broad",
     description: "Wider shoulders and stronger upper-body frame.",
-    imagePath: "/models/studio/male-broad.png"
+    imagePath: "/models/studio/male-broad-safe-v2.png"
   },
   {
     gender: "male",
     type: "plus-size",
     label: "Plus-size",
     description: "Fuller body proportions.",
-    imagePath: "/models/studio/male-plus-size.png"
+    imagePath: "/models/studio/male-plus-size-safe-v2.png"
   },
   {
     gender: "female",
     type: "standard",
     label: "Standard",
     description: "Balanced body proportions.",
-    imagePath: "/models/studio/female-standard.png"
+    imagePath: "/models/studio/female-standard-safe-v2.png"
   },
   {
     gender: "female",
     type: "petite",
     label: "Petite",
     description: "Smaller frame and shorter height proportions.",
-    imagePath: "/models/studio/female-petite.png"
+    imagePath: "/models/studio/female-petite-safe-v2.png"
   },
   {
     gender: "female",
     type: "athletic",
     label: "Athletic",
     description: "Toned, sporty body shape.",
-    imagePath: "/models/studio/female-athletic.png"
+    imagePath: "/models/studio/female-athletic-safe-v2.png"
   },
   {
     gender: "female",
     type: "curvy",
     label: "Curvy",
     description: "More defined bust and hips with a noticeable waist.",
-    imagePath: "/models/studio/female-curvy.png"
+    imagePath: "/models/studio/female-curvy-safe-v2.png"
   },
   {
     gender: "female",
     type: "plus-size",
     label: "Plus-size",
     description: "Fuller body proportions.",
-    imagePath: "/models/studio/female-plus-size.png"
+    imagePath: "/models/studio/female-plus-size-safe-v2.png"
   },
   {
     gender: "female",
     type: "maternity",
     label: "Maternity",
     description: "Designed for pregnancy and changing body proportions.",
-    imagePath: "/models/studio/female-maternity.png"
+    imagePath: "/models/studio/female-maternity-safe-v2.png"
   }
 ] as const satisfies readonly StudioModelOption[];
 
