@@ -7,6 +7,7 @@ import {
   type StudioModelGender,
   type StudioModelType
 } from "@/lib/avatar/studio-models";
+import { hairColorPresetValues, skinTonePresetValues, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
 export type BodyPreset = "slim" | "average" | "athletic" | "curvy" | "plus";
@@ -22,8 +23,9 @@ export type AvatarProfilePatch = Partial<{
   genderPresentation: GenderPresentation;
   bodyPreset: BodyPreset;
   heightPreset: HeightPreset;
-  skinTonePreset: string | null;
+  skinTonePreset: SkinTonePreset | null;
   hairStylePreset: string | null;
+  hairColorPreset: HairColorPreset | null;
   posePreset: PosePreset;
   visualizationStyle: VisualizationStyle;
   avatarProvider: AvatarProvider;
@@ -63,6 +65,8 @@ const avatarProviders = new Set(["ready_player_me", "fitpick_preset", "custom_gl
 const tryOnModelSources = new Set(["none", "uploaded", "generated", "studio"]);
 const bodyMeasurementSources = new Set(["manual", "estimated", "body_scan", "unknown"]);
 const bodyFitPreferences = new Set(["true_to_size", "slim", "regular", "relaxed", "oversized"]);
+const skinTonePresets = new Set<string>(skinTonePresetValues);
+const hairColorPresets = new Set<string>(hairColorPresetValues);
 
 const measurementRanges: Record<string, [number, number]> = {
   heightCm: [90, 240],
@@ -182,8 +186,13 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   if (patch.bodyMeasurementSource && bodyMeasurementSources.has(patch.bodyMeasurementSource)) cleaned.bodyMeasurementSource = patch.bodyMeasurementSource;
   if (patch.bodyFitPreference && bodyFitPreferences.has(patch.bodyFitPreference)) cleaned.bodyFitPreference = patch.bodyFitPreference;
   if ("bodyMeasurementConfidence" in patch) cleaned.bodyMeasurementConfidence = clampConfidence(patch.bodyMeasurementConfidence);
-  if ("skinTonePreset" in patch) cleaned.skinTonePreset = cleanString(patch.skinTonePreset);
+  if ("skinTonePreset" in patch) {
+    cleaned.skinTonePreset = patch.skinTonePreset && skinTonePresets.has(patch.skinTonePreset) ? patch.skinTonePreset : null;
+  }
   if ("hairStylePreset" in patch) cleaned.hairStylePreset = cleanString(patch.hairStylePreset);
+  if ("hairColorPreset" in patch) {
+    cleaned.hairColorPreset = patch.hairColorPreset && hairColorPresets.has(patch.hairColorPreset) ? patch.hairColorPreset : null;
+  }
   if ("shoeSize" in patch) cleaned.shoeSize = cleanString(patch.shoeSize, 40) || "";
   if (typeof patch.consentAccepted === "boolean") cleaned.consentAccepted = patch.consentAccepted;
 
@@ -247,8 +256,9 @@ export function buildAvatarPromptContext(profile: any) {
     `Height preset: ${profile.heightPreset || "unspecified"}`,
     `Pose: ${profile.posePreset || "standing"}`,
     `Visualization style: ${profile.visualizationStyle || "luxury"}`,
-    profile.skinTonePreset ? `Skin tone preset: ${profile.skinTonePreset}` : "",
+    profile.skinTonePreset && profile.skinTonePreset !== "no-preference" ? `Skin tone preset: ${profile.skinTonePreset}` : "",
     profile.hairStylePreset ? `Hair style preset: ${profile.hairStylePreset}` : "",
+    profile.hairColorPreset && profile.hairColorPreset !== "no-preference" ? `Hair color preset: ${profile.hairColorPreset}` : "",
     profile.heightCm ? `Height: ${profile.heightCm} cm` : "",
     profile.chestCm ? `Chest: ${profile.chestCm} cm` : "",
     profile.bustCm ? `Bust: ${profile.bustCm} cm` : "",
@@ -273,6 +283,7 @@ export function serializeAvatarProfile(profile: any) {
     heightPreset: profile.heightPreset ?? null,
     skinTonePreset: profile.skinTonePreset ?? null,
     hairStylePreset: profile.hairStylePreset ?? null,
+    hairColorPreset: profile.hairColorPreset ?? null,
     posePreset: profile.posePreset || "standing",
     visualizationStyle: profile.visualizationStyle || "luxury",
     avatarProvider: profile.avatarProvider || "fitpick_preset",

@@ -52,8 +52,11 @@ assert.ok(avatarForm.includes("Replace photo"), "Appearance should allow replaci
 assert.ok(avatarForm.includes("Remove photo"), "Appearance should allow removing the uploaded full-body photo.");
 assert.ok(!avatarForm.includes("Generate model image"), "Appearance must not expose generated model image support.");
 assert.ok(!avatarForm.includes("Fit details"), "Appearance must not expose fit measurement details.");
-for (const removedCopy of ["Model base", "Body shape", "Height range", "Shoe size", "Preferred fit", "Skin tone", "Hair style"]) {
+for (const removedCopy of ["Model base", "Height range", "Shoe size", "Preferred fit", "Hair style"]) {
   assert.ok(!avatarForm.includes(removedCopy), `Appearance should not contain removed setup copy: ${removedCopy}.`);
+}
+for (const appearanceControl of ["Skin tone", "Hair color"]) {
+  assert.ok(avatarForm.includes(appearanceControl), `Appearance should expose ${appearanceControl}.`);
 }
 assert.ok(!avatarForm.includes("Custom model link"), "Appearance form should not expose custom model links.");
 assert.ok(!avatarForm.includes("avatarProvider"), "Appearance form should not expose provider selection.");

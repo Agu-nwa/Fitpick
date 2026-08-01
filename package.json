@@ -31,6 +31,7 @@
     "test:user-errors": "tsx scripts/user-facing-error-copy-test.ts",
     "test:support": "tsx scripts/support-platform-test.ts",
     "test:profile-unification": "tsx scripts/profile-unification-test.ts",
+    "test:avatar-appearance": "tsx scripts/avatar-appearance-presets-test.ts",
     "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
     "test:wardrobe-validation": "tsx scripts/wardrobe-upload-validation-test.ts",
     "test:payments": "node scripts/payment-credit-system-test.mjs",

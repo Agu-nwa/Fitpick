@@ -431,8 +431,9 @@ export type AvatarProfileData = {
     genderPresentation: "masculine" | "feminine" | "neutral";
     bodyPreset: "slim" | "average" | "athletic" | "curvy" | "plus";
     heightPreset: "short" | "average" | "tall" | null;
-    skinTonePreset: string | null;
+    skinTonePreset: import("@/lib/avatar/appearance-presets").SkinTonePreset | null;
     hairStylePreset: string | null;
+    hairColorPreset: import("@/lib/avatar/appearance-presets").HairColorPreset | null;
     posePreset: "standing" | "walking" | "editorial" | "runway" | "casual" | "side" | "back";
     visualizationStyle: "minimal" | "luxury" | "streetwear" | "editorial";
     avatarProvider: "ready_player_me" | "fitpick_preset" | "custom_glb";

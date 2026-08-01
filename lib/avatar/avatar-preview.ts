@@ -76,6 +76,7 @@ function avatarFingerprint(profile: any, options: AvatarPreviewOptions = {}) {
     heightPreset: profile.heightPreset || null,
     skinTonePreset: profile.skinTonePreset || null,
     hairStylePreset: profile.hairStylePreset || null,
+    hairColorPreset: profile.hairColorPreset || null,
     posePreset: options.posePreset || profile.posePreset || "standing",
     visualizationStyle: options.visualizationStyle || profile.visualizationStyle || "luxury",
     avatarProvider: profile.avatarProvider || "fitpick_preset",

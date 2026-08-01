@@ -8,12 +8,14 @@ import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
 import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { AppearancePresetPicker } from "@/components/avatar/AppearancePresetPicker";
 import { Chip } from "@/components/ui/Chip";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { updateAvatarProfile, updateCurrentUser, updatePreferences } from "@/lib/api-client";
 import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
+import { hairColorPresets, skinTonePresets, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -82,6 +84,8 @@ export function EssentialModelSetup() {
   const [setupStep, setSetupStep] = useState<"model" | "style">("model");
   const [studioGender, setStudioGender] = useState<StudioModelGender | "">("");
   const [studioModelType, setStudioModelType] = useState<StudioModelType | "">("");
+  const [skinTonePreset, setSkinTonePreset] = useState<SkinTonePreset>("no-preference");
+  const [hairColorPreset, setHairColorPreset] = useState<HairColorPreset>("no-preference");
   const [name, setName] = useState("");
   const [styleIdentity, setStyleIdentity] = useState("clean, polished");
   const [colorPreferences, setColorPreferences] = useState("black, white, navy");
@@ -142,7 +146,9 @@ export function EssentialModelSetup() {
     const result = await updateAvatarProfile({
       tryOnModelSource: "studio",
       studioModelGender: studioGender,
-      studioModelType
+      studioModelType,
+      skinTonePreset,
+      hairColorPreset
     });
 
     setSaving(false);
@@ -257,6 +263,11 @@ export function EssentialModelSetup() {
 
         {studioGender ? (
           <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="mb-5 grid gap-5">
+              <AppearancePresetPicker label="Skin tone" value={skinTonePreset} presets={skinTonePresets} onChange={setSkinTonePreset} />
+              <AppearancePresetPicker label="Hair color" value={hairColorPreset} presets={hairColorPresets} onChange={setHairColorPreset} />
+              <p className="text-xs leading-5 text-muted">These appearance preferences are applied to generated previews. The Studio Model thumbnail represents body shape and pose.</p>
+            </div>
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">Use a Studio Model</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {modelOptions.map((option) => {

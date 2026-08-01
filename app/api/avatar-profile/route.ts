@@ -10,6 +10,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
+import { hairColorPresetValues, skinTonePresetValues } from "@/lib/avatar/appearance-presets";
 
 const nullablePreset = (max = 60) => z.union([safeShortText(max), z.null()]).optional();
 const nullableMeasurement = (min: number, max: number) => z.union([z.number().min(min).max(max), z.null()]).optional();
@@ -19,8 +20,9 @@ const avatarProfilePatchSchema = z
     genderPresentation: z.enum(["masculine", "feminine", "neutral"]).optional(),
     bodyPreset: z.enum(["slim", "average", "athletic", "curvy", "plus"]).optional(),
     heightPreset: z.enum(["short", "average", "tall"]).nullable().optional(),
-    skinTonePreset: nullablePreset(),
+    skinTonePreset: z.enum(skinTonePresetValues).nullable().optional(),
     hairStylePreset: nullablePreset(),
+    hairColorPreset: z.enum(hairColorPresetValues).nullable().optional(),
     posePreset: z.enum(["standing", "walking", "editorial", "runway", "casual", "side", "back"]).optional(),
     visualizationStyle: z.enum(["minimal", "luxury", "streetwear", "editorial"]).optional(),
     avatarProvider: z.enum(["ready_player_me", "fitpick_preset", "custom_glb"]).optional(),

@@ -8,6 +8,7 @@ const AvatarProfileSchema = new Schema(
     heightPreset: { type: String, enum: ["short", "average", "tall", null], default: null },
     skinTonePreset: { type: String, default: null, maxlength: 60 },
     hairStylePreset: { type: String, default: null, maxlength: 60 },
+    hairColorPreset: { type: String, default: null, maxlength: 60 },
     posePreset: { type: String, enum: ["standing", "walking", "editorial", "runway", "casual", "side", "back"], default: "standing" },
     visualizationStyle: { type: String, enum: ["minimal", "luxury", "streetwear", "editorial"], default: "luxury" },
     avatarProvider: { type: String, enum: ["ready_player_me", "fitpick_preset", "custom_glb"], default: "fitpick_preset" },
