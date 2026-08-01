@@ -67,7 +67,6 @@ Preserve the facial identity and structure, body shape and proportions, pose, ha
     size: "1024x1536",
     quality: "high",
     output_format: "png",
-    moderation: "low",
     input_fidelity: "high"
   }, { timeout: 120_000 });
   const base64 = result.data?.[0]?.b64_json;
