@@ -1,16 +1,13 @@
-export type PaymentProvider = "stripe" | "coinpayments" | "app_store";
-export type PaymentMethod = "fiat" | "usdt" | "apple_iap";
+export type PaymentProvider = "stripe" | "app_store";
+export type PaymentMethod = "fiat" | "apple_iap";
 export type CreditPurchaseStatus =
   | "created"
   | "pending"
-  | "confirming"
   | "paid"
   | "credited"
   | "cancelled"
   | "expired"
   | "failed"
-  | "underpaid"
-  | "overpaid"
   | "refunded"
   | "partially_refunded"
   | "disputed"
@@ -27,18 +24,9 @@ export type CreditPackSummary = {
   status: "available";
 };
 
-export type UsdtNetworkSummary = {
-  id: string;
-  displayName: string;
-  asset: "USDT";
-  network: string;
-  availability: "available" | "unavailable";
-  estimatedFee?: string;
-};
-
 export type ProviderReadiness = {
   configured: boolean;
-  currencies: Array<"USD" | "USDT">;
+  currencies: Array<"USD">;
   paymentMethods: PaymentMethod[];
   message?: string;
 };
@@ -61,9 +49,4 @@ export type CreditPurchaseSummary = {
   checkoutUrl?: string | null;
   appStoreProductId?: string | null;
   appStoreTransactionId?: string | null;
-  usdtNetwork?: string | null;
-  expectedUsdtAmount?: string | null;
-  receivedUsdtAmount?: string | null;
-  confirmations?: number | null;
-  requiredConfirmations?: number | null;
 };

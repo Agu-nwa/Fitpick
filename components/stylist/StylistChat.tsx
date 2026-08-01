@@ -17,7 +17,6 @@ import {
   createReferenceFashionItem,
   getReferenceFashionRecommendations,
   getJobStatus,
-  requestSignedUploadUrl,
   selectReferenceFashionItem,
   sendStylistMessage,
   uploadImageViaServer
@@ -741,59 +740,19 @@ export function StylistChat({
       ...(input.height || normalized.height ? { height: input.height || normalized.height } : {})
     });
 
-    if (normalized.serverNormalizationRequired) {
-      const fallback = await uploadImageViaServer({ file, purpose: "stylist_reference" });
-      if (!fallback.ok) {
-        throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload that image. Try another photo."));
-      }
-      const created = await createReferenceFashionItem(makePayload({
-        publicUrl: fallback.data.upload.publicUrl,
-        storageKey: fallback.data.upload.storageKey,
-        filename: fallback.data.upload.filename,
-        mimeType: fallback.data.upload.mimeType,
-        sizeBytes: fallback.data.upload.sizeBytes,
-        width: fallback.data.upload.width,
-        height: fallback.data.upload.height
-      }));
-      if (!created.ok) throw new Error(safeUserMessage(created.error, "We couldn’t upload that image. Try another photo."));
-      return created.data.referenceItem;
-    }
-
-    const signed = await requestSignedUploadUrl({
-      filename: file.name,
-      mimeType,
-      sizeBytes: file.size,
-      purpose: "stylist_reference"
-    });
-
-    if (signed.ok && signed.data.upload.ready && signed.data.upload.uploadUrl) {
-      try {
-        const uploaded = await fetch(signed.data.upload.uploadUrl, {
-          method: signed.data.upload.method || "PUT",
-          headers: signed.data.upload.headers || { "content-type": mimeType },
-          body: file
-        });
-        if (uploaded.ok) {
-          const created = await createReferenceFashionItem(makePayload({
-            publicUrl: signed.data.upload.publicUrl || "",
-            storageKey: signed.data.upload.storageKey
-          }));
-          if (created.ok) return created.data.referenceItem;
-          throw new Error(safeUserMessage(created.error, "We couldn’t upload that image. Try another photo."));
-        }
-      } catch {
-        // Fall back to the server upload route below.
-      }
-    }
-
-    const fallback = await uploadImageViaServer({ file, purpose: "stylist_reference" });
-    if (!fallback.ok) {
-      throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload that image. Try another photo."));
+    const processed = await uploadImageViaServer({ file, purpose: "stylist_reference" });
+    if (!processed.ok) {
+      throw new Error(safeUploadErrorMessage(processed.error, "We couldn’t upload that image. Try another photo."));
     }
 
     const created = await createReferenceFashionItem(makePayload({
-      publicUrl: fallback.data.upload.publicUrl,
-      storageKey: fallback.data.upload.storageKey
+      publicUrl: processed.data.upload.publicUrl,
+      storageKey: processed.data.upload.storageKey,
+      filename: processed.data.upload.filename,
+      mimeType: processed.data.upload.mimeType,
+      sizeBytes: processed.data.upload.sizeBytes,
+      width: processed.data.upload.width,
+      height: processed.data.upload.height
     }));
     if (!created.ok) throw new Error(safeUserMessage(created.error, "We couldn’t upload that image. Try another photo."));
     return created.data.referenceItem;

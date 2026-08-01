@@ -10,6 +10,24 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
+import { removeBackgroundWithPhotoRoom } from "@/lib/image-processing/photoroom";
+
+const BACKGROUND_REMOVAL_PURPOSES = new Set([
+  "wardrobe_original", "wardrobe_front", "wardrobe_back", "wardrobe_additional", "stylist_reference"
+]);
+
+async function uploadCutoutWithRetry(input: Parameters<typeof uploadImageObject>[0]) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await uploadImageObject(input);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 200));
+    }
+  }
+  throw lastError;
+}
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -31,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (typeof file.size === "number" && file.size > getMaxImageSizeBytes()) {
       return apiError("VALIDATION_ERROR", messageForImageUploadError("IMAGE_TOO_LARGE"));
     }
-    const parsedPurpose = uploadPurposeSchema.safeParse(typeof purpose === "string" ? purpose : "wardrobe_original");
+    const parsedPurpose = uploadPurposeSchema.safeParse(typeof purpose === "string" ? purpose : undefined);
     if (!parsedPurpose.success) return apiError("VALIDATION_ERROR", imageUploadRequirementText());
 
     const body = Buffer.from(await file.arrayBuffer());
@@ -46,28 +64,51 @@ export async function POST(request: NextRequest) {
       filename: normalized.filename,
       purpose: parsedPurpose.data
     });
-    const uploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    const originalUploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    let activeUploaded = originalUploaded;
+    let cutoutUpload: null | { provider: "s3"; storageKey: string; publicUrl: string; filename: string; mimeType: string; sizeBytes: number; width: number; height: number } = null;
+    let backgroundRemovalApplied = false;
+    let backgroundRemovalProvider: "photoroom" | null = null;
+    let backgroundRemovalWarning: string | null = null;
+
+    if (BACKGROUND_REMOVAL_PURPOSES.has(parsedPurpose.data)) {
+      const removal = await removeBackgroundWithPhotoRoom({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
+      backgroundRemovalProvider = removal.provider;
+      if (removal.ok) {
+        try {
+          const cutoutKey = createStorageKey({ userId: String(auth.user._id), filename: removal.filename, purpose: `${parsedPurpose.data}_cutout` });
+          activeUploaded = await uploadCutoutWithRetry({ storageKey: cutoutKey, mimeType: removal.mimeType, body: removal.buffer });
+          cutoutUpload = { provider: activeUploaded.provider, storageKey: activeUploaded.storageKey, publicUrl: activeUploaded.url, filename: removal.filename, mimeType: removal.mimeType, sizeBytes: removal.buffer.byteLength, width: removal.width, height: removal.height };
+          backgroundRemovalApplied = true;
+        } catch {
+          backgroundRemovalWarning = "The cutout could not be saved; the original photo was used.";
+          activeUploaded = originalUploaded;
+        }
+      } else {
+        backgroundRemovalWarning = removal.warning;
+      }
+    }
 
     await recordAuditEvent({
       request,
       userId: String(auth.user._id),
       action: "storage.signed_upload",
       entityType: "StorageObject",
-      entityId: uploaded.storageKey
+      entityId: originalUploaded.storageKey
     });
 
     return apiSuccess(
       {
         upload: {
           ready: true,
-          provider: uploaded.provider,
-          storageKey: uploaded.storageKey,
-          publicUrl: uploaded.url,
-          filename: normalized.filename,
-          mimeType: normalized.mimeType,
-          sizeBytes: normalized.sizeBytes,
-          width: normalized.width,
-          height: normalized.height,
+          provider: activeUploaded.provider,
+          storageKey: activeUploaded.storageKey,
+          publicUrl: activeUploaded.url,
+          filename: cutoutUpload?.filename || normalized.filename,
+          mimeType: cutoutUpload?.mimeType || normalized.mimeType,
+          sizeBytes: cutoutUpload?.sizeBytes || normalized.sizeBytes,
+          width: cutoutUpload?.width || normalized.width,
+          height: cutoutUpload?.height || normalized.height,
           normalized: {
             originalMimeType: normalized.original.mimeType,
             detectedMimeType: normalized.original.detectedMimeType,
@@ -79,6 +120,20 @@ export async function POST(request: NextRequest) {
             outputSizeBytes: normalized.sizeBytes,
             warnings: normalized.warnings
           },
+          backgroundRemovalApplied,
+          backgroundRemovalProvider,
+          backgroundRemovalWarning,
+          originalUpload: {
+            provider: originalUploaded.provider,
+            storageKey: originalUploaded.storageKey,
+            publicUrl: originalUploaded.url,
+            filename: normalized.filename,
+            mimeType: normalized.mimeType,
+            sizeBytes: normalized.sizeBytes,
+            width: normalized.width,
+            height: normalized.height
+          },
+          cutoutUpload,
           maxSizeBytes: getMaxImageSizeBytes(),
           allowedMimeTypes: getAllowedImageTypes(),
           nextAction: "uploaded_to_s3"

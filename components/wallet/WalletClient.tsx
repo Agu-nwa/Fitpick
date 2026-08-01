@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, CreditCard, Gift, Rocket, Sparkles, WalletCards, X } from "lucide-react";
+import { CheckCircle2, CreditCard, Gift, Sparkles, WalletCards } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { appStorePurchasesAvailable, loadAppStoreProducts, purchaseAppStoreCreditPack, type AppStoreProductSummary } from "@/lib/payments/app-store-client";
 import {
@@ -19,8 +18,6 @@ import {
   type CreditWalletData
 } from "@/lib/api-client";
 import { safeUserMessage } from "@/lib/user-facing-errors";
-
-const cryptoComingSoonCopy = "Crypto payments are coming soon.";
 
 function friendlyFeature(feature: string) {
   if (feature === "credit_purchase") return "Credit purchase";
@@ -49,103 +46,28 @@ function formatCredits(value: number | null | undefined) {
 
 function statusTone(status: string): Parameters<typeof Badge>[0]["tone"] {
   if (["credited", "spent"].includes(status)) return "success";
-  if (["failed", "expired", "underpaid", "chargeback"].includes(status)) return "danger";
-  if (["pending", "confirming", "review_required", "disputed"].includes(status)) return "warning";
+  if (["failed", "expired", "chargeback"].includes(status)) return "danger";
+  if (["pending", "review_required", "disputed"].includes(status)) return "warning";
   return "neutral";
 }
 
-function PaymentMethodSummary({
-  onCryptoClick
-}: {
-  onCryptoClick: () => void;
-}) {
+function PaymentMethodSummary() {
   return (
     <Card className="space-y-3 border-cocoa/20 bg-gradient-to-br from-white via-canvas to-cocoa/5">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Payment methods</p>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-success/25 bg-white/80 p-4 shadow-soft">
-          <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
-            <span className="inline-flex items-center gap-2">
-              <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
-              Card available
-            </span>
-            <Badge tone="success">Available</Badge>
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Payment method</p>
+      <div className="rounded-2xl border border-success/25 bg-white/80 p-4 shadow-soft">
+        <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
+          <span className="inline-flex items-center gap-2">
+            <CheckCircle2 size={17} className="text-success" aria-hidden="true" />
+            Card or digital wallet
           </span>
-          <span className="mt-2 block text-xs leading-5 text-muted">
-            Secure card checkout is available now.
-          </span>
-        </div>
-
-        <button
-          type="button"
-          title="Crypto payments will be available soon."
-          aria-label="USDT payments coming soon"
-          onClick={onCryptoClick}
-          className="focus-ring group rounded-2xl border border-cocoa/15 bg-gradient-to-br from-cocoa/10 via-white/75 to-olive/10 p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-cocoa/35"
-        >
-          <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-ink">
-            <span className="inline-flex items-center gap-2">
-              <Rocket size={17} className="text-cocoa transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
-              USDT
-            </span>
-            <Badge tone="premium">Coming Soon</Badge>
-          </span>
-          <span className="mt-2 block text-xs leading-5 text-muted">
-            Secure crypto payments are on the way.
-          </span>
-        </button>
+          <Badge tone="success">Available</Badge>
+        </span>
+        <span className="mt-2 block text-xs leading-5 text-muted">
+          Secure checkout is available now.
+        </span>
       </div>
     </Card>
-  );
-}
-
-function CryptoComingSoonModal({
-  onClose,
-  onContinueWithCard,
-  cardBusy,
-  cardReady
-}: {
-  onClose: () => void;
-  onContinueWithCard: () => void;
-  cardBusy: boolean;
-  cardReady: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-3 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="crypto-coming-soon-title">
-      <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-cocoa/20 bg-surface shadow-glow">
-        <div className="bg-gradient-to-br from-cocoa/12 via-white to-olive/12 p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-cocoa text-canvas shadow-soft">
-              <Rocket size={21} aria-hidden="true" />
-            </span>
-            <button type="button" onClick={onClose} className="focus-ring rounded-full p-2 text-muted hover:bg-white/70 hover:text-ink" aria-label="Close crypto payments coming soon">
-              <X size={18} aria-hidden="true" />
-            </button>
-          </div>
-          <h3 id="crypto-coming-soon-title" className="mt-4 text-2xl font-black tracking-[-0.03em] text-ink">Crypto Payments Coming Soon</h3>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            Secure cryptocurrency payments are launching soon.
-          </p>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            Soon you&apos;ll be able to purchase MyFitPick Credits using USDT.
-          </p>
-          <div className="mt-4 rounded-2xl border border-line bg-white/70 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Supported networks will include</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {['TRC20', 'BEP20', 'ERC20'].map((network) => <Badge key={network} tone="premium">{network}</Badge>)}
-            </div>
-          </div>
-          <p className="mt-4 text-sm font-semibold leading-6 text-ink">For now you can securely purchase Credits with a card.</p>
-        </div>
-        <div className="grid gap-2 border-t border-line bg-canvas/80 p-4 sm:grid-cols-2">
-          <Button type="button" onClick={onContinueWithCard} disabled={!cardReady || cardBusy}>
-            <CreditCard size={16} aria-hidden="true" />
-            {cardBusy ? "Opening checkout" : "Continue with Card"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -155,12 +77,9 @@ export function WalletClient() {
   const [state, setState] = useState<"loading" | "idle" | "unavailable">("loading");
   const [checkoutPackId, setCheckoutPackId] = useState<string>("");
   const [checkoutMessage, setCheckoutMessage] = useState("");
-  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
-  const [routeNotice, setRouteNotice] = useState("");
   const [nativeProducts, setNativeProducts] = useState<Map<string, AppStoreProductSummary>>(new Map());
   const [nativeMode, setNativeMode] = useState(false);
   const creditPacksRef = useRef<HTMLElement>(null);
-  const revealContent = useRevealContent();
 
   const loadWallet = useCallback(async () => {
     setState("loading");
@@ -177,18 +96,6 @@ export function WalletClient() {
     if (session.status === "authenticated") void loadWallet();
     if (session.status === "logged-out") setState("idle");
   }, [loadWallet, session.status]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const provider = (params.get("provider") || "").toLowerCase();
-    if (!["crypto", "coinpayments", "usdt"].includes(provider)) return;
-
-    params.delete("provider");
-    const nextQuery = params.toString();
-    window.history.replaceState(null, "", `/wallet${nextQuery ? `?${nextQuery}` : ""}`);
-    setRouteNotice(cryptoComingSoonCopy);
-    revealContent(creditPacksRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
-  }, [revealContent]);
 
   const stripeConfigured = Boolean(data?.providers?.stripe?.configured);
   const appStoreConfigured = Boolean(data?.providers?.appStore?.configured);
@@ -290,16 +197,7 @@ export function WalletClient() {
       </div>
 
       <section ref={creditPacksRef} id="credit-packs" className="scroll-mt-6 space-y-4">
-        <SectionHeader title="Top Up" />
-        {routeNotice ? (
-          <div className="flex items-start gap-3 rounded-2xl border border-cocoa/20 bg-gradient-to-r from-cocoa/10 via-white/70 to-olive/10 p-4 text-sm leading-6 text-ink">
-            <Rocket size={17} className="mt-0.5 shrink-0 text-cocoa" aria-hidden="true" />
-            <div>
-              <p className="font-bold">{routeNotice}</p>
-              <p className="text-xs leading-5 text-muted">Secure crypto payments are on the way. Card checkout is available now.</p>
-            </div>
-          </div>
-        ) : null}
+        <SectionHeader title="Top Up Credits" />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {data.packs.map((pack) => (
             <Card key={pack.id} className={`space-y-3 ${checkoutPackId === pack.id ? "border-cocoa/40 bg-cocoa/5" : ""}`}>
@@ -320,7 +218,7 @@ export function WalletClient() {
                 onClick={() => void (nativeMode ? startAppStorePayment(pack) : startCardPayment(pack))}
               >
                 <CreditCard size={16} aria-hidden="true" />
-                {checkoutPackId === pack.id ? (nativeMode ? "Opening App Store" : "Opening checkout") : "Top Up"}
+                {checkoutPackId === pack.id ? (nativeMode ? "Opening App Store" : "Opening checkout") : "Top Up Credits"}
               </Button>
             </Card>
           ))}
@@ -333,19 +231,8 @@ export function WalletClient() {
             <p className="mt-2 text-xs leading-5 text-muted">Credits purchased in the iOS app are processed securely by Apple.</p>
           </Card>
         ) : (
-          <PaymentMethodSummary onCryptoClick={() => setCryptoModalOpen(true)} />
+          <PaymentMethodSummary />
         )}
-        {!nativeMode && cryptoModalOpen ? (
-          <CryptoComingSoonModal
-            onClose={() => setCryptoModalOpen(false)}
-            onContinueWithCard={() => {
-              setCryptoModalOpen(false);
-              revealContent(creditPacksRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
-            }}
-            cardBusy={Boolean(checkoutPackId)}
-            cardReady={stripeConfigured}
-          />
-        ) : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">

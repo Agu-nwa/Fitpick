@@ -116,13 +116,6 @@ RATE_LIMIT_REDIS_URL=
 
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
-COINPAYMENTS_CLIENT_ID=
-COINPAYMENTS_CLIENT_SECRET=
-COINPAYMENTS_WEBHOOK_SECRET=
-COINPAYMENTS_WEBHOOK_URL=https://YOUR_DOMAIN/api/webhooks/coinpayments
-COINPAYMENTS_USD_CURRENCY_ID=
-COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Temporary EC2 IP testing may use:
@@ -228,16 +221,9 @@ Do not activate live payments until HTTPS is working.
 Webhook endpoints:
 
 - Stripe: `https://YOUR_DOMAIN/api/webhooks/stripe`
-- CoinPayments: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
 
-Stripe must use one-time Checkout Sessions. CoinPayments must use hosted USDT invoices with exact merchant-approved network IDs.
 
-Intended USDT options for `COINPAYMENTS_USDT_NETWORK_ALLOWLIST`:
 
-- USDT on Tron (`TRC20`) - recommended, very low fees.
-- USDT on BNB Smart Chain (`BEP20`) - recommended, very low fees.
-- USDT on Ethereum (`ERC20`) - recommended, higher fees.
-- USDT on Solana - fast, lower network fees.
 
 ## S3 CORS
 

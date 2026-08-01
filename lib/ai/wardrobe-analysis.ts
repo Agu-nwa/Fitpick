@@ -10,7 +10,7 @@ import { sanitizeCategorySpecificMetadata } from "@/lib/wardrobe/metadata-valida
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { resolveGarmentEntity, serializeEntityRecognition } from "@/lib/garment-intelligence/entity-resolver";
 import { buildImageQualityIntelligence, mergeUploadIntelligence } from "@/lib/wardrobe/compatibility/compatibility-graph";
-import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
+import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult, WardrobeImageAsset } from "@/types/ai-tagging";
 
 function averageConfidence(analysis: WardrobeAiAnalysis) {
   const fields = Object.values(analysis.fields);
@@ -245,10 +245,10 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     };
   }
 
+  const analysisUrl = (asset?: WardrobeImageAsset) => asset?.variants?.original?.url || asset?.url;
   const imageEntries = [
-    { label: "front view", url: input.imageUrl },
-    ...(input.images?.front?.url ? [{ label: "front view", url: input.images.front.url }] : []),
-    ...(input.images?.back?.url ? [{ label: "back view", url: input.images.back.url }] : []),
+    { label: "front view", url: analysisUrl(input.images?.front) || input.imageUrl },
+    ...(analysisUrl(input.images?.back) ? [{ label: "back view", url: analysisUrl(input.images?.back) }] : []),
     ...(input.images?.fabricCloseUp?.url ? [{ label: "fabric close-up", url: input.images.fabricCloseUp.url }] : []),
     ...(input.images?.label?.url ? [{ label: "care and size label", url: input.images.label.url }] : [])
   ].filter((entry, index, all) => entry.url && all.findIndex((candidate) => candidate.url === entry.url) === index);
@@ -266,8 +266,8 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     model,
     images: [
       input.storageKey,
-      input.images?.front?.storageKey || input.images?.front?.url,
-      input.images?.back?.storageKey || input.images?.back?.url,
+      input.images?.front?.variants?.original?.storageKey || input.images?.front?.variants?.original?.url || input.images?.front?.storageKey || input.images?.front?.url,
+      input.images?.back?.variants?.original?.storageKey || input.images?.back?.variants?.original?.url || input.images?.back?.storageKey || input.images?.back?.url,
       input.images?.fabricCloseUp?.storageKey || input.images?.fabricCloseUp?.url,
       input.images?.label?.storageKey || input.images?.label?.url,
       input.selectedCategory,

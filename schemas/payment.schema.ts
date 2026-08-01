@@ -1,14 +1,9 @@
 import { z } from "zod";
 
-export const creditPackIdSchema = z.enum(["starter", "popular", "pro", "creator"]);
+export const creditPackIdSchema = z.enum(["essential", "popular", "pro", "creator"]);
 
 export const stripeCheckoutSchema = z.object({
   packId: creditPackIdSchema
-}).strict();
-
-export const usdtCheckoutSchema = z.object({
-  packId: creditPackIdSchema,
-  network: z.string().trim().min(1).max(80)
 }).strict();
 
 export const purchaseIdParamSchema = z.object({

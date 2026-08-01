@@ -19,23 +19,17 @@ export function serializeCreditPurchase(purchase: any): CreditPurchaseSummary {
     paidAt: purchase.paidAt ? new Date(purchase.paidAt).toISOString() : null,
     creditedAt: purchase.creditedAt ? new Date(purchase.creditedAt).toISOString() : null,
     refundedAt: purchase.refundedAt ? new Date(purchase.refundedAt).toISOString() : null,
-    checkoutUrl: purchase.coinpayments?.checkoutUrl || null,
+    checkoutUrl: null,
     appStoreProductId: purchase.appStore?.productId || null,
     appStoreTransactionId: purchase.appStore?.transactionId || null,
-    usdtNetwork: purchase.coinpayments?.networkCode || null,
-    expectedUsdtAmount: purchase.coinpayments?.expectedAmount || null,
-    receivedUsdtAmount: purchase.coinpayments?.receivedAmount || null,
-    confirmations: typeof purchase.coinpayments?.confirmations === "number" ? purchase.coinpayments.confirmations : null,
-    requiredConfirmations:
-      typeof purchase.coinpayments?.requiredConfirmations === "number" ? purchase.coinpayments.requiredConfirmations : null
   };
 }
 
 export function trustedPurchaseFields(input: {
   userId: string | Types.ObjectId;
   pack: CreditPack;
-  provider: "stripe" | "coinpayments" | "app_store";
-  paymentMethod: "fiat" | "usdt" | "apple_iap";
+  provider: "stripe" | "app_store";
+  paymentMethod: "fiat" | "apple_iap";
 }) {
   return {
     userId: input.userId,
@@ -53,8 +47,8 @@ export function trustedPurchaseFields(input: {
 export async function createCreditPurchase(input: {
   userId: string | Types.ObjectId;
   packId: string;
-  provider: "stripe" | "coinpayments" | "app_store";
-  paymentMethod: "fiat" | "usdt" | "apple_iap";
+  provider: "stripe" | "app_store";
+  paymentMethod: "fiat" | "apple_iap";
 }) {
   const pack = getCreditPack(input.packId);
   if (!pack) return null;

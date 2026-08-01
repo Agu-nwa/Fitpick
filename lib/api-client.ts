@@ -219,6 +219,11 @@ export type ServerUploadData = {
     sizeBytes?: number;
     width?: number;
     height?: number;
+    backgroundRemovalApplied: boolean;
+    backgroundRemovalProvider: "photoroom" | null;
+    backgroundRemovalWarning: string | null;
+    originalUpload: UploadObjectMetadata;
+    cutoutUpload: UploadObjectMetadata | null;
     normalized?: {
       originalMimeType?: string;
       detectedMimeType?: string;
@@ -234,6 +239,17 @@ export type ServerUploadData = {
     allowedMimeTypes: string[];
     nextAction: string;
   };
+};
+
+export type UploadObjectMetadata = {
+  provider: string;
+  storageKey: string;
+  publicUrl: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
 };
 
 export type WardrobeUploadData = {
@@ -610,8 +626,8 @@ export type CreditPurchaseSummary = {
   amountMinor: number;
   amountLabel: string;
   currency: "USD";
-  provider: "stripe" | "coinpayments" | "app_store";
-  paymentMethod: "fiat" | "usdt" | "apple_iap";
+  provider: "stripe" | "app_store";
+  paymentMethod: "fiat" | "apple_iap";
   status: string;
   createdAt: string | null;
   paidAt: string | null;
@@ -620,20 +636,6 @@ export type CreditPurchaseSummary = {
   checkoutUrl?: string | null;
   appStoreProductId?: string | null;
   appStoreTransactionId?: string | null;
-  usdtNetwork?: string | null;
-  expectedUsdtAmount?: string | null;
-  receivedUsdtAmount?: string | null;
-  confirmations?: number | null;
-  requiredConfirmations?: number | null;
-};
-
-export type UsdtNetworkSummary = {
-  id: string;
-  displayName: string;
-  asset: "USDT";
-  network: string;
-  estimatedFee?: string;
-  availability: "available" | "unavailable";
 };
 
 export type CreditWalletData = {
@@ -646,7 +648,6 @@ export type CreditWalletData = {
   purchases: CreditPurchaseSummary[];
   paymentsReady: boolean;
   providers: Record<string, { configured: boolean; currencies: string[]; paymentMethods: string[]; message?: string }>;
-  usdtNetworks: UsdtNetworkSummary[];
 };
 
 export type WeatherForecastData = {
@@ -728,12 +729,9 @@ export type CheckoutData = {
     ready: boolean;
     checkoutUrl?: string | null;
     purchaseId?: string;
-    invoiceId?: string;
-    paymentMethod?: "fiat" | "usdt" | "apple_iap";
-    network?: UsdtNetworkSummary;
-    warning?: string;
+    paymentMethod?: "fiat" | "apple_iap";
     currency?: string;
-    provider?: "stripe" | "coinpayments" | "app_store";
+    provider?: "stripe" | "app_store";
     message?: string;
     nextAction?: string;
   };
@@ -743,7 +741,6 @@ export type PaymentProvidersData = {
   paymentsReady: boolean;
   providers: Record<string, { configured: boolean; currencies: string[]; paymentMethods: string[]; message?: string }>;
   packs: CreditPackSummary[];
-  usdtNetworks: UsdtNetworkSummary[];
 };
 
 export type PaymentPurchaseData = {
@@ -834,10 +831,7 @@ export const recordFashionMemory = (event: unknown) => apiRequest<FashionMemoryD
 export const getWallet = () => apiRequest<CreditWalletData>("/api/wallet", { cache: "no-store" });
 export const getPaymentProviders = () => apiRequest<PaymentProvidersData>("/api/payments/providers", { cache: "no-store" });
 export const getPaymentPurchases = () => apiRequest<PaymentPurchasesData>("/api/payments/purchases", { cache: "no-store" });
-export const getPaymentPurchase = (purchaseId: string) => apiRequest<PaymentPurchaseData>(`/api/payments/purchases/${purchaseId}`, { cache: "no-store" });
-export const getUsdtNetworks = () => apiRequest<{ networks: UsdtNetworkSummary[] }>("/api/payments/usdt/networks", { cache: "no-store" });
-export const startStripeCheckout = (body: { packId: string }) => apiRequest<CheckoutData>("/api/payments/stripe/checkout", { method: "POST", body });
-export const startUsdtCheckout = (body: { packId: string; network: string }) => apiRequest<CheckoutData>("/api/payments/usdt/checkout", { method: "POST", body });
+export const getPaymentPurchase = (purchaseId: string) => apiRequest<PaymentPurchaseData>(`/api/payments/purchases/${purchaseId}`, { cache: "no-store" });export const startStripeCheckout = (body: { packId: string }) => apiRequest<CheckoutData>("/api/payments/stripe/checkout", { method: "POST", body });
 export const getLocationCountries = () => apiRequest<LocationCountriesData>("/api/locations/countries", { cache: "no-store" });
 export const getLocationCities = (params: { countryCode: string; query?: string; limit?: number }) => {
   const searchParams = new URLSearchParams();

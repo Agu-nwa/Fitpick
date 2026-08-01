@@ -206,6 +206,7 @@ const wardrobeImageVariantSchema = z
 const wardrobeImageVariantsSchema = z
   .object({
     original: wardrobeImageVariantSchema.optional(),
+    cutout: wardrobeImageVariantSchema.optional(),
     thumbnail: wardrobeImageVariantSchema.optional()
   })
   .strict();

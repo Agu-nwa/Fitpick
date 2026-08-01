@@ -7,7 +7,7 @@ const checkedExtensions = new Set([".ts", ".tsx"]);
 const skippedPathParts = [`${path.sep}api${path.sep}`];
 
 const dangerousLiteralPattern =
-  /\b(?:FASHN|OpenAI|Gemini|AWS|MongoDB|S3|CloudFront|CoinPayments|Ready Player Me|Custom GLB)\b|HTTP\s+[0-9]{3}|Job\s+\{/;
+  /\b(?:FASHN|OpenAI|Gemini|AWS|MongoDB|S3|CloudFront|Ready Player Me|Custom GLB)\b|HTTP\s+[0-9]{3}|Job\s+\{/;
 
 const rawErrorSetterPattern =
   /set[A-Za-z]*(?:Error|Message)\([^;\n]*(?:result\.error\.message|failure\?\.error\.message|job\.errorMessage|preview\.errorMessage|error\.message)/;

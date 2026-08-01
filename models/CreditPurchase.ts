@@ -3,14 +3,11 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 export const creditPurchaseStatuses = [
   "created",
   "pending",
-  "confirming",
   "paid",
   "credited",
   "cancelled",
   "expired",
   "failed",
-  "underpaid",
-  "overpaid",
   "refunded",
   "partially_refunded",
   "disputed",
@@ -27,24 +24,6 @@ const StripePurchaseSchema = new Schema(
     paymentMethodType: { type: String, trim: true },
     amountReceived: { type: Number, min: 0 },
     currencyReceived: { type: String, trim: true, uppercase: true }
-  },
-  { _id: false }
-);
-
-const CoinPaymentsPurchaseSchema = new Schema(
-  {
-    invoiceId: { type: String, trim: true },
-    invoiceNumber: { type: String, trim: true },
-    asset: { type: String, enum: ["USDT"] },
-    networkCode: { type: String, trim: true },
-    expectedAmount: { type: String, trim: true },
-    receivedAmount: { type: String, trim: true },
-    paymentAddress: { type: String, trim: true },
-    transactionHash: { type: String, trim: true },
-    confirmations: { type: Number, min: 0 },
-    requiredConfirmations: { type: Number, min: 0 },
-    checkoutUrl: { type: String, trim: true },
-    linkUrl: { type: String, trim: true }
   },
   { _id: false }
 );
@@ -82,12 +61,11 @@ const CreditPurchaseSchema = new Schema(
     credits: { type: Number, required: true, min: 1 },
     amountMinor: { type: Number, required: true, min: 1 },
     currency: { type: String, enum: ["USD"], default: "USD" },
-    provider: { type: String, enum: ["stripe", "coinpayments", "app_store"], required: true, index: true },
-    paymentMethod: { type: String, enum: ["fiat", "usdt", "apple_iap"], required: true },
+    provider: { type: String, enum: ["stripe", "app_store"], required: true, index: true },
+    paymentMethod: { type: String, enum: ["fiat", "apple_iap"], required: true },
     status: { type: String, enum: creditPurchaseStatuses, default: "created", index: true },
     providerReference: { type: String, trim: true },
     stripe: { type: StripePurchaseSchema, default: undefined },
-    coinpayments: { type: CoinPaymentsPurchaseSchema, default: undefined },
     appStore: { type: AppStorePurchaseSchema, default: undefined },
     paidAt: { type: Date },
     creditedAt: { type: Date },
@@ -110,10 +88,6 @@ CreditPurchaseSchema.index(
 CreditPurchaseSchema.index(
   { "stripe.paymentIntentId": 1 },
   { unique: true, partialFilterExpression: { "stripe.paymentIntentId": { $type: "string" } } }
-);
-CreditPurchaseSchema.index(
-  { "coinpayments.invoiceId": 1 },
-  { unique: true, partialFilterExpression: { "coinpayments.invoiceId": { $type: "string" } } }
 );
 CreditPurchaseSchema.index(
   { "appStore.transactionId": 1 },

@@ -1,6 +1,5 @@
 import { grantPurchasedCredits } from "@/lib/payments/fulfilment";
 import { PaymentValidationError } from "@/lib/payments/errors";
-import { retrieveCoinPaymentsInvoice, processCoinPaymentsInvoiceEvent } from "@/lib/payments/providers/coinpayments";
 import { fulfilStripeCheckoutSession, markStripePaymentIntent, stripeClient } from "@/lib/payments/providers/stripe";
 import { CreditPurchase } from "@/models/CreditPurchase";
 
@@ -36,22 +35,6 @@ export async function reconcileCreditPurchase(purchaseId: string) {
     }
 
     return purchase;
-  }
-
-  if (purchase.provider === "coinpayments") {
-    if (!purchase.coinpayments?.invoiceId) throw new PaymentValidationError("missing_invoice_id");
-    const invoice = await retrieveCoinPaymentsInvoice(purchase.coinpayments.invoiceId);
-    const type = String(invoice?.status || "").toLowerCase() === "completed"
-      ? "invoiceCompleted"
-      : String(invoice?.status || "invoicePending");
-    return processCoinPaymentsInvoiceEvent({
-      type,
-      invoice: {
-        id: invoice?.id || purchase.coinpayments.invoiceId,
-        invoiceId: invoice?.invoiceId || purchase.coinpayments.invoiceNumber,
-        status: invoice?.status
-      }
-    });
   }
 
   return purchase;

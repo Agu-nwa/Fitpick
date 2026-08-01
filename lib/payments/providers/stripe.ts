@@ -239,9 +239,9 @@ export async function handleStripeDispute(input: { dispute: Stripe.Dispute; lost
 
 export function stripeCheckoutPricingNote() {
   return `Stripe uses one-time Checkout Sessions with server-generated price_data from trusted pack amounts (${Object.values({
-    starter: 499,
-    popular: 999,
-    pro: 1999,
-    creator: 3999
+    essential: 1199,
+    popular: 2399,
+    pro: 4799,
+    creator: 9599
   }).map((amount) => `$${formatUsdMinor(amount)}`).join(", ")}).`;
 }

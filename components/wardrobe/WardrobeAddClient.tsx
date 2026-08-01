@@ -97,7 +97,8 @@ function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
     storageKey: uploaded.storageKey,
     provider: uploaded.provider,
     uploadedAt: uploaded.uploadedAt,
-    purpose: uploaded.purpose
+    purpose: uploaded.purpose,
+    variants: uploaded.variants
   };
 }
 
@@ -456,7 +457,7 @@ export function WardrobeAddClient() {
     setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
     const dimensions = { width: slot.width, height: slot.height };
 
-    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number }): UploadedSlot => ({
+    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number; variants?: WardrobeImageAsset["variants"] }): UploadedSlot => ({
       url: input.url,
       storageKey: input.storageKey,
       provider: "s3",
@@ -467,23 +468,58 @@ export function WardrobeAddClient() {
       sizeBytes: input.sizeBytes || slot.file.size,
       width: input.width || dimensions.width,
       height: input.height || dimensions.height,
-      thumbnailUrl: input.url
+      thumbnailUrl: input.url,
+      variants: input.variants
     });
+
+    const makeServerUploadedSlot = (upload: import("@/lib/api-client").ServerUploadData["upload"]) =>
+      makeUploadedSlot({
+        url: upload.cutoutUpload?.publicUrl || upload.publicUrl,
+        storageKey: upload.cutoutUpload?.storageKey || upload.storageKey,
+        filename: upload.cutoutUpload?.filename || upload.filename,
+        mimeType: upload.cutoutUpload?.mimeType || upload.mimeType,
+        sizeBytes: upload.cutoutUpload?.sizeBytes || upload.sizeBytes,
+        width: upload.cutoutUpload?.width || upload.width,
+        height: upload.cutoutUpload?.height || upload.height,
+        variants: {
+          original: {
+            url: upload.originalUpload.publicUrl,
+            storageKey: upload.originalUpload.storageKey,
+            provider: upload.originalUpload.provider,
+            width: upload.originalUpload.width,
+            height: upload.originalUpload.height,
+            bytes: upload.originalUpload.sizeBytes,
+            status: "ready",
+            processedAt: new Date().toISOString()
+          },
+          ...(upload.cutoutUpload ? {
+            cutout: {
+              url: upload.cutoutUpload.publicUrl,
+              storageKey: upload.cutoutUpload.storageKey,
+              provider: upload.cutoutUpload.provider,
+              width: upload.cutoutUpload.width,
+              height: upload.cutoutUpload.height,
+              bytes: upload.cutoutUpload.sizeBytes,
+              status: "ready" as const,
+              processedAt: new Date().toISOString()
+            }
+          } : {})
+        }
+      });
+
+    if (["front", "back", "additional"].includes(purpose)) {
+      const processed = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
+      if (!processed.ok) throw new Error(safeUploadErrorMessage(processed.error, "We couldn’t upload this image. Try another photo."));
+      setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+      return makeServerUploadedSlot(processed.data.upload);
+    }
 
     if (slot.serverNormalizationRequired) {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true, normalizedOnServer: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
+        return makeServerUploadedSlot(fallback.data.upload);
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "server_normalization_failed" } });
       throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
@@ -502,15 +538,7 @@ export function WardrobeAddClient() {
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
+        return makeServerUploadedSlot(fallback.data.upload);
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "upload_access_failed" } });
       throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo.")));
@@ -541,15 +569,7 @@ export function WardrobeAddClient() {
       if (fallback.ok) {
         setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
         Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
+        return makeServerUploadedSlot(fallback.data.upload);
       }
       Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "direct_upload_failed" } });
       throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));

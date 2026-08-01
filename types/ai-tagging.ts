@@ -83,6 +83,7 @@ export type WardrobeImageAsset = {
   purpose: WardrobeImagePurpose;
   variants?: {
     original?: WardrobeImageVariant;
+    cutout?: WardrobeImageVariant;
     thumbnail?: WardrobeImageVariant;
   };
 };

@@ -65,14 +65,10 @@ Recommendation text is template/rule based and must never mention body shape, si
 - `GET /api/payments/purchases`
 - `GET /api/payments/purchases/[purchaseId]`
 - `POST /api/payments/stripe/checkout`
-- `GET /api/payments/usdt/networks`
-- `POST /api/payments/usdt/checkout`
 - `POST /api/webhooks/stripe`
-- `POST /api/webhooks/coinpayments`
 - `POST /api/uploads/signed-url`
 - `GET /api/uploads/[key]/view`
 
-Checkout uses one-time Credit purchases. Stripe Checkout and CoinPayments hosted USDT invoices are provider-owned payment surfaces; browser success redirects never grant Credits.
 
 ## Admin
 
@@ -114,8 +110,6 @@ Optional/provider-specific:
 - `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`
 - `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` only when not using EC2 IAM role credentials
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-- `COINPAYMENTS_API_BASE_URL`, `COINPAYMENTS_CLIENT_ID`, `COINPAYMENTS_CLIENT_SECRET`, `COINPAYMENTS_WEBHOOK_SECRET`, `COINPAYMENTS_WEBHOOK_URL`
-- `COINPAYMENTS_USD_CURRENCY_ID`, `COINPAYMENTS_USDT_NETWORK_ALLOWLIST`
 - `RATE_LIMIT_REDIS_URL`
 
 ## Smoke Test

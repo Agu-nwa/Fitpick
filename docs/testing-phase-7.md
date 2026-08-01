@@ -115,7 +115,6 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 - View purchase history.
 - View provider readiness.
 - Stripe card or digital wallet option.
-- CoinPayments USDT option.
 - Checkout not configured state.
 - Confirm no raw provider errors appear.
 
@@ -130,22 +129,18 @@ TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD='change-me' TEST_USER_NAME='QA
 - Looks: `/api/looks`
 - Preferences: `/api/preferences`
 - Notifications: `/api/notifications/preferences`
-- Payments: `/api/payments/providers`, `/api/payments/packs`, `/api/payments/purchases`, `/api/payments/stripe/checkout`, `/api/payments/usdt/checkout`, `/api/payments/usdt/networks`
-- Webhooks: `/api/webhooks/stripe`, `/api/webhooks/coinpayments`
 
 ## Safety Checks
 
 - No raw backend errors.
 - No stack traces.
 - No storage keys in normal UI.
-- No S3, AI, Stripe, or CoinPayments secrets exposed.
 - No push tokens exposed.
 - No body-critical or appearance-shaming language.
 
 ## Production Limitations
 
 - Live Stripe activation remains.
-- Live CoinPayments activation remains.
 - Webhook sandbox verification remains.
 - Production AI image-understanding provider tuning remains.
 - Push notification delivery remains.

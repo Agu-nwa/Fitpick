@@ -64,12 +64,4 @@ export const apiContracts: ApiContract[] = [
     status: "ready",
     description: "Creates a one-time card checkout for a trusted server-side Credit pack.",
   },
-  {
-    id: "usdt-credit-checkout",
-    name: "USDT credit checkout",
-    method: "POST",
-    path: "/api/payments/usdt/checkout",
-    status: "ready",
-    description: "Prepares a future hosted USDT checkout for a trusted server-side Credit pack and selected approved network.",
-  },
 ];

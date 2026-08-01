@@ -10,8 +10,7 @@ const checks = [
   { method: "POST", path: "/api/wardrobe/upload/test/suggest-tags", expected: [401, 404], body: {} },
   { method: "POST", path: "/api/outfits/recommend", expected: 401, body: { occasionName: "Work" } },
   { method: "GET", path: "/api/payments/purchases", expected: 401 },
-  { method: "POST", path: "/api/payments/stripe/checkout", expected: 401, body: { packId: "starter" } },
-  { method: "POST", path: "/api/payments/usdt/checkout", expected: 401, body: { packId: "starter", network: "usdt-trc20" } },
+  { method: "POST", path: "/api/payments/stripe/checkout", expected: 401, body: { packId: "essential" } },
   { method: "GET", path: "/api/notifications/preferences", expected: 401 },
   {
     method: "POST",

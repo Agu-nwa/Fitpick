@@ -20,7 +20,6 @@ Production traffic should go through Nginx on port 80 and, after domain setup, H
 - Nginx proxies requests to `http://127.0.0.1:3000`.
 - PM2 keeps the Next.js production server running.
 - Next.js serves frontend routes and App Router API routes.
-- MongoDB, S3/CloudFront, AI provider, Stripe, and CoinPayments are configured through environment variables.
 
 ## EC2 Folder Location
 
@@ -42,7 +41,6 @@ Required production groups:
 - Database: `MONGODB_URI`
 - S3/CloudFront: `STORAGE_PROVIDER`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_BASE_URL`; optional `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` when not using EC2 IAM role credentials
 - AI tagging: `OPENAI_API_KEY`
-- Credit purchases: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `COINPAYMENTS_API_BASE_URL`, `COINPAYMENTS_CLIENT_ID`, `COINPAYMENTS_CLIENT_SECRET`, `COINPAYMENTS_WEBHOOK_SECRET`, `COINPAYMENTS_WEBHOOK_URL`, `COINPAYMENTS_USD_CURRENCY_ID`, `COINPAYMENTS_USDT_NETWORK_ALLOWLIST`
 - Optional rate limiting: `RATE_LIMIT_REDIS_URL`
 
 See `docs/production-env-checklist.md` for the full checklist.
@@ -167,14 +165,12 @@ sudo dnf install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d YOUR_DOMAIN
 ```
 
-HTTPS should be active before live Stripe or CoinPayments purchases. Payment webhook URLs should use HTTPS.
 
 ## Payment Webhook Production Notes
 
 Webhook URLs:
 
 - Stripe: `https://YOUR_DOMAIN/api/webhooks/stripe`
-- CoinPayments: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
 
 Configure webhook secrets in `.env.local`. Test webhooks in sandbox mode before activating live payments.
 
@@ -274,7 +270,6 @@ If Nginx config is the issue, restore the previous `/etc/nginx/conf.d/fitpick.co
 - Real domain setup remains.
 - HTTPS activation remains.
 - Live Stripe activation remains.
-- Live CoinPayments activation remains.
 - Webhook sandbox and live verification remain.
 - Production MongoDB security review remains.
 - Production S3/CloudFront delivery hardening remains.

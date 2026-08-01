@@ -12,10 +12,10 @@ function read(path) {
 
 const packs = read("lib/payments/packs.ts");
 for (const [id, credits, amountMinor] of [
-  ["starter", 50, 499],
-  ["popular", 150, 999],
-  ["pro", 400, 1999],
-  ["creator", 1000, 3999]
+  ["essential", 80, 1199],
+  ["popular", 160, 2399],
+  ["pro", 320, 4799],
+  ["creator", 640, 9599]
 ]) {
   expect(packs.includes(`id: "${id}"`), `Missing credit pack id: ${id}`);
   expect(packs.includes(`credits: ${credits}`), `Wrong or missing credit amount for ${id}`);
@@ -34,14 +34,10 @@ for (const file of [
   "lib/payments/fulfilment.ts",
   "lib/payments/refunds.ts",
   "lib/payments/reconciliation.ts",
-  "lib/payments/providers/coinpayments.ts",
   "app/api/payments/stripe/checkout/route.ts",
-  "app/api/payments/usdt/checkout/route.ts",
-  "app/api/payments/usdt/networks/route.ts",
   "app/api/payments/purchases/route.ts",
   "app/api/payments/purchases/[purchaseId]/route.ts",
   "app/api/webhooks/stripe/route.ts",
-  "app/api/webhooks/coinpayments/route.ts",
   "app/wallet/payment/success/page.tsx"
 ]) {
   expect(existsSync(file), `Missing payment file: ${file}`);
@@ -62,7 +58,6 @@ for (const removed of [
 const walletClient = read("components/wallet/WalletClient.tsx");
 expect(walletClient.includes("Top Up Credits"), "Wallet must expose Top Up Credits.");
 expect(walletClient.includes("Card or digital wallet"), "Wallet must present Stripe as card or digital wallet.");
-expect(walletClient.includes("USDT"), "Wallet must present USDT payment option.");
 
 const fulfilment = read("lib/payments/fulfilment.ts");
 expect(fulfilment.includes("credit-purchase:"), "Fulfilment must use stable credit-purchase ledger references.");

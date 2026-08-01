@@ -21,7 +21,7 @@ function withOriginalVariant(asset: any, fallback: { width?: number; height?: nu
     ...asset,
     variants: {
       ...(asset.variants || {}),
-      original: {
+      original: asset.variants?.original || {
         url: asset.url || "",
         storageKey: asset.storageKey || "",
         provider: asset.provider || "s3",
@@ -45,8 +45,22 @@ function sanitizeImageAssets(images: any, userId: string, fallback: { width?: nu
       return null;
     }
 
+    const variants = Object.fromEntries(
+      Object.entries(asset.variants || {}).map(([name, raw]) => {
+        const variant = raw as any;
+        const variantKey = normalizeStorageKey(variant?.storageKey || "");
+        if (variantKey && !storageKeyBelongsToUser({ userId, storageKey: variantKey, prefix: "wardrobe" })) return [name, null];
+        return [name, {
+          ...variant,
+          storageKey: variantKey,
+          url: variantKey ? getPublicStorageUrl(variantKey) : ""
+        }];
+      })
+    );
+    if (Object.values(variants).some((variant) => variant === null)) return null;
+
     return {
-      ...withOriginalVariant(asset, fallback),
+      ...withOriginalVariant({ ...asset, variants }, fallback),
       purpose,
       storageKey,
       url: asset.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : asset.url

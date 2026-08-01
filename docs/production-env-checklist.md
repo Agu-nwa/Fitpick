@@ -103,36 +103,20 @@ Notes:
 ```bash
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-COINPAYMENTS_CHECKOUT_ENABLED=false
-COINPAYMENTS_API_BASE_URL=https://a-api.coinpayments.net/api/v2
-COINPAYMENTS_CLIENT_ID=
-COINPAYMENTS_CLIENT_SECRET=
-COINPAYMENTS_WEBHOOK_SECRET=
-COINPAYMENTS_WEBHOOK_URL=https://YOUR_DOMAIN/api/webhooks/coinpayments
-COINPAYMENTS_USD_CURRENCY_ID=
-COINPAYMENTS_USDT_NETWORK_ALLOWLIST=
 ```
 
 Notes:
 
-- Production launch is Stripe-only. Keep `COINPAYMENTS_CHECKOUT_ENABLED=false` until USDT invoices have been verified end to end.
 
 - Use sandbox keys until HTTPS and webhook verification are complete.
 - Stripe webhook URL: `https://YOUR_DOMAIN/api/webhooks/stripe`
-- CoinPayments webhook URL: `https://YOUR_DOMAIN/api/webhooks/coinpayments`
 - Stripe is used only for one-time Credit purchases with hosted Checkout.
-- CoinPayments is used only for hosted USDT invoices. Do not use a static wallet address.
-- `COINPAYMENTS_USDT_NETWORK_ALLOWLIST` must use exact CoinPayments provider currency IDs from the merchant account.
 - Live payments should not be activated before HTTPS is working.
 
 Example network allowlist shape:
 
 ```json
 [
-  { "id": "usdt-trc20", "displayName": "USDT on Tron", "asset": "USDT", "network": "TRC20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Very low" },
-  { "id": "usdt-bep20", "displayName": "USDT on BNB Smart Chain", "asset": "USDT", "network": "BEP20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Very low" },
-  { "id": "usdt-erc20", "displayName": "USDT on Ethereum", "asset": "USDT", "network": "ERC20", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Higher" },
-  { "id": "usdt-solana", "displayName": "USDT on Solana", "asset": "USDT", "network": "Solana", "providerCurrencyId": "COINPAYMENTS_VALUE", "estimatedFee": "Fast · Lower network fees" }
 ]
 ```
 

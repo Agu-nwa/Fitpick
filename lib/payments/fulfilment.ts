@@ -6,7 +6,7 @@ import { CreditTransaction } from "@/models/CreditTransaction";
 import { CreditPurchase } from "@/models/CreditPurchase";
 import { User } from "@/models/User";
 
-const finalSuccessfulStatuses = new Set(["paid", "overpaid", "credited"]);
+const finalSuccessfulStatuses = new Set(["paid", "credited"]);
 
 function ledgerReference(purchaseId: string | Types.ObjectId) {
   return `credit-purchase:${String(purchaseId)}`;
@@ -14,7 +14,7 @@ function ledgerReference(purchaseId: string | Types.ObjectId) {
 
 function safePurchaseMetadata(input: {
   packId: string;
-  provider: "stripe" | "coinpayments" | "app_store";
+  provider: "stripe" | "app_store";
   providerReference?: string | null;
 }) {
   return {
@@ -27,7 +27,7 @@ function safePurchaseMetadata(input: {
 
 export async function grantPurchasedCredits(input: {
   purchaseId: string | Types.ObjectId;
-  provider: "stripe" | "coinpayments" | "app_store";
+  provider: "stripe" | "app_store";
   providerReference?: string | null;
 }) {
   const purchase = await CreditPurchase.findById(input.purchaseId);

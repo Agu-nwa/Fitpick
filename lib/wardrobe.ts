@@ -22,7 +22,7 @@ export function inferCondition(input: {
   return hasMinimumTags ? "ready" : "missing-tags";
 }
 
-function imageVariantUrl(image: any, variant: "thumbnail" | "original") {
+function imageVariantUrl(image: any, variant: "thumbnail" | "cutout" | "original") {
   const selected = image?.variants?.[variant];
   return selected?.status === "ready" && selected?.url ? selected.url : "";
 }
@@ -32,11 +32,13 @@ function preferredWardrobeImage(images: any = {}, fallback = "") {
   const back = images.back || {};
   return (
     imageVariantUrl(front, "thumbnail") ||
-    imageVariantUrl(front, "original") ||
+    imageVariantUrl(front, "cutout") ||
     front.url ||
+    imageVariantUrl(front, "original") ||
     imageVariantUrl(back, "thumbnail") ||
-    imageVariantUrl(back, "original") ||
+    imageVariantUrl(back, "cutout") ||
     back.url ||
+    imageVariantUrl(back, "original") ||
     fallback
   );
 }

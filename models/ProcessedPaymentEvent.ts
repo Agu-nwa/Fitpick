@@ -2,7 +2,7 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const ProcessedPaymentEventSchema = new Schema(
   {
-    provider: { type: String, enum: ["stripe", "coinpayments"], required: true, index: true },
+    provider: { type: String, enum: ["stripe"], required: true, index: true },
     eventId: { type: String, required: true, trim: true, maxlength: 220 },
     eventType: { type: String, required: true, trim: true, maxlength: 120 },
     purchaseId: { type: Schema.Types.ObjectId, ref: "CreditPurchase" },

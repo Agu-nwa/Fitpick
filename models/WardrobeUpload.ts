@@ -28,6 +28,7 @@ const WardrobeImageSchema = new Schema(
     },
     variants: {
       original: { type: ImageVariantSchema },
+      cutout: { type: ImageVariantSchema },
       thumbnail: { type: ImageVariantSchema }
     }
   },
