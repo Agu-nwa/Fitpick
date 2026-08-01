@@ -27,20 +27,43 @@ function imageVariantUrl(image: any, variant: "thumbnail" | "cutout" | "original
   return selected?.status === "ready" && selected?.url ? selected.url : "";
 }
 
-function preferredWardrobeImage(images: any = {}, fallback = "") {
+export function getWardrobeDisplayImage(input: { images?: any; imageUrl?: string; thumbnailUrl?: string } = {}) {
+  const images = input.images || {};
   const front = images.front || {};
   const back = images.back || {};
   return (
-    imageVariantUrl(front, "thumbnail") ||
     imageVariantUrl(front, "cutout") ||
+    imageVariantUrl(front, "thumbnail") ||
     front.url ||
     imageVariantUrl(front, "original") ||
-    imageVariantUrl(back, "thumbnail") ||
     imageVariantUrl(back, "cutout") ||
+    imageVariantUrl(back, "thumbnail") ||
     back.url ||
     imageVariantUrl(back, "original") ||
-    fallback
+    input.thumbnailUrl ||
+    input.imageUrl ||
+    ""
   );
+}
+
+export function getWardrobeOriginalImage(input: { images?: any; imageUrl?: string } = {}) {
+  const front = input.images?.front || {};
+  const back = input.images?.back || {};
+  return imageVariantUrl(front, "original") || front.url || imageVariantUrl(back, "original") || back.url || input.imageUrl || "";
+}
+
+export function getWardrobeBackgroundRemovalState(item: any) {
+  const front = item?.images?.front || {};
+  const cutout = front?.variants?.cutout;
+  const status = front.backgroundRemovalStatus || (cutout?.status === "ready" && cutout?.url ? "completed" : "not-requested");
+  return {
+    status: status === "completed" && !cutout?.url ? "failed" : status,
+    error: front.backgroundRemovalError || cutout?.errorMessage || null,
+    provider: front.backgroundRemovalProvider || cutout?.provider || null,
+    version: front.backgroundRemovalVersion || null,
+    attempts: front.backgroundRemovalAttempts || 0,
+    processedAt: front.backgroundRemovalProcessedAt || cutout?.processedAt || null
+  };
 }
 
 function recognizedEntityFromItem(item: any) {
@@ -53,7 +76,8 @@ function recognizedEntityFromItem(item: any) {
 }
 
 export function serializeWardrobeItem(item: any) {
-  const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const imageUrl = getWardrobeDisplayImage(item);
+  const backgroundRemoval = getWardrobeBackgroundRemovalState(item);
   const normalisedMetadata = normaliseWardrobeItemMetadata(item);
   const condition = inferCondition({
     category: item.category,
@@ -102,7 +126,15 @@ export function serializeWardrobeItem(item: any) {
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     archivedAt: item.archivedAt ? new Date(item.archivedAt).toISOString() : null,
     imageUrl,
-    thumbnailUrl: preferredWardrobeImage(item.images || {}, item.thumbnailUrl || imageUrl),
+    thumbnailUrl: imageUrl,
+    originalImageUrl: getWardrobeOriginalImage(item),
+    processedImageUrl: backgroundRemoval.status === "completed" ? imageUrl : null,
+    backgroundRemovalStatus: backgroundRemoval.status,
+    backgroundRemovalError: backgroundRemoval.error,
+    backgroundRemovalProvider: backgroundRemoval.provider,
+    backgroundRemovalVersion: backgroundRemoval.version,
+    backgroundRemovalAttempts: backgroundRemoval.attempts,
+    backgroundRemovalProcessedAt: backgroundRemoval.processedAt,
     images: item.images || {},
     aiAnalysis: item.aiAnalysis || null,
     hasImage: Boolean(item.storageKey || item.thumbnailUrl || imageUrl),

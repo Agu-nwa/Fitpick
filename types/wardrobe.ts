@@ -78,6 +78,14 @@ export type WardrobeItem = {
   archivedAt?: string | null;
   imageUrl?: string;
   thumbnailUrl?: string;
+  originalImageUrl?: string;
+  processedImageUrl?: string | null;
+  backgroundRemovalStatus?: "not-requested" | "pending" | "processing" | "completed" | "failed";
+  backgroundRemovalError?: string | null;
+  backgroundRemovalProvider?: string | null;
+  backgroundRemovalVersion?: string | null;
+  backgroundRemovalAttempts?: number;
+  backgroundRemovalProcessedAt?: string | null;
   images?: Partial<Record<"front" | "back" | "fabricCloseUp" | "label", WardrobeImageAsset>> & {
     additional?: WardrobeImageAsset[];
   };

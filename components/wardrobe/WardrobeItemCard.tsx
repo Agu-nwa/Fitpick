@@ -20,6 +20,8 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
         overlay={
           <div className="flex justify-between gap-2">
             {item.category ? <Badge className="bg-surface/85 backdrop-blur">{item.category}</Badge> : null}
+            {item.backgroundRemovalStatus === "processing" || item.backgroundRemovalStatus === "pending" ? <Badge className="bg-surface/90 backdrop-blur">Preparing…</Badge> : null}
+            {item.backgroundRemovalStatus === "failed" ? <Badge className="bg-surface/90 text-danger backdrop-blur">Original photo</Badge> : null}
           </div>
         }
       />

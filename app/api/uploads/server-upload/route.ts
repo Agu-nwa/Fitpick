@@ -10,7 +10,7 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
-import { removeBackgroundWithPhotoRoom } from "@/lib/image-processing/photoroom";
+import { photoRoomBackgroundRemovalVersion, removeBackgroundWithPhotoRoom } from "@/lib/image-processing/photoroom";
 
 const BACKGROUND_REMOVAL_PURPOSES = new Set([
   "wardrobe_original", "wardrobe_front", "wardrobe_back", "wardrobe_additional", "stylist_reference"
@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
     let backgroundRemovalApplied = false;
     let backgroundRemovalProvider: "photoroom" | null = null;
     let backgroundRemovalWarning: string | null = null;
+    let backgroundRemovalStatus: "not-requested" | "completed" | "failed" = "not-requested";
+    let backgroundRemovalFailureCode: string | null = null;
 
     if (BACKGROUND_REMOVAL_PURPOSES.has(parsedPurpose.data)) {
       const removal = await removeBackgroundWithPhotoRoom({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
@@ -80,12 +82,25 @@ export async function POST(request: NextRequest) {
           activeUploaded = await uploadCutoutWithRetry({ storageKey: cutoutKey, mimeType: removal.mimeType, body: removal.buffer });
           cutoutUpload = { provider: activeUploaded.provider, storageKey: activeUploaded.storageKey, publicUrl: activeUploaded.url, filename: removal.filename, mimeType: removal.mimeType, sizeBytes: removal.buffer.byteLength, width: removal.width, height: removal.height };
           backgroundRemovalApplied = true;
+          backgroundRemovalStatus = "completed";
         } catch {
           backgroundRemovalWarning = "The cutout could not be saved; the original photo was used.";
+          backgroundRemovalStatus = "failed";
+          backgroundRemovalFailureCode = "storage_failed";
           activeUploaded = originalUploaded;
         }
       } else {
         backgroundRemovalWarning = removal.warning;
+        backgroundRemovalStatus = "failed";
+        backgroundRemovalFailureCode = removal.reason;
+        logSafeError("uploads.background-removal", new Error(removal.reason), {
+          stage: "provider",
+          provider: removal.provider,
+          sourceContentType: normalized.mimeType,
+          sourceByteSize: normalized.buffer.byteLength,
+          status: "failed",
+          failureCode: removal.reason
+        });
       }
     }
 
@@ -123,6 +138,9 @@ export async function POST(request: NextRequest) {
           backgroundRemovalApplied,
           backgroundRemovalProvider,
           backgroundRemovalWarning,
+          backgroundRemovalStatus,
+          backgroundRemovalFailureCode,
+          backgroundRemovalVersion: backgroundRemovalApplied ? photoRoomBackgroundRemovalVersion : null,
           originalUpload: {
             provider: originalUploaded.provider,
             storageKey: originalUploaded.storageKey,

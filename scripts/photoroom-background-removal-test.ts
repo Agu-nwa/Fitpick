@@ -44,6 +44,12 @@ try {
     assert.ok(result.buffer.byteLength > 0);
   }
 
+  const opaque = await sharp({ create: { width: 4, height: 4, channels: 3, background: { r: 120, g: 80, b: 40 } } }).png().toBuffer();
+  globalThis.fetch = (async () => new Response(opaque, { status: 200, headers: { "content-type": "image/png" } })) as typeof fetch;
+  const opaqueResult = await removeBackgroundWithPhotoRoom({ buffer: source, filename: "garment.png", mimeType: "image/png", timeoutMs: 1_000 });
+  assert.equal(opaqueResult.ok, false, "Opaque provider output must not be reported as a completed cutout.");
+  if (!opaqueResult.ok) assert.equal(opaqueResult.reason, "invalid_response");
+
   process.env.PHOTOROOM_REMOVE_BG_URL = "http://insecure.example.test/segment";
   const invalidEndpoint = await removeBackgroundWithPhotoRoom({ buffer: source, filename: "garment.png", mimeType: "image/png" });
   assert.equal(invalidEndpoint.ok, false);

@@ -11,10 +11,11 @@ type GarmentAssetCandidate = {
   accuracyLevel: "garment_referenced" | "fit_locked";
 };
 
-function variant(image: any) {
+function variant(image: any, preferred: "cutout" | "original" = "original") {
+  const selected = image?.variants?.[preferred];
   return {
-    storageKey: image?.variants?.original?.storageKey || image?.storageKey || "",
-    url: image?.variants?.original?.url || image?.url || ""
+    storageKey: selected?.status === "ready" ? selected.storageKey || image?.storageKey || "" : image?.variants?.original?.storageKey || image?.storageKey || "",
+    url: selected?.status === "ready" ? selected.url || image?.url || "" : image?.variants?.original?.url || image?.url || ""
   };
 }
 
@@ -30,8 +31,8 @@ function buildAssetCandidates(item: any): GarmentAssetCandidate[] {
   const fitLocked = item?.garmentFit && item.garmentFit !== "unknown" && item?.taggedSize && item.taggedSize !== "unknown";
 
   const flatLay = firstUsable([
-    { sourceImageVariant: "original", storageKey: variant(front).storageKey, imageUrl: variant(front).url },
-    { sourceImageVariant: "original", storageKey: variant(back).storageKey, imageUrl: variant(back).url }
+    { sourceImageVariant: "original", storageKey: variant(front, "cutout").storageKey, imageUrl: variant(front, "cutout").url },
+    { sourceImageVariant: "original", storageKey: variant(back, "cutout").storageKey, imageUrl: variant(back, "cutout").url }
   ]);
   const texture = firstUsable([
     { sourceImageVariant: "fabric", storageKey: variant(fabric).storageKey, imageUrl: variant(fabric).url },

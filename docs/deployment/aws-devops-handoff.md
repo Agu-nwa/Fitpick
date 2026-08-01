@@ -128,17 +128,15 @@ NEXT_PUBLIC_APP_URL=http://EC2_PUBLIC_IP
 
 Switch back to secure cookies when HTTPS is enabled.
 
-## Important Removed Feature
+## Optional Wardrobe Background Removal
 
-The remove.bg background-removal/studio-image feature has been removed from the codebase. Do not configure these variables:
+PhotoRoom background removal is server-side and optional. Configure these production variables to create wardrobe cutouts; without them, uploads retain the original and record a recoverable failed cleaning state:
 
 ```env
-BACKGROUND_REMOVAL_PROVIDER=
-BACKGROUND_REMOVAL_API_KEY=
-FITPICK_STUDIO_BACKGROUND_PRESET=
+BACKGROUND_REMOVAL_PROVIDER=photoroom
+PHOTOROOM_API_KEY=
+PHOTOROOM_REMOVE_BG_URL=https://sdk.photoroom.com/v1/segment
 ```
-
-If an old EC2 `.env.local` contains them, remove them during deployment.
 
 ## Deployment Commands
 

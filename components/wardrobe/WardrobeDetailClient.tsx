@@ -17,7 +17,7 @@ import {
   WardrobeSaveSuccessState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { useSession } from "@/hooks/use-session";
-import { archiveWardrobeItem, getWardrobeItem, updateWardrobeItem } from "@/lib/api-client";
+import { archiveWardrobeItem, getWardrobeItem, retryWardrobeBackgroundRemoval, updateWardrobeItem } from "@/lib/api-client";
 import { intakeCategories } from "@/lib/wardrobe/category-intelligence";
 import { cn } from "@/lib/utils";
 import type { GarmentFit, TaggedSize, WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
@@ -73,8 +73,8 @@ function CoreDetailRow({ label, value }: { label: string; value?: string }) {
 
 function ItemDetails({ item }: { item: WardrobeItem }) {
   const imageTone = item.imageTone || "from-stone-100 to-stone-300";
-  const frontUrl = item.images?.front?.url || item.thumbnailUrl || item.imageUrl;
-  const backUrl = item.images?.back?.url;
+  const frontUrl = item.imageUrl || item.thumbnailUrl;
+  const backUrl = item.images?.back?.variants?.cutout?.status === "ready" ? item.images.back.variants.cutout.url : item.images?.back?.url;
   const insights = [
     item.pattern,
     item.fabric,
@@ -229,6 +229,26 @@ export function WardrobeDetailClient({ id }: { id: string }) {
     if (session.status === "authenticated") void loadItem();
   }, [loadItem, session.status]);
 
+  useEffect(() => {
+    if (item?.backgroundRemovalStatus !== "processing" && item?.backgroundRemovalStatus !== "pending") return;
+    const timer = window.setInterval(() => void loadItem(), 2500);
+    return () => window.clearInterval(timer);
+  }, [item?.backgroundRemovalStatus, loadItem]);
+
+  async function handleBackgroundRemovalRetry() {
+    setIsSaving(true);
+    setNotice(null);
+    setItem((current) => current ? { ...current, backgroundRemovalStatus: "processing", backgroundRemovalError: null } : current);
+    const result = await retryWardrobeBackgroundRemoval(id);
+    setIsSaving(false);
+    if (result.ok && result.data.item) {
+      setItem(result.data.item);
+      setNotice(result.data.completed ? "Photo prepared." : "The original photo is still available.");
+      return;
+    }
+    await loadItem();
+  }
+
   async function handleUpdate(values: { category: WardrobeCategory; subcategory: string; color: string; taggedSize: TaggedSize; fit: string }) {
     setIsSaving(true);
     setNotice(null);
@@ -300,6 +320,30 @@ export function WardrobeDetailClient({ id }: { id: string }) {
   return (
     <>
       {notice ? <WardrobeSaveSuccessState title={notice} body={`${itemTitle(item)} is up to date.`} /> : null}
+      {item.backgroundRemovalStatus === "processing" || item.backgroundRemovalStatus === "pending" ? (
+        <Card className="mb-4 border-olive/30 bg-olive/10 p-4" aria-live="polite">
+          <p className="text-sm font-semibold text-ink">Preparing this item…</p>
+          <p className="mt-1 text-xs text-muted">The original remains visible until the cleaned photo is ready.</p>
+        </Card>
+      ) : null}
+      {item.backgroundRemovalStatus === "failed" ? (
+        <Card className="mb-4 border-danger/25 bg-danger/10 p-4" aria-live="polite">
+          <p className="text-sm font-semibold text-ink">We couldn’t clean this photo.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">You can retry or continue using the original photo.</p>
+          <Button className="mt-3" variant="secondary" disabled={isSaving} onClick={() => void handleBackgroundRemovalRetry()}>
+            {isSaving ? "Preparing…" : "Retry background removal"}
+          </Button>
+        </Card>
+      ) : null}
+      {item.backgroundRemovalStatus === "not-requested" && item.originalImageUrl ? (
+        <Card className="mb-4 p-4">
+          <p className="text-sm font-semibold text-ink">This item is using its original photo.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">Prepare a cleaner cutout for closet and try-on previews.</p>
+          <Button className="mt-3" variant="secondary" disabled={isSaving} onClick={() => void handleBackgroundRemovalRetry()}>
+            {isSaving ? "Preparing…" : "Prepare photo"}
+          </Button>
+        </Card>
+      ) : null}
       <ItemDetails item={item} />
 
       {isEditable ? <section className="mt-7">

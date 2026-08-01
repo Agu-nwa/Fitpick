@@ -218,6 +218,12 @@ const wardrobeImageAssetSchema = z
     provider: z.literal("s3").default("s3"),
     uploadedAt: z.string().datetime().optional(),
     purpose: imagePurposeSchema,
+    backgroundRemovalStatus: z.enum(["not-requested", "pending", "processing", "completed", "failed"]).optional(),
+    backgroundRemovalProvider: z.string().trim().max(40).nullable().optional(),
+    backgroundRemovalVersion: z.string().trim().max(40).nullable().optional(),
+    backgroundRemovalError: z.string().trim().max(180).nullable().optional(),
+    backgroundRemovalAttempts: z.number().int().nonnegative().max(20).optional(),
+    backgroundRemovalProcessedAt: z.string().datetime().nullable().optional(),
     variants: wardrobeImageVariantsSchema.optional()
   })
   .strict();

@@ -6,6 +6,7 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 const MAX_TIMEOUT_MS = 30_000;
 const MAX_PROVIDER_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 250;
+export const photoRoomBackgroundRemovalVersion = "photoroom-segment-v1";
 
 export type BackgroundRemovalResult =
   | { ok: true; provider: "photoroom"; buffer: Buffer; mimeType: "image/webp"; filename: string; width: number; height: number }
@@ -92,6 +93,13 @@ export async function removeBackgroundWithPhotoRoom(input: {
         .toBuffer({ resolveWithObject: true });
       if (!converted.data.byteLength || converted.data.byteLength > MAX_IMAGE_UPLOAD_BYTES || !converted.info.width || !converted.info.height) {
         return { ok: false, provider: "photoroom", reason: "invalid_response", warning: "Background removal returned an unusable image; the original photo was used." };
+      }
+      if (!converted.info.hasAlpha) {
+        return { ok: false, provider: "photoroom", reason: "invalid_response", warning: "Background removal returned an unusable image; the original photo was used." };
+      }
+      const alpha = (await sharp(converted.data).stats()).channels[3];
+      if (!alpha || alpha.min >= 255) {
+        return { ok: false, provider: "photoroom", reason: "invalid_response", warning: "Background removal returned an image without transparency; the original photo was used." };
       }
 
       return {

@@ -81,6 +81,12 @@ export type WardrobeImageAsset = {
   provider: string;
   uploadedAt?: string;
   purpose: WardrobeImagePurpose;
+  backgroundRemovalStatus?: "not-requested" | "pending" | "processing" | "completed" | "failed";
+  backgroundRemovalProvider?: string | null;
+  backgroundRemovalVersion?: string | null;
+  backgroundRemovalError?: string | null;
+  backgroundRemovalAttempts?: number;
+  backgroundRemovalProcessedAt?: string | null;
   variants?: {
     original?: WardrobeImageVariant;
     cutout?: WardrobeImageVariant;

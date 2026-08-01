@@ -26,6 +26,12 @@ const WardrobeImageSchema = new Schema(
       enum: ["front", "back", "fabricCloseUp", "label", "additional"],
       required: true
     },
+    backgroundRemovalStatus: { type: String, enum: ["not-requested", "pending", "processing", "completed", "failed"], default: "not-requested", index: true },
+    backgroundRemovalProvider: { type: String, default: null, maxlength: 40 },
+    backgroundRemovalVersion: { type: String, default: null, maxlength: 40 },
+    backgroundRemovalError: { type: String, default: null, maxlength: 180 },
+    backgroundRemovalAttempts: { type: Number, default: 0, min: 0 },
+    backgroundRemovalProcessedAt: { type: Date, default: null },
     variants: {
       original: { type: ImageVariantSchema },
       cutout: { type: ImageVariantSchema },

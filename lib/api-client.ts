@@ -222,6 +222,9 @@ export type ServerUploadData = {
     backgroundRemovalApplied: boolean;
     backgroundRemovalProvider: "photoroom" | null;
     backgroundRemovalWarning: string | null;
+    backgroundRemovalStatus: "not-requested" | "completed" | "failed";
+    backgroundRemovalFailureCode: string | null;
+    backgroundRemovalVersion?: string | null;
     originalUpload: UploadObjectMetadata;
     cutoutUpload: UploadObjectMetadata | null;
     normalized?: {
@@ -803,6 +806,8 @@ export const createWardrobeItem = (body: unknown) => apiRequest<WardrobeItemData
 export const getWardrobeItem = (id: string) => apiRequest<WardrobeItemData>(`/api/wardrobe/${id}`, { cache: "no-store" });
 export const updateWardrobeItem = (id: string, body: unknown) =>
   apiRequest<WardrobeItemData>(`/api/wardrobe/${id}`, { method: "PATCH", body });
+export const retryWardrobeBackgroundRemoval = (id: string) =>
+  apiRequest<WardrobeItemData & { completed: boolean }>(`/api/wardrobe/${id}/background-removal`, { method: "POST" });
 export const updateWardrobeTags = (id: string, body: unknown) =>
   apiRequest<WardrobeItemData>(`/api/wardrobe/${id}/tags`, { method: "PATCH", body });
 export const archiveWardrobeItem = (id: string) =>

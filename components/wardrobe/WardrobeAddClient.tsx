@@ -98,6 +98,12 @@ function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
     provider: uploaded.provider,
     uploadedAt: uploaded.uploadedAt,
     purpose: uploaded.purpose,
+    backgroundRemovalStatus: uploaded.backgroundRemovalStatus,
+    backgroundRemovalProvider: uploaded.backgroundRemovalProvider,
+    backgroundRemovalVersion: uploaded.backgroundRemovalVersion,
+    backgroundRemovalError: uploaded.backgroundRemovalError,
+    backgroundRemovalAttempts: uploaded.backgroundRemovalAttempts,
+    backgroundRemovalProcessedAt: uploaded.backgroundRemovalProcessedAt,
     variants: uploaded.variants
   };
 }
@@ -457,7 +463,7 @@ export function WardrobeAddClient() {
     setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
     const dimensions = { width: slot.width, height: slot.height };
 
-    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number; variants?: WardrobeImageAsset["variants"] }): UploadedSlot => ({
+    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number; variants?: WardrobeImageAsset["variants"]; backgroundRemovalStatus?: WardrobeImageAsset["backgroundRemovalStatus"]; backgroundRemovalProvider?: string | null; backgroundRemovalVersion?: string | null; backgroundRemovalError?: string | null; backgroundRemovalAttempts?: number; backgroundRemovalProcessedAt?: string | null }): UploadedSlot => ({
       url: input.url,
       storageKey: input.storageKey,
       provider: "s3",
@@ -469,7 +475,13 @@ export function WardrobeAddClient() {
       width: input.width || dimensions.width,
       height: input.height || dimensions.height,
       thumbnailUrl: input.url,
-      variants: input.variants
+      variants: input.variants,
+      backgroundRemovalStatus: input.backgroundRemovalStatus,
+      backgroundRemovalProvider: input.backgroundRemovalProvider,
+      backgroundRemovalVersion: input.backgroundRemovalVersion,
+      backgroundRemovalError: input.backgroundRemovalError,
+      backgroundRemovalAttempts: input.backgroundRemovalAttempts,
+      backgroundRemovalProcessedAt: input.backgroundRemovalProcessedAt
     });
 
     const makeServerUploadedSlot = (upload: import("@/lib/api-client").ServerUploadData["upload"]) =>
@@ -504,7 +516,13 @@ export function WardrobeAddClient() {
               processedAt: new Date().toISOString()
             }
           } : {})
-        }
+        },
+        backgroundRemovalStatus: upload.backgroundRemovalStatus,
+        backgroundRemovalProvider: upload.backgroundRemovalProvider,
+        backgroundRemovalVersion: upload.backgroundRemovalVersion,
+        backgroundRemovalError: upload.backgroundRemovalWarning,
+        backgroundRemovalAttempts: upload.backgroundRemovalStatus === "not-requested" ? 0 : 1,
+        backgroundRemovalProcessedAt: upload.backgroundRemovalStatus === "completed" ? new Date().toISOString() : null
       });
 
     if (["front", "back", "additional"].includes(purpose)) {
