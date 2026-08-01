@@ -92,6 +92,8 @@ const appearancePipeline = source("lib/avatar/appearance-preview.ts");
 assert.match(appearancePipeline, /size: "1024x1536"/, "Appearance previews must preserve a portrait full-body frame.");
 assert.match(appearancePipeline, /quality: "high"/, "Appearance edits must request high quality.");
 assert.match(appearancePipeline, /supportsAppearanceEditing/, "Appearance edits must reject incompatible image models safely.");
+assert.match(appearancePipeline, /providerCode\(error\) !== "moderation_blocked"/, "Moderation-blocked edits must use the safe fictional-avatar fallback.");
+assert.match(appearancePipeline, /openai\.images\.generate/, "The appearance pipeline must support generation when a provider refuses person editing.");
 const studioModels = source("lib/avatar/studio-models.ts");
 assert.equal((studioModels.match(/-safe-v2\.png/g) || []).length, 11, "Every Studio Model category must use a safe-clothing source asset.");
 

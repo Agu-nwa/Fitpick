@@ -8,7 +8,17 @@ import { appearancePresetLabel, hairColorPresets, hairStylePresets, skinTonePres
 import { resolveStudioModelImagePath, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 
-export const appearancePreviewPromptVersion = "studio-appearance-v4-safe-clothing";
+export const appearancePreviewPromptVersion = "studio-appearance-v5-safe-generation-fallback";
+
+const bodyTypePrompts: Record<StudioModelType, string> = {
+  standard: "balanced standard body proportions",
+  petite: "a naturally shorter, smaller petite frame with realistic adult proportions",
+  athletic: "a naturally athletic toned build with realistic proportions",
+  broad: "naturally broad shoulders and a stronger wider upper-body frame with balanced proportions",
+  curvy: "naturally curvy proportions with fuller hips and a defined waist",
+  "plus-size": "naturally fuller plus-size proportions with realistic limbs",
+  maternity: "a clearly visible adult maternity body shape with a naturally rounded pregnant abdomen"
+};
 
 const skinTonePrompts: Partial<Record<SkinTonePreset, string>> = {
   deep: "a deep neutral-brown skin tone with natural warm undertones",
@@ -40,6 +50,12 @@ function configurationError(code: string) {
   return Object.assign(new Error("appearance_preview_not_configured"), { code });
 }
 
+function providerCode(error: unknown) {
+  const candidate = error as { code?: unknown; error?: { code?: unknown } };
+  const code = typeof candidate?.code === "string" ? candidate.code : candidate?.error?.code;
+  return typeof code === "string" ? code : "";
+}
+
 export function appearancePreviewKey(input: { gender: StudioModelGender; modelType: StudioModelType; skinTone: SkinTonePreset; hairStyle: HairStylePreset; hairColor: HairColorPreset }) {
   return crypto.createHash("sha256").update(JSON.stringify({ ...input, version: appearancePreviewPromptVersion })).digest("hex");
 }
@@ -62,15 +78,38 @@ ${hairStyle}
 ${hair}
 
 Preserve the facial identity and structure, body shape and proportions, pose, clothing and clothing color, framing, lighting, shadows, studio background, and camera angle. Except for the selected hairstyle, preserve all anatomy and facial features. Keep natural realistic skin shading across every visible area and realistic hair roots, highlights, and shadows. Change only the requested visible appearance attributes. Do not add or remove garments, accessories, text, or objects. Produce a photorealistic full-body fashion studio image.`;
-  const result = await openai.images.edit({
-    model,
-    image: await toFile(source, "studio-model.png", { type: "image/png" }),
-    prompt,
-    size: "1024x1536",
-    quality: "high",
-    output_format: "png",
-    input_fidelity: "high"
-  }, { timeout: 120_000 });
+  let result;
+  try {
+    result = await openai.images.edit({
+      model,
+      image: await toFile(source, "studio-model.png", { type: "image/png" }),
+      prompt,
+      size: "1024x1536",
+      quality: "high",
+      output_format: "png",
+      input_fidelity: "high"
+    }, { timeout: 120_000 });
+  } catch (error) {
+    if (providerCode(error) !== "moderation_blocked") throw error;
+    const generatedSkin = input.skinTone === "no-preference"
+      ? "a natural medium-brown complexion with balanced undertones"
+      : skinTonePrompts[input.skinTone] || appearancePresetLabel(input.skinTone, skinTonePresets);
+    const generatedStyle = input.hairStyle === "no-preference" ? "a neat short natural hairstyle" : appearancePresetLabel(input.hairStyle, hairStylePresets);
+    const generatedHair = input.hairColor === "no-preference" ? "natural soft-black hair" : hairColorPrompts[input.hairColor] || appearancePresetLabel(input.hairColor, hairColorPresets);
+    const fallbackPrompt = `Create a brand-new photorealistic fictional adult ${input.gender} fashion fitting avatar, approximately 28 to 35 years old, with ${bodyTypePrompts[input.modelType]}.
+
+Appearance palette: ${generatedSkin}.
+Grooming: ${generatedStyle} with ${generatedHair}.
+
+Show a centered straight-on full-body view from head to shoes in a symmetrical neutral standing pose, arms relaxed slightly away from the torso. Dress the avatar in an ordinary opaque solid beige short-sleeve crew-neck T-shirt, solid charcoal full-length trousers, and simple neutral sneakers. Use a seamless warm off-white ecommerce studio backdrop, soft even lighting, realistic anatomy, and generous portrait framing. This is a fictional adult catalog avatar, not a real person. No accessories, jewelry, logos, text, patterns, watermark, nudity, underwear, swimwear, cropped clothing, exposed midriff, transparent fabric, or provocative pose.`;
+    result = await openai.images.generate({
+      model,
+      prompt: fallbackPrompt,
+      size: "1024x1536",
+      quality: "high",
+      output_format: "png"
+    }, { timeout: 120_000 });
+  }
   const base64 = result.data?.[0]?.b64_json;
   if (!base64) throw new Error("appearance_preview_empty");
   const uploaded = await uploadGeneratedImage(base64, {
