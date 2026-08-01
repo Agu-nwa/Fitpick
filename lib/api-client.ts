@@ -220,7 +220,7 @@ export type ServerUploadData = {
     width?: number;
     height?: number;
     backgroundRemovalApplied: boolean;
-    backgroundRemovalProvider: "photoroom" | null;
+    backgroundRemovalProvider: "removebg" | null;
     backgroundRemovalWarning: string | null;
     backgroundRemovalStatus: "not-requested" | "completed" | "failed";
     backgroundRemovalFailureCode: string | null;

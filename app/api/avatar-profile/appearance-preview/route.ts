@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
       ? "Model preview generation is not authorized right now. Your selected appearance was still saved."
       : failure.failureCode === "rate_limited"
         ? "Model preview generation is temporarily at capacity. Your selected appearance was still saved; try again shortly."
+        : failure.providerCode === "moderation_blocked"
+          ? "The model preview image could not be edited safely. Your selected appearance was still saved; choose another Studio Model or try again later."
         : "We couldn’t generate the updated model preview. Your selected appearance was still saved.";
     return apiError(failure.failureCode === "setup_required" ? "SETUP_REQUIRED" : failure.failureCode === "rate_limited" ? "RATE_LIMITED" : "INTERNAL_ERROR", message);
   }

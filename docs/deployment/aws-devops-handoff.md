@@ -130,12 +130,12 @@ Switch back to secure cookies when HTTPS is enabled.
 
 ## Optional Wardrobe Background Removal
 
-PhotoRoom background removal is server-side and optional. Configure these production variables to create wardrobe cutouts; without them, uploads retain the original and record a recoverable failed cleaning state:
+Remove.bg background removal is server-side and optional. Configure these production variables to create wardrobe cutouts; without them, uploads retain the original and record a recoverable failed cleaning state:
 
 ```env
-BACKGROUND_REMOVAL_PROVIDER=photoroom
-PHOTOROOM_API_KEY=
-PHOTOROOM_REMOVE_BG_URL=https://sdk.photoroom.com/v1/segment
+BACKGROUND_REMOVAL_PROVIDER=removebg
+REMOVE_BG_API_KEY=
+REMOVE_BG_URL=https://api.remove.bg/v1.0/removebg
 ```
 
 ## Deployment Commands

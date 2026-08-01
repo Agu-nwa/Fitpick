@@ -79,6 +79,7 @@ assert.match(previewPipeline, /mandatory person\/model reference/, "The try-on p
 const appearancePipeline = source("lib/avatar/appearance-preview.ts");
 assert.match(appearancePipeline, /size: "1024x1536"/, "Appearance previews must preserve a portrait full-body frame.");
 assert.match(appearancePipeline, /quality: "high"/, "Appearance edits must request high quality.");
+assert.match(appearancePipeline, /moderation: "low"/, "Benign Studio Model appearance edits must use low-sensitivity provider moderation.");
 assert.match(appearancePipeline, /supportsAppearanceEditing/, "Appearance edits must reject incompatible image models safely.");
 
 process.stdout.write("Avatar appearance preset regression checks passed.\n");

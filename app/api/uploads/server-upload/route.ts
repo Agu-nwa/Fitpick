@@ -10,7 +10,7 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
-import { photoRoomBackgroundRemovalVersion, removeBackgroundWithPhotoRoom } from "@/lib/image-processing/photoroom";
+import { removeBgBackgroundRemovalVersion, removeBackgroundWithRemoveBg } from "@/lib/image-processing/remove-bg";
 
 const BACKGROUND_REMOVAL_PURPOSES = new Set([
   "wardrobe_original", "wardrobe_front", "wardrobe_back", "wardrobe_additional", "stylist_reference"
@@ -68,13 +68,13 @@ export async function POST(request: NextRequest) {
     let activeUploaded = originalUploaded;
     let cutoutUpload: null | { provider: "s3"; storageKey: string; publicUrl: string; filename: string; mimeType: string; sizeBytes: number; width: number; height: number } = null;
     let backgroundRemovalApplied = false;
-    let backgroundRemovalProvider: "photoroom" | null = null;
+    let backgroundRemovalProvider: "removebg" | null = null;
     let backgroundRemovalWarning: string | null = null;
     let backgroundRemovalStatus: "not-requested" | "completed" | "failed" = "not-requested";
     let backgroundRemovalFailureCode: string | null = null;
 
     if (BACKGROUND_REMOVAL_PURPOSES.has(parsedPurpose.data)) {
-      const removal = await removeBackgroundWithPhotoRoom({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
+      const removal = await removeBackgroundWithRemoveBg({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
       backgroundRemovalProvider = removal.provider;
       if (removal.ok) {
         try {
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
           backgroundRemovalWarning,
           backgroundRemovalStatus,
           backgroundRemovalFailureCode,
-          backgroundRemovalVersion: backgroundRemovalApplied ? photoRoomBackgroundRemovalVersion : null,
+          backgroundRemovalVersion: backgroundRemovalApplied ? removeBgBackgroundRemovalVersion : null,
           originalUpload: {
             provider: originalUploaded.provider,
             storageKey: originalUploaded.storageKey,

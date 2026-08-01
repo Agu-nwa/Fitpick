@@ -8,7 +8,7 @@ import { appearancePresetLabel, hairColorPresets, skinTonePresets, type HairColo
 import { resolveStudioModelImagePath, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
 
-export const appearancePreviewPromptVersion = "studio-appearance-v2";
+export const appearancePreviewPromptVersion = "studio-appearance-v3";
 
 const skinTonePrompts: Partial<Record<SkinTonePreset, string>> = {
   deep: "a deep neutral-brown skin tone with natural warm undertones",
@@ -67,6 +67,7 @@ Preserve the facial identity and structure, body shape and proportions, pose, ha
     size: "1024x1536",
     quality: "high",
     output_format: "png",
+    moderation: "low",
     input_fidelity: "high"
   }, { timeout: 120_000 });
   const base64 = result.data?.[0]?.b64_json;

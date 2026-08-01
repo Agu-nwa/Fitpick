@@ -19,7 +19,7 @@
     "test:secret-scan": "node scripts/secret-scan.mjs",
     "test:image-upload": "tsx scripts/image-upload-policy-test.ts",
     "test:image-normalization": "tsx scripts/image-normalization-test.ts",
-    "test:background-removal": "tsx scripts/photoroom-background-removal-test.ts",
+    "test:background-removal": "tsx scripts/remove-bg-background-removal-test.ts",
     "test:wardrobe-background-removal": "tsx scripts/wardrobe-background-removal-pipeline-test.ts",
     "test:home-location": "tsx scripts/home-location-selector-test.ts",
     "test:wardrobe-filters": "tsx scripts/wardrobe-filtering-test.ts",
