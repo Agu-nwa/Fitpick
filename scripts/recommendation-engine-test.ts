@@ -201,7 +201,9 @@ assert.equal(businessLook.scoreBreakdown?.collectionFamily, "Business Week");
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
 assert.ok(businessLook.items.some((entry: any) => entry.category === "bags"), "business recommendation should complete the look with an owned bag when suitable");
 assert.ok(businessLook.items.some((entry: any) => /watch/i.test(`${entry.name} ${entry.subcategory}`)), "business recommendation should include the strongest owned wrist accessory when suitable");
-assert.ok(businessLook.items.filter((entry: any) => /watch|bracelet|smartwatch/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should avoid conflicting wrist accessories");
+const businessWristItems = businessLook.items.filter((entry: any) => /watch|bracelet|bangle|cuff|smartwatch/i.test(`${entry.name} ${entry.subcategory}`));
+assert.ok(businessWristItems.length <= 2, "recommendation should enforce the bounded wrist stack");
+assert.ok(businessWristItems.filter((entry: any) => /watch|smartwatch/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should never select two watches");
 
 const priorSignature = signature(businessLook as any);
 const differentLook = buildRecommendation({

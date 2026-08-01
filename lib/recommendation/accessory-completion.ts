@@ -1,5 +1,8 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { normalizeOutfitSlot } from "@/lib/recommendation/outfit-slots";
+import { accessorySubtypeFor, resolveAccessorySubtype, type AccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
+import type { OccasionProfile } from "@/lib/recommendation/occasion-profiles";
+import type { OutfitTemplate } from "@/lib/recommendation/outfit-templates";
 import {
   formalityScore,
   memoryPreferenceScore,
@@ -28,7 +31,7 @@ export type AccessoryRole =
 export const MAX_ACCESSORIES_PER_LOOK = 4;
 
 export const maxPerAccessoryRole: Record<AccessoryRole, number> = {
-  wrist: 1,
+  wrist: 2,
   waist: 1,
   neck: 1,
   carry: 1,
@@ -43,7 +46,11 @@ export const maxPerAccessoryRole: Record<AccessoryRole, number> = {
 type AccessoryCandidate = {
   item: any;
   role: AccessoryRole;
+  subtype: AccessorySubtype | null;
   score: number;
+  compatibilityScore: number;
+  metadataConfidence: "high" | "medium" | "low";
+  threshold: number;
   reasons: string[];
 };
 
@@ -55,6 +62,18 @@ export type AccessoryCompletionDecision = {
   shortlistedCount: number;
   selectedRoles: AccessoryRole[];
   omitted: Array<{ itemId: string; role: AccessoryRole; reason: string }>;
+  selectionMode: "ideal" | "safe-fallback" | "none";
+  confidence: "high" | "medium" | "low";
+  itemDecisions: Array<{
+    itemId: string;
+    accessorySubtype: AccessorySubtype | null;
+    accessoryRole: AccessoryRole;
+    metadataConfidence: "high" | "medium" | "low";
+    compatibilityScore: number;
+    threshold: number;
+    selected: boolean;
+    rejectionReason: string;
+  }>;
 };
 
 function itemId(item: any) {
@@ -85,6 +104,15 @@ function itemText(item: any) {
 }
 
 export function accessoryRoleFor(item: any): AccessoryRole {
+  const subtype = accessorySubtypeFor(item);
+  if (["watch", "bracelet", "bangle", "cuff"].includes(subtype || "")) return "wrist";
+  if (subtype === "belt") return "waist";
+  if (["necklace", "pendant", "scarf", "tie"].includes(subtype || "")) return "neck";
+  if (["pocket-square", "brooch"].includes(subtype || "")) return "formal-detail";
+  if (subtype === "hair-accessory") return "hair";
+  if (subtype === "hat") return "head";
+  if (subtype === "sunglasses") return "face";
+  if (subtype === "gloves") return "weather";
   const text = itemText(item);
 
   if (/\b(watch|watches|smartwatch|bracelet|bangle|cuff)\b/.test(text)) return "wrist";
@@ -122,6 +150,7 @@ export function buildWardrobeCandidatePools(items: any[]) {
 
 function accessoryTypeBonus(item: any, role: AccessoryRole, occasionName = "", weatherContext = "") {
   const text = itemText(item);
+  const subtype = accessorySubtypeFor(item);
   const occasion = occasionName.toLowerCase();
   const weather = weatherContext.toLowerCase();
   let bonus = 0;
@@ -129,6 +158,10 @@ function accessoryTypeBonus(item: any, role: AccessoryRole, occasionName = "", w
   if (/\b(watch|watches)\b/.test(text)) bonus += 22;
   if (/\b(smartwatch)\b/.test(text)) bonus += /gym|sport|casual|travel|weekend/.test(occasion) ? 18 : 9;
   if (/\b(bracelet|bangle)\b/.test(text)) bonus += 12;
+  if (subtype === "necklace" || subtype === "pendant") bonus += /dinner|date|wedding|formal|church|party/.test(occasion) ? 18 : 10;
+  if (subtype === "earrings") bonus += /dinner|date|wedding|formal|church|party/.test(occasion) ? 18 : 9;
+  if (subtype === "ring" || subtype === "anklet") bonus += 9;
+  if (subtype === "brooch") bonus += /formal|wedding|business|church/.test(occasion) ? 15 : 6;
   if (/\b(belt)\b/.test(text)) bonus += /work|business|office|formal|interview|dinner/.test(occasion) ? 18 : 11;
   if (role === "carry") bonus += /work|business|travel|dinner|date|wedding|formal|church/.test(occasion) ? 18 : 12;
   if (role === "hair") bonus += /date|dinner|wedding|church|formal|party|event|vacation|photo|preview/.test(occasion) ? 14 : 8;
@@ -176,10 +209,16 @@ function scoreAccessoryCandidate(input: {
   styleProfile?: any;
   memorySummary?: any;
   outfitHistorySummary?: any;
+  occasionProfile?: OccasionProfile;
+  outfitTemplate?: OutfitTemplate;
 }) {
   const role = accessoryRoleFor(input.item);
+  const resolution = resolveAccessorySubtype(input.item);
+  const subtype = resolution.subtype;
   const colorScore = colorCompatibilityScore([...input.selectedItems, input.item]);
-  const score =
+  const occasionPreference = input.occasionProfile?.preferredAccessoryRoles.includes(role) ? 12 : 0;
+  const templatePreference = input.outfitTemplate?.accessoryTerms.some((term) => itemText(input.item).includes(term.toLowerCase())) ? 12 : 0;
+  const compatibilityScore =
     occasionScore(input.item, input.occasionName || "") +
     formalityScore(input.item, input.formality) +
     weatherScore(input.item, input.weatherContext || "") +
@@ -188,9 +227,13 @@ function scoreAccessoryCandidate(input: {
     readinessScore(input.item, input.allowNeedsCare) +
     styleProfileScore([input.item], input.styleProfile) * 0.75 +
     memoryPreferenceScore([input.item], input.memorySummary, Boolean(input.allowRecentRepeat)) * 0.65 +
-    colorScore +
+    colorScore + occasionPreference + templatePreference +
     accessoryTypeBonus(input.item, role, input.occasionName, input.weatherContext) -
     restraintPenalty(input.item, role, input.occasionName);
+  const metadataConfidence = resolution.confidence === "authoritative" || resolution.confidence === "high"
+    ? "high" as const
+    : resolution.confidence === "ambiguous" ? "medium" as const : "low" as const;
+  const threshold = minimumScoreForRole(role, input.occasionName, input.weatherContext);
 
   const reasons = [
     role,
@@ -202,9 +245,44 @@ function scoreAccessoryCandidate(input: {
   return {
     item: input.item,
     role,
-    score: Math.round(score * 10) / 10,
+    subtype,
+    score: Math.round(compatibilityScore * 10) / 10,
+    compatibilityScore: Math.round(compatibilityScore * 10) / 10,
+    metadataConfidence,
+    threshold,
     reasons
   };
+}
+
+function isStatement(item: any) {
+  return /\b(statement|chunky|oversized|large|bold|heavy)\b/.test(itemText(item));
+}
+
+function setConflict(candidates: AccessoryCandidate[]) {
+  const wrist = candidates.filter((candidate) => candidate.role === "wrist");
+  if (wrist.length > 2) return "wrist_limit_exceeded";
+  if (wrist.filter((candidate) => candidate.subtype === "watch").length > 1) return "multiple_watches";
+  if (wrist.some((candidate) => candidate.subtype === "watch") && wrist.some((candidate) => candidate.subtype === "cuff")) return "watch_cuff_conflict";
+  if (wrist.some((candidate) => candidate.subtype === "cuff") && wrist.some((candidate) => candidate.subtype === "bangle")) return "cuff_bangle_conflict";
+  if (candidates.filter((candidate) => isStatement(candidate.item)).length > 1) return "multiple_statement_items";
+  const counts = new Map<AccessoryRole, number>();
+  for (const candidate of candidates) counts.set(candidate.role, (counts.get(candidate.role) || 0) + 1);
+  let roleLimitExceeded = false;
+  counts.forEach((count, role) => { if (count > maxPerAccessoryRole[role]) roleLimitExceeded = true; });
+  if (roleLimitExceeded) return "role_limit_exceeded";
+  return "";
+}
+
+function boundedSets(candidates: AccessoryCandidate[]) {
+  const sets: AccessoryCandidate[][] = [];
+  for (let first = 0; first < candidates.length; first += 1) {
+    sets.push([candidates[first]]);
+    for (let second = first + 1; second < candidates.length; second += 1) {
+      sets.push([candidates[first], candidates[second]]);
+      for (let third = second + 1; third < candidates.length; third += 1) sets.push([candidates[first], candidates[second], candidates[third]]);
+    }
+  }
+  return sets.filter((set) => !setConflict(set));
 }
 
 export function validateAccessoryRoles(items: any[]) {
@@ -220,6 +298,9 @@ export function validateAccessoryRoles(items: any[]) {
     }
   }
 
+  const candidates = items.filter(isAccessoryCandidate).map((item) => ({ item, role: accessoryRoleFor(item), subtype: accessorySubtypeFor(item), score: 0, compatibilityScore: 0, metadataConfidence: "low" as const, threshold: 0, reasons: [] }));
+  const conflict = setConflict(candidates);
+  if (conflict && !invalid.length && candidates.length) invalid.push({ itemId: itemId(candidates[candidates.length - 1].item), role: candidates[candidates.length - 1].role, reason: conflict });
   return { valid: invalid.length === 0, invalid };
 }
 
@@ -235,6 +316,8 @@ export function selectAccessoryCompletion(input: {
   styleProfile?: any;
   memorySummary?: any;
   outfitHistorySummary?: any;
+  occasionProfile?: OccasionProfile;
+  outfitTemplate?: OutfitTemplate;
 }) {
   const selectedIds = new Set(input.selectedItems.map(itemId).filter(Boolean));
   const existingRoles = new Set(input.selectedItems.filter(isAccessoryCandidate).map(accessoryRoleFor));
@@ -254,7 +337,7 @@ export function selectAccessoryCompletion(input: {
         candidateCount: 0,
         shortlistedCount: 0,
         selectedRoles: [],
-        omitted: []
+        omitted: [], selectionMode: "none" as const, confidence: "low" as const, itemDecisions: []
       }
     };
   }
@@ -262,33 +345,28 @@ export function selectAccessoryCompletion(input: {
   const scored = candidateItems
     .map((item) => scoreAccessoryCandidate({ ...input, item }))
     .sort((a, b) => b.score - a.score);
-  const bestByRole = new Map<AccessoryRole, AccessoryCandidate>();
+  const bestBySubtype = new Map<string, AccessoryCandidate[]>();
   for (const candidate of scored) {
-    const current = bestByRole.get(candidate.role);
-    if (!current || candidate.score > current.score) bestByRole.set(candidate.role, candidate);
+    const key = candidate.subtype || candidate.role;
+    const current = bestBySubtype.get(key) || [];
+    if (current.length < 2) bestBySubtype.set(key, [...current, candidate]);
   }
-  const shortlisted = Array.from(bestByRole.values())
-    .filter((candidate) => candidate.score >= minimumScoreForRole(candidate.role, input.occasionName, input.weatherContext))
+  const finalists = Array.from(bestBySubtype.values()).flat()
     .sort((a, b) => b.score - a.score)
-    .slice(0, 12);
-  const selected: AccessoryCandidate[] = [];
-  const selectedRoles = new Set<AccessoryRole>(existingRoles);
-  const omitted: Array<{ itemId: string; role: AccessoryRole; reason: string }> = [];
-
-  for (const candidate of shortlisted) {
-    if (selected.length >= MAX_ACCESSORIES_PER_LOOK) {
-      omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "accessory_limit_reached" });
-      continue;
-    }
-
-    if (selectedRoles.has(candidate.role)) {
-      omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "stronger_same_role_selected" });
-      continue;
-    }
-
-    selected.push(candidate);
-    selectedRoles.add(candidate.role);
-  }
+    .slice(0, 10);
+  const candidateSets = boundedSets(finalists)
+    .filter((set) => set.length <= MAX_ACCESSORIES_PER_LOOK)
+    .filter((set) => !set.some((candidate) => existingRoles.has(candidate.role) && candidate.role !== "wrist"))
+    .map((set) => ({ set, score: set.reduce((total, candidate) => total + candidate.score, 0) + set.length * 3 }))
+    .sort((a, b) => b.score - a.score);
+  const ideal = candidateSets.find(({ set }) => set.every((candidate) => candidate.score >= candidate.threshold));
+  const safeFallback = candidateSets.find(({ set }) => set.length === 1 && set[0].score >= Math.max(16, set[0].threshold - 16));
+  const selectedSet = ideal || safeFallback;
+  const selected = selectedSet?.set || [];
+  const selectionMode = ideal ? "ideal" as const : safeFallback ? "safe-fallback" as const : "none" as const;
+  const selectedIdsForDecision = new Set(selected.map((candidate) => itemId(candidate.item)));
+  const omitted = finalists.filter((candidate) => !selectedIdsForDecision.has(itemId(candidate.item))).map((candidate) => ({ itemId: itemId(candidate.item), role: candidate.role, reason: candidate.score < candidate.threshold ? "below_ideal_threshold" : "stronger_compatible_set_selected" }));
+  const itemDecisions = scored.map((candidate) => ({ itemId: itemId(candidate.item), accessorySubtype: candidate.subtype, accessoryRole: candidate.role, metadataConfidence: candidate.metadataConfidence, compatibilityScore: candidate.compatibilityScore, threshold: candidate.threshold, selected: selectedIdsForDecision.has(itemId(candidate.item)), rejectionReason: selectedIdsForDecision.has(itemId(candidate.item)) ? "" : omitted.find((entry) => entry.itemId === itemId(candidate.item))?.reason || "not_shortlisted" }));
 
   if (!selected.length) {
     return {
@@ -298,9 +376,9 @@ export function selectAccessoryCompletion(input: {
         reason: "Saved accessories were available, but none improved this outfit enough to include.",
         selectedCount: 0,
         candidateCount: candidateItems.length,
-        shortlistedCount: shortlisted.length,
+        shortlistedCount: finalists.length,
         selectedRoles: [],
-        omitted
+        omitted, selectionMode, confidence: "low" as const, itemDecisions
       }
     };
   }
@@ -320,9 +398,12 @@ export function selectAccessoryCompletion(input: {
         : `Added ${validItems.length} restrained accessories across distinct styling roles.`,
       selectedCount: validItems.length,
       candidateCount: candidateItems.length,
-      shortlistedCount: shortlisted.length,
+      shortlistedCount: finalists.length,
       selectedRoles: validRoles,
-      omitted: [...omitted, ...roleValidation.invalid].slice(0, 12)
+      omitted: [...omitted, ...roleValidation.invalid].slice(0, 12),
+      selectionMode,
+      confidence: selectionMode === "ideal" && selected.every((candidate) => candidate.metadataConfidence === "high") ? "high" as const : selectionMode === "none" ? "low" as const : "medium" as const,
+      itemDecisions
     }
   };
 }

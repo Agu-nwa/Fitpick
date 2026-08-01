@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!removal.ok) {
       const safeMessage = "We couldn’t clean this photo. You can retry or continue with the original.";
       const failed = await markFailed(id, userId, safeMessage, removal.provider);
-      logSafeError("wardrobe.background-removal.provider", new Error(removal.reason), { wardrobeItemId: id, stage: "provider", provider: removal.provider, sourceContentType, sourceByteSize: source.byteLength, status: "failed", failureCode: removal.reason, durationMs: Date.now() - startedAt });
+      logSafeError("wardrobe.background-removal.provider", new Error(removal.reason), { wardrobeItemId: id, stage: "provider", provider: removal.provider, sourceContentType, sourceByteSize: source.byteLength, status: "failed", failureCode: removal.reason, providerStatusCode: removal.statusCode, durationMs: Date.now() - startedAt });
       return apiSuccess({ item: failed ? serializeWardrobeItem(failed) : null, completed: false }, { message: safeMessage });
     }
     const processedKey = createStorageKey({ userId, filename: removal.filename, purpose: `processed-bg-${photoRoomBackgroundRemovalVersion}` });

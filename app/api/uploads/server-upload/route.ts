@@ -99,7 +99,8 @@ export async function POST(request: NextRequest) {
           sourceContentType: normalized.mimeType,
           sourceByteSize: normalized.buffer.byteLength,
           status: "failed",
-          failureCode: removal.reason
+          failureCode: removal.reason,
+          providerStatusCode: removal.statusCode
         });
       }
     }

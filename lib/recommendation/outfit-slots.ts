@@ -28,6 +28,12 @@ function textForSlot(item: any) {
 }
 
 export function normalizeOutfitSlot(item: any): OutfitSlot {
+  const authoritative: Record<string, OutfitSlot> = {
+    tops: "top", bottoms: "bottom", dresses: "onePiece", native: "onePiece", outerwear: "outerwear",
+    shoes: "shoes", bags: "bag", accessories: "accessory", womens_hair: "accessory"
+  };
+  const savedCategory = String(item?.category || "").trim().toLowerCase();
+  if (authoritative[savedCategory]) return authoritative[savedCategory];
   const text = textForSlot(item);
   for (const entry of slotPatterns) {
     if (entry.pattern.test(text)) return entry.slot;

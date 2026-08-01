@@ -22,6 +22,20 @@ const schema = z.object({
   hairColor: z.enum(hairColorPresetValues)
 }).strict();
 
+function providerFailure(error: unknown) {
+  const providerError = error as { status?: unknown; code?: unknown };
+  const statusCode = typeof providerError?.status === "number" ? providerError.status : undefined;
+  const providerCode = typeof providerError?.code === "string" ? providerError.code.slice(0, 60) : undefined;
+  const failureCode = statusCode === 401 || statusCode === 403
+    ? "authentication_failed"
+    : statusCode === 429 || providerCode === "insufficient_quota"
+      ? "rate_limited"
+      : statusCode && statusCode >= 400 && statusCode < 500
+        ? "request_rejected"
+        : "provider_error";
+  return { statusCode, providerCode, failureCode };
+}
+
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
   const limited = rateLimitRequest({ key: `appearance-preview:${meta.ip}`, limit: 12, windowMs: 60_000, operation: "appearance-preview" });
@@ -47,7 +61,17 @@ export async function POST(request: NextRequest) {
     if (!profile) return apiError("CONFLICT", "Your appearance changed while the preview was being prepared. Please try again.");
     return apiSuccess({ previewUrl: generated.url, appearanceKey: key, profile: serializeAvatarProfile(profile) });
   } catch (error) {
-    logSafeError("avatar-profile.appearance-preview", error);
-    return apiError("INTERNAL_ERROR", "We couldn’t update the model preview. Your saved appearance is unchanged.");
+    const failure = providerFailure(error);
+    logSafeError("avatar-profile.appearance-preview", error, {
+      failureCode: failure.failureCode,
+      providerStatusCode: failure.statusCode,
+      providerCode: failure.providerCode
+    });
+    const message = failure.failureCode === "authentication_failed"
+      ? "Model preview generation is not authorized right now. Your selected appearance was still saved."
+      : failure.failureCode === "rate_limited"
+        ? "Model preview generation is temporarily at capacity. Your selected appearance was still saved; try again shortly."
+        : "We couldn’t generate the updated model preview. Your selected appearance was still saved.";
+    return apiError("INTERNAL_ERROR", message);
   }
 }

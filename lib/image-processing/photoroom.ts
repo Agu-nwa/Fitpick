@@ -10,7 +10,13 @@ export const photoRoomBackgroundRemovalVersion = "photoroom-segment-v1";
 
 export type BackgroundRemovalResult =
   | { ok: true; provider: "photoroom"; buffer: Buffer; mimeType: "image/webp"; filename: string; width: number; height: number }
-  | { ok: false; provider: "photoroom"; warning: string; reason: "not_configured" | "timeout" | "provider_error" | "invalid_response" };
+  | {
+      ok: false;
+      provider: "photoroom";
+      warning: string;
+      reason: "not_configured" | "timeout" | "authentication_failed" | "rate_limited" | "request_rejected" | "provider_error" | "invalid_response";
+      statusCode?: number;
+    };
 
 export function isPhotoRoomConfigured() {
   return process.env.BACKGROUND_REMOVAL_PROVIDER?.trim().toLowerCase() === "photoroom" && Boolean(process.env.PHOTOROOM_API_KEY?.trim());
@@ -72,7 +78,24 @@ export async function removeBackgroundWithPhotoRoom(input: {
           await waitBeforeRetry(attempt);
           continue;
         }
-        return { ok: false, provider: "photoroom", reason: "provider_error", warning: "Background removal was unavailable; the original photo was used." };
+        const reason = response.status === 401 || response.status === 403
+          ? "authentication_failed"
+          : response.status === 429
+            ? "rate_limited"
+            : response.status >= 400 && response.status < 500
+              ? "request_rejected"
+              : "provider_error";
+        return {
+          ok: false,
+          provider: "photoroom",
+          reason,
+          statusCode: response.status,
+          warning: reason === "authentication_failed"
+            ? "Background removal credentials were rejected; the original photo was used."
+            : reason === "rate_limited"
+              ? "Background removal usage is temporarily limited; the original photo was used."
+              : "Background removal was unavailable; the original photo was used."
+        };
       }
 
       const responseType = response.headers.get("content-type")?.toLowerCase() || "";

@@ -25,9 +25,8 @@ function sortedByFreshness(items: any[]) {
   });
 }
 
-function optionalCandidates(items: any[], max = 4, requiredWhenAvailable = false) {
+function optionalCandidates(items: any[], max = 4) {
   const candidates = items.slice(0, max);
-  if (requiredWhenAvailable && candidates.length) return candidates;
   return [null, ...candidates];
 }
 
@@ -93,16 +92,19 @@ export function generateCombinations(
     });
   }
 
+  // Seed every eligible shoe before the global cap can be consumed by early nested loops.
+  const seedDress = byCategory("dresses")[0];
+  const seedTop = byCategory("tops")[0];
+  const seedBottom = byCategory("bottoms")[0];
+  for (const shoe of byCategory("shoes")) {
+    if (seedDress) pushOutfit([seedDress, shoe]);
+    else if (seedTop && seedBottom) pushOutfit([seedTop, seedBottom, shoe]);
+  }
+
   for (const dress of byCategory("dresses")) {
     for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
       for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-        for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
-          for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-            for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
-              pushOutfit([dress, shoe, outerwear, accessory, bag, hair]);
-            }
-          }
-        }
+        pushOutfit([dress, shoe, outerwear]);
       }
     }
   }
@@ -111,13 +113,7 @@ export function generateCombinations(
     for (const bottom of byCategory("bottoms").length ? byCategory("bottoms") : [null]) {
       for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
         for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-          for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
-            for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-              for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
-                pushOutfit([top, bottom, shoe, outerwear, accessory, bag, hair]);
-              }
-            }
-          }
+          pushOutfit([top, bottom, shoe, outerwear]);
         }
       }
     }

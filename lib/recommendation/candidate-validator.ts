@@ -72,16 +72,19 @@ export function validateRecommendationCandidate(input: {
   }
 
   const missingCore = completeness.completenessStatus === "missing_core_item";
+  const missingBottom = completeness.completenessStatus === "missing_bottom";
   const missingFootwear = completeness.completenessStatus === "missing_footwear";
   const valid =
     Boolean(items.length) &&
     accessoryValidation.valid &&
     !sanitized.removed.some((entry) => entry.reason === "duplicate_outfit_slot") &&
-    (input.allowIncomplete || (!missingCore && !missingFootwear));
+    !missingCore &&
+    !missingBottom &&
+    (input.allowIncomplete || !missingFootwear);
 
   return {
     valid,
-    rejectReason: valid ? "" : missingCore ? "missing_core_item" : missingFootwear ? "missing_footwear" : "styling_validation_failed",
+    rejectReason: valid ? "" : missingCore ? "missing_core_item" : missingBottom ? "missing_bottom" : missingFootwear ? "missing_footwear" : "styling_validation_failed",
     warnings,
     structure
   };

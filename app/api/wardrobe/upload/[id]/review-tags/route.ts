@@ -22,6 +22,7 @@ import {
 import { backgroundJobsEnabled, enqueueJob } from "@/lib/jobs/queue";
 import { markReferenceItemConvertedToWardrobe } from "@/lib/ai/reference-fashion-item";
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { resolveAccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadTagReviewSchema } from "@/schemas/wardrobe.schema";
 
@@ -160,10 +161,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
       existingItems
     });
+    const subtype = resolveAccessorySubtype({ ...parsed.data, userInputMetadata: upload.userInputMetadata, verifiedMetadata: verifiedMetadata(verifiedFields), aiAnalysis: upload.aiAnalysis });
     const item = await WardrobeItem.create({
       name: parsed.data.name,
       category: parsed.data.category,
       subcategory: parsed.data.subcategory || "",
+      accessorySubtype: parsed.data.accessorySubtype || subtype.subtype || null,
       color: parsed.data.color,
       pattern: parsed.data.pattern || "",
       fabric: parsed.data.fabric || "",

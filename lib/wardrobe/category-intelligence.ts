@@ -426,7 +426,13 @@ export const intakeCategories: WardrobeIntakeCategory[] = [
     allowedMeasurementKeys: []
   })),
   ...[
-    ["jewelry", "Jewelry", "Rings, necklaces, bracelets, earrings, and fine jewelry."],
+    ["necklaces", "Necklace", "Chains, chokers, pendants, and necklaces."],
+    ["earrings", "Earrings", "Studs, hoops, drops, and statement earrings."],
+    ["bracelets", "Bracelet", "Slim, chain, charm, and statement bracelets."],
+    ["bangles", "Bangle", "Slim, stacked, and statement bangles."],
+    ["rings", "Ring", "Everyday, dress, and statement rings."],
+    ["brooches", "Brooch", "Brooches, lapel pins, and decorative pins."],
+    ["anklets", "Anklet", "Chain, beaded, and decorative anklets."],
     ["belts", "Belts", "Leather belts, dress belts, woven belts, and statement belts."],
     ["scarves", "Scarves", "Silk, wool, cotton, printed, and cold-weather scarves."],
     ["watches", "Watches", "Dress watches, sport watches, smart watches, and straps."],
@@ -434,7 +440,8 @@ export const intakeCategories: WardrobeIntakeCategory[] = [
     ["hats", "Hats", "Caps, beanies, fedoras, fascinators, and occasion hats."],
     ["hair_accessories", "Hair Accessories", "Clips, bands, pins, combs, and statement hair pieces."],
     ["gloves", "Gloves", "Leather, knit, dress, and cold-weather gloves."],
-    ["ties", "Ties", "Ties, bow ties, pocket squares, and formal neckwear."]
+    ["ties", "Ties", "Ties, bow ties, pocket squares, and formal neckwear."],
+    ["other_accessory", "Other Accessory", "Another finishing piece not listed above."]
   ].map(([id, title, description]) => ({
     id,
     group: "accessories" as const,

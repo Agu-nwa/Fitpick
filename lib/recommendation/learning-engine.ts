@@ -1,4 +1,5 @@
 import { metadataValue } from "@/lib/recommendation/scoring";
+import { accessorySubtypeFor } from "@/lib/wardrobe/accessory-subtypes";
 
 export type LearningEventSignal = {
   positiveItemIds: string[];
@@ -8,6 +9,7 @@ export type LearningEventSignal = {
   avoidedColors: string[];
   preferredCategories: string[];
   avoidedCategories: string[];
+  avoidedAccessorySubtypes: string[];
   recentWeight: number;
 };
 
@@ -21,6 +23,12 @@ function topValues(values: string[], limit = 8) {
     counts.set(value, (counts.get(value) || 0) + 1);
   }
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([value]) => value);
+}
+
+function repeatedValues(values: string[], minimum = 3, limit = 8) {
+  const counts = new Map<string, number>();
+  for (const value of values.map(normalize).filter(Boolean)) counts.set(value, (counts.get(value) || 0) + 1);
+  return Array.from(counts.entries()).filter(([, count]) => count >= minimum).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([value]) => value);
 }
 
 export function buildLearningSignals(input: {
@@ -55,7 +63,8 @@ export function buildLearningSignals(input: {
     preferredColors: topValues(positiveItems.map((item) => metadataValue(item, "primaryColor") || item.color)),
     avoidedColors: topValues(negativeItems.map((item) => metadataValue(item, "primaryColor") || item.color)),
     preferredCategories: topValues(positiveItems.map((item) => item.category)),
-    avoidedCategories: topValues(negativeItems.map((item) => item.category)),
+    avoidedCategories: repeatedValues(negativeItems.map((item) => item.category)),
+    avoidedAccessorySubtypes: repeatedValues(negativeItems.map((item) => accessorySubtypeFor(item) || ""), 2),
     recentWeight: history.eventCount ? Math.min(1, Math.max(0.2, 30 / Math.max(30, Number(history.eventCount)))) : 0
   };
 }
@@ -67,6 +76,7 @@ export function learningSignalScore(items: any[], signals: LearningEventSignal) 
     const id = String(item._id || item.id || "");
     const color = normalize(metadataValue(item, "primaryColor") || item.color);
     const category = normalize(item.category);
+    const accessorySubtype = accessorySubtypeFor(item);
     if (signals.positiveItemIds.includes(id)) score += 8;
     if (signals.negativeItemIds.includes(id)) score -= 18;
     if (signals.fatigueItemIds.includes(id)) score -= 6;
@@ -74,6 +84,7 @@ export function learningSignalScore(items: any[], signals: LearningEventSignal) 
     if (signals.avoidedColors.includes(color)) score -= 10;
     if (signals.preferredCategories.includes(category)) score += 3;
     if (signals.avoidedCategories.includes(category)) score -= 9;
+    if (accessorySubtype && signals.avoidedAccessorySubtypes.includes(accessorySubtype)) score -= 7;
   }
   return Math.round(score * signals.recentWeight);
 }

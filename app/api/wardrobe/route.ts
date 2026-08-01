@@ -9,6 +9,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, serializeWardrobeItem, wardrobeSummary } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { resolveAccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 import { createWardrobeItemSchema, wardrobeFiltersSchema } from "@/schemas/wardrobe.schema";
 
 export async function GET(request: NextRequest) {
@@ -61,8 +62,10 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     const condition = inferCondition(parsed.data);
+    const subtype = resolveAccessorySubtype(parsed.data);
     const item = await WardrobeItem.create({
       ...parsed.data,
+      accessorySubtype: parsed.data.accessorySubtype || subtype.subtype || null,
       condition,
       archivedAt: null,
       userId: auth.user._id

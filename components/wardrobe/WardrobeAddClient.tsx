@@ -45,6 +45,7 @@ import {
 } from "@/lib/wardrobe/category-intelligence";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
 import type { TaggedSize } from "@/types/wardrobe";
+import { accessorySubtypeForIntakeId } from "@/lib/wardrobe/accessory-subtypes";
 
 type SlotFile = {
   id: string;
@@ -190,10 +191,12 @@ function confirmedField(value: string | string[] | number | null) {
 
 function autoConfirmPayload(category: WardrobeIntakeCategory, essentials: ReturnType<typeof normalizeEssentials>) {
   const garmentFit = garmentFitFromIntake(essentials.fit);
+  const accessorySubtype = accessorySubtypeForIntakeId(category.id);
   return {
     name: autoItemName(category, essentials) || category.title,
     category: category.backendCategory,
     subcategory: category.subcategory || category.title,
+    ...(accessorySubtype ? { accessorySubtype } : {}),
     color: essentials.primaryColor,
     pattern: "",
     fabric: "",
@@ -643,6 +646,7 @@ export function WardrobeAddClient() {
         condition: "ready",
         source: "user_intake"
       };
+      const accessorySubtype = accessorySubtypeForIntakeId(selectedCategory.id);
       const result = await uploadWardrobeMetadata({
         filename: primary.filename,
         mimeType: primary.mimeType,
@@ -666,6 +670,7 @@ export function WardrobeAddClient() {
           categoryId: selectedCategory.id,
           category: selectedCategory.backendCategory,
           subcategory: selectedCategory.subcategory,
+          ...(accessorySubtype ? { accessorySubtype } : {}),
           ...essentialsMetadata,
           photoGuidance: selectedCategory.guidance,
           labelIntelligenceRequested: false,
@@ -721,7 +726,8 @@ export function WardrobeAddClient() {
           brand: "",
           condition: "ready",
           intakeCategoryId: selectedCategory.id,
-          intakeGroup: selectedCategory.group
+          intakeGroup: selectedCategory.group,
+          ...(accessorySubtype ? { accessorySubtype } : {})
         },
         images: {
           ...(toImageAsset(byPurpose.front) ? { front: toImageAsset(byPurpose.front) } : {}),

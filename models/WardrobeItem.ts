@@ -77,6 +77,11 @@ const WardrobeItemSchema = new Schema(
       required: true
     },
     subcategory: { type: String, default: "" },
+    accessorySubtype: {
+      type: String,
+      enum: ["watch", "necklace", "bracelet", "bangle", "cuff", "earrings", "ring", "anklet", "brooch", "pendant", "belt", "scarf", "tie", "pocket-square", "gloves", "hat", "sunglasses", "hair-accessory", "other"],
+      default: null
+    },
     color: { type: String, default: "" },
     pattern: { type: String, default: "" },
     fabric: { type: String, default: "" },

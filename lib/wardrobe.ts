@@ -92,6 +92,7 @@ export function serializeWardrobeItem(item: any) {
     name: item.name,
     category: item.category,
     subcategory: item.subcategory || "",
+    accessorySubtype: item.accessorySubtype || null,
     color: item.color || "",
     pattern: item.pattern || "",
     fabric: item.fabric || "",

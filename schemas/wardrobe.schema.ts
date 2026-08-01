@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MAX_IMAGE_UPLOAD_BYTES, NORMALIZED_STORAGE_IMAGE_MIME_TYPES, imageUploadRequirementText } from "@/lib/upload-limits";
 import { sanitizeGarmentMeasurementsForCategory as sanitizeMeasurementObjectForCategory } from "@/lib/wardrobe/category-intelligence";
+import { accessorySubtypeValues } from "@/lib/wardrobe/accessory-subtypes";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier.");
 
@@ -27,6 +28,7 @@ export const garmentFitSchema = z.enum(["slim", "regular", "relaxed", "oversized
 export const stretchLevelSchema = z.enum(["none", "low", "medium", "high", "unknown"]);
 export const fabricDrapeSchema = z.enum(["structured", "soft", "flowing", "heavy", "stiff", "unknown"]);
 export const measurementSourceSchema = z.enum(["label_ocr", "user_confirmed", "ai_estimated", "manual", "unknown"]);
+export const accessorySubtypeSchema = z.enum(accessorySubtypeValues);
 
 const tagList = z.array(z.string().trim().min(1).max(40)).max(20);
 const editableMetadataValueSchema = z.union([
@@ -53,6 +55,7 @@ const wardrobeFields = {
   name: z.string().trim().min(1).max(120),
   category: wardrobeCategorySchema,
   subcategory: z.string().trim().max(80).optional().or(z.literal("")),
+  accessorySubtype: accessorySubtypeSchema.nullable().optional(),
   color: z.string().trim().max(60).optional().or(z.literal("")),
   pattern: z.string().trim().max(60).optional().or(z.literal("")),
   fabric: z.string().trim().max(60).optional().or(z.literal("")),
@@ -143,6 +146,7 @@ export const wardrobeTagReviewSchema = withCategoryAwareGarmentMeasurements(
     .object({
       category: wardrobeCategorySchema.optional(),
       subcategory: z.string().trim().max(80).optional().or(z.literal("")),
+      accessorySubtype: accessorySubtypeSchema.nullable().optional(),
       color: z.string().trim().max(60).optional().or(z.literal("")),
       pattern: z.string().trim().max(60).optional().or(z.literal("")),
       fabric: z.string().trim().max(60).optional().or(z.literal("")),

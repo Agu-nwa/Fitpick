@@ -50,6 +50,19 @@ try {
   assert.equal(opaqueResult.ok, false, "Opaque provider output must not be reported as a completed cutout.");
   if (!opaqueResult.ok) assert.equal(opaqueResult.reason, "invalid_response");
 
+  globalThis.fetch = (async () => new Response("unauthorized", { status: 401 })) as typeof fetch;
+  const unauthorizedResult = await removeBackgroundWithPhotoRoom({ buffer: source, filename: "garment.png", mimeType: "image/png", timeoutMs: 1_000 });
+  assert.equal(unauthorizedResult.ok, false);
+  if (!unauthorizedResult.ok) {
+    assert.equal(unauthorizedResult.reason, "authentication_failed");
+    assert.equal(unauthorizedResult.statusCode, 401);
+  }
+
+  globalThis.fetch = (async () => new Response("limited", { status: 429 })) as typeof fetch;
+  const limitedResult = await removeBackgroundWithPhotoRoom({ buffer: source, filename: "garment.png", mimeType: "image/png", timeoutMs: 1_000 });
+  assert.equal(limitedResult.ok, false);
+  if (!limitedResult.ok) assert.equal(limitedResult.reason, "rate_limited");
+
   process.env.PHOTOROOM_REMOVE_BG_URL = "http://insecure.example.test/segment";
   const invalidEndpoint = await removeBackgroundWithPhotoRoom({ buffer: source, filename: "garment.png", mimeType: "image/png" });
   assert.equal(invalidEndpoint.ok, false);

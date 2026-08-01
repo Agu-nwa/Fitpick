@@ -11,6 +11,7 @@ export type WardrobeCategory =
   | "womens_hair";
 
 import type { WardrobeImageAsset } from "@/types/ai-tagging";
+import type { AccessorySubtype } from "@/lib/wardrobe/accessory-subtypes";
 
 export type TaggedSize = "XS" | "S" | "M" | "L" | "XL" | "XXL" | "custom" | "unknown";
 export type SizeSystem = "US" | "UK" | "EU" | "international" | "custom" | "unknown";
@@ -37,6 +38,7 @@ export type WardrobeItem = {
   name: string;
   category: WardrobeCategory;
   subcategory?: string;
+  accessorySubtype?: AccessorySubtype | null;
   color: string;
   pattern?: string;
   fabric?: string;

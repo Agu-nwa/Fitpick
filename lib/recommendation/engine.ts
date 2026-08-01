@@ -15,7 +15,7 @@ import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/pol
 import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
-import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { buildInternalStyleProfile } from "@/lib/recommendation/style-profile";
 import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
 import {
@@ -212,6 +212,7 @@ export function buildRecommendation(input: EngineInput) {
 
   const missing = missingCoreCategories(readyFirst, desiredStructure);
   const readiness = wardrobeReadiness(readyFirst);
+  const hasEligibleFootwear = readyFirst.some((item) => normalizeOutfitSlot(item) === "shoes");
   const gapInsights = wardrobeGapInsights(readyFirst, input.occasionName || input.weatherContext || "");
 
   const combinations = generateCombinations(
@@ -247,7 +248,7 @@ export function buildRecommendation(input: EngineInput) {
       items: candidate.items,
       template: outfitTemplate,
       profile: occasionProfile,
-      allowIncomplete: readiness.isSmallWardrobe
+      allowIncomplete: readiness.isSmallWardrobe && !hasEligibleFootwear
     })
   }));
   const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
@@ -332,15 +333,31 @@ export function buildRecommendation(input: EngineInput) {
     allowRecentRepeat,
     styleProfile: internalStyleProfile,
     memorySummary: input.memorySummary,
-    outfitHistorySummary: input.outfitHistorySummary
+    outfitHistorySummary: input.outfitHistorySummary,
+    occasionProfile,
+    outfitTemplate
   });
   const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
   const completeness = evaluateOutfitCompleteness(completedItems);
+  const ownedShoes = input.wardrobeItems.filter((item) => normalizeOutfitSlot(item) === "shoes");
+  const eligibleShoes = readyFirst.filter((item) => normalizeOutfitSlot(item) === "shoes");
+  const ownedAccessories = input.wardrobeItems.filter(isAccessoryCandidate);
+  const eligibleAccessories = readyFirst.filter(isAccessoryCandidate);
+  const shoeCoverage = eligibleShoes.map((shoe) => ({
+    itemId: String(shoe._id || shoe.id || ""),
+    candidateCoverageCount: combinations.filter((candidate) => candidate.items.some((item: any) => String(item._id || item.id || "") === String(shoe._id || shoe.id || ""))).length
+  }));
+  const occasionBenefitsFromFinisher = occasionProfile.formality === "formal" || occasionProfile.formality === "polished" || occasionProfile.preferredAccessoryRoles.length > 0;
+  const stylingCompleteness = {
+    hasRecommendedFinisher: accessoryCompletion.items.length > 0,
+    finisherAvailable: eligibleAccessories.length > 0,
+    occasionBenefitsFromFinisher
+  };
   const finalValidation = validateRecommendationCandidate({
     items: completedItems,
     template: outfitTemplate,
     profile: occasionProfile,
-    allowIncomplete: readiness.isSmallWardrobe
+    allowIncomplete: readiness.isSmallWardrobe && !hasEligibleFootwear
   });
   const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
 
@@ -447,7 +464,11 @@ export function buildRecommendation(input: EngineInput) {
   });
   const completenessSummary = completeness.completenessWarnings.length ? ` ${completeness.completenessWarnings.join(" ")}` : "";
   const addLater = completeness.completenessStatus === "missing_footwear"
-    ? "Add black shoes, loafers, sneakers, or sandals to complete this look."
+    ? ownedShoes.length && !eligibleShoes.length
+      ? "Your saved shoes are currently unavailable for this look. Mark a suitable pair ready or allow needs-care items."
+      : "Add black shoes, loafers, sneakers, or sandals to complete this look."
+    : occasionBenefitsFromFinisher && eligibleAccessories.length && !accessoryCompletion.items.length
+      ? "Your finishing pieces need a little more detail before MyFitPick can match one confidently."
     : gapInsights[0]?.message || explanation.addLater;
   const styleProfileNote = input.styleProfile
     ? ` Style preferences considered: ${[
@@ -518,7 +539,21 @@ export function buildRecommendation(input: EngineInput) {
         fashionKnowledgeScore: knowledgeScore
       }),
       marketplaceExtensionPoints: marketplaceExtensionPoints(completedItems, { missingCategories: completenessMissing }),
-      collectionFamily
+      collectionFamily,
+      recommendationDiagnostics: {
+        ownedShoeCount: ownedShoes.length,
+        eligibleShoeCount: eligibleShoes.length,
+        needsCareShoeCount: ownedShoes.filter((item) => item.condition === "needs-care").length,
+        incompleteShoeCount: ownedShoes.filter((item) => item.condition === "missing-tags").length,
+        ownedAccessoryCount: ownedAccessories.length,
+        eligibleAccessoryCount: eligibleAccessories.length,
+        shoeCoverage,
+        accessoryItemDecisions: accessoryCompletion.decision.itemDecisions,
+        selectedAccessorySet: accessoryCompletion.items.map((item) => String(item._id || item.id || "")),
+        accessorySelectionMode: accessoryCompletion.decision.selectionMode,
+        coreCompleteness: { hasRequiredClothing: !["missing_core_item", "missing_bottom"].includes(completeness.completenessStatus), hasFootwearWhenAvailable: !eligibleShoes.length || completeness.footwearIncluded },
+        stylingCompleteness
+      }
     },
     similarityMetadata: {
       ...(bestOutfit.similarityMetadata || {}),
