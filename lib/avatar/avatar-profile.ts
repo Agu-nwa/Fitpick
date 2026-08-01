@@ -8,6 +8,7 @@ import {
   type StudioModelType
 } from "@/lib/avatar/studio-models";
 import { hairColorPresetValues, skinTonePresetValues, type HairColorPreset, type SkinTonePreset } from "@/lib/avatar/appearance-presets";
+import { appearancePreviewKey } from "@/lib/avatar/appearance-preview";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
 export type BodyPreset = "slim" | "average" | "athletic" | "curvy" | "plus";
@@ -35,6 +36,7 @@ export type AvatarProfilePatch = Partial<{
   uploadedModelImageStorageKey: string | null;
   generatedModelImageUrl: string | null;
   generatedModelImageStorageKey: string | null;
+  generatedModelAppearanceKey: string;
   studioModelGender: StudioModelGender | null;
   studioModelType: StudioModelType | null;
   studioModelImageUrl: string | null;
@@ -154,6 +156,15 @@ export function validateModelImageUrl(value?: string | null) {
 }
 
 export function preferredTryOnModelImageUrl(profile: any) {
+  if (profile?.generatedModelImageUrl && profile?.generatedModelAppearanceKey && profile?.studioModelGender && profile?.studioModelType) {
+    const currentAppearanceKey = appearancePreviewKey({
+      gender: profile.studioModelGender,
+      modelType: profile.studioModelType,
+      skinTone: profile.skinTonePreset || "no-preference",
+      hairColor: profile.hairColorPreset || "no-preference"
+    });
+    if (profile.generatedModelAppearanceKey === currentAppearanceKey) return profile.generatedModelImageUrl;
+  }
   if (profile?.studioModelGender && profile?.studioModelType) {
     return resolveStudioModelImageUrl(profile.studioModelGender, profile.studioModelType) || profile.studioModelImageUrl || null;
   }
@@ -295,6 +306,7 @@ export function serializeAvatarProfile(profile: any) {
     generatedModelImageUrl: profile.generatedModelImageUrl || null,
     generatedModelImageStorageKey: profile.generatedModelImageStorageKey || null,
     generatedModelPromptVersion: profile.generatedModelPromptVersion || "",
+    generatedModelAppearanceKey: profile.generatedModelAppearanceKey || "",
     generatedModelAt: profile.generatedModelAt ? new Date(profile.generatedModelAt).toISOString() : null,
     studioModelGender: profile.studioModelGender || null,
     studioModelType: profile.studioModelType || null,

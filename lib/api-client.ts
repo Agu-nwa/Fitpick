@@ -445,6 +445,7 @@ export type AvatarProfileData = {
     generatedModelImageUrl: string | null;
     generatedModelImageStorageKey: string | null;
     generatedModelPromptVersion: string;
+    generatedModelAppearanceKey: string;
     generatedModelAt: string | null;
     studioModelGender: "male" | "female" | null;
     studioModelType: "standard" | "petite" | "athletic" | "broad" | "curvy" | "plus-size" | "maternity" | null;
@@ -889,6 +890,13 @@ export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-pr
 export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });
 export const getAvatarProfile = () => apiRequest<AvatarProfileData>("/api/avatar-profile", { cache: "no-store" });
 export const updateAvatarProfile = (body: unknown) => apiRequest<AvatarProfileData>("/api/avatar-profile", { method: "PATCH", body });
+export type AppearancePreviewData = {
+  previewUrl: string;
+  appearanceKey: string;
+  profile: AvatarProfileData["profile"];
+};
+export const generateAppearancePreview = (body: unknown, signal?: AbortSignal) =>
+  apiRequest<AppearancePreviewData>("/api/avatar-profile/appearance-preview", { method: "POST", body, signal });
 export const getAvatarPreview = (id: string) => apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { cache: "no-store" });
 export const generateAvatarPreview = (id: string, options: unknown = {}) =>
   apiRequest<AvatarPreviewData>(`/api/outfits/${id}/avatar-preview`, { method: "POST", body: options });

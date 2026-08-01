@@ -20,6 +20,7 @@ const AvatarProfileSchema = new Schema(
     generatedModelImageUrl: { type: String, default: null, maxlength: 2048 },
     generatedModelImageStorageKey: { type: String, default: null, maxlength: 512 },
     generatedModelPromptVersion: { type: String, default: "", maxlength: 80 },
+    generatedModelAppearanceKey: { type: String, default: "", maxlength: 80 },
     generatedModelAt: { type: Date, default: null },
     studioModelGender: { type: String, enum: ["male", "female", null], default: null },
     studioModelType: { type: String, enum: ["standard", "petite", "athletic", "broad", "curvy", "plus-size", "maternity", null], default: null },

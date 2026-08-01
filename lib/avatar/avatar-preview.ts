@@ -6,7 +6,7 @@ import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { openai } from "@/lib/ai/openai";
 import { buildAvatarPreviewPrompt } from "@/lib/ai/prompts";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
-import { buildAvatarPromptContext, getOrCreateAvatarProfile, type PosePreset, type VisualizationStyle } from "@/lib/avatar/avatar-profile";
+import { buildAvatarPromptContext, getOrCreateAvatarProfile, preferredTryOnModelImageUrl, type PosePreset, type VisualizationStyle } from "@/lib/avatar/avatar-profile";
 import { buildFitLockPromptConstraints, evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl, summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
@@ -339,7 +339,13 @@ export async function generateAvatarOutfitPreview(
   const outfitDescription = selectedItemDetails(items);
   const visualGrounding = summarizeVisualizationRisks(items, { outfitDescription });
   const garmentReferences = await buildGarmentReferenceInputs(items);
-  const canUseImageInputs = imageEditSupportsReferences(model) && garmentReferences.length > 0;
+  const selectedModelUrl = safeImageReferenceUrl(preferredTryOnModelImageUrl(avatarProfile));
+  const selectedModelReference = selectedModelUrl
+    ? await imageUrlToUploadable(selectedModelUrl, "selected-studio-model")
+    : null;
+  if (!selectedModelReference) throw new Error("selected_model_reference_unavailable");
+  if (!imageEditSupportsReferences(model)) throw new Error("selected_model_reference_unsupported");
+  const canUseImageInputs = true;
   const fitLockConstraints = buildFitLockPromptConstraints({
     avatarProfile,
     outfitItems: items,
@@ -360,21 +366,22 @@ export async function generateAvatarOutfitPreview(
     ? `${prompt}
 
 Image-grounded try-on requirement:
-- Generate a high-quality photorealistic digital human/model first, guided by the avatar profile, pose, and style context.
+- The first attached image is the user's selected My Model and is the mandatory person/model reference.
+- Preserve that model's identity, face, gender presentation, skin tone, hair color, body shape, proportions, pose, and framing. Do not substitute a different person or body type.
 - Project the attached wardrobe item images onto that generated human/model as the source of truth for garments, shoes, bags, and accessories.
 - Preserve visible garment texture, color, silhouette, proportions, shoe/accessory type, and placement from the reference images.
 - Render the model wearing those actual referenced items, not visually similar replacements.
 - Keep every referenced item represented unless technically impossible; if simplified, keep the item in the outfit and preserve its role.
 - Use natural perspective, realistic drape, and premium fashion-product-page lighting without inventing new items.
-- Attached garment references:
-${garmentReferences.map((ref, index) => `${index + 1}. Item ID ${ref.itemId} | ${ref.name} | ${ref.category}`).join("\n")}`
+- Attached garment references after the first model image:
+${garmentReferences.length ? garmentReferences.map((ref, index) => `${index + 1}. Item ID ${ref.itemId} | ${ref.name} | ${ref.category}`).join("\n") : "No garment images were available; use the verified outfit description while preserving the first model image."}`
     : prompt;
 
   try {
     const image = canUseImageInputs
       ? await openai.images.edit({
           model,
-          image: garmentReferences.map((ref) => ref.upload),
+          image: [selectedModelReference!, ...garmentReferences.map((ref) => ref.upload)],
           prompt: tryOnPrompt,
           size: "1024x1024",
           ...(imageEditSupportsInputFidelity(model) ? { input_fidelity: "high" as const } : {})
