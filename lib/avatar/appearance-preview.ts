@@ -116,7 +116,7 @@ Show a centered straight-on full-body view from head to shoes in a symmetrical n
     userId,
     outfitId: "my-model",
     cacheKey: key,
-    storageKey: `model-appearance/${userId}/${key}.png`,
+    storageKey: `generated-previews/${userId}/my-model/${key}.png`,
     contentType: "image/png",
     format: "png",
     width: 1024,

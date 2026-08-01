@@ -94,6 +94,7 @@ assert.match(appearancePipeline, /quality: "high"/, "Appearance edits must reque
 assert.match(appearancePipeline, /supportsAppearanceEditing/, "Appearance edits must reject incompatible image models safely.");
 assert.match(appearancePipeline, /providerCode\(error\) !== "moderation_blocked"/, "Moderation-blocked edits must use the safe fictional-avatar fallback.");
 assert.match(appearancePipeline, /openai\.images\.generate/, "The appearance pipeline must support generation when a provider refuses person editing.");
+assert.match(appearancePipeline, /generated-previews\/\$\{userId\}\/my-model\//, "Appearance previews must use the IAM-approved generated-previews S3 prefix.");
 const studioModels = source("lib/avatar/studio-models.ts");
 assert.equal((studioModels.match(/-safe-v2\.png/g) || []).length, 11, "Every Studio Model category must use a safe-clothing source asset.");
 
