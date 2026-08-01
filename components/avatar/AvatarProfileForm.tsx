@@ -163,6 +163,7 @@ export function AvatarProfileForm({
                 src={previewUrl || currentModel.imagePath}
                 alt={`${currentModel.label} FitPick Studio Model with selected appearance`}
                 fill
+                unoptimized={Boolean(previewUrl)}
                 sizes="(max-width: 768px) 100vw, 320px"
                 className="animate-in fade-in h-full w-full object-cover object-top duration-300"
               />

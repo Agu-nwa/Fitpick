@@ -79,6 +79,7 @@ assert.match(form, /window\.setTimeout\([\s\S]*650/, "Appearance persistence mus
 assert.match(form, /appearanceRequest\.current/, "Rapid selections must use a latest-request guard.");
 assert.match(form, /controller\.abort\(\)/, "Superseded preview requests must be cancelled.");
 assert.match(form, /previewUrl \|\| currentModel\.imagePath/, "The existing preview must remain visible while updating or after failure.");
+assert.match(form, /unoptimized=\{Boolean\(previewUrl\)\}/, "Dynamic generated-model URLs must bypass an unconfigured Next image optimizer host.");
 assert.match(form, /safeUserMessage\(generated\.error/, "Preview failures must show the server's safe actionable message.");
 assert.match(form, /aria-live="polite"/, "Appearance status must be announced accessibly.");
 assert.match(source("components/avatar/AppearancePresetPicker.tsx"), /aria-pressed=\{selected\}/, "Swatches must expose their selected state.");
