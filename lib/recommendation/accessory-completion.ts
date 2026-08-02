@@ -377,6 +377,7 @@ export function selectAccessoryCompletion(input: {
   const scored = eligibleCandidateItems
     .map((item) => scoreAccessoryCandidate({ ...input, item }))
     .sort((a, b) => b.score - a.score);
+  logTaxonomyMetric("recommendation.accessory.considered", { candidateCount: scored.length });
   const bestByRole = new Map<AccessoryRole, AccessoryCandidate>();
   for (const candidate of scored) {
     const current = bestByRole.get(candidate.role);
@@ -467,6 +468,13 @@ export function selectAccessoryCompletion(input: {
     ? selected.map((candidate) => candidate.item)
     : selected.filter((candidate) => !roleValidation.invalid.some((entry) => entry.itemId === itemId(candidate.item))).map((candidate) => candidate.item);
   const validRoles = validItems.map(accessoryRoleFor);
+  logTaxonomyMetric("recommendation.accessory.selected", { selectedCount: validItems.length });
+  logTaxonomyMetric("recommendation.accessory.rejected", { rejectedCount: Math.max(0, scored.length - validItems.length) });
+  logTaxonomyMetric("recommendation.accessory.selected_sparse_metadata", { selectedCount: selected.filter((candidate) => candidate.missingSignals.length > 0).length });
+  logTaxonomyMetric("recommendation.accessory.rejected_explicit_conflict", { rejectedCount: selected.filter((candidate) => candidate.penalties.length > 0).length });
+  logTaxonomyMetric("recommendation.metadata.neckline_available", { availableCount: input.selectedItems.filter((item) => item.neckline && item.neckline !== "unknown").length });
+  logTaxonomyMetric("recommendation.metadata.belt_compatibility_available", { availableCount: input.selectedItems.filter((item) => typeof item.beltCompatible === "boolean").length });
+  logTaxonomyMetric("recommendation.metadata.cuff_type_available", { availableCount: input.selectedItems.filter((item) => item.cuffType && item.cuffType !== "unknown").length });
   if (omitted.length || roleValidation.invalid.length) logTaxonomyMetric("recommendation.accessory.rejected_by_role", { rejectedCount: omitted.length + roleValidation.invalid.length, selectedCount: validItems.length });
 
   return {

@@ -17,7 +17,7 @@ export type WardrobeFilterState = {
   worn: WardrobeWornFilter;
   needsCare: boolean;
   review: boolean;
-  reviewType: WardrobeReviewFilter;
+  reviewType?: WardrobeReviewFilter;
 };
 
 export type WardrobeFacetOption = {

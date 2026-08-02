@@ -119,6 +119,9 @@ export function rescueFootwear(items: any[], wardrobeItems: any[], scoringInput:
   });
   if (result.state !== "footwear_selected") logTaxonomyMetric("recommendation.footwear.initially_missing", { ownedCandidateCount: result.candidateCount });
   if (result.state === "footwear_rescued") logTaxonomyMetric("recommendation.footwear.rescued", { ownedCandidateCount: result.candidateCount });
+  if (result.state === "footwear_rescued") logTaxonomyMetric("recommendation.footwear.selected_by_rescue", { ownedCandidateCount: result.candidateCount });
+  logTaxonomyMetric("recommendation.footwear.rejected_weather", { rejectedCount: result.diagnostics.filter((entry) => entry.rejectionCode === "weather_conflict").length });
+  logTaxonomyMetric("recommendation.footwear.rejected_formality", { rejectedCount: result.diagnostics.filter((entry) => entry.rejectionCode === "formality_conflict").length });
   if (result.state === "no_owned_footwear") logTaxonomyMetric("recommendation.footwear.no_owned_item", { ownedCandidateCount: 0 });
   if (result.state === "footwear_available_but_incompatible") logTaxonomyMetric("recommendation.footwear.available_but_incompatible", { ownedCandidateCount: result.candidateCount });
   return result;
