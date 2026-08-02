@@ -140,7 +140,7 @@ const WardrobeItemSchema = new Schema(
     lastWornAt: { type: Date },
     archivedAt: { type: Date }
   },
-  { timestamps: true }
+  { timestamps: true, optimisticConcurrency: true }
 );
 
 export type WardrobeItemDocument = InferSchemaType<typeof WardrobeItemSchema> & {

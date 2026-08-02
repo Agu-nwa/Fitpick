@@ -16,7 +16,7 @@ function question(item: WardrobeItem) {
   return "What type of item is this?";
 }
 
-export function TaxonomyReviewCard({ item, onSaved }: { item: WardrobeItem; onSaved: (item: WardrobeItem) => void }) {
+export function TaxonomyReviewCard({ item, onSaved, queueMode = false }: { item: WardrobeItem; onSaved: (item: WardrobeItem) => void; queueMode?: boolean }) {
   const [choice, setChoice] = useState(item.canonicalSubtype || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -28,19 +28,20 @@ export function TaxonomyReviewCard({ item, onSaved }: { item: WardrobeItem; onSa
   async function save() {
     setSaving(true);
     setError("");
-    const identity = buildUserTaxonomyConfirmation(item, choice || "not_sure");
+    const setComponents = ["suit", "trouser_suit", "three_piece_suit", "tuxedo"].includes(choice) ? ["top_layer", "bottom"] as const : choice === "skirt_suit" ? ["top_layer", "bottom"] as const : ["co_ord_set", "matching_set", "other_set"].includes(choice) ? ["top", "bottom"] as const : [];
+    const identity = buildUserTaxonomyConfirmation(item, choice || "not_sure", [...setComponents]);
     const metadata: Record<string, unknown> = {};
     if (["necklace", "pendant", "chain", "earrings", "bracelet", "bangle", "cuff"].includes(choice)) metadata.accessoryScale = detailOne;
     if (choice === "belt") metadata.beltCompatible = detailOne === "yes" ? true : detailOne === "no" ? false : null;
     if (choice === "cufflinks") metadata.cuffType = detailOne === "yes" ? "french_cuff" : detailOne === "no" ? "standard" : "unknown";
-    if (item.category === "shoes") metadata.footwearAttributes = { toeStyle: detailOne, comfortLevel: detailTwo };
+    if (item.category === "shoes") metadata.footwearAttributes = { ...(item.footwearAttributes || {}), toeStyle: detailOne, comfortLevel: detailTwo };
     if (item.category === "bags") metadata.visibilityRole = detailOne === "main" ? "primary_carry" : detailOne === "small" ? "small_leather_good" : detailOne === "travel" ? "travel_luggage" : identity.visibilityRole;
-    metadata.metadataSources = Object.fromEntries(Object.keys(metadata).filter((key) => key !== "metadataSources").map((key) => [key, "user"]));
-    const payload = { ...identity, ...metadata };
+    metadata.metadataSources = { ...(item.metadataSources || {}), ...Object.fromEntries(Object.keys(metadata).filter((key) => key !== "metadataSources").map((key) => [key, "user"])) };
+    const payload = { ...identity, ...metadata, expectedUpdatedAt: item.updatedAt };
     const result = await updateWardrobeItem(item.id, payload);
     setSaving(false);
     if (result.ok) onSaved(result.data.item);
-    else setError("This item could not be updated right now. Please try again.");
+    else setError(result.error.code === "CONFLICT" ? "This item was updated elsewhere. Refresh before saving your choice." : "This item could not be updated right now. Please try again.");
   }
 
   return (
@@ -59,7 +60,7 @@ export function TaxonomyReviewCard({ item, onSaved }: { item: WardrobeItem; onSa
       {item.category === "bags" ? <label className="mt-4 block text-sm font-semibold text-ink">How is it used?<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="main">Main outfit bag</option><option value="small">Small personal item</option><option value="travel">Travel luggage</option></select></label> : null}
       {item.category === "shoes" ? <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold text-ink">Toe style<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="closed">Closed</option><option value="open">Open</option><option value="peep">Peep toe</option></select></label><label className="text-sm font-semibold text-ink">Comfort<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailTwo} onChange={(event) => setDetailTwo(event.target.value)}><option value="unknown">Not sure</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label></div> : null}
       {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
-      <Button className="mt-4 w-full" disabled={saving || !choice} onClick={() => void save()}>{saving ? "Saving…" : "Save and continue"}</Button>
+      <Button className="mt-4 w-full" disabled={saving || !choice} onClick={() => void save()}>{saving ? "Saving…" : queueMode ? "Save and continue" : "Save item type"}</Button>
     </Card>
   );
 }

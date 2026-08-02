@@ -34,6 +34,7 @@ import {
   type WardrobeFilterState
 } from "@/lib/wardrobe/filters";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
+import { isTaxonomyReviewable } from "@/lib/wardrobe/taxonomy-review-queue";
 
 const emptySummary: WardrobeSummary = {
   totalCount: 0,
@@ -515,6 +516,7 @@ export function WardrobeListClient() {
   const indexedItems = useMemo(() => buildWardrobeFilterIndex(items), [items]);
   const facetOptions = useMemo(() => buildWardrobeFacetOptions(indexedItems), [indexedItems]);
   const filteredItems = useMemo(() => filterWardrobeIndex(indexedItems, filters).map((indexed) => indexed.item), [filters, indexedItems]);
+  const taxonomyReviewCount = useMemo(() => items.filter(isTaxonomyReviewable).length, [items]);
   const hasFilters = hasActiveWardrobeFilters(filters);
 
   const updateFilters = useCallback((patch: Partial<WardrobeFilterState>) => {
@@ -581,6 +583,7 @@ export function WardrobeListClient() {
 
   return (
     <>
+      {taxonomyReviewCount > 0 ? <Card className="mt-6 flex flex-col gap-3 border-warning/25 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-ink">{taxonomyReviewCount} {taxonomyReviewCount === 1 ? "item needs" : "items need"} review</p><p className="mt-1 text-sm text-muted">Confirm shoes, sets and accessories to improve complete outfit suggestions.</p></div><Link href="/wardrobe/review" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-2xl bg-cocoa px-5 text-sm font-semibold text-canvas">Start review</Link></Card> : null}
       <FilterToolbar
         filters={filters}
         colors={facetOptions.colors}

@@ -19,7 +19,7 @@ export function detectTaxonomyConflicts(item: any): TaxonomyConflictResult {
 }
 
 export function buildUserTaxonomyConfirmation(item: any, canonicalSubtype: string, setComponents: WardrobeSetComponent[] = []) {
-  if (!canonicalSubtype || canonicalSubtype === "not_sure") return { taxonomyStatus: "unresolved" as const, taxonomyConfirmedBy: "user" as const, taxonomyNeedsReview: true };
+  if (!canonicalSubtype || canonicalSubtype === "not_sure") return { taxonomyStatus: "unresolved" as const, taxonomyConfirmedBy: "system" as const, taxonomyConfirmedAt: null, taxonomyConfidence: 0, taxonomyNeedsReview: true, taxonomyEvidence: ["user:reviewed_uncertain"] };
   const resolved = resolveCanonicalTaxonomy({ category: item.category, name: item.name, canonicalSubtype, taxonomyNeedsReview: false, setComponents });
   return {
     canonicalSubtype: resolved.canonicalSubtype,

@@ -10,6 +10,7 @@ import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { updateWardrobeItemSchema } from "@/schemas/wardrobe.schema";
+import { detectTaxonomyConflicts } from "@/lib/wardrobe/taxonomy-review";
 
 type RouteContext = {
   params: Promise<{
@@ -53,9 +54,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!existing) return apiError("NOT_FOUND", "Wardrobe item was not found.");
 
     const body = await readJson(request);
+    const expectedUpdatedAt = isRecord(body) && typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt : "";
+    const validatedBody = isRecord(body) ? Object.fromEntries(Object.entries(body).filter(([key]) => key !== "expectedUpdatedAt")) : body;
+    if (expectedUpdatedAt && existing.updatedAt && new Date(expectedUpdatedAt).getTime() !== existing.updatedAt.getTime()) return apiError("CONFLICT", "This item changed since you opened it. Refresh and review the latest details.");
     const parsed = validateBody(
       updateWardrobeItemSchema,
-      isRecord(body) ? { category: existing.category, subcategory: existing.subcategory || "", ...body } : body
+      isRecord(validatedBody) ? { category: existing.category, subcategory: existing.subcategory || "", ...validatedBody } : validatedBody
     );
     if (!parsed.ok) return parsed.response;
 
@@ -71,6 +75,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     Object.assign(existing, parsed.data);
+    if (parsed.data.taxonomyConfirmedBy === "user") {
+      const conflict = detectTaxonomyConflicts(existing);
+      existing.taxonomyConflicts = conflict.conflicts;
+      existing.taxonomyStatus = conflict.conflicts.length ? "needs_review" : existing.taxonomyStatus;
+      existing.taxonomyNeedsReview = existing.taxonomyStatus !== "confirmed";
+    }
     existing.condition = inferCondition({
       category: existing.category,
       color: existing.color,
@@ -90,6 +100,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({ item: serializeWardrobeItem(existing) }, { message: "Wardrobe item updated." });
   } catch (error) {
+    if (error instanceof Error && error.name === "VersionError") return apiError("CONFLICT", "This item changed while you were reviewing it. Refresh and try again.");
     logSafeError("wardrobe.update", error);
     return apiError("INTERNAL_ERROR", "Unable to update wardrobe item right now.");
   }
