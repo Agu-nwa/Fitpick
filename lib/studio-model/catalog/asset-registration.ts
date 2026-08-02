@@ -2,7 +2,9 @@ import { StudioModelAsset } from "@/models/StudioModelAsset";
 
 export function validateAssetRegistration(input: { assetUrl: string; storageKey: string; thumbnailUrl: string; hash: string; qualityScore: number }) {
   if (!/^https:\/\//i.test(input.assetUrl) || !/^https:\/\//i.test(input.thumbnailUrl)) throw new Error("invalid_asset_url");
-  if (!input.storageKey.startsWith("studio-model-assets/") || !/^[a-f0-9]{64}$/.test(input.hash)) throw new Error("invalid_asset_identity");
+  const integrationPrefix = String(process.env.STUDIO_MODEL_INTEGRATION_TEST_PREFIX || "studio-model-integration/").replace(/^\/+/, "");
+  const allowedPrefix = input.storageKey.startsWith("studio-model-assets/") || (process.env.STUDIO_MODEL_INTEGRATION_TEST_ENABLED === "true" && input.storageKey.startsWith(integrationPrefix));
+  if (!allowedPrefix || !/^[a-f0-9]{64}$/.test(input.hash)) throw new Error("invalid_asset_identity");
   if (!Number.isFinite(input.qualityScore) || input.qualityScore < 0 || input.qualityScore > 1) throw new Error("invalid_quality_score");
   return input;
 }
