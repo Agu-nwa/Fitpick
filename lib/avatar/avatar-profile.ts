@@ -10,6 +10,7 @@ import {
 import { isBodyTypeAvailableForGender, type StudioModelAppearance } from "@/lib/studio-model/appearance-taxonomy";
 import { legacySelectionForAppearance, parseStudioModelAppearance, studioModelAppearanceKey } from "@/lib/studio-model/configuration";
 import { resolveStudioModelForProfile } from "@/lib/studio-model/model-resolver";
+import { logStudioModelEvent } from "@/lib/studio-model/observability";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
 export type BodyPreset = "slim" | "average" | "athletic" | "curvy" | "plus";
@@ -252,11 +253,15 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
     }
   }
 
-  return AvatarProfile.findOneAndUpdate(
+  const profile = await AvatarProfile.findOneAndUpdate(
     { userId },
     { $set: cleaned },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  if (cleaned.studioModelConfiguration) {
+    logStudioModelEvent("appearance_updated", { appearanceKey: (cleaned as any).studioModelAppearanceKey, source: "profile", completed: true });
+  }
+  return profile;
 }
 
 function avatarBaseLabel(value?: string | null) {

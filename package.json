@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit",
     "test:studio-model-taxonomy": "tsx scripts/studio-model-taxonomy-test.ts",
     "test:studio-model-resolver": "tsx scripts/studio-model-resolver-test.ts",
+    "test:studio-model-profile": "tsx scripts/studio-model-profile-test.ts",
     "test": "npm run test:wardrobe-review-queue && npm run test:taxonomy-review && npm run test:styling-metadata && npm run test:styling-compatibility && npm run test:audit-tooling && npm run test:recommendation-correctness && npm run test:recommendations && npm run test:stylist-reference && npm run test:wardrobe-taxonomy && npm run test:wardrobe-validation && npm run test:wardrobe-filters",
     "test:styling-compatibility": "tsx scripts/styling-compatibility-test.ts",
     "test:styling-metadata": "tsx scripts/styling-metadata-test.ts",
