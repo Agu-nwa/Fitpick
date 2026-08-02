@@ -442,7 +442,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     });
     const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...accessoryCompletion.items]).items;
     const completedItemsWithAnchor = [anchor, ...completedItems];
-    const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor);
+    const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor, { allowedStructures: outfitTemplate.validStructures, footwearState: footwearRescue.state });
     const finalValidation = validateRecommendationCandidate({
       items: completedItems,
       template: outfitTemplate,
@@ -518,7 +518,8 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
         footwearCompletion: {
           rescued: footwearRescue.rescued,
           candidateCount: footwearRescue.candidateCount,
-          status: completeness.footwearIncluded ? "included" : "missing"
+          status: footwearRescue.state,
+          diagnostics: footwearRescue.diagnostics
         },
         taxonomyDiagnostics: taxonomyDiagnostics(available, completedItems),
         outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },

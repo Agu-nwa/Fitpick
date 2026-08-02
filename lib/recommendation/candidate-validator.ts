@@ -56,7 +56,7 @@ export function validateRecommendationCandidate(input: {
   const sanitized = sanitizeOutfitItems(input.items || []);
   const items = sanitized.items;
   const warnings: string[] = [];
-  const completeness = evaluateOutfitCompleteness(items);
+  const completeness = evaluateOutfitCompleteness(items, { allowedStructures: input.template?.validStructures });
   const accessoryValidation = validateAccessoryRoles(items);
   const structure = structureFor(items);
 

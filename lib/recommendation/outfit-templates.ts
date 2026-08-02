@@ -22,7 +22,10 @@ export type OutfitTemplate = {
   preferredTerms: string[];
   accessoryTerms: string[];
   hairEligible: boolean;
+  validStructures: OutfitStructure[];
 };
+
+export type OutfitStructure = "top_bottom" | "dress_one_piece" | "native_one_piece" | "native_separates";
 
 export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
   casual: {
@@ -34,6 +37,7 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["tee", "t-shirt", "polo", "jeans", "chinos", "sneaker", "trainer"],
     accessoryTerms: ["watch", "crossbody", "tote", "cap"],
     hairEligible: false
+    , validStructures: ["top_bottom"]
   },
   business_casual: {
     id: "business_casual",
@@ -44,6 +48,7 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["shirt", "oxford", "blouse", "trouser", "pants", "chinos", "loafer", "belt", "watch", "briefcase", "tote", "blazer"],
     accessoryTerms: ["belt", "watch", "briefcase", "tote"],
     hairEligible: false
+    , validStructures: ["top_bottom", "dress_one_piece"]
   },
   dress: {
     id: "dress",
@@ -54,6 +59,7 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["dress", "gown", "heel", "pump", "clutch", "shoulder bag", "necklace", "bracelet"],
     accessoryTerms: ["clutch", "necklace", "bracelet", "watch"],
     hairEligible: true
+    , validStructures: ["dress_one_piece"]
   },
   female_brunch: {
     id: "female_brunch",
@@ -64,26 +70,29 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["dress", "skirt", "heel", "pump", "shoulder bag", "necklace", "bracelet", "hair", "wig", "braids"],
     accessoryTerms: ["shoulder bag", "necklace", "bracelet", "hair", "wig"],
     hairEligible: true
+    , validStructures: ["dress_one_piece", "top_bottom"]
   },
   wedding: {
     id: "wedding",
     label: "Wedding",
     stylingFamily: "occasion-polish",
-    requiredCategories: ["dresses", "tops", "bottoms", "shoes"],
+    requiredCategories: ["shoes"],
     optionalCategories: ["outerwear", "bags", "accessories", "womens_hair"],
     preferredTerms: ["native", "agbada", "kaftan", "isiagu", "ankara", "dress", "gown", "formal shoe", "loafer", "heel", "watch", "cap"],
     accessoryTerms: ["watch", "cap", "clutch", "necklace", "hair"],
     hairEligible: true
+    , validStructures: ["dress_one_piece", "top_bottom", "native_one_piece", "native_separates"]
   },
   native: {
     id: "native",
     label: "Native",
     stylingFamily: "traditional-polish",
-    requiredCategories: ["dresses", "tops", "bottoms", "shoes"],
+    requiredCategories: ["shoes"],
     optionalCategories: ["accessories", "bags", "womens_hair"],
     preferredTerms: ["native", "agbada", "kaftan", "isiagu", "ankara", "aso-ebi", "formal shoe", "loafer", "sandal", "cap"],
     accessoryTerms: ["watch", "cap", "clutch", "hair"],
     hairEligible: true
+    , validStructures: ["native_one_piece", "native_separates"]
   },
   activewear: {
     id: "activewear",
@@ -94,6 +103,7 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["performance", "active", "gym", "sport", "legging", "shorts", "trainer", "sneaker", "duffel", "backpack"],
     accessoryTerms: ["backpack", "duffel", "smartwatch"],
     hairEligible: false
+    , validStructures: ["top_bottom", "dress_one_piece"]
   },
   vacation_light: {
     id: "vacation_light",
@@ -104,6 +114,7 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["linen", "lightweight", "shorts", "sandal", "slides", "tote", "crossbody", "sunglasses", "hat"],
     accessoryTerms: ["tote", "crossbody", "sunglasses", "hat", "hair"],
     hairEligible: true
+    , validStructures: ["top_bottom", "dress_one_piece"]
   },
   streetwear: {
     id: "streetwear",
@@ -114,16 +125,18 @@ export const outfitTemplates: Record<OutfitTemplateId, OutfitTemplate> = {
     preferredTerms: ["oversized", "tee", "hoodie", "cargo", "jeans", "sneaker", "trainer", "cap", "crossbody"],
     accessoryTerms: ["cap", "crossbody", "watch"],
     hairEligible: false
+    , validStructures: ["top_bottom"]
   },
   formal: {
     id: "formal",
     label: "Formal",
     stylingFamily: "formal-polish",
-    requiredCategories: ["dresses", "tops", "bottoms", "shoes"],
+    requiredCategories: ["shoes"],
     optionalCategories: ["outerwear", "bags", "accessories", "womens_hair"],
     preferredTerms: ["dress", "gown", "shirt", "trouser", "blazer", "formal shoe", "loafer", "oxford", "heel", "clutch", "watch", "tie", "cufflink"],
     accessoryTerms: ["watch", "tie", "cufflink", "clutch", "necklace", "hair"],
     hairEligible: true
+    , validStructures: ["dress_one_piece", "top_bottom", "native_one_piece", "native_separates"]
   }
 };
 
@@ -178,7 +191,10 @@ export function selectOutfitTemplate(input: {
 }
 
 export function templateCategories(template: OutfitTemplate) {
-  return Array.from(new Set([...template.requiredCategories, ...template.optionalCategories]));
+  const structural = template.validStructures.flatMap((structure) =>
+    structure === "top_bottom" || structure === "native_separates" ? ["tops", "bottoms"] : ["dresses"]
+  );
+  return Array.from(new Set([...structural, "shoes", ...template.requiredCategories, ...template.optionalCategories]));
 }
 
 export function scoreItemForTemplate(item: any, template?: OutfitTemplate) {

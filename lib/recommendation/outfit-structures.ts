@@ -38,6 +38,13 @@ export function structureFor(group: OccasionGroup) {
 }
 
 export function missingCoreCategories(items: any[], desiredCategories: string[]) {
-  const present = new Set(items.map((item) => item.category));
-  return desiredCategories.filter((category) => !["outerwear", "accessories", "bags"].includes(category) && !present.has(category));
+  const slots = new Set(items.flatMap((item) => outfitSlotsForItem(item)));
+  const missing: string[] = [];
+  const wantsCore = desiredCategories.some((category) => ["tops", "bottoms", "dresses", "native"].includes(category));
+  const hasAlternativeCore = slots.has("onePiece") || (slots.has("top") && slots.has("bottom"));
+  if (wantsCore && !hasAlternativeCore) missing.push("complete core outfit");
+  if (desiredCategories.includes("shoes") && !slots.has("shoes")) missing.push("shoes");
+  return missing;
 }
+
+import { outfitSlotsForItem } from "@/lib/recommendation/outfit-slots";

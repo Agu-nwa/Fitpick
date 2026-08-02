@@ -31,6 +31,24 @@ function optionalCandidates(items: any[], max = 4, requiredWhenAvailable = false
   return [null, ...candidates];
 }
 
+export const SLOT_CANDIDATE_QUOTA = 16;
+export const CORE_BEAM_WIDTH = 180;
+
+function balancedSlotCandidates(items: any[], scoringInput: any, quota = SLOT_CANDIDATE_QUOTA) {
+  const ranked = [...items].sort((a, b) => {
+    const score = (item: any) => scoreItemForTemplate(item, scoringInput.outfitTemplate) + (scoringInput.occasionProfile ? scoreItemForOccasionProfile(item, scoringInput.occasionProfile) : 0);
+    return score(b) - score(a) || idFor(a).localeCompare(idFor(b));
+  });
+  const fresh = sortedByFreshness(items);
+  const subtypeRepresentatives = new Map<string, any>();
+  for (const item of ranked) {
+    const key = String(item.canonicalSubtype || item.subcategory || item.category || "unknown").toLowerCase();
+    if (!subtypeRepresentatives.has(key)) subtypeRepresentatives.set(key, item);
+  }
+  const selected = [...ranked.slice(0, Math.ceil(quota / 2)), ...fresh.slice(0, Math.ceil(quota / 4)), ...Array.from(subtypeRepresentatives.values())];
+  return Array.from(new Map(selected.map((item) => [idFor(item), item])).values()).slice(0, quota);
+}
+
 export function generateCombinations(
   wardrobeItems: any[],
   categories: string[],
@@ -41,9 +59,9 @@ export function generateCombinations(
   // Group wardrobe items by category
   categories.forEach((category) => {
     const requestedSlot = categoryToOutfitSlot(category);
-    categoryMap[category] = sortedByFreshness(wardrobeItems
+    categoryMap[category] = balancedSlotCandidates(wardrobeItems
       .filter((item) => item.category === category || outfitSlotsForItem(item).includes(requestedSlot))
-    ).slice(0, 10); // Prevent combinational explosion while leaving enough variety.
+    , scoringInput); // Balanced top-ranked, rotation-ready, and subtype-diverse coverage.
   });
 
   const byCategory = (category: string) => categoryMap[category] || [];
@@ -93,34 +111,17 @@ export function generateCombinations(
     });
   }
 
-  for (const dress of byCategory("dresses")) {
-    for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
-      for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-        for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
-          for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-            for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
-              pushOutfit([dress, shoe, outerwear, accessory, bag, hair]);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  for (const top of byCategory("tops")) {
-    for (const bottom of byCategory("bottoms").length ? byCategory("bottoms") : [null]) {
-      for (const shoe of byCategory("shoes").length ? byCategory("shoes") : [null]) {
-        for (const outerwear of optionalCandidates(byCategory("outerwear"), 3)) {
-          for (const accessory of optionalCandidates(byCategory("accessories"), 3, true)) {
-            for (const bag of optionalCandidates(byCategory("bags"), 3, true)) {
-              for (const hair of optionalCandidates(byCategory("womens_hair"), 2)) {
-                pushOutfit([top, bottom, shoe, outerwear, accessory, bag, hair]);
-              }
-            }
-          }
-        }
-      }
-    }
+  const footwear = byCategory("shoes").length ? byCategory("shoes") : [null];
+  const coreCandidates: any[][] = [];
+  for (const onePiece of byCategory("dresses")) for (const shoe of footwear) coreCandidates.push([onePiece, shoe]);
+  for (const top of byCategory("tops")) for (const bottom of byCategory("bottoms")) for (const shoe of footwear) coreCandidates.push([top, bottom, shoe]);
+  const rankedCore = coreCandidates
+    .map((items) => ({ items, score: scoreOutfitDetailed(items.filter(Boolean), scoringInput).total }))
+    .sort((a, b) => b.score - a.score || a.items.map(idFor).join("|").localeCompare(b.items.map(idFor).join("|")))
+    .slice(0, CORE_BEAM_WIDTH);
+  for (const core of rankedCore) {
+    for (const outerwear of optionalCandidates(byCategory("outerwear"), 4)) pushOutfit([...core.items, outerwear]);
+    if (outfits.length >= maxCandidates) break;
   }
 
   return outfits.sort(

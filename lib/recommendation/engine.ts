@@ -1,6 +1,7 @@
 import { colorCompatibilityScore, colorNote } from "@/lib/recommendation/color";
 import { isAccessoryCandidate, selectAccessoryCompletion } from "@/lib/recommendation/accessory-completion";
 import { completenessLabel, evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
+import { completeFootwear } from "@/lib/recommendation/footwear-completion";
 import { computeRecommendationConfidence } from "@/lib/recommendation/confidence";
 import { collectionFamilyFor } from "@/lib/recommendation/collections";
 import { diversifyOutfits, noveltyScore } from "@/lib/recommendation/diversity";
@@ -105,13 +106,22 @@ export function recommendationEligible(item: any) {
 }
 
 export function rescueFootwear(items: any[], wardrobeItems: any[], scoringInput: any) {
-  if (evaluateOutfitCompleteness(items).footwearIncluded) return { items, rescued: false, candidateCount: 0 };
-  const candidates = wardrobeItems.filter((item) => outfitSlotsForItem(item).includes("shoes") && recommendationEligible(item));
-  if (!candidates.length) return { items, rescued: false, candidateCount: 0 };
-  const ranked = candidates
-    .map((shoe) => ({ shoe, score: scoreOutfit([...items, shoe], scoringInput) }))
-    .sort((a, b) => b.score - a.score);
-  return { items: sanitizeOutfitItems([...items, ranked[0].shoe]).items, rescued: true, candidateCount: candidates.length };
+  const result = completeFootwear({
+    selectedItems: items,
+    allWardrobeItems: wardrobeItems.filter(recommendationEligible),
+    occasion: scoringInput?.occasionName,
+    formality: scoringInput?.formality,
+    weather: scoringInput?.weatherContext,
+    stylePreferences: scoringInput?.styleProfile,
+    recentWearHistory: scoringInput?.outfitHistorySummary,
+    allowNeedsCare: scoringInput?.allowNeedsCare,
+    scoringInput
+  });
+  if (result.state !== "footwear_selected") logTaxonomyMetric("recommendation.footwear.initially_missing", { ownedCandidateCount: result.candidateCount });
+  if (result.state === "footwear_rescued") logTaxonomyMetric("recommendation.footwear.rescued", { ownedCandidateCount: result.candidateCount });
+  if (result.state === "no_owned_footwear") logTaxonomyMetric("recommendation.footwear.no_owned_item", { ownedCandidateCount: 0 });
+  if (result.state === "footwear_available_but_incompatible") logTaxonomyMetric("recommendation.footwear.available_but_incompatible", { ownedCandidateCount: result.candidateCount });
+  return result;
 }
 
 export function taxonomyDiagnostics(wardrobeItems: any[], selectedItems: any[]) {
@@ -407,7 +417,11 @@ export function buildRecommendation(input: EngineInput) {
     footwearVariety: readiness.footwearVariety,
     taxonomyReviewCount: readiness.taxonomyReviewCount || 0
   });
-  const completeness = evaluateOutfitCompleteness(completedItems);
+  const completeness = evaluateOutfitCompleteness(completedItems, { allowedStructures: outfitTemplate.validStructures, footwearState: footwearRescue.state });
+  logTaxonomyMetric(completeness.satisfiedStructure ? "recommendation.structure.selected" : "recommendation.structure.incomplete", {
+    structure: completeness.satisfiedStructure || "none",
+    evaluatedStructureCount: completeness.evaluatedStructures.length
+  });
   const finalValidation = validateRecommendationCandidate({
     items: completedItems,
     template: outfitTemplate,
@@ -576,7 +590,8 @@ export function buildRecommendation(input: EngineInput) {
       footwearCompletion: {
         rescued: footwearRescue.rescued,
         candidateCount: footwearRescue.candidateCount,
-        status: completeness.footwearIncluded ? "included" : "missing"
+        status: footwearRescue.state,
+        diagnostics: footwearRescue.diagnostics
       },
       taxonomyDiagnostics: itemTaxonomyDiagnostics,
       outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
