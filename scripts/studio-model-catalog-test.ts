@@ -5,6 +5,7 @@ import { selectBestStudioModelFallback } from "../lib/studio-model/catalog/asset
 import { canTransitionAssetStatus } from "../lib/studio-model/catalog/asset-status";
 import { STUDIO_MODEL_CATALOG_VERSION } from "../lib/studio-model/catalog/asset-version";
 import { validateAssetRegistration } from "../lib/studio-model/catalog/asset-registration";
+import { legacyStudioModelCandidates } from "../lib/studio-model/catalog/legacy-assets";
 
 const appearance = { version: STUDIO_MODEL_APPEARANCE_VERSION, representation: "studio_model", gender: "female", bodyType: "standard", skinTone: "tone_08", hairTexture: "coily", hairLength: "long", hairColor: "black", hairStyle: "locs" } as const;
 assert.equal(studioModelAppearanceKey(appearance), studioModelAppearanceKey({ ...appearance }));
@@ -17,4 +18,7 @@ assert.equal(canTransitionAssetStatus("READY", "GENERATING"), false);
 assert.equal(validateAssetRegistration({ assetUrl: "https://assets.example/model.png", thumbnailUrl: "https://assets.example/thumb.webp", storageKey: "studio-model-assets/v1/key/model.png", hash: "a".repeat(64), qualityScore: 1 }).qualityScore, 1);
 assert.throws(() => validateAssetRegistration({ assetUrl: "http://unsafe/model.png", thumbnailUrl: "https://assets.example/thumb.webp", storageKey: "other/model.png", hash: "bad", qualityScore: 2 }));
 assert.equal(JSON.stringify({ appearanceKey: studioModelAppearanceKey(appearance) }).includes("skinTone"), false);
+const legacy = legacyStudioModelCandidates("https://myfitpick.example");
+assert.equal(legacy.length, 11);
+assert.equal(legacy.every((asset) => !asset.exactMapping && asset.appearanceKey === null), true);
 console.log("studio model catalog tests passed");

@@ -11,6 +11,8 @@
     "test:studio-model-integration": "tsx scripts/studio-model-catalog-integration.ts",
     "studio-model:check-indexes": "tsx scripts/check-studio-model-indexes.ts",
     "studio-model:audit": "tsx scripts/audit-studio-model-assets.ts",
+    "import:legacy-studio-models": "tsx scripts/import-legacy-studio-model-assets.ts",
+    "studio-model:register": "tsx scripts/register-studio-model-asset.ts",
     "test": "npm run test:wardrobe-review-queue && npm run test:taxonomy-review && npm run test:styling-metadata && npm run test:styling-compatibility && npm run test:audit-tooling && npm run test:recommendation-correctness && npm run test:recommendations && npm run test:stylist-reference && npm run test:wardrobe-taxonomy && npm run test:wardrobe-validation && npm run test:wardrobe-filters",
     "test:styling-compatibility": "tsx scripts/styling-compatibility-test.ts",
     "test:styling-metadata": "tsx scripts/styling-metadata-test.ts",
