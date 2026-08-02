@@ -1,4 +1,5 @@
 export type WardrobeCondition = "ready" | "needs-care" | "missing-tags";
+import type { WardrobeSetComponent, WardrobeStructureRole, WardrobeStylingRole, WardrobeVisibilityRole } from "@/lib/wardrobe/canonical-taxonomy";
 export type WardrobeCategory =
   | "tops"
   | "bottoms"
@@ -37,6 +38,17 @@ export type WardrobeItem = {
   name: string;
   category: WardrobeCategory;
   subcategory?: string;
+  canonicalSubtype?: string;
+  structureRole?: WardrobeStructureRole;
+  stylingRole?: WardrobeStylingRole;
+  setComponents?: WardrobeSetComponent[];
+  visibilityRole?: WardrobeVisibilityRole;
+  occasionRange?: string[];
+  formalityLevel?: string;
+  taxonomyConfidence?: number;
+  taxonomyEvidence?: string[];
+  taxonomyNeedsReview?: boolean;
+  taxonomyVersion?: string;
   color: string;
   pattern?: string;
   fabric?: string;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MAX_IMAGE_UPLOAD_BYTES, NORMALIZED_STORAGE_IMAGE_MIME_TYPES, imageUploadRequirementText } from "@/lib/upload-limits";
 import { sanitizeGarmentMeasurementsForCategory as sanitizeMeasurementObjectForCategory } from "@/lib/wardrobe/category-intelligence";
+import { wardrobeSetComponents, wardrobeStructureRoles, wardrobeStylingRoles, wardrobeVisibilityRoles } from "@/lib/wardrobe/canonical-taxonomy";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier.");
 
@@ -53,6 +54,17 @@ const wardrobeFields = {
   name: z.string().trim().min(1).max(120),
   category: wardrobeCategorySchema,
   subcategory: z.string().trim().max(80).optional().or(z.literal("")),
+  canonicalSubtype: z.string().trim().max(80).optional().or(z.literal("")),
+  structureRole: z.enum(wardrobeStructureRoles).optional(),
+  stylingRole: z.enum(wardrobeStylingRoles).optional(),
+  setComponents: z.array(z.enum(wardrobeSetComponents)).max(8).optional(),
+  visibilityRole: z.enum(wardrobeVisibilityRoles).optional(),
+  occasionRange: tagList.optional(),
+  formalityLevel: z.string().trim().max(60).optional().or(z.literal("")),
+  taxonomyConfidence: z.number().min(0).max(1).optional(),
+  taxonomyEvidence: z.array(z.string().trim().min(1).max(160)).max(20).optional(),
+  taxonomyNeedsReview: z.boolean().optional(),
+  taxonomyVersion: z.string().trim().max(60).optional().or(z.literal("")),
   color: z.string().trim().max(60).optional().or(z.literal("")),
   pattern: z.string().trim().max(60).optional().or(z.literal("")),
   fabric: z.string().trim().max(60).optional().or(z.literal("")),
