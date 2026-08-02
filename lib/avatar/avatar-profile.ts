@@ -7,6 +7,9 @@ import {
   type StudioModelGender,
   type StudioModelType
 } from "@/lib/avatar/studio-models";
+import { isBodyTypeAvailableForGender, type StudioModelAppearance } from "@/lib/studio-model/appearance-taxonomy";
+import { legacySelectionForAppearance, parseStudioModelAppearance, studioModelAppearanceKey } from "@/lib/studio-model/configuration";
+import { resolveStudioModelForProfile } from "@/lib/studio-model/model-resolver";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
 export type BodyPreset = "slim" | "average" | "athletic" | "curvy" | "plus";
@@ -36,6 +39,7 @@ export type AvatarProfilePatch = Partial<{
   studioModelGender: StudioModelGender | null;
   studioModelType: StudioModelType | null;
   studioModelImageUrl: string | null;
+  studioModelConfiguration: StudioModelAppearance | null;
   consentAccepted: boolean;
   heightCm: number | null;
   weightKg: number | null;
@@ -150,9 +154,7 @@ export function validateModelImageUrl(value?: string | null) {
 }
 
 export function preferredTryOnModelImageUrl(profile: any) {
-  if (profile?.studioModelGender && profile?.studioModelType) {
-    return resolveStudioModelImageUrl(profile.studioModelGender, profile.studioModelType) || profile.studioModelImageUrl || null;
-  }
+  if (profile?.studioModelConfiguration || (profile?.studioModelGender && profile?.studioModelType)) return resolveStudioModelForProfile(profile).imageUrl;
   if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageUrl) return profile.generatedModelImageUrl;
   if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageUrl) return profile.uploadedModelImageUrl;
   return fallbackStudioModelForGender(profile?.genderPresentation);
@@ -203,6 +205,29 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   if ("uploadedModelImageStorageKey" in patch) cleaned.uploadedModelImageStorageKey = cleanString(patch.uploadedModelImageStorageKey, 512);
   if ("generatedModelImageUrl" in patch) cleaned.generatedModelImageUrl = validateModelImageUrl(patch.generatedModelImageUrl);
   if ("generatedModelImageStorageKey" in patch) cleaned.generatedModelImageStorageKey = cleanString(patch.generatedModelImageStorageKey, 512);
+  if ("studioModelConfiguration" in patch) {
+    if (patch.studioModelConfiguration === null) {
+      cleaned.studioModelConfiguration = null;
+      (cleaned as any).studioModelAppearanceKey = null;
+      (cleaned as any).studioModelAssetStatus = null;
+    } else {
+      const appearance = parseStudioModelAppearance(patch.studioModelConfiguration);
+      if (!isBodyTypeAvailableForGender(appearance.gender, appearance.bodyType)) throw new Error("invalid_studio_model_selection");
+      const legacy = legacySelectionForAppearance(appearance);
+      cleaned.studioModelConfiguration = appearance;
+      cleaned.studioModelGender = legacy.studioModelGender;
+      cleaned.studioModelType = legacy.studioModelType;
+      cleaned.studioModelImageUrl = resolveStudioModelImageUrl(legacy.studioModelGender, legacy.studioModelType);
+      (cleaned as any).studioModelAppearanceKey = studioModelAppearanceKey(appearance);
+      (cleaned as any).studioModelAssetStatus = "fallback";
+      (cleaned as any).studioModelFallbackReason = "exact_asset_pending";
+      cleaned.tryOnModelSource = "studio";
+      cleaned.genderPresentation = appearance.gender === "male" ? "masculine" : "feminine";
+      cleaned.heightPreset = appearance.heightBand || null;
+      cleaned.skinTonePreset = appearance.skinTone;
+      cleaned.hairStylePreset = `${appearance.hairColor} ${appearance.hairStyle}`;
+    }
+  }
   if ("studioModelGender" in patch || "studioModelType" in patch) {
     const gender = patch.studioModelGender ?? null;
     const type = patch.studioModelType ?? null;
@@ -266,6 +291,7 @@ export function buildAvatarPromptContext(profile: any) {
 }
 
 export function serializeAvatarProfile(profile: any) {
+  const resolution = resolveStudioModelForProfile(profile);
   return {
     id: String(profile._id),
     genderPresentation: profile.genderPresentation || "neutral",
@@ -287,9 +313,13 @@ export function serializeAvatarProfile(profile: any) {
     generatedModelAt: profile.generatedModelAt ? new Date(profile.generatedModelAt).toISOString() : null,
     studioModelGender: profile.studioModelGender || null,
     studioModelType: profile.studioModelType || null,
-    studioModelImageUrl: profile.studioModelGender && profile.studioModelType
-      ? resolveStudioModelImageUrl(profile.studioModelGender, profile.studioModelType)
-      : profile.studioModelImageUrl || null,
+    studioModelImageUrl: resolution.imageUrl,
+    studioModelConfiguration: profile.studioModelConfiguration?.toObject?.() || profile.studioModelConfiguration || null,
+    studioModelAppearanceKey: profile.studioModelAppearanceKey || resolution.appearanceKey,
+    studioModelAssetStatus: profile.studioModelAssetStatus || null,
+    studioModelAssetId: profile.studioModelAssetId || null,
+    studioModelExactAppearance: resolution.exactAppearance,
+    studioModelWarning: resolution.warning,
     heightCm: profile.heightCm ?? null,
     weightKg: profile.weightKg ?? null,
     chestCm: profile.chestCm ?? null,

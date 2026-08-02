@@ -10,6 +10,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
+import { studioModelAppearanceSchema } from "@/lib/studio-model/appearance-taxonomy";
 
 const nullablePreset = (max = 60) => z.union([safeShortText(max), z.null()]).optional();
 const nullableMeasurement = (min: number, max: number) => z.union([z.number().min(min).max(max), z.null()]).optional();
@@ -32,6 +33,7 @@ const avatarProfilePatchSchema = z
     generatedModelImageStorageKey: z.union([z.string().trim().max(512), z.null()]).optional(),
     studioModelGender: z.enum(["male", "female"]).nullable().optional(),
     studioModelType: z.enum(["standard", "petite", "athletic", "broad", "curvy", "plus-size", "maternity"]).nullable().optional(),
+    studioModelConfiguration: studioModelAppearanceSchema.nullable().optional(),
     heightCm: nullableMeasurement(90, 240),
     weightKg: nullableMeasurement(25, 260),
     chestCm: nullableMeasurement(45, 180),

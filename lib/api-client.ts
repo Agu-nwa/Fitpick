@@ -432,6 +432,12 @@ export type AvatarProfileData = {
     studioModelGender: "male" | "female" | null;
     studioModelType: "standard" | "petite" | "athletic" | "broad" | "curvy" | "plus-size" | "maternity" | null;
     studioModelImageUrl: string | null;
+    studioModelConfiguration: import("@/lib/studio-model/appearance-taxonomy").StudioModelAppearance | null;
+    studioModelAppearanceKey: string | null;
+    studioModelAssetStatus: "pending" | "ready" | "fallback" | null;
+    studioModelAssetId: string | null;
+    studioModelExactAppearance: boolean;
+    studioModelWarning: string | null;
     heightCm: number | null;
     weightKg: number | null;
     chestCm: number | null;
