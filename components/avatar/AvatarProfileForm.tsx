@@ -12,6 +12,17 @@ import type { StudioModelAppearance } from "@/lib/studio-model/appearance-taxono
 
 type AvatarProfile = AvatarProfileData["profile"];
 
+function studioModelDisplayUrl(value?: string | null) {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value, "https://www.myfitpick.com");
+    if (parsed.pathname.startsWith("/models/studio/")) return parsed.pathname;
+  } catch {
+    // Preserve the supplied value so the image component can handle it.
+  }
+  return value;
+}
+
 function legacyAppearance(profile: AvatarProfile): StudioModelAppearance {
   return {
     ...defaultStudioModelAppearance,
@@ -26,6 +37,7 @@ export function AvatarProfileForm({ profile, onSaved }: { profile: AvatarProfile
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const studioModelImageUrl = studioModelDisplayUrl(profile.studioModelImageUrl);
 
   async function save(studioModelConfiguration: StudioModelAppearance) {
     setSaving(true); setNotice(""); setError("");
@@ -45,7 +57,7 @@ export function AvatarProfileForm({ profile, onSaved }: { profile: AvatarProfile
     {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
     {notice ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
     {!editing ? <section className="grid gap-4 rounded-xl3 border border-line bg-canvas/60 p-4 md:grid-cols-[0.8fr_1.2fr] md:items-center">
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface">{profile.studioModelImageUrl ? <Image src={profile.studioModelImageUrl} alt="Current Studio Model" width={960} height={1280} className="aspect-[3/4] h-full w-full object-cover object-top" /> : <div className="flex aspect-[3/4] items-center justify-center text-sm text-muted">No model selected</div>}</div>
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface">{studioModelImageUrl ? <Image src={studioModelImageUrl} alt="Current Studio Model" width={960} height={1280} className="aspect-[3/4] h-full w-full object-cover object-top" /> : <div className="flex aspect-[3/4] items-center justify-center text-sm text-muted">No model selected</div>}</div>
       <div><h3 className="text-lg font-bold text-ink">{profile.studioModelConfiguration ? "Personalized appearance saved" : "Legacy Studio Model"}</h3><p className="mt-2 text-sm leading-6 text-muted">{profile.studioModelExactAppearance ? "This preview exactly matches the saved configuration." : profile.studioModelWarning || "Customize this model with the expanded appearance controls."}</p><Button type="button" className="mt-4 w-full rounded-full" onClick={() => { setEditing(true); setError(""); setNotice(""); }}>Edit appearance</Button></div>
     </section> : <section className="rounded-xl3 border border-cocoa/20 bg-cocoa/5 p-4"><StudioModelAppearanceWizard initial={profile.studioModelConfiguration || legacyAppearance(profile)} saving={saving} onConfirm={save} onCancel={() => setEditing(false)} /></section>}
   </Card>;
