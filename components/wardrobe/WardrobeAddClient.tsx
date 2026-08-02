@@ -45,6 +45,7 @@ import {
 } from "@/lib/wardrobe/category-intelligence";
 import type { WardrobeImageAsset, WardrobeImagePurpose } from "@/types/ai-tagging";
 import type { TaggedSize } from "@/types/wardrobe";
+import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
 type SlotFile = {
   id: string;
@@ -183,10 +184,21 @@ function confirmedField(value: string | string[] | number | null) {
 
 function autoConfirmPayload(category: WardrobeIntakeCategory, essentials: ReturnType<typeof normalizeEssentials>) {
   const garmentFit = garmentFitFromIntake(essentials.fit);
+  const taxonomy = resolveCanonicalTaxonomy({ category: category.backendCategory, canonicalSubtype: category.canonicalSubtype, subcategory: category.subcategory });
   return {
     name: autoItemName(category, essentials) || category.title,
     category: category.backendCategory,
     subcategory: category.subcategory || category.title,
+    canonicalSubtype: taxonomy.canonicalSubtype,
+    structureRole: taxonomy.structureRole,
+    stylingRole: taxonomy.stylingRole,
+    setComponents: taxonomy.setComponents,
+    visibilityRole: taxonomy.visibilityRole,
+    formalityLevel: taxonomy.formalityLevel,
+    taxonomyConfidence: taxonomy.needsReview ? taxonomy.confidence : 1,
+    taxonomyEvidence: [`user-selection:${category.canonicalSubtype}`],
+    taxonomyNeedsReview: taxonomy.needsReview,
+    taxonomyVersion: taxonomy.taxonomyVersion,
     color: essentials.primaryColor,
     pattern: "",
     fabric: "",
@@ -637,6 +649,7 @@ export function WardrobeAddClient() {
         },
         categorySpecificMetadata: {
           title: selectedCategory.title,
+          canonicalSubtype: selectedCategory.canonicalSubtype,
           guidance: selectedCategory.guidance,
           visionFocus: selectedCategory.visionFocus,
           allowedMeasurementKeys: selectedCategory.allowedMeasurementKeys

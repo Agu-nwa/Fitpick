@@ -7,7 +7,8 @@ import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { confidenceLabel, garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
-import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition } from "@/types/wardrobe";
+import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
+import { getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
 type FieldKind = "text" | "list" | "category";
 
@@ -18,7 +19,7 @@ type FieldConfig = {
   required?: boolean;
 };
 
-export type AITagConfirmationValues = {
+export type AITagConfirmationValues = Pick<WardrobeItem, "canonicalSubtype" | "structureRole" | "stylingRole" | "setComponents" | "visibilityRole" | "formalityLevel" | "taxonomyConfidence" | "taxonomyEvidence" | "taxonomyNeedsReview" | "taxonomyVersion"> & {
   name: string;
   category: WardrobeCategory;
   subcategory?: string;
@@ -127,15 +128,7 @@ const garmentMeasurementFields: Array<{ key: keyof GarmentMeasurements; label: s
   { key: "heelHeightCm", label: "Heel height", placeholder: "4" }
 ];
 
-const subtypePresets: Partial<Record<WardrobeCategory, string[]>> = {
-  tops: ["T-shirt", "Shirt", "Polo", "Blouse", "Sweater", "Hoodie", "Tank top"],
-  bottoms: ["Jeans", "Trousers", "Chinos", "Shorts", "Skirt", "Joggers"],
-  dresses: ["Dress", "Gown", "Jumpsuit", "Romper"],
-  outerwear: ["Blazer", "Jacket", "Coat", "Cardigan", "Vest"],
-  shoes: ["Sneakers", "Loafers", "Boots", "Formal shoes", "Sandals", "Heels", "Slippers", "Sports shoes"],
-  bags: ["Tote", "Handbag", "Crossbody", "Clutch", "Backpack"],
-  accessories: ["Belt", "Watch", "Sunglasses", "Jewellery", "Hat", "Scarf"]
-};
+const subtypePresets = Object.fromEntries(categoryOptions.map((category) => [category, getCanonicalSubtypeOptions(category).map((option) => option.label)])) as Partial<Record<WardrobeCategory, string[]>>;
 
 const scalarPresets: Record<string, string[]> = {
   pattern: ["Plain", "Striped", "Checked", "Graphic", "Floral", "Textured"],
@@ -406,6 +399,7 @@ export function AITagConfirmationForm({
     const itemName = name.trim();
     const category = (values.category || "tops") as WardrobeCategory;
     const primaryColor = values.primaryColor.trim();
+    const taxonomy = resolveCanonicalTaxonomy({ category, subcategory: values.subcategory.trim(), name: itemName });
 
     if (!itemName || !category || !primaryColor) {
       setError("Add a name, category, and colour before saving.");
@@ -423,6 +417,16 @@ export function AITagConfirmationForm({
       name: itemName,
       category,
       subcategory: values.subcategory.trim(),
+      canonicalSubtype: taxonomy.canonicalSubtype,
+      structureRole: taxonomy.structureRole,
+      stylingRole: taxonomy.stylingRole,
+      setComponents: taxonomy.setComponents,
+      visibilityRole: taxonomy.visibilityRole,
+      formalityLevel: taxonomy.formalityLevel,
+      taxonomyConfidence: taxonomy.confidence,
+      taxonomyEvidence: taxonomy.evidence,
+      taxonomyNeedsReview: taxonomy.needsReview,
+      taxonomyVersion: taxonomy.taxonomyVersion,
       color: primaryColor,
       pattern: values.pattern.trim(),
       fabric: values.fabricComposition.trim() || values.fabricEstimate.trim(),

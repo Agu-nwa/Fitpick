@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { getCanonicalSubtypeOptions, isCanonicalTaxonomyComplete, resolveCanonicalTaxonomy } from "../lib/wardrobe/canonical-taxonomy";
+import { intakeCategories } from "../lib/wardrobe/category-intelligence";
 
 function resolved(category: string, subcategory: string, patch: Record<string, unknown> = {}) {
   return resolveCanonicalTaxonomy({ category, subcategory, name: subcategory, ...patch });
@@ -44,4 +45,8 @@ for (const subtype of ["slides", "mules", "pumps", "oxfords", "slippers"]) {
   assert.equal(item.structureRole, "footwear");
 }
 assert.ok(getCanonicalSubtypeOptions("accessories").some((entry) => entry.value === "necklace"));
+assert.equal(intakeCategories.some((entry) => entry.id === "jewelry"), false, "generic Jewelry must not remain a preferred intake option");
+assert.ok(intakeCategories.some((entry) => entry.canonicalSubtype === "necklace"), "intake must use canonical necklace option");
+assert.ok(intakeCategories.some((entry) => entry.canonicalSubtype === "oxfords"), "intake must expose explicit footwear options");
+assert.ok(getCanonicalSubtypeOptions("accessories").some((entry) => entry.needsReview && entry.clarification), "ambiguous subtypes must expose a clarification step");
 console.log("Canonical wardrobe taxonomy checks passed.");

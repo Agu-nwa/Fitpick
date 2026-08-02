@@ -18,7 +18,7 @@ import {
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { useSession } from "@/hooks/use-session";
 import { archiveWardrobeItem, getWardrobeItem, updateWardrobeItem } from "@/lib/api-client";
-import { intakeCategories } from "@/lib/wardrobe/category-intelligence";
+import { getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 import { cn } from "@/lib/utils";
 import type { GarmentFit, TaggedSize, WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
@@ -135,7 +135,7 @@ function CoreEditForm({ item, disabled, onSubmit }: { item: WardrobeItem; disabl
   const [color, setColor] = useState(item.color || "");
   const [taggedSize, setTaggedSize] = useState<TaggedSize>(item.taggedSize || "unknown");
   const [fit, setFit] = useState(item.fit || (item.garmentFit && item.garmentFit !== "unknown" ? item.garmentFit : ""));
-  const subtypeOptions = useMemo(() => intakeCategories.filter((option) => option.backendCategory === category), [category]);
+  const subtypeOptions = useMemo(() => getCanonicalSubtypeOptions(category), [category]);
 
   useEffect(() => {
     setCategory(item.category);
@@ -159,7 +159,7 @@ function CoreEditForm({ item, disabled, onSubmit }: { item: WardrobeItem; disabl
           <select className={inputClass} value={category} onChange={(event) => {
             const nextCategory = event.target.value as WardrobeCategory;
             setCategory(nextCategory);
-            setSubcategory(intakeCategories.find((option) => option.backendCategory === nextCategory)?.subcategory || "");
+            setSubcategory(getCanonicalSubtypeOptions(nextCategory)[0]?.label || "");
           }} disabled={disabled}>
             {categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
@@ -168,7 +168,7 @@ function CoreEditForm({ item, disabled, onSubmit }: { item: WardrobeItem; disabl
           Subtype
           <select className={inputClass} value={subcategory} onChange={(event) => setSubcategory(event.target.value)} disabled={disabled}>
             <option value="">Select subtype</option>
-            {subtypeOptions.map((option) => <option key={option.id} value={option.subcategory}>{option.title}</option>)}
+            {subtypeOptions.map((option) => <option key={option.value} value={option.label}>{option.label}</option>)}
           </select>
         </label>
       </div>
@@ -233,10 +233,21 @@ export function WardrobeDetailClient({ id }: { id: string }) {
     setIsSaving(true);
     setNotice(null);
     const garmentFit = garmentFitFromFit(values.fit);
+    const taxonomy = resolveCanonicalTaxonomy({ category: values.category, subcategory: values.subcategory, name: [values.color, values.subcategory].join(" ") });
     const result = await updateWardrobeItem(id, {
       name: [values.color, values.subcategory || values.category].filter(Boolean).join(" "),
       category: values.category,
       subcategory: values.subcategory,
+      canonicalSubtype: taxonomy.canonicalSubtype,
+      structureRole: taxonomy.structureRole,
+      stylingRole: taxonomy.stylingRole,
+      setComponents: taxonomy.setComponents,
+      visibilityRole: taxonomy.visibilityRole,
+      formalityLevel: taxonomy.formalityLevel,
+      taxonomyConfidence: taxonomy.confidence,
+      taxonomyEvidence: taxonomy.evidence,
+      taxonomyNeedsReview: taxonomy.needsReview,
+      taxonomyVersion: taxonomy.taxonomyVersion,
       color: values.color,
       fit: values.fit,
       taggedSize: values.taggedSize,

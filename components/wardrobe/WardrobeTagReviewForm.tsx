@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
+import { getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
-export type WardrobeTagFormValues = {
+export type WardrobeTagFormValues = Pick<WardrobeItem, "canonicalSubtype" | "structureRole" | "stylingRole" | "setComponents" | "visibilityRole" | "formalityLevel" | "taxonomyConfidence" | "taxonomyEvidence" | "taxonomyNeedsReview" | "taxonomyVersion"> & {
   name?: string;
   category: WardrobeCategory;
   subcategory?: string;
@@ -182,10 +183,21 @@ export function WardrobeTagReviewForm({
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
+        const taxonomy = resolveCanonicalTaxonomy({ category, subcategory: subcategory.trim(), name: name.trim() });
         void onSubmit({
           name: name.trim(),
           category,
           subcategory: subcategory.trim(),
+          canonicalSubtype: taxonomy.canonicalSubtype,
+          structureRole: taxonomy.structureRole,
+          stylingRole: taxonomy.stylingRole,
+          setComponents: taxonomy.setComponents,
+          visibilityRole: taxonomy.visibilityRole,
+          formalityLevel: taxonomy.formalityLevel,
+          taxonomyConfidence: taxonomy.confidence,
+          taxonomyEvidence: taxonomy.evidence,
+          taxonomyNeedsReview: taxonomy.needsReview,
+          taxonomyVersion: taxonomy.taxonomyVersion,
           color: color.trim(),
           pattern: pattern.trim(),
           fabric: fabric.trim(),
@@ -232,7 +244,10 @@ export function WardrobeTagReviewForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs font-semibold text-ink">
           Subcategory
-          <input className={inputClass} value={subcategory} onChange={(event) => setSubcategory(event.target.value)} placeholder="Shirt" />
+          <select className={inputClass} value={subcategory} onChange={(event) => setSubcategory(event.target.value)}>
+            <option value="">Select subtype</option>
+            {getCanonicalSubtypeOptions(category).map((option) => <option key={option.value} value={option.label}>{option.label}</option>)}
+          </select>
         </label>
         <label className="block text-xs font-semibold text-ink">
           Pattern

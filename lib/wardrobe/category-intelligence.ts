@@ -1,5 +1,6 @@
 import type { GarmentMeasurements, WardrobeCategory } from "@/types/wardrobe";
 import type { WardrobeImagePurpose } from "@/types/ai-tagging";
+import { canonicalTaxonomyDefinitions } from "@/lib/wardrobe/canonical-taxonomy";
 
 export type IntakeGroupId = "clothing" | "shoes" | "bags" | "accessories" | "hair";
 
@@ -27,6 +28,7 @@ export type WardrobeIntakeCategory = {
   title: string;
   backendCategory: WardrobeCategory;
   subcategory: string;
+  canonicalSubtype: string;
   description: string;
   image: string;
   slots: IntakePhotoSlot[];
@@ -128,13 +130,14 @@ function categoryRuleFor(category?: WardrobeCategory | string): WardrobeCategory
   return wardrobeCategoryRules[String(category || "") as WardrobeCategory] || wardrobeCategoryRules.tops;
 }
 
-export const intakeCategories: WardrobeIntakeCategory[] = [
+const legacyIntakeCategories: Array<Omit<WardrobeIntakeCategory, "canonicalSubtype"> & { canonicalSubtype?: string }> = [
   {
     id: "shirts",
     group: "clothing",
     title: "Shirt",
     backendCategory: "tops",
     subcategory: "Shirt",
+    canonicalSubtype: "shirt",
     description: "Button-up shirts, dress shirts, casual shirts, and overshirts.",
     image: "/fashion/product-blue-blouse.png",
     slots: clothingSlots,
@@ -448,6 +451,51 @@ export const intakeCategories: WardrobeIntakeCategory[] = [
     visionFocus: ["accessory type", "material", "finish", "occasion", "brand evidence", "care"],
     allowedMeasurementKeys: []
   }))
+];
+
+function intakeGroupForCategory(category: WardrobeCategory): IntakeGroupId {
+  if (category === "shoes") return "shoes";
+  if (category === "bags") return "bags";
+  if (category === "accessories") return "accessories";
+  if (category === "womens_hair") return "hair";
+  return "clothing";
+}
+
+function slotsForGroup(group: IntakeGroupId) {
+  if (group === "shoes") return shoeSlots;
+  if (group === "bags") return bagSlots;
+  if (group === "accessories") return accessorySlots;
+  if (group === "hair") return hairSlots;
+  return clothingSlots;
+}
+
+const replacedLegacyIds = new Set(["suits_sets", "activewear", "swimwear", "sleepwear", "traditional_wear", "jewelry", "ties"]);
+const preservedLegacy: WardrobeIntakeCategory[] = legacyIntakeCategories
+  .filter((entry) => !replacedLegacyIds.has(entry.id))
+  .map((entry) => ({ ...entry, canonicalSubtype: entry.canonicalSubtype || entry.id }));
+const preservedKeys = new Set(preservedLegacy.map((entry) => `${entry.backendCategory}:${entry.canonicalSubtype}`));
+
+export const intakeCategories: WardrobeIntakeCategory[] = [
+  ...preservedLegacy,
+  ...canonicalTaxonomyDefinitions
+    .filter((definition) => !preservedKeys.has(`${definition.category}:${definition.value}`))
+    .map((definition) => {
+      const group = intakeGroupForCategory(definition.category);
+      return {
+        id: definition.value,
+        group,
+        title: definition.label,
+        backendCategory: definition.category,
+        subcategory: definition.label,
+        canonicalSubtype: definition.value,
+        description: definition.needsReview ? "Choose this when the exact role needs one quick confirmation." : `${definition.label} saved with its correct outfit role.`,
+        image: group === "shoes" ? "/fashion/product-espresso-boots.png" : group === "bags" ? "/fashion/product-blush-bag.png" : "/fashion/editorial-teal-studio.png",
+        slots: slotsForGroup(group),
+        guidance: group === "clothing" ? ["Full item view", "Back or side view", "Fabric or label detail"] : ["Full item view", "Detail view", "Marking or label"],
+        visionFocus: [definition.label.toLowerCase(), "colour", "material", "occasion", "styling role"],
+        allowedMeasurementKeys: definition.category === "shoes" ? shoeMeasurements : definition.structureRole === "bottom" ? bottomMeasurements : definition.structureRole === "one_piece" || definition.structureRole === "set" ? dressMeasurements : definition.structureRole === "top" || definition.structureRole === "outer_layer" ? topMeasurements : []
+      };
+    })
 ];
 
 export const labelPhotoKinds: Array<{ id: LabelPhotoKind; label: string; helper: string }> = [
