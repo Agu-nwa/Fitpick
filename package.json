@@ -33,6 +33,7 @@
     "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
     "test:wardrobe-validation": "tsx scripts/wardrobe-upload-validation-test.ts",
     "test:wardrobe-taxonomy": "tsx scripts/wardrobe-canonical-taxonomy-test.ts",
+    "backfill:wardrobe-taxonomy": "tsx scripts/backfill-wardrobe-taxonomy-v2.ts",
     "test:payments": "node scripts/payment-credit-system-test.mjs",
     "migrate:credit-wallets": "node scripts/migrate-credit-wallets.mjs",
     "reconcile:tryon-credits": "tsx scripts/reconcile-tryon-credits.ts",
