@@ -7,6 +7,7 @@ const StudioModelAssetSchema = new Schema({
   assetUrl: { type: String, default: "", maxlength: 2048 },
   storageKey: { type: String, default: "", maxlength: 512 },
   thumbnailUrl: { type: String, default: "", maxlength: 2048 },
+  thumbnailStorageKey: { type: String, default: "", maxlength: 512 },
   genderPresentation: { type: String, enum: ["female", "male"], required: true },
   bodyType: { type: String, enum: ["petite", "standard", "athletic", "broad", "curvy", "plus_size", "maternity"], required: true },
   skinTone: { type: String, required: true, maxlength: 20 },
@@ -26,6 +27,12 @@ const StudioModelAssetSchema = new Schema({
   providerAssetId: { type: String, default: "", maxlength: 200, select: false },
   generationPromptVersion: { type: String, default: "", maxlength: 80 },
   failureCode: { type: String, default: "", maxlength: 80 },
+  generationClaimedAt: { type: Date, default: null },
+  generationLeaseExpiresAt: { type: Date, default: null, index: true },
+  generationAttemptCount: { type: Number, default: 0, min: 0, max: 5 },
+  originalWidth: { type: Number, default: 0 }, originalHeight: { type: Number, default: 0 }, originalBytes: { type: Number, default: 0 }, originalFormat: { type: String, default: "" },
+  thumbnailWidth: { type: Number, default: 0 }, thumbnailHeight: { type: Number, default: 0 }, thumbnailBytes: { type: Number, default: 0 }, thumbnailFormat: { type: String, default: "" },
+  providerModel: { type: String, default: "", maxlength: 80 }, appearanceVersion: { type: String, default: "studio-model-v1", maxlength: 40 }, validationVersion: { type: String, default: "studio-model-validation-v1", maxlength: 80 }, sourceType: { type: String, enum: ["generated", "legacy_import", "manual_upload"], default: "generated" }, generatedAt: { type: Date, default: null },
   deprecatedAt: { type: Date, default: null },
   extensions: { type: Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
