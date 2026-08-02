@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, MapPin, Palette, Sparkles } from "lucide-react";
 import { AuthEntryForm } from "@/components/auth/AuthEntryForm";
+import { StudioModelAppearanceWizard } from "@/components/avatar/StudioModelAppearanceWizard";
 import { LoadingCard } from "@/components/integration/LoadingCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -13,8 +13,7 @@ import { FieldGroup } from "@/components/ui/FieldGroup";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { updateAvatarProfile, updateCurrentUser, updatePreferences } from "@/lib/api-client";
-import { getStudioModelOptions, type StudioModelGender, type StudioModelType } from "@/lib/avatar/studio-models";
-import { cn } from "@/lib/utils";
+import type { StudioModelAppearance } from "@/lib/studio-model/appearance-taxonomy";
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-canvas/80 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -80,8 +79,6 @@ export function EssentialModelSetup() {
   const router = useRouter();
   const session = useSession();
   const [setupStep, setSetupStep] = useState<"model" | "style">("model");
-  const [studioGender, setStudioGender] = useState<StudioModelGender | "">("");
-  const [studioModelType, setStudioModelType] = useState<StudioModelType | "">("");
   const [name, setName] = useState("");
   const [styleIdentity, setStyleIdentity] = useState("clean, polished");
   const [colorPreferences, setColorPreferences] = useState("black, white, navy");
@@ -97,7 +94,6 @@ export function EssentialModelSetup() {
   const [error, setError] = useState("");
   const customLocationRef = useRef<HTMLDivElement>(null);
   const revealContent = useRevealContent();
-  const modelOptions = useMemo(() => getStudioModelOptions(studioGender || null), [studioGender]);
 
   useEffect(() => {
     if (session.user?.name) setName(session.user.name);
@@ -128,21 +124,14 @@ export function EssentialModelSetup() {
     if (value === otherLocation) revealContent(customLocationRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
   }
 
-  function chooseGender(value: StudioModelGender) {
-    setStudioGender(value);
-    setStudioModelType("");
-  }
-
-  async function saveStudioModel() {
-    if (!studioGender || !studioModelType) return;
+  async function saveStudioModel(studioModelConfiguration: StudioModelAppearance) {
     setSaving(true);
     setError("");
     setMessage("");
 
     const result = await updateAvatarProfile({
       tryOnModelSource: "studio",
-      studioModelGender: studioGender,
-      studioModelType
+      studioModelConfiguration
     });
 
     setSaving(false);
@@ -235,72 +224,7 @@ export function EssentialModelSetup() {
 
         {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
-        <section>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">Choose a model type</p>
-          <div className="grid grid-cols-2 gap-3">
-            {(["male", "female"] as const).map((gender) => (
-              <button
-                key={gender}
-                type="button"
-                onClick={() => chooseGender(gender)}
-                className={cn(
-                  "focus-ring min-h-12 rounded-2xl border px-4 text-sm font-bold capitalize transition duration-200 active:scale-[0.98]",
-                  studioGender === gender ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-canvas/70 text-ink hover:border-cocoa/50"
-                )}
-                aria-pressed={studioGender === gender}
-              >
-                {gender === "male" ? "Male" : "Female"}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {studioGender ? (
-          <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-muted">Use a Studio Model</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {modelOptions.map((option) => {
-                const selected = studioModelType === option.type;
-                return (
-                  <button
-                    key={option.type}
-                    type="button"
-                    onClick={() => setStudioModelType(option.type)}
-                    className={cn(
-                      "focus-ring group overflow-hidden rounded-[1.5rem] border bg-surface text-left shadow-soft transition duration-200 active:scale-[0.99]",
-                      selected ? "border-cocoa shadow-glow ring-2 ring-cocoa/20" : "border-line hover:-translate-y-0.5 hover:border-cocoa/40 hover:shadow-card"
-                    )}
-                    aria-pressed={selected}
-                  >
-                    <div className="aspect-[3/4] overflow-hidden bg-canvas">
-                      <Image
-                        src={option.imagePath}
-                        alt={`${option.label} FitPick Studio Model`}
-                        width={960}
-                        height={1280}
-                        className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-bold text-ink">{option.label}</h3>
-                        {selected ? <span className="rounded-full bg-cocoa px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-canvas">Selected</span> : null}
-                      </div>
-                      <p className="mt-2 text-xs leading-5 text-muted">{option.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        <Button type="button" className="w-full" disabled={saving || !studioGender || !studioModelType} onClick={() => void saveStudioModel()}>
-          {saving ? "Saving..." : "Continue"}
-        </Button>
-        <p className="text-center text-xs leading-5 text-muted">
-          Use a Studio Model for the cleanest preview across MyFitPick.
-        </p>
+        <StudioModelAppearanceWizard saving={saving} confirmLabel="Save and continue" onConfirm={saveStudioModel} />
       </Card>
     );
   }
