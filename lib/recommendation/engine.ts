@@ -15,7 +15,9 @@ import { modeLabel, normalizeRecommendationMode } from "@/lib/recommendation/pol
 import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
-import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { outfitSlotsForItem, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
+import { logTaxonomyMetric } from "@/lib/wardrobe/taxonomy-observability";
 import { buildInternalStyleProfile } from "@/lib/recommendation/style-profile";
 import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
 import {
@@ -93,6 +95,48 @@ function confidenceFromScore(score: number) {
 
 function boundedConfidenceScore(score: number) {
   return Math.max(0, Math.min(1, Math.round((score / 220) * 100) / 100));
+}
+
+export function recommendationEligible(item: any) {
+  const taxonomy = resolveCanonicalTaxonomy(item);
+  if (taxonomy.structureRole === "hair_piece" || taxonomy.visibilityRole === "appearance_item") return false;
+  if (["small_leather_good", "travel_luggage", "not_outfit_visible"].includes(taxonomy.visibilityRole)) return false;
+  return true;
+}
+
+export function rescueFootwear(items: any[], wardrobeItems: any[], scoringInput: any) {
+  if (evaluateOutfitCompleteness(items).footwearIncluded) return { items, rescued: false, candidateCount: 0 };
+  const candidates = wardrobeItems.filter((item) => outfitSlotsForItem(item).includes("shoes") && recommendationEligible(item));
+  if (!candidates.length) return { items, rescued: false, candidateCount: 0 };
+  const ranked = candidates
+    .map((shoe) => ({ shoe, score: scoreOutfit([...items, shoe], scoringInput) }))
+    .sort((a, b) => b.score - a.score);
+  return { items: sanitizeOutfitItems([...items, ranked[0].shoe]).items, rescued: true, candidateCount: candidates.length };
+}
+
+export function taxonomyDiagnostics(wardrobeItems: any[], selectedItems: any[]) {
+  const selectedIds = new Set(selectedItems.map((item) => String(item?._id || item?.id || "")));
+  return wardrobeItems.map((item) => {
+    const itemId = String(item?._id || item?.id || "");
+    const taxonomy = resolveCanonicalTaxonomy(item);
+    const selected = selectedIds.has(itemId);
+    let omissionReason = selected ? "" : "lower_ranked_compatible_item";
+    if (!selected && taxonomy.needsReview) omissionReason = taxonomy.structureRole === "set" ? "set_components_unconfirmed" : "taxonomy_needs_review";
+    else if (!selected && taxonomy.visibilityRole !== "primary_carry" && taxonomy.structureRole === "carry") omissionReason = "not_primary_carry";
+    else if (!selected && taxonomy.structureRole === "hair_piece") omissionReason = "not_requested";
+    return {
+      itemId,
+      canonicalSubtype: taxonomy.canonicalSubtype,
+      structureRole: taxonomy.structureRole,
+      stylingRole: taxonomy.stylingRole,
+      visibilityRole: taxonomy.visibilityRole,
+      taxonomySource: taxonomy.source,
+      taxonomyConfidence: taxonomy.confidence,
+      eligiblePools: outfitSlotsForItem(item),
+      selected,
+      omissionReason
+    };
+  }).slice(0, 500);
 }
 
 function buildFashionExplanation(input: {
@@ -178,6 +222,7 @@ export function buildRecommendation(input: EngineInput) {
 
   const available = input.wardrobeItems.filter((item) => {
     if (item.archivedAt) return false;
+    if (!recommendationEligible(item)) return false;
 
     if (
       item.condition === "needs-care" &&
@@ -321,8 +366,23 @@ export function buildRecommendation(input: EngineInput) {
     };
   }
 
+  const footwearRescue = rescueFootwear(coreItems, readyFirst, {
+    occasionName: input.occasionName,
+    formality: input.formality,
+    weatherContext: input.weatherContext,
+    seasonContext: input.weatherContext,
+    repeatDays,
+    allowNeedsCare: input.allowNeedsCare,
+    desiredCategories: desiredStructure,
+    styleProfile: internalStyleProfile,
+    memorySummary: input.memorySummary,
+    outfitHistorySummary: input.outfitHistorySummary,
+    allowRecentRepeat,
+    recommendationMode,
+    compatibilityEdges: input.compatibilityEdges || []
+  });
   const accessoryCompletion = selectAccessoryCompletion({
-    selectedItems: coreItems,
+    selectedItems: footwearRescue.items,
     wardrobeItems: readyFirst,
     occasionName: input.occasionName,
     formality: input.formality,
@@ -334,7 +394,19 @@ export function buildRecommendation(input: EngineInput) {
     memorySummary: input.memorySummary,
     outfitHistorySummary: input.outfitHistorySummary
   });
-  const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
+  const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...accessoryCompletion.items]).items;
+  const itemTaxonomyDiagnostics = taxonomyDiagnostics(readyFirst, completedItems);
+  logTaxonomyMetric("recommendation.item.omitted_by_role", {
+    consideredCount: itemTaxonomyDiagnostics.length,
+    selectedCount: itemTaxonomyDiagnostics.filter((entry) => entry.selected).length,
+    taxonomyReviewCount: itemTaxonomyDiagnostics.filter((entry) => entry.omissionReason === "taxonomy_needs_review").length,
+    notPrimaryCarryCount: itemTaxonomyDiagnostics.filter((entry) => entry.omissionReason === "not_primary_carry").length
+  });
+  logTaxonomyMetric("recommendation.readiness.role_coverage", {
+    finishingRoleCount: Object.keys(readiness.finishingRoleCoverage || {}).length,
+    footwearVariety: readiness.footwearVariety,
+    taxonomyReviewCount: readiness.taxonomyReviewCount || 0
+  });
   const completeness = evaluateOutfitCompleteness(completedItems);
   const finalValidation = validateRecommendationCandidate({
     items: completedItems,
@@ -501,6 +573,12 @@ export function buildRecommendation(input: EngineInput) {
     scoreBreakdown: {
       ...(bestOutfit.scoreBreakdown || {}),
       accessoryCompletion: accessoryCompletion.decision,
+      footwearCompletion: {
+        rescued: footwearRescue.rescued,
+        candidateCount: footwearRescue.candidateCount,
+        status: completeness.footwearIncluded ? "included" : "missing"
+      },
+      taxonomyDiagnostics: itemTaxonomyDiagnostics,
       outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
       occasionProfile: { id: occasionProfile.id, label: occasionProfile.label },
       stylingValidation: finalValidation,

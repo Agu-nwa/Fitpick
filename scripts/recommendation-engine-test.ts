@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { buildRecommendation } from "../lib/recommendation/engine";
+import { buildRecommendation, rescueFootwear } from "../lib/recommendation/engine";
 import { outfitItemSignature } from "../lib/recommendation/history";
 import { normalizeOutfitSlot, sanitizeOutfitItems } from "../lib/recommendation/outfit-slots";
+import { evaluateOutfitCompleteness } from "../lib/recommendation/completeness";
 
 function field(value: unknown, confidence = 0.9, source = "user_confirmed") {
   return { value, confidence, source };
@@ -201,7 +202,8 @@ assert.equal(businessLook.scoreBreakdown?.collectionFamily, "Business Week");
 assert.ok(businessLook.freshnessCue, "recommendation should explain freshness in user-safe language");
 assert.ok(businessLook.items.some((entry: any) => entry.category === "bags"), "business recommendation should complete the look with an owned bag when suitable");
 assert.ok(businessLook.items.some((entry: any) => /watch/i.test(`${entry.name} ${entry.subcategory}`)), "business recommendation should include the strongest owned wrist accessory when suitable");
-assert.ok(businessLook.items.filter((entry: any) => /watch|bracelet|smartwatch/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should avoid conflicting wrist accessories");
+assert.ok(businessLook.items.filter((entry: any) => /watch|smartwatch/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should keep one watch");
+assert.ok(businessLook.items.filter((entry: any) => /bracelet|bangle|cuff/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should keep one wrist-jewelry piece while treating it separately from a watch");
 
 const priorSignature = signature(businessLook as any);
 const differentLook = buildRecommendation({
@@ -312,8 +314,8 @@ const brunchLook = buildRecommendation({
 });
 
 assert.equal(brunchLook.similarityMetadata?.outfitTemplateId, "female_brunch");
-assert.ok(brunchLook.items.some((entry: any) => entry.category === "womens_hair"), "women's hair should be selected only as an optional styling enhancement when suitable");
-assert.ok(brunchLook.items.every((entry: any) => brunchWardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "women's hair recommendation must still use owned wardrobe IDs only");
+assert.equal(brunchLook.items.some((entry: any) => entry.category === "womens_hair"), false, "closet hair pieces must not enter normal outfit recommendations without an explicit hair-styling request");
+assert.ok(brunchLook.items.every((entry: any) => brunchWardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must still use owned wardrobe IDs only");
 
 const streetwearLook = buildRecommendation({
   wardrobeItems: [
@@ -404,5 +406,29 @@ const sanitizedDuplicateSlots = sanitizeOutfitItems([
 assert.equal(slotCount({ items: sanitizedDuplicateSlots.items }, "bottom"), 1, "sanitizer must keep one bottom");
 assert.equal(slotCount({ items: sanitizedDuplicateSlots.items }, "shoes"), 1, "sanitizer must keep one pair of shoes");
 assert.ok(sanitizedDuplicateSlots.removed.length >= 2, "sanitizer should report removed duplicate slots");
+
+const rescued = rescueFootwear(
+  [wardrobe[0], wardrobe[1]],
+  [wardrobe[0], wardrobe[1], wardrobe[2]],
+  { repeatDays: 14, desiredCategories: ["tops", "bottoms", "shoes"] }
+);
+assert.equal(rescued.rescued, true, "footwear rescue must use an available owned shoe before returning an incomplete look");
+assert.equal(evaluateOutfitCompleteness(rescued.items).footwearIncluded, true);
+
+const trouserSuit = { category: "outerwear", subcategory: "Trouser Suit", canonicalSubtype: "trouser_suit", structureRole: "set", stylingRole: "tailored_set", visibilityRole: "primary_visible", setComponents: ["top_layer", "bottom"], taxonomyNeedsReview: false };
+assert.equal(evaluateOutfitCompleteness([wardrobe[0], trouserSuit, wardrobe[2]]).completenessStatus, "complete", "confirmed trouser suit must fulfill its bottom component without unrelated trousers");
+
+const carryLook = buildRecommendation({
+  wardrobeItems: [
+    wardrobe[0], wardrobe[1], wardrobe[2],
+    item("000000000000000000000081", "bags", "Leather handbag", "black", { canonicalSubtype: "handbag", structureRole: "carry", stylingRole: "carry", visibilityRole: "primary_carry", taxonomyNeedsReview: false }),
+    item("000000000000000000000082", "bags", "Leather wallet", "black", { canonicalSubtype: "wallet", structureRole: "non_visible_personal_item", stylingRole: "carry", visibilityRole: "small_leather_good", taxonomyNeedsReview: false }),
+    item("000000000000000000000083", "accessories", "Gold Jewelry", "gold", { subcategory: "Jewelry", canonicalSubtype: "other_jewelry", structureRole: "finisher", stylingRole: "unknown", visibilityRole: "visible_finisher", taxonomyNeedsReview: true })
+  ],
+  occasionName: "business casual"
+});
+assert.ok(carryLook.items.some((entry: any) => entry.canonicalSubtype === "handbag"), "primary handbag should remain eligible");
+assert.equal(carryLook.items.some((entry: any) => entry.canonicalSubtype === "wallet"), false, "wallet must not satisfy primary carry");
+assert.equal(carryLook.items.some((entry: any) => entry.canonicalSubtype === "other_jewelry"), false, "unresolved generic jewelry must not silently fill a specific finishing role");
 
 console.log("Recommendation engine checks passed.");

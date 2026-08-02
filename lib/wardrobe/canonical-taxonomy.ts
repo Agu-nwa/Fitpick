@@ -117,8 +117,8 @@ export function resolveCanonicalTaxonomy(item: any): ResolvedCanonicalTaxonomy {
   const nameExact = exactDefinition(item?.name, category);
   const searchable = normalize([item?.name, item?.subcategory, aiRole, ...(item?.searchMetadata?.tags || [])].filter(Boolean).join(" "));
   const tokenMatch = canonicalTaxonomyDefinitions.find((entry) => entry.category === category && [entry.value, entry.label, ...(entry.aliases || [])].some((alias) => searchable.split("_").includes(normalize(alias)) || searchable.includes(normalize(alias))));
-  const definition = canonical || ai || legacy || nameExact || tokenMatch;
-  const source: ResolvedCanonicalTaxonomy["source"] = confirmedSubtype ? "confirmed" : canonical ? "canonical" : ai ? "ai" : legacy ? "legacy" : nameExact || tokenMatch ? "name" : category ? "fallback" : "unknown";
+  const definition = canonical || ai || (legacy && !legacy.needsReview ? legacy : null) || nameExact || tokenMatch || legacy;
+  const source: ResolvedCanonicalTaxonomy["source"] = confirmedSubtype ? "confirmed" : canonical ? "canonical" : ai ? "ai" : definition === legacy ? "legacy" : nameExact || tokenMatch ? "name" : category ? "fallback" : "unknown";
   const evidence = definition ? [`${source}:${definition.value}`] : category ? [`category:${category}`] : [];
   const fallback: Pick<ResolvedCanonicalTaxonomy, "structureRole" | "stylingRole" | "visibilityRole"> =
     category === "tops" ? { structureRole: "top", stylingRole: "upper_body", visibilityRole: "primary_visible" } :

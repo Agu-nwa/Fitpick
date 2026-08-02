@@ -12,7 +12,7 @@ import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gap
 import { buildLearningSignals, learningSignalScore } from "@/lib/recommendation/learning-engine";
 import { resolveOutfitArchitecture } from "@/lib/recommendation/outfit-architecture";
 import { inferOccasionGroup } from "@/lib/recommendation/outfit-structures";
-import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { categoryToOutfitSlot, normalizeOutfitSlot, outfitSlotsForItem, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { buildReasonChips } from "@/lib/recommendation/reason-chips";
 import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
@@ -28,6 +28,7 @@ import {
 } from "@/lib/recommendation/scoring";
 import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { referenceItemToPseudoWardrobeItem, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
+import { recommendationEligible, rescueFootwear, taxonomyDiagnostics } from "@/lib/recommendation/engine";
 
 type ReferenceMatchInput = {
   referenceItem: any;
@@ -95,7 +96,7 @@ function categoryPlanFor(anchorCategory: string, occasionName = ""): CategoryPla
 function categoryCandidates(items: any[], category: string, max = 8) {
   const requestedSlot = categoryToOutfitSlot(category);
   return items
-    .filter((item) => item.category === category || normalizeOutfitSlot(item) === requestedSlot)
+    .filter((item) => item.category === category || outfitSlotsForItem(item).includes(requestedSlot))
     .slice(0, max);
 }
 
@@ -302,6 +303,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
   const occasion = cleanText(input.occasionName || input.message || referenceItem.occasions?.[0] || "Today", 120) || "Today";
   const available = input.wardrobeItems.filter((item) => {
     if (item.archivedAt) return false;
+    if (!recommendationEligible(item)) return false;
     if (item.condition === "needs-care" && !input.allowNeedsCare) return false;
     return true;
   });
@@ -425,8 +427,9 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const candidateItems = sanitizeOutfitItems(candidate.items || []).items;
     const coreOnlyItems = candidateItems.filter((item) => !isAccessoryCandidate(item));
     const coreItems = coreOnlyItems.length ? coreOnlyItems : candidateItems;
+    const footwearRescue = rescueFootwear(coreItems, available, scoringInput);
     const accessoryCompletion = selectAccessoryCompletion({
-      selectedItems: coreItems,
+      selectedItems: footwearRescue.items,
       wardrobeItems: available,
       occasionName: occasion,
       weatherContext: input.weatherContext,
@@ -437,7 +440,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       memorySummary: input.memorySummary,
       outfitHistorySummary: input.outfitHistorySummary
     });
-    const completedItems = sanitizeOutfitItems([...coreItems, ...accessoryCompletion.items]).items;
+    const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...accessoryCompletion.items]).items;
     const completedItemsWithAnchor = [anchor, ...completedItems];
     const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor);
     const finalValidation = validateRecommendationCandidate({
@@ -512,6 +515,12 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       scoreBreakdown: {
         ...(candidate.scoreBreakdown || {}),
         accessoryCompletion: accessoryCompletion.decision,
+        footwearCompletion: {
+          rescued: footwearRescue.rescued,
+          candidateCount: footwearRescue.candidateCount,
+          status: completeness.footwearIncluded ? "included" : "missing"
+        },
+        taxonomyDiagnostics: taxonomyDiagnostics(available, completedItems),
         outfitTemplate: { id: outfitTemplate.id, label: outfitTemplate.label, stylingFamily: outfitTemplate.stylingFamily },
         occasionProfile: { id: occasionProfile.id, label: occasionProfile.label },
         stylingValidation: finalValidation,

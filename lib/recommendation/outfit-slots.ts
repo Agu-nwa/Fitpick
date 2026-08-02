@@ -1,4 +1,5 @@
 import { metadataValue } from "@/lib/recommendation/scoring";
+import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
 export type OutfitSlot = "top" | "bottom" | "onePiece" | "outerwear" | "shoes" | "bag" | "accessory" | "unknown";
 
@@ -28,11 +29,38 @@ function textForSlot(item: any) {
 }
 
 export function normalizeOutfitSlot(item: any): OutfitSlot {
+  const taxonomy = resolveCanonicalTaxonomy(item);
+  if (taxonomy.structureRole === "top") return "top";
+  if (taxonomy.structureRole === "bottom") return "bottom";
+  if (taxonomy.structureRole === "one_piece") return "onePiece";
+  if (taxonomy.structureRole === "outer_layer") return "outerwear";
+  if (taxonomy.structureRole === "footwear") return "shoes";
+  if (taxonomy.structureRole === "carry") return "bag";
+  if (taxonomy.structureRole === "finisher") return "accessory";
+  if (taxonomy.structureRole === "set") {
+    if (taxonomy.setComponents.includes("top_layer")) return "outerwear";
+    return "onePiece";
+  }
   const text = textForSlot(item);
   for (const entry of slotPatterns) {
     if (entry.pattern.test(text)) return entry.slot;
   }
   return "unknown";
+}
+
+export function outfitSlotsForItem(item: any): OutfitSlot[] {
+  const taxonomy = resolveCanonicalTaxonomy(item);
+  if (taxonomy.structureRole !== "set") return [normalizeOutfitSlot(item)];
+  const slots = taxonomy.setComponents.flatMap((component): OutfitSlot[] => {
+    if (component === "top") return ["top"];
+    if (component === "bottom") return ["bottom"];
+    if (component === "top_layer" || component === "waistcoat") return ["outerwear"];
+    if (component === "dress") return ["onePiece"];
+    if (component === "footwear") return ["shoes"];
+    if (component === "headwear") return ["accessory"];
+    return [];
+  });
+  return Array.from(new Set(slots.length ? slots : [normalizeOutfitSlot(item)]));
 }
 
 export function categoryToOutfitSlot(category = ""): OutfitSlot {

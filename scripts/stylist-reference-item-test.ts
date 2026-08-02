@@ -157,7 +157,8 @@ assert.ok(first.items.length >= 3, "photo anchor outfit should include supportin
 assert.ok(first.items.every((item: any) => wardrobe.some((owned) => String(owned._id) === String(item._id))), "recommendation items must remain saved wardrobe items only");
 assert.ok(first.items.some((item: any) => item.category === "bags"), "photo match should complete the look with an owned bag when suitable");
 assert.ok(first.items.some((item: any) => /watch/i.test(`${item.name} ${item.subcategory}`)), "photo match should include the strongest owned wrist accessory when suitable");
-assert.ok(first.items.filter((item: any) => /watch|bracelet|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should avoid conflicting wrist accessories");
+assert.ok(first.items.filter((item: any) => /watch|smartwatch/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should keep one watch");
+assert.ok(first.items.filter((item: any) => /bracelet|bangle|cuff/i.test(`${item.name} ${item.subcategory}`)).length <= 1, "photo match should treat wrist jewelry separately from watches");
 assert.equal(first.similarityMetadata?.outfitTemplateId, "casual");
 assert.equal(first.similarityMetadata?.occasionProfileId, "dinner");
 assert.ok(first.similarityMetadata?.editorialReview, "photo match should include deterministic editorial ranking metadata");

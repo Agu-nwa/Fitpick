@@ -8,7 +8,7 @@ import { buildLearningSignals, learningSignalScore } from "@/lib/recommendation/
 import { fashionKnowledgeScore } from "@/lib/recommendation/fashion-knowledge";
 import { personalPreferenceScore } from "@/lib/recommendation/preference-scoring";
 import { wardrobeRotationScore } from "@/lib/recommendation/rotation";
-import { categoryToOutfitSlot, normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { categoryToOutfitSlot, normalizeOutfitSlot, outfitSlotsForItem, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 
 function idFor(item: any) {
@@ -42,7 +42,7 @@ export function generateCombinations(
   categories.forEach((category) => {
     const requestedSlot = categoryToOutfitSlot(category);
     categoryMap[category] = sortedByFreshness(wardrobeItems
-      .filter((item) => item.category === category || normalizeOutfitSlot(item) === requestedSlot)
+      .filter((item) => item.category === category || outfitSlotsForItem(item).includes(requestedSlot))
     ).slice(0, 10); // Prevent combinational explosion while leaving enough variety.
   });
 
