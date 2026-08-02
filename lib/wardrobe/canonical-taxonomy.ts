@@ -35,7 +35,7 @@ export const canonicalTaxonomyDefinitions: CanonicalTaxonomyDefinition[] = [
     ["shirt", "Shirt"], ["t_shirt", "T-Shirt"], ["polo", "Polo"], ["blouse", "Blouse"], ["camisole", "Camisole"], ["tank_top", "Tank Top"], ["sweater", "Sweater"], ["knitwear", "Knitwear"], ["hoodie", "Hoodie"], ["sweatshirt", "Sweatshirt"], ["vest", "Vest"], ["waistcoat", "Waistcoat"], ["co_ord_top", "Co-ord Top"]
   ].map(([value, label]) => d({ value, label, category: "tops", structureRole: "top", stylingRole: "upper_body", visibilityRole: "primary_visible" })),
   ...[
-    ["jeans", "Jeans"], ["trousers", "Trousers"], ["chinos", "Chinos"], ["shorts", "Shorts"], ["skirt", "Skirt"], ["leggings", "Leggings"], ["joggers", "Joggers"], ["cargo_trousers", "Cargo Trousers"], ["culottes", "Culottes"], ["co_ord_bottom", "Co-ord Bottom"]
+    ["jeans", "Jeans"], ["trousers", "Trousers"], ["chinos", "Chinos"], ["shorts", "Shorts"], ["skirt", "Skirt"], ["cargo_trousers", "Cargo Trousers"], ["culottes", "Culottes"], ["co_ord_bottom", "Co-ord Bottom"]
   ].map(([value, label]) => d({ value, label, category: "bottoms", structureRole: "bottom", stylingRole: "lower_body", visibilityRole: "primary_visible" })),
   ...[["dress", "Dress"], ["gown", "Gown"], ["jumpsuit", "Jumpsuit"], ["romper", "Romper"]].map(([value, label]) => d({ value, label, category: "dresses", structureRole: "one_piece", stylingRole: "full_body", visibilityRole: "primary_visible" })),
   ...[["blazer", "Blazer"], ["jacket", "Jacket"], ["coat", "Coat"], ["cardigan", "Cardigan"]].map(([value, label]) => d({ value, label, category: "outerwear", structureRole: "outer_layer", stylingRole: "upper_body", visibilityRole: "primary_visible" })),
