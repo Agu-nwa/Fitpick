@@ -15,5 +15,20 @@ assert.equal(exact.exactAppearance, true);
 assert.equal(exact.imageUrl, "https://assets.example/model.png");
 
 const stale = resolveStudioModelForProfile({ ...configuration, studioModelConfiguration: configuration, studioModelAppearanceKey: "stale", studioModelAssetStatus: "ready", studioModelImageUrl: "https://assets.example/stale.png" });
+
+const mongooseShapedConfiguration = {
+  ...configuration,
+  undertone: null,
+  heightBand: null,
+  _id: "ignored-subdocument-id",
+  toObject() {
+    const { toObject: _toObject, ...plain } = this;
+    return plain;
+  }
+};
+const mongooseFallback = resolveStudioModelForProfile({ studioModelConfiguration: mongooseShapedConfiguration });
+if (!mongooseFallback.imageUrl || mongooseFallback.appearanceKey !== studioModelAppearanceKey(configuration)) {
+  throw new Error("Mongoose-shaped Studio Model configurations must serialize safely.");
+}
 assert.notEqual(stale.imageUrl, "https://assets.example/stale.png");
 console.log("studio model resolver tests passed");

@@ -1,5 +1,5 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
-import { outfitItemSignature } from "@/lib/recommendation/history";
+import { outfitItemSignature } from "@/lib/recommendation/signature";
 import { RECOMMENDATION_SCORING_VERSION, scoringWeightsForMode } from "@/lib/recommendation/policy";
 import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 

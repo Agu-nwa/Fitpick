@@ -30,7 +30,17 @@ export default function GlobalNotificationListener() {
 
     async function poll() {
       const result = await getAppNotifications();
-      if (cancelled || !result.ok) return;
+      if (cancelled) return;
+      if (!result.ok) {
+        if (result.error.code === "UNAUTHORIZED") {
+          cancelled = true;
+          if (pollingRef.current) {
+            window.clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        }
+        return;
+      }
 
       const next = result.data.notifications.find(isActionableTryOnNotification);
       if (!next || announcedIds.current.has(next.id)) return;

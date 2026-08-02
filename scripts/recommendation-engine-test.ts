@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { buildRecommendation, rescueFootwear } from "../lib/recommendation/engine";
-import { outfitItemSignature } from "../lib/recommendation/history";
+import { outfitItemSignature } from "../lib/recommendation/signature";
 import { normalizeOutfitSlot, sanitizeOutfitItems } from "../lib/recommendation/outfit-slots";
 import { evaluateOutfitCompleteness } from "../lib/recommendation/completeness";
 

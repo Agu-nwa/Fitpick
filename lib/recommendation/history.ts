@@ -1,5 +1,8 @@
+import "server-only";
+
 import type { Types } from "mongoose";
 import { OutfitHistory } from "@/models/OutfitHistory";
+import { outfitItemSignature } from "@/lib/recommendation/signature";
 
 export type OutfitHistoryEventType =
   | "generated"
@@ -38,10 +41,6 @@ function cleanText(value?: string | null, max = 160) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, max);
-}
-
-export function outfitItemSignature(itemIds: Array<string | Types.ObjectId> = []) {
-  return Array.from(new Set(itemIds.map(String).filter(Boolean))).sort().join("|");
 }
 
 function eventPatch(eventType: OutfitHistoryEventType, now: Date) {

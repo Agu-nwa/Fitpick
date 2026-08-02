@@ -1,6 +1,6 @@
 import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { metadataValue } from "@/lib/recommendation/scoring";
-import { outfitItemSignature } from "@/lib/recommendation/history";
+import { outfitItemSignature } from "@/lib/recommendation/signature";
 
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();

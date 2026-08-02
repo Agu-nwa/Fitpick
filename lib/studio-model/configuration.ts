@@ -2,7 +2,22 @@ import crypto from "crypto";
 import { studioModelAppearanceSchema, type StudioModelAppearance } from "./appearance-taxonomy";
 
 export function parseStudioModelAppearance(value: unknown) {
-  return studioModelAppearanceSchema.parse(value);
+  const plain = value && typeof (value as { toObject?: unknown }).toObject === "function"
+    ? (value as { toObject(): unknown }).toObject()
+    : value;
+
+  if (!plain || typeof plain !== "object" || Array.isArray(plain)) {
+    return studioModelAppearanceSchema.parse(plain);
+  }
+
+  const normalized = { ...(plain as Record<string, unknown>) };
+  // Mongoose persists optional nested fields as null, while the API/domain
+  // schema represents an omitted selection as undefined.
+  if (normalized.undertone == null) delete normalized.undertone;
+  if (normalized.heightBand == null) delete normalized.heightBand;
+  delete normalized._id;
+
+  return studioModelAppearanceSchema.parse(normalized);
 }
 
 export function studioModelAppearanceKey(value: StudioModelAppearance) {
