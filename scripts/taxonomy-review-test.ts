@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { buildUserTaxonomyConfirmation, detectTaxonomyConflicts } from "../lib/wardrobe/taxonomy-review";
+import { buildWardrobeFilterIndex, filterWardrobeIndex, clearWardrobeFilters } from "../lib/wardrobe/filters";
+
+const generic: any = { id: "generic", category: "accessories", name: "Gold Jewelry", canonicalSubtype: "other_jewelry", stylingRole: "unknown", structureRole: "finisher", visibilityRole: "visible_finisher", taxonomyStatus: "unresolved", taxonomyNeedsReview: true, color: "gold", condition: "ready", formality: [], occasions: [], weather: [] };
+const confirmed = buildUserTaxonomyConfirmation(generic, "necklace");
+assert.equal(confirmed.canonicalSubtype, "necklace", "7 user can classify generic jewelry");
+assert.equal(confirmed.taxonomyConfirmedBy, "user", "1 user confirmation has highest provenance");
+assert.equal(confirmed.taxonomyStatus, "confirmed", "10 confirmation updates status");
+assert.equal(buildUserTaxonomyConfirmation(generic, "not_sure").taxonomyStatus, "unresolved", "11 not sure preserves unresolved state");
+assert.equal(buildUserTaxonomyConfirmation({ ...generic, category: "bags" }, "wallet").visibilityRole, "small_leather_good", "8 wallet classification is non-primary carry");
+assert.deepEqual(buildUserTaxonomyConfirmation({ ...generic, category: "outerwear" }, "trouser_suit", ["top_layer", "bottom"]).setComponents, ["top_layer", "bottom"], "9 suit components can be confirmed");
+assert.equal(detectTaxonomyConflicts({ ...generic, canonicalSubtype: "necklace", stylingRole: "wrist_jewelry" }).status, "conflicting", "5 conflicting inferred role is detected");
+const indexed = buildWardrobeFilterIndex([generic]);
+assert.equal(filterWardrobeIndex(indexed, { ...clearWardrobeFilters(), review: true }).length, 1, "6 generic jewelry appears in Needs Review");
+const source = fs.readFileSync("components/wardrobe/TaxonomyReviewCard.tsx", "utf8");
+assert.ok(source.includes("What kind of accessory is this?") && source.includes("Not sure"), "review workflow asks a focused human question");
+assert.ok(!source.includes("taxonomyConfidence.toFixed") && !source.includes("stylingRole}"), "12 UI does not expose raw confidence or enum values");
+console.log("Taxonomy review checks passed.");

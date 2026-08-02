@@ -59,6 +59,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
     if (!parsed.ok) return parsed.response;
 
+    const taxonomyKeys = ["canonicalSubtype", "structureRole", "stylingRole", "visibilityRole", "setComponents", "taxonomyStatus", "taxonomyConfirmedBy", "taxonomyConfidence"];
+    if (existing.taxonomyConfirmedBy === "user" && parsed.data.taxonomyConfirmedBy !== "user") {
+      for (const key of taxonomyKeys) delete (parsed.data as Record<string, unknown>)[key];
+    }
+    if (parsed.data.taxonomyConfirmedBy === "user") {
+      parsed.data.taxonomyStatus = parsed.data.taxonomyStatus === "unresolved" ? "unresolved" : "confirmed";
+      parsed.data.taxonomyConfirmedAt = new Date();
+      parsed.data.taxonomyConfidence = parsed.data.taxonomyStatus === "confirmed" ? 1 : 0;
+      parsed.data.taxonomyNeedsReview = parsed.data.taxonomyStatus !== "confirmed";
+    }
+
     Object.assign(existing, parsed.data);
     existing.condition = inferCondition({
       category: existing.category,

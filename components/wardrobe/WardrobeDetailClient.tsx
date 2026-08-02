@@ -20,6 +20,8 @@ import { useSession } from "@/hooks/use-session";
 import { archiveWardrobeItem, getWardrobeItem, updateWardrobeItem } from "@/lib/api-client";
 import { getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 import { cn } from "@/lib/utils";
+import { TaxonomyReviewCard } from "@/components/wardrobe/TaxonomyReviewCard";
+import { detectTaxonomyConflicts } from "@/lib/wardrobe/taxonomy-review";
 import type { GarmentFit, TaggedSize, WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
 const categoryOptions: Array<{ value: WardrobeCategory; label: string }> = [
@@ -312,6 +314,12 @@ export function WardrobeDetailClient({ id }: { id: string }) {
     <>
       {notice ? <WardrobeSaveSuccessState title={notice} body={`${itemTitle(item)} is up to date.`} /> : null}
       <ItemDetails item={item} />
+
+      {(item.taxonomyStatus !== "confirmed" || item.taxonomyNeedsReview !== false || detectTaxonomyConflicts(item).status === "conflicting") ? (
+        <section className="mt-7">
+          <TaxonomyReviewCard item={item} onSaved={(saved) => { setItem(saved); setNotice("Item type confirmed."); }} />
+        </section>
+      ) : null}
 
       {isEditable ? <section className="mt-7">
         <SectionHeader title="Edit item" />

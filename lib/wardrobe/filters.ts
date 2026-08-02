@@ -2,6 +2,7 @@ import type { WardrobeCategory, WardrobeItem } from "@/types/wardrobe";
 
 export type WardrobeCategoryFilter = "all" | WardrobeCategory;
 export type WardrobeWornFilter = "" | "today" | "7d" | "30d" | "never";
+export type WardrobeReviewFilter = "" | "needs_review" | "unresolved_jewelry" | "conflicting" | "missing_neckline" | "missing_belt_compatibility" | "missing_cuff_type" | "missing_footwear_attributes";
 
 export type WardrobeFilterState = {
   category: WardrobeCategoryFilter;
@@ -16,6 +17,7 @@ export type WardrobeFilterState = {
   worn: WardrobeWornFilter;
   needsCare: boolean;
   review: boolean;
+  reviewType: WardrobeReviewFilter;
 };
 
 export type WardrobeFacetOption = {
@@ -33,6 +35,7 @@ export type IndexedWardrobeItem = {
   visibilityRole: string;
   formalityLevel: string;
   taxonomyNeedsReview: boolean;
+  reviewFlags: WardrobeReviewFilter[];
   colors: string[];
   occasions: string[];
   weather: string[];
@@ -78,6 +81,7 @@ const defaultFilters: WardrobeFilterState = {
   worn: "",
   needsCare: false,
   review: false
+  , reviewType: ""
 };
 
 const categoryIds = new Set(wardrobeCategoryFilters.map((filter) => filter.id));
@@ -194,7 +198,8 @@ export function filtersFromSearchParams(params: SearchParamsLike): WardrobeFilte
     weather: normalizeWardrobeFacet(params.get("weather")),
     worn: wornIds.has(worn as Exclude<WardrobeWornFilter, "">) ? worn as WardrobeWornFilter : "",
     needsCare: care === "needs-care" || care === "true" || care === "1",
-    review: review === "true" || review === "1" || review === "review"
+    review: review === "true" || review === "1" || review === "review",
+    reviewType: (params.get("reviewType") || "") as WardrobeReviewFilter
   };
 }
 
@@ -225,6 +230,8 @@ export function writeFiltersToSearchParams(params: URLSearchParams, filters: War
 
   if (filters.review) params.set("review", "true");
   else params.delete("review");
+  if (filters.reviewType) params.set("reviewType", filters.reviewType);
+  else params.delete("reviewType");
 
   return params;
 }
@@ -238,7 +245,7 @@ export function hasActiveWardrobeFilters(filters: WardrobeFilterState) {
     Boolean(filters.weather) ||
     Boolean(filters.worn) ||
     filters.needsCare ||
-    filters.review
+    filters.review || Boolean(filters.reviewType)
   );
 }
 
@@ -252,6 +259,7 @@ export function buildWardrobeFilterIndex(items: WardrobeItem[]): IndexedWardrobe
     visibilityRole: normalizeWardrobeFacet(item.visibilityRole || ""),
     formalityLevel: normalizeWardrobeFacet(item.formalityLevel || ""),
     taxonomyNeedsReview: item.taxonomyNeedsReview !== false || !item.canonicalSubtype || !item.structureRole || !item.stylingRole,
+    reviewFlags: reviewFlagsFor(item),
     colors: uniqueFacetKeys([
       item.color,
       ...metadataValues(item, "color"),
@@ -308,8 +316,24 @@ export function filterWardrobeIndex(indexedItems: IndexedWardrobeItem[], filters
     (!filters.weather || indexed.weather.includes(filters.weather)) &&
     (!filters.needsCare || indexed.needsCare) &&
     (!filters.review || indexed.taxonomyNeedsReview || indexed.item.condition === "missing-tags" || indexed.item.condition === "needs-care") &&
+    (!filters.reviewType || indexed.reviewFlags.includes(filters.reviewType)) &&
     matchesWornFilter(indexed, filters.worn, now)
   ));
+}
+
+import { detectTaxonomyConflicts } from "@/lib/wardrobe/taxonomy-review";
+
+export function reviewFlagsFor(item: WardrobeItem): WardrobeReviewFilter[] {
+  const flags: WardrobeReviewFilter[] = [];
+  const metadata = item.categorySpecificMetadata || {};
+  if (item.taxonomyStatus !== "confirmed" || item.taxonomyNeedsReview !== false || !item.canonicalSubtype) flags.push("needs_review");
+  if (item.category === "accessories" && (!item.canonicalSubtype || item.canonicalSubtype === "other_jewelry")) flags.push("unresolved_jewelry");
+  if (detectTaxonomyConflicts(item).status === "conflicting") flags.push("conflicting");
+  if (["tops", "dresses", "native"].includes(item.category) && !metadata.neckline) flags.push("missing_neckline");
+  if (item.category === "bottoms" && metadata.beltCompatible === undefined) flags.push("missing_belt_compatibility");
+  if (item.category === "tops" && /shirt/i.test(`${item.subcategory || ""} ${item.canonicalSubtype || ""}`) && !metadata.cuffType) flags.push("missing_cuff_type");
+  if (item.category === "shoes" && !metadata.footwearAttributes) flags.push("missing_footwear_attributes");
+  return flags;
 }
 
 export function clearWardrobeFilters(): WardrobeFilterState {

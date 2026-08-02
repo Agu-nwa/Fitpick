@@ -19,6 +19,8 @@ export type GarmentFit = "slim" | "regular" | "relaxed" | "oversized" | "tailore
 export type StretchLevel = "none" | "low" | "medium" | "high" | "unknown";
 export type FabricDrape = "structured" | "soft" | "flowing" | "heavy" | "stiff" | "unknown";
 export type MeasurementSource = "label_ocr" | "user_confirmed" | "ai_estimated" | "manual" | "unknown";
+export type TaxonomyStatus = "confirmed" | "inferred" | "needs_review" | "unresolved";
+export type TaxonomyConfirmedBy = "user" | "ai" | "migration" | "system";
 
 export type GarmentMeasurements = {
   chestWidthCm?: number | null;
@@ -48,6 +50,10 @@ export type WardrobeItem = {
   taxonomyConfidence?: number;
   taxonomyEvidence?: string[];
   taxonomyNeedsReview?: boolean;
+  taxonomyStatus?: TaxonomyStatus;
+  taxonomyConfirmedBy?: TaxonomyConfirmedBy;
+  taxonomyConfirmedAt?: string | null;
+  taxonomyConflicts?: string[];
   taxonomyVersion?: string;
   color: string;
   pattern?: string;
