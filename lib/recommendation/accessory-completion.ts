@@ -255,6 +255,19 @@ function scoreAccessoryCandidate(input: {
   if (!formalityMetadata.length) missingSignals.push("formality"); else positiveSignals.push("formality_metadata");
   if (colorScore >= 13) positiveSignals.push("color_compatible"); else if (colorScore < 5) penalties.push("color_conflict");
   if (input.item.condition === "ready") positiveSignals.push("ready");
+  const selectedNeckline = input.selectedItems.map((item) => item.neckline).find((value) => value && value !== "unknown");
+  const selectedWaistband = input.selectedItems.map((item) => item.waistbandType).find((value) => value && value !== "unknown");
+  let compatibilityAdjustment = 0;
+  if (role === "neck_jewelry") {
+    if (["high_neck", "collared"].includes(selectedNeckline)) { compatibilityAdjustment -= 20; penalties.push("neckline_conflict"); }
+    if (["v_neck", "scoop", "strapless", "sweetheart"].includes(selectedNeckline)) { compatibilityAdjustment += 14; positiveSignals.push("neckline_compatible"); }
+    if (!selectedNeckline) missingSignals.push("neckline");
+  }
+  if (role === "waist") {
+    if (input.selectedItems.some((item) => item.beltCompatible === false) || ["elastic", "drawstring", "integrated_belt"].includes(selectedWaistband)) { compatibilityAdjustment -= 60; penalties.push("belt_incompatible"); }
+    else if (input.selectedItems.some((item) => item.beltCompatible === true) || selectedWaistband === "belt_loops") { compatibilityAdjustment += 20; positiveSignals.push("belt_compatible"); }
+    else missingSignals.push("belt_compatibility");
+  }
   // Missing data is deliberately neutral. Only explicit evidence and contextual conflicts move the score materially.
   const score =
     occasionScore(input.item, input.occasionName || "") +
@@ -265,7 +278,7 @@ function scoreAccessoryCandidate(input: {
     readinessScore(input.item, input.allowNeedsCare) +
     styleProfileScore([input.item], input.styleProfile) * 0.75 +
     memoryPreferenceScore([input.item], input.memorySummary, Boolean(input.allowRecentRepeat)) * 0.65 +
-    colorScore + Math.min(missingSignals.length * 2, 5) +
+    colorScore + compatibilityAdjustment + Math.min(missingSignals.length * 2, 5) +
     accessoryTypeBonus(input.item, role, input.occasionName, input.weatherContext) -
     restraintPenalty(input.item, role, input.occasionName);
 
@@ -399,20 +412,32 @@ export function selectAccessoryCompletion(input: {
       continue;
     }
     const candidateText = itemText(candidate.item);
-    if (/cufflinks?/.test(candidateText) && !/shirt|blouse|french cuff|double cuff/.test(selectedText)) {
+    const selectedCuffType = input.selectedItems.map((item) => item.cuffType).find((value) => value && value !== "unknown");
+    if (/cufflinks?/.test(candidateText) && !["french_cuff", "convertible"].includes(selectedCuffType)) {
       omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" });
       continue;
     }
-    if (/pocket\s?square/.test(candidateText) && !/jacket|blazer|suit|tuxedo/.test(selectedText)) {
+    const pocketSupport = input.selectedItems.find((item) => /jacket|blazer|suit|tuxedo/.test(itemText(item)))?.supportsPocketSquare;
+    if (/pocket\s?square/.test(candidateText) && (pocketSupport === false || (pocketSupport !== true && !/jacket|blazer|suit|tuxedo/.test(selectedText)))) {
       omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" });
       continue;
     }
-    if (candidate.role === "waist" && !/trouser|pants|jeans|chinos|skirt|shorts/.test(selectedText)) {
+    if (candidate.role === "waist" && (!/trouser|pants|jeans|chinos|skirt|shorts/.test(selectedText) || input.selectedItems.some((item) => item.beltCompatible === false || ["elastic", "drawstring", "integrated_belt"].includes(item.waistbandType)))) {
       omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" });
       continue;
     }
     if (candidate.role === "neck_jewelry" && selectedRoles.has("ear_jewelry") && /statement|large|chunky/.test(`${candidateText} ${selectedText}`)) {
       omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" });
+      continue;
+    }
+    const existingStatementEarrings = input.selectedItems.some((item) => accessoryRoleFor(item) === "ear_jewelry" && item.accessoryScale === "statement") || selected.some((entry) => entry.role === "ear_jewelry" && entry.item.accessoryScale === "statement");
+    const existingStatementNecklace = input.selectedItems.some((item) => accessoryRoleFor(item) === "neck_jewelry" && item.accessoryScale === "statement") || selected.some((entry) => entry.role === "neck_jewelry" && entry.item.accessoryScale === "statement");
+    if ((candidate.role === "neck_jewelry" && candidate.item.accessoryScale === "statement" && existingStatementEarrings) || (candidate.role === "ear_jewelry" && candidate.item.accessoryScale === "statement" && existingStatementNecklace)) {
+      omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" });
+      continue;
+    }
+    if ((candidate.role === "watch" && selected.some((entry) => entry.role === "wrist_jewelry" && entry.item.accessoryScale === "statement")) || (candidate.role === "wrist_jewelry" && candidate.item.accessoryScale === "statement" && selectedRoles.has("watch"))) {
+      omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "wrist_stack_limit" });
       continue;
     }
 

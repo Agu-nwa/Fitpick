@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { selectAccessoryCompletion } from "../lib/recommendation/accessory-completion";
+import { completeFootwear } from "../lib/recommendation/footwear-completion";
+
+const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", taxonomyNeedsReview: false, ...extra });
+const shoe = (id: string, extra: Record<string, any> = {}) => item(id, "shoes", id, { canonicalSubtype: "dress_shoes", ...extra });
+const top = item("top", "tops", "Shirt", { canonicalSubtype: "shirt" });
+const bottom = item("bottom", "bottoms", "Trousers", { canonicalSubtype: "trousers" });
+const statementEarrings = item("ears", "accessories", "Statement earrings", { canonicalSubtype: "earrings", accessoryScale: "statement" });
+const statementNecklace = item("neck", "accessories", "Statement necklace", { canonicalSubtype: "necklace", accessoryScale: "statement" });
+const delicateEarrings = { ...statementEarrings, _id: "delicate-ears", accessoryScale: "delicate", name: "Delicate earrings" };
+const mediumNecklace = { ...statementNecklace, _id: "medium-neck", accessoryScale: "medium", name: "Medium necklace" };
+const finish = (selectedItems: any[], wardrobeItems: any[], occasionName = "Formal dinner") => selectAccessoryCompletion({ selectedItems, wardrobeItems, occasionName, formality: "formal", repeatDays: 14 });
+
+const statementResult = finish([top, bottom], [statementEarrings, statementNecklace]);
+assert.ok(statementResult.items.filter((entry) => entry.accessoryScale === "statement").length <= 1, "20 statement earrings suppress statement necklace stacking");
+const delicateResult = finish([top, bottom], [delicateEarrings, mediumNecklace]);
+assert.ok(delicateResult.items.length >= 1, "21 delicate and moderate jewelry remain eligible");
+const highNeck = finish([{ ...top, neckline: "high_neck" }], [mediumNecklace]);
+assert.ok(highNeck.decision.diagnostics[0].penalties.includes("neckline_conflict"), "22 high neck reduces necklace priority");
+const vNeck = finish([{ ...top, neckline: "v_neck" }], [mediumNecklace]);
+assert.ok(vNeck.decision.diagnostics[0].positiveSignals.includes("neckline_compatible"), "23 V-neck supports pendant styling");
+const belt = item("belt", "accessories", "Leather belt", { canonicalSubtype: "belt" });
+assert.ok(finish([{ ...bottom, beltCompatible: false }], [belt], "Business").decision.omitted.some((entry) => entry.reason === "structure_conflict"), "24 explicit belt incompatibility rejects belt");
+assert.ok(finish([bottom], [belt], "Business").decision.diagnostics.some((entry) => entry.role === "waist"), "25 unknown belt compatibility is evaluated");
+const cufflinks = item("cufflinks", "accessories", "Cufflinks", { canonicalSubtype: "cufflinks" });
+assert.ok(finish([{ ...top, cuffType: "french_cuff" }], [cufflinks]).items.some((entry) => entry._id === "cufflinks"), "26 French cuff permits cufflinks");
+assert.ok(!finish([top], [cufflinks]).items.some((entry) => entry._id === "cufflinks"), "27 unknown cuff type does not auto-select cufflinks");
+const square = item("square", "accessories", "Pocket square", { canonicalSubtype: "pocket_square" });
+assert.ok(!finish([top], [square]).items.some((entry) => entry._id === "square"), "28 pocket square requires jacket evidence");
+const watch = item("watch", "accessories", "Watch", { canonicalSubtype: "watch" });
+const boldBracelet = item("bold", "accessories", "Bracelet", { canonicalSubtype: "bracelet", accessoryScale: "statement" });
+assert.ok(finish([top, bottom], [watch, boldBracelet]).items.filter((entry) => ["watch", "bracelet"].includes(entry.canonicalSubtype)).length <= 1, "29 statement bracelet does not stack with watch");
+const subtleBracelet = { ...boldBracelet, _id: "subtle", accessoryScale: "subtle", name: "Subtle bracelet" };
+assert.equal(finish([top, bottom], [watch, subtleBracelet], "Business dinner").items.filter((entry) => ["watch", "bracelet"].includes(entry.canonicalSubtype)).length, 2, "30 subtle bracelet may stack with watch");
+
+const closed = shoe("closed", { footwearAttributes: { toeStyle: "closed", comfortLevel: "medium" } });
+const open = shoe("open", { footwearAttributes: { toeStyle: "open", comfortLevel: "high" } });
+assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [open, closed], occasion: "Formal gala", formality: "formal" }).diagnostics.find((entry) => entry.selected)?.itemId, "closed", "31 closed formal shoe ranks well");
+assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [open], weather: "cold rain" }).state, "footwear_available_but_incompatible", "32 open toe is penalized in bad weather");
+const lengthMatch = shoe("length", { footwearAttributes: { toeStyle: "closed", dressCompatibility: ["midi"] } });
+assert.ok(completeFootwear({ selectedItems: [item("dress", "dresses", "Dress", { garmentLength: "midi" })], allWardrobeItems: [lengthMatch, closed] }).diagnostics.find((entry) => entry.itemId === "length")!.positiveSignals.includes("garment_length_compatible"), "33 garment length influences shoe ranking");
+assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [shoe("sparse")] }).state, "footwear_rescued", "34 missing footwear metadata remains eligible");
+assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [open, closed], occasion: "Formal gala", formality: "formal", stylePreferences: { comfortPriority: "high" } }).diagnostics.find((entry) => entry.selected)?.itemId, "closed", "35 comfort does not override formal incompatibility");
+console.log("Styling compatibility checks passed.");

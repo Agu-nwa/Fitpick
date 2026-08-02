@@ -52,17 +52,31 @@ export function completeFootwear(input: {
     const formalityValues = metadataList(shoe, "formality").concat(metadataList(shoe, "formalityScore"));
     const penalties: string[] = [];
     const missingSignals: string[] = [];
+    const positiveSignals: string[] = ["owned_footwear"];
     if (!occasionValues.length) missingSignals.push("occasion"); else if (explicitConflict(occasionValues, input.occasion)) penalties.push("occasion_conflict");
     if (!weatherValues.length) missingSignals.push("weather"); else if (explicitConflict(weatherValues, input.weather)) penalties.push("weather_conflict");
     if (!formalityValues.length) missingSignals.push("formality"); else if (explicitConflict(formalityValues, input.formality)) penalties.push("formality_conflict");
     if (shoe.condition === "needs-care" && !input.allowNeedsCare) penalties.push("condition_conflict");
+    const footwear = shoe.footwearAttributes || {};
+    const context = normalized([input.occasion, input.formality, input.weather]);
+    if (footwear.toeStyle === "open" && /rain|cold|snow|storm|winter/.test(context)) penalties.push("weather_conflict");
+    const selectedLength = input.selectedItems.map((item) => item.garmentLength).find((value) => value && value !== "unknown");
+    let metadataAdjustment = 0;
+    if (/formal|business|gala|wedding/.test(context) && footwear.toeStyle === "closed") { metadataAdjustment += 12; positiveSignals.push("formal_construction"); }
+    if (/formal|business|gala/.test(context) && footwear.toeStyle === "open") metadataAdjustment -= 12;
+    if (selectedLength && footwear.dressCompatibility?.includes?.(selectedLength)) { metadataAdjustment += 8; positiveSignals.push("garment_length_compatible"); }
+    if (input.stylePreferences?.comfortPriority === "high" && footwear.comfortLevel === "high") { metadataAdjustment += 9; positiveSignals.push("comfort_preference"); }
+    if (!footwear.toeStyle || footwear.toeStyle === "unknown") missingSignals.push("toe_style");
+    if (!footwear.comfortLevel || footwear.comfortLevel === "unknown") missingSignals.push("comfort");
     const base = scoreOutfit([...sanitized.items, shoe], { ...(input.scoringInput || {}), occasionName: input.occasion, formality: input.formality, weatherContext: input.weather });
     const color = colorCompatibilityScore([...sanitized.items, shoe]);
     const recent = shoe.lastWornAt ? new Date(shoe.lastWornAt).getTime() : 0;
     const recentPenalty = recent && Date.now() - recent < 7 * 86_400_000 ? 5 : 0;
-    const score = Math.round((base + color - penalties.length * 35 - recentPenalty) * 10) / 10;
+    const score = Math.round((base + color + metadataAdjustment - penalties.length * 35 - recentPenalty) * 10) / 10;
     const rejectionCode = penalties.includes("occasion_conflict") ? "occasion_conflict" : penalties.includes("formality_conflict") ? "formality_conflict" : penalties.includes("weather_conflict") ? "weather_conflict" : "";
-    return { itemId: id(shoe), score, selected: false, positiveSignals: ["owned_footwear", color >= 13 ? "color_compatible" : "", recentPenalty ? "" : "rotation_ready"].filter(Boolean), penalties, missingSignals, rejectionCode };
+    if (color >= 13) positiveSignals.push("color_compatible");
+    if (!recentPenalty) positiveSignals.push("rotation_ready");
+    return { itemId: id(shoe), score, selected: false, positiveSignals, penalties, missingSignals, rejectionCode };
   });
   const compatible = diagnostics.filter((entry) => !entry.penalties.length).sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId));
   if (!compatible.length) return { items: sanitized.items, state: "footwear_available_but_incompatible" as const, rescued: false, candidateCount: owned.length, diagnostics: diagnostics.map((entry) => ({ ...entry, rejectionCode: entry.rejectionCode || "none_compatible" })) };

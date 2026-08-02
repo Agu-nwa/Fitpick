@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:taxonomy-review && npm run test:styling-metadata && npm run test:recommendation-correctness && npm run test:recommendations && npm run test:stylist-reference && npm run test:wardrobe-taxonomy && npm run test:wardrobe-validation && npm run test:wardrobe-filters",
+    "test": "npm run test:taxonomy-review && npm run test:styling-metadata && npm run test:styling-compatibility && npm run test:recommendation-correctness && npm run test:recommendations && npm run test:stylist-reference && npm run test:wardrobe-taxonomy && npm run test:wardrobe-validation && npm run test:wardrobe-filters",
+    "test:styling-compatibility": "tsx scripts/styling-compatibility-test.ts",
     "test:styling-metadata": "tsx scripts/styling-metadata-test.ts",
     "test:taxonomy-review": "tsx scripts/taxonomy-review-test.ts",
     "dev": "next dev",
