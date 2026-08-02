@@ -1,4 +1,5 @@
 import { isFootwear, isOnePieceOutfit } from "@/lib/recommendation/completeness";
+import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
 const coreCategories = ["tops", "bottoms", "dresses", "shoes", "outerwear", "accessories", "bags"];
 
@@ -21,6 +22,24 @@ export function wardrobeReadiness(items: any[] = []) {
   const possibleTwoPieceLooks = topCount * bottomCount * Math.max(1, shoeCount);
   const possibleOnePieceLooks = Math.max(dressCount, onePieceCount) * Math.max(1, shoeCount);
   const estimatedCompleteLooks = possibleTwoPieceLooks + possibleOnePieceLooks;
+  const resolved = active.map((item) => ({ item, taxonomy: resolveCanonicalTaxonomy(item) }));
+  const finishingRoleCounts = resolved.reduce((counts: Record<string, number>, entry) => {
+    const role = entry.taxonomy.stylingRole;
+    if (entry.taxonomy.needsReview || role === "unknown" || entry.taxonomy.visibilityRole === "small_leather_good" || entry.taxonomy.visibilityRole === "travel_luggage") return counts;
+    if (entry.taxonomy.structureRole === "finisher" || entry.taxonomy.visibilityRole === "primary_carry") counts[role] = (counts[role] || 0) + 1;
+    return counts;
+  }, {});
+  const structuralCoverage = resolved.reduce((counts: Record<string, number>, entry) => {
+    counts[entry.taxonomy.structureRole] = (counts[entry.taxonomy.structureRole] || 0) + 1;
+    return counts;
+  }, {});
+  const footwearItems = resolved.filter((entry) => entry.taxonomy.structureRole === "footwear");
+  const footwearCoverage = {
+    casual: footwearItems.some(({ item }) => !/formal|oxford|derby|court|pump/i.test(`${item.canonicalSubtype || ""} ${item.formalityLevel || ""}`)),
+    smartCasual: footwearItems.some(({ item }) => /loafer|flat|mule|sneaker|smart|business/i.test(`${item.canonicalSubtype || ""} ${item.formalityLevel || ""}`)),
+    formal: footwearItems.some(({ item }) => /formal|dress|oxford|derby|monk|court|pump|heel/i.test(`${item.canonicalSubtype || ""} ${item.formalityLevel || ""}`)),
+    weatherAppropriate: footwearItems.some(({ item }) => (item.weather || []).length > 0)
+  };
   const readinessScore = Math.max(0, Math.min(1, Math.round(((categoryCoverage / coreCategories.length) * 0.4 + Math.min(estimatedCompleteLooks / 12, 1) * 0.6) * 100) / 100));
 
   return {
@@ -30,7 +49,11 @@ export function wardrobeReadiness(items: any[] = []) {
     estimatedCompleteLooks,
     footwearVariety: shoeCount,
     outerwearVariety: counts.outerwear || 0,
-    accessoryVariety: (counts.accessories || 0) + (counts.bags || 0),
+    accessoryVariety: Object.keys(finishingRoleCounts).length,
+    finishingRoleCoverage: finishingRoleCounts,
+    structuralCoverage,
+    footwearCoverage,
+    taxonomyReviewCount: resolved.filter((entry) => entry.taxonomy.needsReview).length,
     readinessScore,
     isSmallWardrobe: active.length < 12 || estimatedCompleteLooks < 5
   };

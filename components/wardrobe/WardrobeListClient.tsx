@@ -65,6 +65,18 @@ const smartFilters: Array<{ id: Exclude<SmartPanel, null>; label: string }> = [
   { id: "worn", label: "Recently worn" }
 ];
 
+const taxonomyQuickFilters: Array<{ label: string; patch: Partial<WardrobeFilterState> }> = [
+  { label: "Watches", patch: { canonicalSubtype: "watch" } },
+  { label: "Belts", patch: { canonicalSubtype: "belt" } },
+  { label: "Necklaces", patch: { canonicalSubtype: "necklace" } },
+  { label: "Earrings", patch: { canonicalSubtype: "earrings" } },
+  { label: "Formal shoes", patch: { category: "shoes", formalityLevel: "formal" } },
+  { label: "Sneakers", patch: { canonicalSubtype: "sneakers" } },
+  { label: "Sets", patch: { structureRole: "set" } },
+  { label: "One-piece", patch: { structureRole: "one_piece" } },
+  { label: "Primary bags", patch: { visibilityRole: "primary_carry" } }
+];
+
 function chipClass(active?: boolean) {
   return cn(
     "focus-ring inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] transition duration-200 ease-out active:scale-[0.98]",
@@ -243,6 +255,11 @@ function ActiveFilterChips({
 }) {
   const active = [
     filters.category !== "all" ? { key: "category", label: categoryLabel(filters.category), clear: () => updateFilters({ category: "all" }) } : null,
+    filters.canonicalSubtype ? { key: "subtype", label: displayFacetLabel(filters.canonicalSubtype), clear: () => updateFilters({ canonicalSubtype: "" }) } : null,
+    filters.structureRole ? { key: "structure", label: displayFacetLabel(filters.structureRole), clear: () => updateFilters({ structureRole: "" }) } : null,
+    filters.stylingRole ? { key: "role", label: displayFacetLabel(filters.stylingRole), clear: () => updateFilters({ stylingRole: "" }) } : null,
+    filters.visibilityRole ? { key: "visibility", label: displayFacetLabel(filters.visibilityRole), clear: () => updateFilters({ visibilityRole: "" }) } : null,
+    filters.formalityLevel ? { key: "formality", label: displayFacetLabel(filters.formalityLevel), clear: () => updateFilters({ formalityLevel: "" }) } : null,
     filters.color ? { key: "color", label: `Colour: ${labelForOption(filters.color, colors)}`, clear: () => updateFilters({ color: "" }) } : null,
     filters.occasion ? { key: "occasion", label: `Occasion: ${labelForOption(filters.occasion, occasions)}`, clear: () => updateFilters({ occasion: "" }) } : null,
     filters.weather ? { key: "weather", label: `Weather: ${labelForOption(filters.weather, weather)}`, clear: () => updateFilters({ weather: "" }) } : null,
@@ -345,6 +362,16 @@ function FilterToolbar({
         <FilterButton active={filters.needsCare} onClick={() => applyFilters({ needsCare: !filters.needsCare, review: false })}>
           Needs care
         </FilterButton>
+        <FilterButton active={filters.review} onClick={() => applyFilters({ review: !filters.review, needsCare: false })}>
+          Needs review
+        </FilterButton>
+      </div>
+
+      <div className="mobile-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Closet role filters">
+        {taxonomyQuickFilters.map((filter) => {
+          const active = Object.entries(filter.patch).every(([key, value]) => filters[key as keyof WardrobeFilterState] === value);
+          return <FilterButton key={filter.label} active={active} onClick={() => applyFilters(active ? clearWardrobeFilters() : filter.patch)}>{filter.label}</FilterButton>;
+        })}
       </div>
 
       <FilterPanel
@@ -372,7 +399,7 @@ function FilterToolbar({
 }
 
 function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState; onClear: () => void }) {
-  const onlyCategory = filters.category !== "all" && !filters.color && !filters.occasion && !filters.weather && !filters.worn && !filters.needsCare && !filters.review;
+  const onlyCategory = filters.category !== "all" && !filters.canonicalSubtype && !filters.structureRole && !filters.stylingRole && !filters.visibilityRole && !filters.formalityLevel && !filters.color && !filters.occasion && !filters.weather && !filters.worn && !filters.needsCare && !filters.review;
   const categoryCopy: Record<string, { title: string; body: string }> = {
     tops: { title: "No tops yet.", body: "Add your first shirt, tee, polo, or blouse." },
     bottoms: { title: "No bottoms yet.", body: "Add your first trouser, jean, skirt, or short." },
@@ -398,7 +425,7 @@ function FilteredEmptyState({ filters, onClear }: { filters: WardrobeFilterState
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <Link href="/wardrobe/add" className="focus-ring inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-cocoa px-4 text-sm font-semibold text-canvas shadow-glow transition hover:bg-cocoa/90">
           <Plus size={16} aria-hidden="true" />
-          Add a piece
+          Add Piece
         </Link>
         {hasActiveWardrobeFilters(filters) ? (
           <button type="button" onClick={onClear} className="focus-ring min-h-11 rounded-2xl border border-line bg-white/80 px-4 text-sm font-semibold text-ink transition hover:border-olive/60">

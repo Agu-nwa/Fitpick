@@ -5,6 +5,11 @@ export type WardrobeWornFilter = "" | "today" | "7d" | "30d" | "never";
 
 export type WardrobeFilterState = {
   category: WardrobeCategoryFilter;
+  canonicalSubtype?: string;
+  structureRole?: string;
+  stylingRole?: string;
+  visibilityRole?: string;
+  formalityLevel?: string;
   color: string;
   occasion: string;
   weather: string;
@@ -22,6 +27,12 @@ export type WardrobeFacetOption = {
 export type IndexedWardrobeItem = {
   item: WardrobeItem;
   category: WardrobeCategory;
+  canonicalSubtype: string;
+  structureRole: string;
+  stylingRole: string;
+  visibilityRole: string;
+  formalityLevel: string;
+  taxonomyNeedsReview: boolean;
   colors: string[];
   occasions: string[];
   weather: string[];
@@ -56,6 +67,11 @@ export const wardrobeWornFilters: Array<{ id: Exclude<WardrobeWornFilter, "">; l
 
 const defaultFilters: WardrobeFilterState = {
   category: "all",
+  canonicalSubtype: "",
+  structureRole: "",
+  stylingRole: "",
+  visibilityRole: "",
+  formalityLevel: "",
   color: "",
   occasion: "",
   weather: "",
@@ -168,6 +184,11 @@ export function filtersFromSearchParams(params: SearchParamsLike): WardrobeFilte
 
   return {
     category: categoryIds.has(category) ? category : "all",
+    canonicalSubtype: normalizeWardrobeFacet(params.get("subtype")),
+    structureRole: normalizeWardrobeFacet(params.get("structure")),
+    stylingRole: normalizeWardrobeFacet(params.get("role")),
+    visibilityRole: normalizeWardrobeFacet(params.get("visibility")),
+    formalityLevel: normalizeWardrobeFacet(params.get("formality")),
     color: normalizeWardrobeFacet(params.get("color")),
     occasion: normalizeWardrobeFacet(params.get("occasion")),
     weather: normalizeWardrobeFacet(params.get("weather")),
@@ -180,6 +201,12 @@ export function filtersFromSearchParams(params: SearchParamsLike): WardrobeFilte
 export function writeFiltersToSearchParams(params: URLSearchParams, filters: WardrobeFilterState) {
   if (filters.category === "all") params.delete("category");
   else params.set("category", filters.category);
+
+  const taxonomyParams: Array<[string, string | undefined]> = [["subtype", filters.canonicalSubtype], ["structure", filters.structureRole], ["role", filters.stylingRole], ["visibility", filters.visibilityRole], ["formality", filters.formalityLevel]];
+  for (const [key, value] of taxonomyParams) {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
 
   if (filters.color) params.set("color", filters.color);
   else params.delete("color");
@@ -205,6 +232,7 @@ export function writeFiltersToSearchParams(params: URLSearchParams, filters: War
 export function hasActiveWardrobeFilters(filters: WardrobeFilterState) {
   return (
     filters.category !== "all" ||
+    Boolean(filters.canonicalSubtype || filters.structureRole || filters.stylingRole || filters.visibilityRole || filters.formalityLevel) ||
     Boolean(filters.color) ||
     Boolean(filters.occasion) ||
     Boolean(filters.weather) ||
@@ -218,6 +246,12 @@ export function buildWardrobeFilterIndex(items: WardrobeItem[]): IndexedWardrobe
   return items.map((item) => ({
     item,
     category: item.category,
+    canonicalSubtype: normalizeWardrobeFacet(item.canonicalSubtype || ""),
+    structureRole: normalizeWardrobeFacet(item.structureRole || ""),
+    stylingRole: normalizeWardrobeFacet(item.stylingRole || ""),
+    visibilityRole: normalizeWardrobeFacet(item.visibilityRole || ""),
+    formalityLevel: normalizeWardrobeFacet(item.formalityLevel || ""),
+    taxonomyNeedsReview: item.taxonomyNeedsReview !== false || !item.canonicalSubtype || !item.structureRole || !item.stylingRole,
     colors: uniqueFacetKeys([
       item.color,
       ...metadataValues(item, "color"),
@@ -264,11 +298,16 @@ export function buildWardrobeFacetOptions(indexedItems: IndexedWardrobeItem[]) {
 export function filterWardrobeIndex(indexedItems: IndexedWardrobeItem[], filters: WardrobeFilterState, now = new Date()) {
   return indexedItems.filter((indexed) => (
     matchesCategory(indexed.category, filters.category) &&
+    (!filters.canonicalSubtype || indexed.canonicalSubtype === filters.canonicalSubtype) &&
+    (!filters.structureRole || indexed.structureRole === filters.structureRole) &&
+    (!filters.stylingRole || indexed.stylingRole === filters.stylingRole) &&
+    (!filters.visibilityRole || indexed.visibilityRole === filters.visibilityRole) &&
+    (!filters.formalityLevel || indexed.formalityLevel === filters.formalityLevel) &&
     (!filters.color || indexed.colors.includes(filters.color)) &&
     (!filters.occasion || indexed.occasions.includes(filters.occasion)) &&
     (!filters.weather || indexed.weather.includes(filters.weather)) &&
     (!filters.needsCare || indexed.needsCare) &&
-    (!filters.review || indexed.item.condition === "missing-tags" || indexed.item.condition === "needs-care") &&
+    (!filters.review || indexed.taxonomyNeedsReview || indexed.item.condition === "missing-tags" || indexed.item.condition === "needs-care") &&
     matchesWornFilter(indexed, filters.worn, now)
   ));
 }

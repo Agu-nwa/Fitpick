@@ -24,6 +24,11 @@ function assert(condition: unknown, message: string) {
 function item(input: Partial<WardrobeItem> & Pick<WardrobeItem, "id" | "name" | "category" | "color">): WardrobeItem {
   return {
     subcategory: "",
+    canonicalSubtype: "shirt",
+    structureRole: "top",
+    stylingRole: "upper_body",
+    visibilityRole: "primary_visible",
+    taxonomyNeedsReview: false,
     formality: [],
     occasions: [],
     weather: [],
@@ -37,6 +42,9 @@ const wardrobe: WardrobeItem[] = [
     id: "shoe-1",
     name: "Black sneakers",
     category: "shoes",
+    canonicalSubtype: "sneakers",
+    structureRole: "footwear",
+    stylingRole: "footwear",
     color: "Black",
     occasions: ["weekend", "travel"],
     weather: ["winter", "rain"],
@@ -57,6 +65,8 @@ const wardrobe: WardrobeItem[] = [
     id: "coat-1",
     name: "Camel coat",
     category: "outerwear",
+    canonicalSubtype: "coat",
+    structureRole: "outer_layer",
     color: "Camel",
     weather: ["winter"],
     condition: "needs-care",
@@ -66,6 +76,10 @@ const wardrobe: WardrobeItem[] = [
     id: "bag-1",
     name: "Black tote",
     category: "bags",
+    canonicalSubtype: "tote",
+    structureRole: "carry",
+    stylingRole: "carry",
+    visibilityRole: "primary_carry",
     color: "Black",
     occasions: ["work"],
     weather: ["all season"],
@@ -77,6 +91,7 @@ const wardrobe: WardrobeItem[] = [
     category: "bottoms",
     color: "Blue",
     condition: "missing-tags",
+    taxonomyNeedsReview: true,
     timesWorn: 0
   })
 ];
@@ -95,6 +110,8 @@ assert(filterWardrobeIndex(index, { ...baseFilters, worn: "7d" }, now).length ==
 assert(filterWardrobeIndex(index, { ...baseFilters, worn: "never" }, now).map((entry) => entry.item.id).join(",") === "coat-1,bag-1,review-1", "never worn filter should work");
 assert(filterWardrobeIndex(index, { ...baseFilters, needsCare: true }, now).map((entry) => entry.item.id).join(",") === "coat-1", "needs care filter should work");
 assert(filterWardrobeIndex(index, { ...baseFilters, review: true }, now).map((entry) => entry.item.id).join(",") === "coat-1,review-1", "review filter should include needs-care and missing-tags items");
+assert(filterWardrobeIndex(index, { ...baseFilters, canonicalSubtype: "sneakers" }, now).map((entry) => entry.item.id).join(",") === "shoe-1", "canonical subtype filters should find sneakers");
+assert(filterWardrobeIndex(index, { ...baseFilters, visibilityRole: "primary_carry" }, now).map((entry) => entry.item.id).join(",") === "bag-1", "visibility filters should find primary bags");
 
 const parsed = filtersFromSearchParams(new URLSearchParams("category=tops&color=black&worn=never&care=needs-care&review=true"));
 assert(parsed.category === "tops" && parsed.color === "black" && parsed.worn === "never" && parsed.needsCare && parsed.review, "URL params should restore filters");
@@ -110,6 +127,7 @@ assert(client.includes("useSearchParams"), "wardrobe filters should be synchroni
 assert(client.includes("aria-pressed"), "filter controls should expose pressed state");
 assert(client.includes("router.push"), "filter changes should update browser history without reload");
 assert(client.includes("FilteredEmptyState"), "filtered empty state should be present");
+assert(client.includes("Watches") && client.includes("Necklaces") && client.includes("Formal shoes"), "role-based quick filters should be visible");
 assert(client.includes("Add Piece"), "filtered empty state should include Add Piece shortcut");
 
 console.log("wardrobe-filtering: ok");

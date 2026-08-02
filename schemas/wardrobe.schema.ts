@@ -177,6 +177,12 @@ export const wardrobeTagReviewSchema = withCategoryAwareGarmentMeasurements(
 
 export const wardrobeFiltersSchema = z.object({
   category: wardrobeCategorySchema.optional(),
+  canonicalSubtype: z.string().trim().max(80).optional(),
+  structureRole: z.enum(wardrobeStructureRoles).optional(),
+  stylingRole: z.enum(wardrobeStylingRoles).optional(),
+  visibilityRole: z.enum(wardrobeVisibilityRoles).optional(),
+  formalityLevel: z.string().trim().max(60).optional(),
+  taxonomyReview: z.enum(["true", "false"]).optional(),
   occasion: z.string().trim().max(60).optional(),
   color: z.string().trim().max(60).optional(),
   condition: wardrobeConditionSchema.optional(),

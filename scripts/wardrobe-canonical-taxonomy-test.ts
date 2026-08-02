@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { getCanonicalSubtypeOptions, isCanonicalTaxonomyComplete, resolveCanonicalTaxonomy } from "../lib/wardrobe/canonical-taxonomy";
 import { intakeCategories } from "../lib/wardrobe/category-intelligence";
+import { wardrobeReadiness } from "../lib/recommendation/gaps";
 
 function resolved(category: string, subcategory: string, patch: Record<string, unknown> = {}) {
   return resolveCanonicalTaxonomy({ category, subcategory, name: subcategory, ...patch });
@@ -49,4 +50,12 @@ assert.equal(intakeCategories.some((entry) => entry.id === "jewelry"), false, "g
 assert.ok(intakeCategories.some((entry) => entry.canonicalSubtype === "necklace"), "intake must use canonical necklace option");
 assert.ok(intakeCategories.some((entry) => entry.canonicalSubtype === "oxfords"), "intake must expose explicit footwear options");
 assert.ok(getCanonicalSubtypeOptions("accessories").some((entry) => entry.needsReview && entry.clarification), "ambiguous subtypes must expose a clarification step");
+const roleReadiness = wardrobeReadiness([
+  ...Array.from({ length: 10 }, (_, index) => ({ _id: `watch-${index}`, category: "accessories", canonicalSubtype: "watch", structureRole: "finisher", stylingRole: "watch", visibilityRole: "visible_finisher", taxonomyNeedsReview: false })),
+  { _id: "wallet", category: "bags", canonicalSubtype: "wallet", structureRole: "non_visible_personal_item", stylingRole: "carry", visibilityRole: "small_leather_good", taxonomyNeedsReview: false },
+  { _id: "necklace", category: "accessories", canonicalSubtype: "necklace", structureRole: "finisher", stylingRole: "neck_jewelry", visibilityRole: "visible_finisher", taxonomyNeedsReview: false }
+]);
+assert.equal(roleReadiness.accessoryVariety, 2, "ten watches must count as one role and wallet must not count as primary carry");
+assert.equal(roleReadiness.finishingRoleCoverage.watch, 10);
+assert.equal(roleReadiness.finishingRoleCoverage.carry, undefined);
 console.log("Canonical wardrobe taxonomy checks passed.");

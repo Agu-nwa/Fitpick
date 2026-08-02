@@ -25,6 +25,12 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = { userId: auth.user._id };
 
     if (filters.data.category) query.category = filters.data.category;
+    if (filters.data.canonicalSubtype) query.canonicalSubtype = filters.data.canonicalSubtype;
+    if (filters.data.structureRole) query.structureRole = filters.data.structureRole;
+    if (filters.data.stylingRole) query.stylingRole = filters.data.stylingRole;
+    if (filters.data.visibilityRole) query.visibilityRole = filters.data.visibilityRole;
+    if (filters.data.formalityLevel) query.formalityLevel = filters.data.formalityLevel;
+    if (filters.data.taxonomyReview === "true") query.taxonomyNeedsReview = true;
     if (filters.data.color) query.color = filters.data.color;
     if (filters.data.condition) query.condition = filters.data.condition;
     if (filters.data.occasion) query.occasions = filters.data.occasion;
