@@ -63,6 +63,8 @@ export function serializeWardrobeItem(item: any) {
 
   return {
     id: String(item._id),
+    createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : null,
     name: item.name,
     category: item.category,
     subcategory: item.subcategory || "",

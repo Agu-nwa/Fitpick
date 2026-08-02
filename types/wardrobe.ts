@@ -39,6 +39,8 @@ export type GarmentMeasurements = {
 
 export type WardrobeItem = {
   id: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   name: string;
   category: WardrobeCategory;
   subcategory?: string;
