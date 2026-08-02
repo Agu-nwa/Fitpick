@@ -21,6 +21,8 @@ export type FabricDrape = "structured" | "soft" | "flowing" | "heavy" | "stiff" 
 export type MeasurementSource = "label_ocr" | "user_confirmed" | "ai_estimated" | "manual" | "unknown";
 export type TaxonomyStatus = "confirmed" | "inferred" | "needs_review" | "unresolved";
 export type TaxonomyConfirmedBy = "user" | "ai" | "migration" | "system";
+export type Neckline = "crew" | "v_neck" | "scoop" | "square" | "halter" | "strapless" | "off_shoulder" | "collared" | "high_neck" | "boat" | "sweetheart" | "asymmetric" | "other" | "unknown";
+export type AccessoryScale = "delicate" | "small" | "subtle" | "medium" | "statement" | "unknown";
 
 export type GarmentMeasurements = {
   chestWidthCm?: number | null;
@@ -54,6 +56,16 @@ export type WardrobeItem = {
   taxonomyConfirmedBy?: TaxonomyConfirmedBy;
   taxonomyConfirmedAt?: string | null;
   taxonomyConflicts?: string[];
+  neckline?: Neckline;
+  accessoryScale?: AccessoryScale;
+  waistbandType?: "belt_loops" | "elastic" | "drawstring" | "clean_waist" | "integrated_belt" | "unknown";
+  beltCompatible?: boolean | null;
+  cuffType?: "standard" | "french_cuff" | "convertible" | "unknown";
+  supportsPocketSquare?: boolean | null;
+  hasLapel?: boolean | null;
+  garmentLength?: "mini" | "knee" | "midi" | "maxi" | "cropped" | "ankle" | "full_length" | "unknown";
+  footwearAttributes?: { toeStyle?: "open" | "closed" | "peep" | "unknown"; heelHeight?: "flat" | "low" | "mid" | "high" | "unknown"; heelType?: string; activity?: string[]; weatherSuitability?: string[]; comfortLevel?: "low" | "medium" | "high" | "unknown"; trouserCompatibility?: string[]; dressCompatibility?: string[] };
+  metadataSources?: Record<string, "user" | "ai" | "legacy" | "unknown">;
   taxonomyVersion?: string;
   color: string;
   pattern?: string;

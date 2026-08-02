@@ -50,6 +50,17 @@ const GarmentMeasurementsSchema = new Schema(
   { _id: false }
 );
 
+const FootwearAttributesSchema = new Schema({
+  toeStyle: { type: String, enum: ["open", "closed", "peep", "unknown"], default: "unknown" },
+  heelHeight: { type: String, enum: ["flat", "low", "mid", "high", "unknown"], default: "unknown" },
+  heelType: { type: String, default: "" },
+  activity: { type: [String], default: [] },
+  weatherSuitability: { type: [String], default: [] },
+  comfortLevel: { type: String, enum: ["low", "medium", "high", "unknown"], default: "unknown" },
+  trouserCompatibility: { type: [String], default: [] },
+  dressCompatibility: { type: [String], default: [] }
+}, { _id: false });
+
 const WardrobeItemSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -85,6 +96,16 @@ const WardrobeItemSchema = new Schema(
     taxonomyConfirmedAt: { type: Date, default: null },
     taxonomyVersion: { type: String, default: "" },
     taxonomyConflicts: { type: [String], default: [] },
+    neckline: { type: String, enum: ["crew", "v_neck", "scoop", "square", "halter", "strapless", "off_shoulder", "collared", "high_neck", "boat", "sweetheart", "asymmetric", "other", "unknown"], default: "unknown" },
+    accessoryScale: { type: String, enum: ["delicate", "small", "subtle", "medium", "statement", "unknown"], default: "unknown" },
+    waistbandType: { type: String, enum: ["belt_loops", "elastic", "drawstring", "clean_waist", "integrated_belt", "unknown"], default: "unknown" },
+    beltCompatible: { type: Boolean, default: null },
+    cuffType: { type: String, enum: ["standard", "french_cuff", "convertible", "unknown"], default: "unknown" },
+    supportsPocketSquare: { type: Boolean, default: null },
+    hasLapel: { type: Boolean, default: null },
+    garmentLength: { type: String, enum: ["mini", "knee", "midi", "maxi", "cropped", "ankle", "full_length", "unknown"], default: "unknown" },
+    footwearAttributes: { type: FootwearAttributesSchema, default: () => ({}) },
+    metadataSources: { type: Schema.Types.Mixed, default: {} },
     color: { type: String, default: "" },
     pattern: { type: String, default: "" },
     fabric: { type: String, default: "" },

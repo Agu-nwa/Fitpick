@@ -37,6 +37,7 @@ function firstList(...values: unknown[]) {
 export const wardrobeAnalysisJsonShape = `{
   "rawSummary": "short neutral summary of visible evidence only",
   "categorySpecificMetadata": {},
+  "categorySpecificMetadataConfidence": {},
   "uploadIntelligence": {
     "imageQuality": {
       "blurry": null,
@@ -181,6 +182,7 @@ Do not infer or return measurement concepts outside those allowed keys.`
   const attributeProfileRules = attributeProfile
     ? `\nCategory attribute profile: ${attributeProfile.label}.
 Infer only these categorySpecificMetadata keys when visible or reasonably supported by category evidence: ${attributeProfile.allowedSpecificFields.join(", ")}.
+For every categorySpecificMetadata key, add a 0..1 confidence under categorySpecificMetadataConfidence using the same key. Use "unknown" when the feature is not visible; never invent hidden construction details.
 Use strings, string arrays, booleans, or null-like omission only. Do not include irrelevant fields.`
     : "";
   const userIntakeContext = buildUserIntakeContext(input);

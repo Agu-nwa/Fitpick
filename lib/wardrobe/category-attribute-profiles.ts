@@ -32,19 +32,19 @@ export const categoryAttributeProfiles: Record<WardrobeCategory, CategoryAttribu
     category: "tops",
     label: "Tops",
     promptFocus: ["sleeve length", "collar", "neckline", "fit", "cut", "fabric weight", "transparency", "tuckability", "closure"],
-    allowedSpecificFields: ["sleeveLength", "collarType", "neckline", "fit", "cut", "fabricWeight", "transparency", "tuckability", "closureType"]
+    allowedSpecificFields: ["sleeveLength", "collarType", "neckline", "cuffType", "fit", "cut", "fabricWeight", "transparency", "tuckability", "closureType"]
   },
   bottoms: {
     category: "bottoms",
     label: "Bottoms",
     promptFocus: ["rise", "leg shape", "length", "waist type", "fit", "pleats", "stretch", "closure"],
-    allowedSpecificFields: ["rise", "legShape", "length", "waistType", "fit", "pleats", "stretch", "closureType"]
+    allowedSpecificFields: ["rise", "legShape", "length", "garmentLength", "waistType", "waistbandType", "beltCompatible", "fit", "pleats", "stretch", "closureType"]
   },
   dresses: {
     category: "dresses",
     label: "Dresses and one-pieces",
     promptFocus: ["silhouette", "neckline", "sleeve length", "hem length", "waist definition", "back style", "slit", "structure"],
-    allowedSpecificFields: ["silhouette", "neckline", "sleeveLength", "hemLength", "waistDefinition", "backStyle", "slit", "structure"]
+    allowedSpecificFields: ["silhouette", "neckline", "sleeveLength", "hemLength", "garmentLength", "waistDefinition", "backStyle", "slit", "structure"]
   },
   native: {
     category: "native",
@@ -56,13 +56,13 @@ export const categoryAttributeProfiles: Record<WardrobeCategory, CategoryAttribu
     category: "outerwear",
     label: "Outerwear",
     promptFocus: ["layer type", "structure", "lapel", "length", "insulation", "weather protection", "closure", "formality range"],
-    allowedSpecificFields: ["layerType", "structure", "lapelType", "length", "insulationLevel", "weatherProtection", "closureType", "formalityRange"]
+    allowedSpecificFields: ["layerType", "structure", "lapelType", "hasLapel", "supportsPocketSquare", "length", "insulationLevel", "weatherProtection", "closureType", "formalityRange"]
   },
   shoes: {
     category: "shoes",
     label: "Shoes",
     promptFocus: ["shoe style", "toe shape", "heel type", "heel height", "sole", "fastening", "material finish", "activity", "comfort", "weather suitability"],
-    allowedSpecificFields: ["shoeStyle", "toeShape", "heelType", "heelHeight", "soleType", "fastening", "materialFinish", "activityType", "comfortLevel", "weatherSuitability"]
+    allowedSpecificFields: ["shoeStyle", "toeShape", "toeStyle", "heelType", "heelHeight", "soleType", "fastening", "materialFinish", "activity", "activityType", "comfortLevel", "weatherSuitability", "trouserCompatibility", "dressCompatibility"]
   },
   bags: {
     category: "bags",
@@ -74,7 +74,7 @@ export const categoryAttributeProfiles: Record<WardrobeCategory, CategoryAttribu
     category: "accessories",
     label: "Accessories",
     promptFocus: ["accessory role", "metal tone", "material", "scale", "statement level", "hardware", "belt/watch/jewelry/eyewear-specific details", "occasion range"],
-    allowedSpecificFields: ["role", "metalTone", "material", "sizeScale", "statementLevel", "hardwareFinish", "wristType", "beltWidth", "buckleStyle", "lensType", "frameShape", "jewelleryLength", "occasionRange"]
+    allowedSpecificFields: ["role", "metalTone", "material", "accessoryScale", "sizeScale", "statementLevel", "hardwareFinish", "wristType", "beltWidth", "buckleStyle", "lensType", "frameShape", "jewelleryLength", "occasionRange"]
   },
   womens_hair: {
     category: "womens_hair",

@@ -20,13 +20,23 @@ export function TaxonomyReviewCard({ item, onSaved }: { item: WardrobeItem; onSa
   const [choice, setChoice] = useState(item.canonicalSubtype || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [detailOne, setDetailOne] = useState("unknown");
+  const [detailTwo, setDetailTwo] = useState("unknown");
   const conflict = detectTaxonomyConflicts(item);
   const choices = useMemo(() => getCanonicalSubtypeOptions(item.category).filter((entry) => !entry.needsReview).slice(0, 16), [item.category]);
 
   async function save() {
     setSaving(true);
     setError("");
-    const payload = buildUserTaxonomyConfirmation(item, choice || "not_sure");
+    const identity = buildUserTaxonomyConfirmation(item, choice || "not_sure");
+    const metadata: Record<string, unknown> = {};
+    if (["necklace", "pendant", "chain", "earrings", "bracelet", "bangle", "cuff"].includes(choice)) metadata.accessoryScale = detailOne;
+    if (choice === "belt") metadata.beltCompatible = detailOne === "yes" ? true : detailOne === "no" ? false : null;
+    if (choice === "cufflinks") metadata.cuffType = detailOne === "yes" ? "french_cuff" : detailOne === "no" ? "standard" : "unknown";
+    if (item.category === "shoes") metadata.footwearAttributes = { toeStyle: detailOne, comfortLevel: detailTwo };
+    if (item.category === "bags") metadata.visibilityRole = detailOne === "main" ? "primary_carry" : detailOne === "small" ? "small_leather_good" : detailOne === "travel" ? "travel_luggage" : identity.visibilityRole;
+    metadata.metadataSources = Object.fromEntries(Object.keys(metadata).filter((key) => key !== "metadataSources").map((key) => [key, "user"]));
+    const payload = { ...identity, ...metadata };
     const result = await updateWardrobeItem(item.id, payload);
     setSaving(false);
     if (result.ok) onSaved(result.data.item);
@@ -43,6 +53,11 @@ export function TaxonomyReviewCard({ item, onSaved }: { item: WardrobeItem; onSa
         {choices.map((entry) => <button key={entry.value} type="button" onClick={() => setChoice(entry.value)} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${choice === entry.value ? "border-olive bg-olive text-white" : "border-line bg-white text-ink"}`}>{entry.label}</button>)}
         <button type="button" onClick={() => setChoice("not_sure")} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${choice === "not_sure" ? "border-olive bg-olive text-white" : "border-line bg-white text-ink"}`}>Not sure</button>
       </div>
+      {["necklace", "pendant", "chain", "earrings", "bracelet", "bangle", "cuff"].includes(choice) ? <label className="mt-4 block text-sm font-semibold text-ink">How noticeable is it?<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="delicate">Delicate or small</option><option value="medium">Medium</option><option value="statement">Statement</option></select></label> : null}
+      {choice === "belt" ? <label className="mt-4 block text-sm font-semibold text-ink">Does it work with belt loops?<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select></label> : null}
+      {choice === "cufflinks" ? <label className="mt-4 block text-sm font-semibold text-ink">Are these for French-cuff shirts?<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select></label> : null}
+      {item.category === "bags" ? <label className="mt-4 block text-sm font-semibold text-ink">How is it used?<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="main">Main outfit bag</option><option value="small">Small personal item</option><option value="travel">Travel luggage</option></select></label> : null}
+      {item.category === "shoes" ? <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold text-ink">Toe style<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailOne} onChange={(event) => setDetailOne(event.target.value)}><option value="unknown">Not sure</option><option value="closed">Closed</option><option value="open">Open</option><option value="peep">Peep toe</option></select></label><label className="text-sm font-semibold text-ink">Comfort<select className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3" value={detailTwo} onChange={(event) => setDetailTwo(event.target.value)}><option value="unknown">Not sure</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label></div> : null}
       {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
       <Button className="mt-4 w-full" disabled={saving || !choice} onClick={() => void save()}>{saving ? "Saving…" : "Save and continue"}</Button>
     </Card>

@@ -96,6 +96,7 @@ export const wardrobeAiAnalysisSchema = z.object({
   labelExtractionStatus: z.enum(["not_provided", "pending", "completed", "partial", "failed"]).default("not_provided"),
   labelWarnings: z.array(z.string().trim().min(1).max(180)).max(10).default([]),
   categorySpecificMetadata: categorySpecificMetadataSchema.default({}),
+  categorySpecificMetadataConfidence: z.record(confidence).default({}),
   uploadIntelligence: z.object({
     imageQuality: z.object({
       blurry: nullableBoolean,
