@@ -20,6 +20,7 @@ import { runWardrobeEnrichmentJob } from "@/lib/wardrobe/enrichment";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { TryOnGeneration } from "@/models/TryOnGeneration";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
+import { generateStudioModelAssetByKey } from "@/lib/studio-model/catalog/asset-generator";
 
 const avatarPreviewJobType = ["avatar", "preview", "generation"].join("_");
 
@@ -294,6 +295,11 @@ export async function runBackgroundJobByType(job: any) {
       assets: assets.map((asset) => serializeGarmentAsset(asset)),
       count: assets.length
     };
+  }
+
+  if (job.type === "studio_model_asset_generation") {
+    const asset = await generateStudioModelAssetByKey(String(payload.appearanceKey || ""), String(payload.version || "v1"));
+    return { appearanceKey: asset?.appearanceKey || String(payload.appearanceKey || ""), status: asset?.status || "FAILED" };
   }
 
   if (job.type === "true_3d_tryon_generation") {

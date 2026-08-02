@@ -9,7 +9,7 @@ import {
 } from "@/lib/avatar/studio-models";
 import { isBodyTypeAvailableForGender, type StudioModelAppearance } from "@/lib/studio-model/appearance-taxonomy";
 import { legacySelectionForAppearance, parseStudioModelAppearance, studioModelAppearanceKey } from "@/lib/studio-model/configuration";
-import { resolveStudioModelForProfile } from "@/lib/studio-model/model-resolver";
+import { resolveStudioModelForProfile, resolveStudioModelForTryOn } from "@/lib/studio-model/model-resolver";
 import { logStudioModelEvent } from "@/lib/studio-model/observability";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
@@ -154,8 +154,8 @@ export function validateModelImageUrl(value?: string | null) {
   return parsed.toString();
 }
 
-export function preferredTryOnModelImageUrl(profile: any) {
-  if (profile?.studioModelConfiguration || (profile?.studioModelGender && profile?.studioModelType)) return resolveStudioModelForProfile(profile).imageUrl;
+export async function preferredTryOnModelImageUrl(profile: any) {
+  if (profile?.studioModelConfiguration || (profile?.studioModelGender && profile?.studioModelType)) return (await resolveStudioModelForTryOn(profile)).imageUrl;
   if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageUrl) return profile.generatedModelImageUrl;
   if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageUrl) return profile.uploadedModelImageUrl;
   return fallbackStudioModelForGender(profile?.genderPresentation);

@@ -399,7 +399,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
         : null;
       if (!loaded || !avatarProfile) return { ...unavailableWithDiagnostics("Virtual Try-On needs a saved outfit and My Model.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_outfit_or_avatar_profile", providerReturnedJobId: false })), status: "failed" };
 
-      const modelImage = preferredTryOnModelImageUrl(avatarProfile);
+      const modelImage = await preferredTryOnModelImageUrl(avatarProfile);
       if (!modelImage) return { ...unavailableWithDiagnostics("Choose your My Model before using Virtual Try-On.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_model_image", providerReturnedJobId: false })), status: "failed" };
 
       const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);

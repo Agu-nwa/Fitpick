@@ -231,7 +231,7 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
       if (!loaded || !avatarProfile) {
         return { ...unavailable("Virtual Try-On needs a saved outfit and My Model."), status: "failed" };
       }
-      const modelImageUrl = preferredTryOnModelImageUrl(avatarProfile);
+      const modelImageUrl = await preferredTryOnModelImageUrl(avatarProfile);
       if (!modelImageUrl) return { ...unavailable("Choose your My Model before using Virtual Try-On."), status: "failed" };
 
       return callEndpoint(input, {
