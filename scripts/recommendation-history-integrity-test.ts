@@ -17,6 +17,8 @@ assert.equal(
 assert.ok(chatRoute.includes('eventType: "generated"'), "Create Look success records generated history");
 assert.ok(matchRoute.includes('eventType: "generated"'), "Match success records generated history");
 assert.ok(!matchRoute.includes('eventType: "failed"'), "failed Match requests do not create recommendation history");
+assert.ok(chatRoute.includes("resolveOwnedRegenerationContext") && matchRoute.includes("resolveOwnedRegenerationContext"), "Create and Match regeneration validate prior recommendations against the signed-in user");
+assert.ok(chatRoute.includes('eventType: "swapped"') && matchRoute.includes('eventType: "swapped"'), "successful replacement records the prior look as swapped");
 const summary = buildOutfitHistorySummary([
   { itemSignature: "a:b", itemIds: ["a", "b"], generatedAt: new Date("2026-08-04") },
   { itemSignature: "a:c", itemIds: ["a", "c"], generatedAt: new Date("2026-08-03"), editedAt: new Date("2026-08-03") }

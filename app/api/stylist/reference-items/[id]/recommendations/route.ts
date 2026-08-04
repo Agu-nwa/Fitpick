@@ -12,6 +12,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
 import { resolveCanonicalOccasionIntent } from "@/lib/recommendation/occasion-intent";
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
+import { resolveOwnedRegenerationContext } from "@/lib/recommendation/regeneration-server";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { readJson, validateBody } from "@/lib/validation";
@@ -59,6 +60,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       itemIds: wardrobe.map((item: any) => String(item._id)),
       minScore: 45
     });
+    const regeneration = await resolveOwnedRegenerationContext({
+      userId: String(auth.user._id),
+      request: parsed.data.regeneration,
+      wardrobeItems: wardrobe
+    });
 
     const occasionIntent = resolveCanonicalOccasionIntent(parsed.data.occasion || parsed.data.message);
     const weatherAvailability = resolveRecommendationWeatherAvailability({
@@ -76,13 +82,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       memorySummary: serializeMemorySummary(memorySummary),
       outfitHistorySummary: buildOutfitHistorySummary(outfitHistory),
       compatibilityEdges,
+      recommendationMode: regeneration ? "something_different" : "photo_match",
+      regeneration,
       limit: 3
     });
 
     const primary = recommendations.find((recommendation) => recommendation.items.length > 0);
     if (primary) {
       const itemIds = primary.items.map((item: any) => item._id).filter(Boolean);
-      await Promise.allSettled([
+      const historyWrites: Array<Promise<unknown>> = [
         WardrobeItem.updateMany(
           { _id: { $in: itemIds }, userId: auth.user._id },
           { $set: { lastRecommendedAt: new Date() }, $inc: { recommendationCount: 1 } }
@@ -92,7 +100,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           itemIds,
           eventType: "generated",
           source: "stylist_chat",
-          recommendationMode: "photo_match",
+          recommendationMode: primary.recommendationMode || "photo_match",
           occasion: primary.occasion,
           context: {
             referenceItemId: String(referenceItem._id),
@@ -102,7 +110,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
           scoreBreakdown: primary.scoreBreakdown,
           similarityMetadata: primary.similarityMetadata
         })
-      ]);
+      ];
+      if (regeneration?.previousRecommendationId) {
+        historyWrites.push(recordOutfitHistory({
+          userId: auth.user._id,
+          outfitId: regeneration.previousRecommendationId,
+          itemIds: regeneration.previousItemIds,
+          eventType: "swapped",
+          source: "stylist_chat",
+          recommendationMode: "something_different",
+          occasion: primary.occasion,
+          context: {
+            referenceItemId: String(referenceItem._id)
+          }
+        }));
+      }
+      await Promise.allSettled(historyWrites);
     }
 
     return apiSuccess({

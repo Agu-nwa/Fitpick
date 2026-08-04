@@ -62,9 +62,21 @@ export function similarityToHistory(items: any[] = [], historySummary?: any) {
   const currentIds = ids(items);
   const recentRecommended = new Set((historySummary.recentRecommendedItemIds || []).map(String));
   const recentlyWorn = new Set((historySummary.recentlyWornItemIds || []).map(String));
+  const recommendationCounts = historySummary.recentItemRecommendationCounts || {};
+  const recentOutfitOverlaps = (historySummary.recentRecommendationItemIdLists || []).map((recentIds: string[]) => {
+    const recent = new Set(recentIds.map(String));
+    return currentIds.filter((id) => recent.has(id)).length / Math.max(1, currentIds.length, recent.size);
+  });
+  const maximumRecentOutfitOverlap = recentOutfitOverlaps.length ? Math.max(...recentOutfitOverlaps) : 0;
+  const frequencyExposure = currentIds.reduce((sum, id) => sum + Math.min(1, Number(recommendationCounts[id] || 0) / 5), 0) / Math.max(1, currentIds.length);
   const sharedRecommended = currentIds.filter((id) => recentRecommended.has(id)).length / Math.max(1, currentIds.length);
   const sharedWorn = currentIds.filter((id) => recentlyWorn.has(id)).length / Math.max(1, currentIds.length);
-  return Math.max(sharedRecommended * 0.62, sharedWorn * 0.75);
+  return Math.max(
+    maximumRecentOutfitOverlap * 0.9,
+    frequencyExposure * 0.82,
+    sharedRecommended * 0.42,
+    sharedWorn * 0.75
+  );
 }
 
 export function noveltyScore(items: any[] = [], historySummary?: any) {
@@ -73,7 +85,7 @@ export function noveltyScore(items: any[] = [], historySummary?: any) {
 
 export function diversifyOutfits<T extends { items: any[]; score: number; scoreBreakdown?: any; similarityMetadata?: any }>(
   outfits: T[],
-  options: { limit?: number; historySummary?: any; diversityWeight?: number; avoidLastOutfit?: boolean; maximumLastOutfitOverlap?: number } = {}
+  options: { limit?: number; historySummary?: any; diversityWeight?: number; avoidLastOutfit?: boolean; maximumLastOutfitOverlap?: number; maximumSelectedOverlap?: number } = {}
 ) {
   const limit = Math.max(1, Math.min(options.limit || 3, 8));
   const diversityWeight = typeof options.diversityWeight === "number" ? options.diversityWeight : 0.34;
@@ -109,10 +121,21 @@ export function diversifyOutfits<T extends { items: any[]; score: number; scoreB
   const candidates = options.avoidLastOutfit && lowOverlapCandidates.length ? lowOverlapCandidates : mappedCandidates;
 
   while (selected.length < limit && candidates.length) {
+    const eligibleIndexes = candidates
+      .map((candidate, index) => ({
+        index,
+        maximumOverlap: selected.length
+          ? Math.max(...selected.map((chosen) => outfitSimilarity(candidate.items, chosen.items)))
+          : 0
+      }))
+      .filter((entry) => entry.maximumOverlap <= (options.maximumSelectedOverlap ?? 1))
+      .map((entry) => entry.index);
+    if (!eligibleIndexes.length) break;
     let bestIndex = 0;
     let bestRank = Number.NEGATIVE_INFINITY;
 
-    candidates.forEach((candidate, index) => {
+    eligibleIndexes.forEach((index) => {
+      const candidate = candidates[index];
       const maxSimilarity = selected.length
         ? Math.max(...selected.map((chosen) => outfitSimilarity(candidate.items, chosen.items)))
         : 0;

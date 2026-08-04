@@ -31,6 +31,12 @@ import { generateCombinations } from "@/lib/recommendation/generator";
 import { serializeWardrobeItem } from "@/lib/wardrobe";
 import { recommendationWeatherFitCopy } from "@/lib/weather/stylist-weather-state";
 import { buildRecommendationPieces, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
+import {
+  evaluateRegenerationCandidate,
+  logRecommendationDiversity,
+  resolveRegenerationPolicy,
+  type RecommendationRegenerationContext
+} from "@/lib/recommendation/regeneration";
 
 export function repeatWindowDays(preference?: string) {
   if (preference === "high") return 30;
@@ -217,6 +223,7 @@ export type EngineInput = {
   weather?: any;
   outfitHistorySummary?: any;
   recommendationMode?: string;
+  regeneration?: RecommendationRegenerationContext;
   traceId?: string;
 };
 
@@ -324,12 +331,22 @@ export function buildRecommendation(input: EngineInput) {
     }
   );
 
-  const diverseOutfits = diversifyOutfits(rankedCombinations, {
+  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, readyFirst);
+  const lockedFinisherItems = readyFirst.filter((item) =>
+    regenerationPolicy.lockedItemIds.includes(String(item._id || item.id)) && isAccessoryCandidate(item)
+  );
+  const regenerationEligibleCombinations = regenerationPolicy.enabled
+    ? rankedCombinations.filter((candidate) => evaluateRegenerationCandidate([...candidate.items, ...lockedFinisherItems], regenerationPolicy).valid)
+    : rankedCombinations;
+  const strictRegenerationUnavailable = regenerationPolicy.enabled && regenerationEligibleCombinations.length === 0;
+  const selectionCandidates = regenerationEligibleCombinations.length ? regenerationEligibleCombinations : rankedCombinations;
+
+  const diverseOutfits = diversifyOutfits(selectionCandidates, {
     limit: 3,
     historySummary: input.outfitHistorySummary,
     diversityWeight: recommendationMode === "todays_best" ? 0.34 : 0.5,
-    avoidLastOutfit: recommendationMode === "something_different",
-    maximumLastOutfitOverlap: 0.5
+    avoidLastOutfit: recommendationMode === "something_different" || regenerationPolicy.enabled,
+    maximumLastOutfitOverlap: regenerationPolicy.enabled ? regenerationPolicy.maximumOverlap : 0.5
   });
 
   const bestOutfit = diverseOutfits[0] || rankedCombinations[0] || combinations[0];
@@ -405,7 +422,7 @@ export function buildRecommendation(input: EngineInput) {
     compatibilityEdges: input.compatibilityEdges || []
   });
   const accessoryCompletion = selectAccessoryCompletion({
-    selectedItems: footwearRescue.items,
+    selectedItems: [...footwearRescue.items, ...lockedFinisherItems],
     wardrobeItems: readyFirst,
     occasionName: input.occasionName,
     formality: input.formality,
@@ -415,9 +432,21 @@ export function buildRecommendation(input: EngineInput) {
     allowRecentRepeat,
     styleProfile: internalStyleProfile,
     memorySummary: input.memorySummary,
-    outfitHistorySummary: input.outfitHistorySummary
+    outfitHistorySummary: input.outfitHistorySummary,
+    excludedItemIds: regenerationPolicy.enabled
+      ? regenerationPolicy.previousFinisherItemIds.filter((id) => !regenerationPolicy.lockedItemIds.includes(id))
+      : []
   });
-  const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...accessoryCompletion.items]).items;
+  const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...lockedFinisherItems, ...accessoryCompletion.items]).items;
+  const regenerationEvaluation = evaluateRegenerationCandidate(completedItems, regenerationPolicy);
+  logRecommendationDiversity({
+    flow: "create",
+    policy: regenerationPolicy,
+    evaluation: regenerationEvaluation,
+    candidateCount: rankedCombinations.length,
+    eligibleCandidateCount: regenerationEligibleCombinations.length,
+    status: !regenerationPolicy.enabled ? "not_requested" : regenerationEvaluation.valid ? "satisfied" : "fallback"
+  });
   const itemTaxonomyDiagnostics = taxonomyDiagnostics(readyFirst, completedItems);
   logTaxonomyMetric("recommendation.item.omitted_by_role", {
     consideredCount: itemTaxonomyDiagnostics.length,
@@ -443,6 +472,9 @@ export function buildRecommendation(input: EngineInput) {
     allowIncomplete: readiness.isSmallWardrobe
   });
   const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
+  const regenerationWarnings = strictRegenerationUnavailable || (regenerationPolicy.enabled && !regenerationEvaluation.valid)
+    ? ["A fully different complete outfit was not available for these constraints, so the closest safe alternative was used."]
+    : [];
 
   const score = scoreOutfit(completedItems, {
     occasionName: input.occasionName,
@@ -545,7 +577,8 @@ export function buildRecommendation(input: EngineInput) {
     missing: completenessMissing,
     score
   });
-  const completenessSummary = completeness.completenessWarnings.length ? ` ${completeness.completenessWarnings.join(" ")}` : "";
+  const allCompletenessWarnings = [...completeness.completenessWarnings, ...regenerationWarnings];
+  const completenessSummary = allCompletenessWarnings.length ? ` ${allCompletenessWarnings.join(" ")}` : "";
   const addLater = completeness.completenessStatus === "missing_footwear"
     ? "Add black shoes, loafers, sneakers, or sandals to complete this look."
     : gapInsights[0]?.message || explanation.addLater;
@@ -596,7 +629,7 @@ export function buildRecommendation(input: EngineInput) {
     addLater,
     completenessStatus: completeness.completenessStatus,
     missingCategories: completeness.missingCategories,
-    completenessWarnings: completeness.completenessWarnings,
+    completenessWarnings: allCompletenessWarnings,
     footwearIncluded: completeness.footwearIncluded,
     recommendationMode,
     styleIntent: modeTitle,
@@ -649,7 +682,8 @@ export function buildRecommendation(input: EngineInput) {
         warnings: finalValidation.warnings,
         rejectReason: finalValidation.rejectReason,
         structure: finalValidation.structure
-      }
+      },
+      regeneration: regenerationEvaluation
     },
     candidateCount: combinations.length,
     diverseCandidateCount: diverseOutfits.length,

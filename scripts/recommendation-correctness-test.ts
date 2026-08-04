@@ -8,6 +8,7 @@ import { validateRecommendationCandidate } from "../lib/recommendation/candidate
 import { occasionProfiles } from "../lib/recommendation/occasion-profiles";
 import { outfitTemplates } from "../lib/recommendation/outfit-templates";
 import { diversifyOutfits } from "../lib/recommendation/diversity";
+import { evaluateRegenerationCandidate, resolveRegenerationPolicy } from "../lib/recommendation/regeneration";
 
 const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", ...extra });
 const top = item("top", "tops", "White shirt", { canonicalSubtype: "shirt", taxonomyNeedsReview: false });
@@ -104,5 +105,36 @@ const different = diversifyOutfits([
   historySummary: { eventCount: 1, lastRecommendationItemIds: ["top", "bottom", "shoe"], recentRecommendedItemIds: ["top", "bottom", "shoe"] }
 });
 assert.equal(different[0].items[0]._id, "dress", "something different selects a materially different architecture when available");
+
+const regenerationWardrobe = [
+  top,
+  bottom,
+  shoe,
+  item("blazer", "outerwear", "Red blazer"),
+  item("bag", "bags", "Black bag"),
+  watch,
+  item("new-top", "tops", "Blue shirt"),
+  item("new-bottom", "bottoms", "Stone trousers"),
+  item("new-shoe", "shoes", "Brown loafers"),
+  item("new-bag", "bags", "Tan bag")
+];
+const regenerationPolicy = resolveRegenerationPolicy({
+  requestKind: "regenerate",
+  previousItemIds: ["top", "bottom", "shoe", "blazer", "bag", "watch"],
+  minimumCoreChanges: 2,
+  maximumOverlap: 0.4
+}, regenerationWardrobe);
+const repeatedEvaluation = evaluateRegenerationCandidate([top, bottom, shoe, item("new-blazer", "outerwear", "Navy blazer"), item("new-bag", "bags", "Tan bag")], regenerationPolicy);
+assert.equal(repeatedEvaluation.valid, false, "35 regeneration rejects candidates that retain too many core garments");
+assert.ok(repeatedEvaluation.rejectionReasons.includes("insufficient_core_changes"), "36 regeneration reports the hard core-change failure");
+const freshEvaluation = evaluateRegenerationCandidate([
+  item("new-top", "tops", "Blue shirt"),
+  item("new-bottom", "bottoms", "Stone trousers"),
+  shoe,
+  item("new-blazer", "outerwear", "Navy blazer"),
+  item("new-bag", "bags", "Tan bag")
+], regenerationPolicy);
+assert.equal(freshEvaluation.valid, true, "37 regeneration accepts a materially different complete candidate");
+assert.ok(freshEvaluation.overlap <= 0.4, "38 final overlap is measured after finishing items are present");
 
 console.log("Recommendation correctness checks passed.");

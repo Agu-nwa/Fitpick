@@ -206,6 +206,31 @@ assert.ok(businessLook.items.filter((entry: any) => /watch|smartwatch/i.test(`${
 assert.ok(businessLook.items.filter((entry: any) => /bracelet|bangle|cuff/i.test(`${entry.name} ${entry.subcategory}`)).length <= 1, "recommendation should keep one wrist-jewelry piece while treating it separately from a watch");
 
 const priorSignature = signature(businessLook as any);
+const businessItemIds = businessLook.items.map((entry: any) => String(entry.id || entry._id));
+const regeneratedBusinessLook = buildRecommendation({
+  wardrobeItems: wardrobe,
+  occasionName: "business casual",
+  formality: "polished",
+  recommendationMode: "something_different",
+  outfitHistorySummary: {
+    eventCount: 1,
+    recentRecommendationSignatures: [priorSignature],
+    recentRecommendationItemIdLists: [businessItemIds],
+    lastRecommendationItemIds: businessItemIds,
+    recentRecommendedItemIds: businessItemIds,
+    recentItemRecommendationCounts: Object.fromEntries(businessItemIds.map((id) => [id, 1]))
+  },
+  regeneration: {
+    requestKind: "regenerate",
+    previousItemIds: businessItemIds,
+    minimumCoreChanges: 2,
+    maximumOverlap: 0.4
+  }
+});
+assert.equal(regeneratedBusinessLook.similarityMetadata?.regeneration?.valid, true, "structured regeneration must satisfy hard diversity constraints when alternatives exist");
+assert.ok(regeneratedBusinessLook.similarityMetadata?.regeneration?.coreChanges >= 2, "structured regeneration must change at least two core garments");
+assert.ok(regeneratedBusinessLook.similarityMetadata?.regeneration?.overlap <= 0.4, "structured regeneration must remain below the requested final overlap");
+
 const differentLook = buildRecommendation({
   wardrobeItems: wardrobe,
   occasionName: "smart casual",

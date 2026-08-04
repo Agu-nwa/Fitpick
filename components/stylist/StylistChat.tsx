@@ -20,7 +20,8 @@ import {
   requestSignedUploadUrl,
   selectReferenceFashionItem,
   sendStylistMessage,
-  uploadImageViaServer
+  uploadImageViaServer,
+  type RecommendationRegenerationRequest
 } from "@/lib/api-client";
 import { imageUploadErrorMessage, normalizeImageForUpload, type NormalizedImageUpload } from "@/lib/image-upload/browser-normalize";
 import { IMAGE_UPLOAD_POLICY, type ImageUploadSource } from "@/lib/image-upload-policy";
@@ -103,6 +104,30 @@ const refinementChips = [
 
 function messageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function wardrobeItemId(item: { id?: string; _id?: string }) {
+  return String(item.id || item._id || "");
+}
+
+function regenerationItemRules(items: OutfitRecommendation["items"], refinement?: string) {
+  const instruction = String(refinement || "").toLowerCase();
+  const lockedItemIds = items
+    .filter((item) => {
+      const text = `${item.category || ""} ${item.subcategory || ""} ${item.name || ""}`.toLowerCase();
+      if (/keep trousers?/.test(instruction)) return /bottom|trouser|pants|jeans|shorts|skirt/.test(text);
+      if (/keep jacket/.test(instruction)) return /outerwear|jacket|blazer|coat|cardigan/.test(text);
+      return false;
+    })
+    .map(wardrobeItemId)
+    .filter(Boolean);
+  const excludedItemIds = /avoid trainers?/.test(instruction)
+    ? items
+        .filter((item) => /trainer|sneaker|athletic/.test(`${item.category || ""} ${item.subcategory || ""} ${item.name || ""}`.toLowerCase()))
+        .map(wardrobeItemId)
+        .filter(Boolean)
+    : [];
+  return { lockedItemIds, excludedItemIds };
 }
 
 function wait(ms: number) {
@@ -946,7 +971,7 @@ export function StylistChat({
     });
   }
 
-  async function submitStylistMessage(text?: string, options: { includeVisualization?: boolean; visualMode?: StylistVisualMode; isRegeneration?: boolean } = {}) {
+  async function submitStylistMessage(text?: string, options: { includeVisualization?: boolean; visualMode?: StylistVisualMode; isRegeneration?: boolean; regeneration?: RecommendationRegenerationRequest } = {}) {
     const trimmed = (text ?? message).trim();
     const referenceForMessage = activeReference?.status === "ready" ? activeReference : null;
     const flowForRequest = referenceForMessage ? "match" : currentFlow;
@@ -994,7 +1019,8 @@ export function StylistChat({
       includeVisualization: options.includeVisualization ?? includeVisualization,
       visualMode: options.visualMode || "digital_human",
       referenceItemId: referenceForMessage?.id || null,
-      recentMessages: recentMessages.map((entry) => ({ role: entry.role, content: entry.content }))
+      recentMessages: recentMessages.map((entry) => ({ role: entry.role, content: entry.content })),
+      regeneration: options.regeneration
     });
 
     setLoading(false);
@@ -1039,6 +1065,8 @@ export function StylistChat({
     if (loading || referenceBusy || isRegeneratingLooks) return;
     const originalBrief = lastCreateBrief || requestHistory.find((request) => !request.attachment)?.content || "Create a polished look from my wardrobe.";
     const currentItems = entry.outfit?.items.map((item) => item.name).filter(Boolean).join(", ");
+    const previousItemIds = (entry.outfit?.items || []).map(wardrobeItemId).filter(Boolean);
+    const itemRules = regenerationItemRules(entry.outfit?.items || [], refinement);
     const refinementLine = refinement ? `\nRefinement: ${refinement}.` : "";
     const regenerationPrompt = currentItems
       ? `${originalBrief}${refinementLine}\nCreate a fresh alternative from my wardrobe and avoid repeating this exact combination: ${currentItems}.`
@@ -1049,7 +1077,16 @@ export function StylistChat({
       await submitStylistMessage(regenerationPrompt, {
         includeVisualization,
         visualMode: "digital_human",
-        isRegeneration: true
+        isRegeneration: true,
+        regeneration: previousItemIds.length ? {
+          requestKind: "regenerate",
+          previousRecommendationId: entry.outfitRecommendationId || entry.outfit?.id || null,
+          previousItemIds,
+          lockedItemIds: itemRules.lockedItemIds,
+          excludedItemIds: itemRules.excludedItemIds,
+          minimumCoreChanges: 2,
+          maximumOverlap: 0.4
+        } : undefined
       });
     } finally {
       setIsRegeneratingLooks(false);
@@ -1061,7 +1098,9 @@ export function StylistChat({
     const reference = entry.referenceItem || entry.outfit?.referenceItems?.[0] || activeReference;
     if (!reference?.id) return;
 
-    const currentItems = (entry.referenceRecommendations?.[0]?.items || entry.outfit?.items || [])
+    const previousRecommendation = entry.referenceRecommendations?.[0] || entry.outfit || null;
+    const previousItems = previousRecommendation?.items || [];
+    const currentItems = previousItems
       .map((item) => item.name)
       .filter(Boolean)
       .join(", ");
@@ -1074,7 +1113,20 @@ export function StylistChat({
     setIsRegeneratingLooks(true);
     setError("");
     try {
-      const result = await getReferenceFashionRecommendations(reference.id, { message: prompt });
+      const previousItemIds = previousItems.map(wardrobeItemId).filter(Boolean);
+      const itemRules = regenerationItemRules(previousItems, refinement);
+      const result = await getReferenceFashionRecommendations(reference.id, {
+        message: prompt,
+        regeneration: previousItemIds.length ? {
+          requestKind: "regenerate",
+          previousRecommendationId: previousRecommendation?.id || entry.outfitRecommendationId || null,
+          previousItemIds,
+          lockedItemIds: itemRules.lockedItemIds,
+          excludedItemIds: itemRules.excludedItemIds,
+          minimumCoreChanges: 2,
+          maximumOverlap: 0.35
+        } : undefined
+      });
       if (!result.ok) {
         setError(safeUserMessage(result.error, "We couldn’t refresh this match right now. Please try again."));
         return;

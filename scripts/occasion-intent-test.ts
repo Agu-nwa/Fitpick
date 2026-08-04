@@ -17,4 +17,7 @@ const unspecified = resolveCanonicalOccasionIntent("Style me using something I h
 assert.equal(unspecified.id, "everyday");
 assert.equal(unspecified.detected, false);
 
+const freshAlternative = parseStylistRequestIntent("Create a fresh alternative outfit");
+assert.ok(freshAlternative.styleDirections.includes("different"), "fresh-alternative language activates diversity mode even outside the structured regenerate button");
+
 console.log("Occasion intent tests passed.");

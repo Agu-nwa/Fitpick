@@ -9,7 +9,7 @@ export type CanonicalOccasionIntent = {
 export type StylistRequestIntent = {
   requestText: string;
   occasion: CanonicalOccasionIntent;
-  styleDirections: Array<"simple" | "polished" | "bold" | "statement" | "weather-safe" | "comfortable">;
+  styleDirections: Array<"simple" | "polished" | "bold" | "statement" | "weather-safe" | "comfortable" | "different">;
 };
 
 const explicitSignals = /\b(business|work|office|meeting|corporate|interview|wedding|aso[-\s]?ebi|formal|gala|black tie|ceremony|church|sunday|vacation|holiday|resort|beach|airport|flight|travel|gym|workout|training|sport|networking|conference|professional|date|romantic|birthday|party|celebration|dinner|evening|smart casual|polished casual|traditional|native|cultural|agbada|kaftan|isiagu|ankara|casual|weekend|today|everyday|streetwear|off[-\s]?duty)\b/i;
@@ -33,7 +33,8 @@ export function parseStylistRequestIntent(value: unknown): StylistRequestIntent 
     ["bold", /\b(bold|colourful|colorful)\b/i],
     ["statement", /\b(statement|dramatic)\b/i],
     ["weather-safe", /\b(weather[-\s]?safe|rain[-\s]?ready)\b/i],
-    ["comfortable", /\b(comfortable|comfy|comfort)\b/i]
+    ["comfortable", /\b(comfortable|comfy|comfort)\b/i],
+    ["different", /\b(fresh|different|another|alternative|regenerate|new\s+(?:look|outfit))\b/i]
   ];
   return {
     requestText,

@@ -45,8 +45,25 @@ function balancedSlotCandidates(items: any[], scoringInput: any, quota = SLOT_CA
     const key = String(item.canonicalSubtype || item.subcategory || item.category || "unknown").toLowerCase();
     if (!subtypeRepresentatives.has(key)) subtypeRepresentatives.set(key, item);
   }
-  const selected = [...ranked.slice(0, Math.ceil(quota / 2)), ...fresh.slice(0, Math.ceil(quota / 4)), ...Array.from(subtypeRepresentatives.values())];
-  return Array.from(new Map(selected.map((item) => [idFor(item), item])).values()).slice(0, quota);
+  const rankedChoices = ranked.slice(0, Math.ceil(quota / 2));
+  const freshChoices = fresh.slice(0, Math.ceil(quota / 4));
+  const subtypeChoices = Array.from(subtypeRepresentatives.values()).slice(0, Math.ceil(quota / 4));
+  const selected: any[] = [];
+  const seen = new Set<string>();
+  const add = (item: any) => {
+    const id = idFor(item);
+    if (!id || seen.has(id) || selected.length >= quota) return;
+    seen.add(id);
+    selected.push(item);
+  };
+  const depth = Math.max(rankedChoices.length, freshChoices.length, subtypeChoices.length);
+  for (let index = 0; index < depth && selected.length < quota; index += 1) {
+    add(rankedChoices[index]);
+    add(freshChoices[index]);
+    add(subtypeChoices[index]);
+  }
+  for (const item of ranked) add(item);
+  return selected;
 }
 
 export function generateCombinations(
@@ -120,7 +137,7 @@ export function generateCombinations(
     .sort((a, b) => b.score - a.score || a.items.map(idFor).join("|").localeCompare(b.items.map(idFor).join("|")))
     .slice(0, CORE_BEAM_WIDTH);
   for (const core of rankedCore) {
-    for (const outerwear of optionalCandidates(byCategory("outerwear"), 4)) pushOutfit([...core.items, outerwear]);
+    for (const outerwear of optionalCandidates(byCategory("outerwear"), 8)) pushOutfit([...core.items, outerwear]);
     if (outfits.length >= maxCandidates) break;
   }
 

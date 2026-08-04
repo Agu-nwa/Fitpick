@@ -350,11 +350,16 @@ export function selectAccessoryCompletion(input: {
   styleProfile?: any;
   memorySummary?: any;
   outfitHistorySummary?: any;
+  excludedItemIds?: string[];
+  emitMetrics?: boolean;
 }) {
+  const metric: typeof logTaxonomyMetric = input.emitMetrics === false ? (() => undefined) : logTaxonomyMetric;
   const selectedIds = new Set(input.selectedItems.map(itemId).filter(Boolean));
+  const excludedIds = new Set((input.excludedItemIds || []).map(String));
   const existingRoles = new Set(input.selectedItems.filter(isAccessoryCandidate).map(accessoryRoleFor));
   const candidateItems = input.wardrobeItems
     .filter((item) => !selectedIds.has(itemId(item)))
+    .filter((item) => !excludedIds.has(itemId(item)))
     .filter((item) => !item.archivedAt)
     .filter((item) => input.allowNeedsCare || item.condition !== "needs-care")
     .filter(isAccessoryCandidate);
@@ -380,7 +385,7 @@ export function selectAccessoryCompletion(input: {
   }
 
   if (!eligibleCandidateItems.length) {
-    logTaxonomyMetric("recommendation.accessory.legacy_unresolved", { unresolvedCount: candidateItems.length });
+    metric("recommendation.accessory.legacy_unresolved", { unresolvedCount: candidateItems.length });
     return {
       items: [],
       decision: {
@@ -399,7 +404,7 @@ export function selectAccessoryCompletion(input: {
   const scored = eligibleCandidateItems
     .map((item) => scoreAccessoryCandidate({ ...input, item }))
     .sort((a, b) => b.score - a.score);
-  logTaxonomyMetric("recommendation.accessory.considered", { candidateCount: scored.length });
+  metric("recommendation.accessory.considered", { candidateCount: scored.length });
   const bestByRole = new Map<AccessoryRole, AccessoryCandidate>();
   for (const candidate of scored) {
     const current = bestByRole.get(candidate.role);
@@ -472,7 +477,7 @@ export function selectAccessoryCompletion(input: {
   }
 
   if (!selected.length) {
-    logTaxonomyMetric("recommendation.accessory.none_selected", { candidateCount: candidateItems.length, shortlistedCount: shortlisted.length });
+    metric("recommendation.accessory.none_selected", { candidateCount: candidateItems.length, shortlistedCount: shortlisted.length });
     return {
       items: [],
       decision: {
@@ -493,24 +498,24 @@ export function selectAccessoryCompletion(input: {
     ? selected.map((candidate) => candidate.item)
     : selected.filter((candidate) => !roleValidation.invalid.some((entry) => entry.itemId === itemId(candidate.item))).map((candidate) => candidate.item);
   const validRoles = validItems.map(accessoryRoleFor);
-  logTaxonomyMetric("recommendation.accessory.selected", { selectedCount: validItems.length });
-  logTaxonomyMetric("recommendation.accessory.rejected", { rejectedCount: Math.max(0, scored.length - validItems.length) });
-  logTaxonomyMetric("recommendation.accessory.selected_sparse_metadata", { selectedCount: selected.filter((candidate) => candidate.missingSignals.length > 0).length });
-  logTaxonomyMetric("recommendation.accessory.rejected_explicit_conflict", { rejectedCount: selected.filter((candidate) => candidate.penalties.length > 0).length });
-  logTaxonomyMetric("recommendation.metadata.neckline_available", { availableCount: input.selectedItems.filter((item) => item.neckline && item.neckline !== "unknown").length });
-  logTaxonomyMetric("recommendation.metadata.belt_compatibility_available", { availableCount: input.selectedItems.filter((item) => typeof item.beltCompatible === "boolean").length });
-  logTaxonomyMetric("recommendation.metadata.cuff_type_available", { availableCount: input.selectedItems.filter((item) => item.cuffType && item.cuffType !== "unknown").length });
-  logTaxonomyMetric("recommendation.metadata.metal_tone_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("metal_tone_metadata")).length });
-  logTaxonomyMetric("recommendation.metadata.visual_weight_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("visual_weight_metadata")).length });
-  logTaxonomyMetric("recommendation.metadata.formality_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("formality")).length });
-  logTaxonomyMetric("recommendation.metadata.accessory_role_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("role")).length });
-  logTaxonomyMetric("recommendation.accessory.metadata_complete", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "complete").length });
-  logTaxonomyMetric("recommendation.accessory.metadata_partial", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "partial").length });
-  logTaxonomyMetric("recommendation.accessory.metadata_sparse", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "sparse").length });
-  logTaxonomyMetric("selected_accessory_metadata_complete", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "complete").length });
-  logTaxonomyMetric("selected_accessory_metadata_partial", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "partial").length });
-  logTaxonomyMetric("selected_accessory_metadata_sparse", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "sparse").length });
-  if (omitted.length || roleValidation.invalid.length) logTaxonomyMetric("recommendation.accessory.rejected_by_role", { rejectedCount: omitted.length + roleValidation.invalid.length, selectedCount: validItems.length });
+  metric("recommendation.accessory.selected", { selectedCount: validItems.length });
+  metric("recommendation.accessory.rejected", { rejectedCount: Math.max(0, scored.length - validItems.length) });
+  metric("recommendation.accessory.selected_sparse_metadata", { selectedCount: selected.filter((candidate) => candidate.missingSignals.length > 0).length });
+  metric("recommendation.accessory.rejected_explicit_conflict", { rejectedCount: selected.filter((candidate) => candidate.penalties.length > 0).length });
+  metric("recommendation.metadata.neckline_available", { availableCount: input.selectedItems.filter((item) => item.neckline && item.neckline !== "unknown").length });
+  metric("recommendation.metadata.belt_compatibility_available", { availableCount: input.selectedItems.filter((item) => typeof item.beltCompatible === "boolean").length });
+  metric("recommendation.metadata.cuff_type_available", { availableCount: input.selectedItems.filter((item) => item.cuffType && item.cuffType !== "unknown").length });
+  metric("recommendation.metadata.metal_tone_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("metal_tone_metadata")).length });
+  metric("recommendation.metadata.visual_weight_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("visual_weight_metadata")).length });
+  metric("recommendation.metadata.formality_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("formality")).length });
+  metric("recommendation.metadata.accessory_role_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("role")).length });
+  metric("recommendation.accessory.metadata_complete", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "complete").length });
+  metric("recommendation.accessory.metadata_partial", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "partial").length });
+  metric("recommendation.accessory.metadata_sparse", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "sparse").length });
+  metric("selected_accessory_metadata_complete", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "complete").length });
+  metric("selected_accessory_metadata_partial", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "partial").length });
+  metric("selected_accessory_metadata_sparse", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "sparse").length });
+  if (omitted.length || roleValidation.invalid.length) metric("recommendation.accessory.rejected_by_role", { rejectedCount: omitted.length + roleValidation.invalid.length, selectedCount: validItems.length });
 
   return {
     items: validItems,

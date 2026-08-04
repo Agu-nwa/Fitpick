@@ -56,6 +56,7 @@
     "test:account-deletion": "tsx scripts/account-deletion-integrity-test.ts",
     "test:recommendation-evaluation": "tsx scripts/recommendation-evaluation-suite.ts",
     "test:recommendation-history": "tsx scripts/recommendation-history-integrity-test.ts",
+    "test:recommendation-regeneration-ui": "tsx scripts/recommendation-regeneration-ui-test.ts",
     "test:tryon-capabilities": "tsx scripts/tryon-provider-capabilities-test.ts",
     "test:viewport": "playwright test tests/viewport",
     "audit:wardrobe-taxonomy-readonly": "tsx scripts/wardrobe-taxonomy-audit.ts --dry-run --summary",

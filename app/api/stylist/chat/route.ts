@@ -16,6 +16,7 @@ import { constrainStylistToFinalizedRecommendation } from "@/lib/recommendation/
 import { RecommendationPersistenceIntegrityError } from "@/lib/recommendation/persistence-integrity";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
+import { resolveOwnedRegenerationContext } from "@/lib/recommendation/regeneration-server";
 import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
@@ -34,6 +35,7 @@ import {
 import { logReferenceItemEvent, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { recommendationRegenerationSchema } from "@/schemas/stylist.schema";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 
@@ -43,6 +45,7 @@ const stylistChatSchema = z.object({
   includeVisualization: z.boolean().optional(),
   visualMode: z.enum(["digital_human", "premium_preview", "none"]).optional(),
   referenceItemId: objectId.nullable().optional(),
+  regeneration: recommendationRegenerationSchema.optional(),
   recentMessages: z
     .array(
       z.object({
@@ -175,6 +178,11 @@ export async function POST(request: NextRequest) {
     const serializedMemorySummary = serializeMemorySummary(memorySummary);
     const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
     const stylistContext = buildStylistContext(wardrobe, serializedStyleProfile, serializedMemorySummary);
+    const regeneration = await resolveOwnedRegenerationContext({
+      userId: String(auth.user._id),
+      request: parsed.data.regeneration,
+      wardrobeItems: wardrobe
+    });
     const recentMessages = buildRecentConversationContext(parsed.data.recentMessages || []);
     const sanitizedMessage = sanitizeUserPrompt(parsed.data.message);
     const requestIntent = parseStylistRequestIntent(sanitizedMessage);
@@ -223,6 +231,7 @@ export async function POST(request: NextRequest) {
           memorySummary: serializedMemorySummary,
           outfitHistorySummary,
           compatibilityEdges,
+          regeneration,
           limit: 3
         });
         deterministicRecommendation = referenceRecommendations[0];
@@ -244,7 +253,9 @@ export async function POST(request: NextRequest) {
         outfitHistorySummary,
         compatibilityEdges,
         wardrobeItems: wardrobe,
-        wornLooks: []
+        wornLooks: [],
+        recommendationMode: regeneration ? "something_different" : undefined,
+        regeneration
       });
     }
     // Re-resolve the engine selection against the database before it is sent to
@@ -356,7 +367,7 @@ export async function POST(request: NextRequest) {
 
     if (persistedOutfit?.outfitRecommendationId) {
       const persistedItemIds = persistedOutfit.items.map((item: any) => item._id);
-      await Promise.all([
+      const historyWrites: Array<Promise<unknown>> = [
         WardrobeItem.updateMany(
           { _id: { $in: persistedItemIds }, userId: auth.user._id },
           {
@@ -381,7 +392,22 @@ export async function POST(request: NextRequest) {
           scoreBreakdown: deterministicRecommendation.scoreBreakdown,
           similarityMetadata: deterministicRecommendation.similarityMetadata
         })
-      ]);
+      ];
+      if (regeneration?.previousRecommendationId) {
+        historyWrites.push(recordOutfitHistory({
+          userId: auth.user._id,
+          outfitId: regeneration.previousRecommendationId,
+          itemIds: regeneration.previousItemIds,
+          eventType: "swapped",
+          source: "stylist_chat",
+          recommendationMode: "something_different",
+          occasion: persistedOutfit.outfit.occasion,
+          context: {
+            replacementOutfitId: persistedOutfit.outfitRecommendationId
+          }
+        }));
+      }
+      await Promise.all(historyWrites);
     }
 
     if (wantsVisualization) {

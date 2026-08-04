@@ -538,6 +538,17 @@ export type SendStylistMessageOptions = {
   visualMode?: StylistVisualMode;
   referenceItemId?: string | null;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+  regeneration?: RecommendationRegenerationRequest;
+};
+
+export type RecommendationRegenerationRequest = {
+  requestKind: "regenerate";
+  previousRecommendationId?: string | null;
+  previousItemIds: string[];
+  lockedItemIds?: string[];
+  excludedItemIds?: string[];
+  minimumCoreChanges?: number;
+  maximumOverlap?: number;
 };
 
 export type ReferenceFashionItemData = {
@@ -548,6 +559,14 @@ export type ReferenceFashionItemData = {
 export type ReferenceRecommendationsData = {
   referenceItem: ReferenceFashionItemSummary | null;
   recommendations: OutfitRecommendation[];
+};
+
+export type ReferenceRecommendationRequest = {
+  message?: string;
+  occasion?: string;
+  weatherContext?: string;
+  allowShoppingAdvice?: boolean;
+  regeneration?: RecommendationRegenerationRequest;
 };
 
 export type ReferenceAddToClosetData = {
@@ -976,7 +995,7 @@ export const analyzeReferenceFashionItem = (id: string) =>
   apiRequest<ReferenceFashionItemData>(`/api/stylist/reference-items/${id}/analyze`, { method: "POST" });
 export const selectReferenceFashionItem = (id: string, detectedItemId: string) =>
   apiRequest<ReferenceFashionItemData>(`/api/stylist/reference-items/${id}/selection`, { method: "PATCH", body: { detectedItemId } });
-export const getReferenceFashionRecommendations = (id: string, body: unknown = {}) =>
+export const getReferenceFashionRecommendations = (id: string, body: ReferenceRecommendationRequest = {}) =>
   apiRequest<ReferenceRecommendationsData>(`/api/stylist/reference-items/${id}/recommendations`, { method: "POST", body });
 export const addReferenceFashionItemToCloset = (id: string) =>
   apiRequest<ReferenceAddToClosetData>(`/api/stylist/reference-items/${id}/add-to-closet`, { method: "POST" });

@@ -181,6 +181,58 @@ assert.ok(first.outfitPieces.some((piece: any) => piece.source === "wardrobe" &&
 assert.equal(first.referenceItems[0]?.id, referenceItem._id);
 assert.equal(first.similarityMetadata?.source, "reference-upload");
 
+const variedWardrobe = [
+  ...wardrobe,
+  wardrobeItem("200000000000000000000006", "tops", "Powder blue blouse", "blue"),
+  wardrobeItem("200000000000000000000007", "tops", "Cream silk shirt", "cream"),
+  wardrobeItem("200000000000000000000008", "bottoms", "Navy tailored trousers", "navy"),
+  wardrobeItem("200000000000000000000009", "bottoms", "Stone midi skirt", "stone"),
+  wardrobeItem("200000000000000000000010", "shoes", "Brown block heels", "brown"),
+  wardrobeItem("200000000000000000000011", "shoes", "Nude pumps", "nude"),
+  wardrobeItem("200000000000000000000012", "bags", "Tan structured bag", "tan", { subcategory: "Handbag" }),
+  wardrobeItem("200000000000000000000013", "accessories", "Gold necklace", "gold", { subcategory: "Necklace" })
+];
+const variedMatches = buildReferenceOutfitRecommendations({
+  referenceItem,
+  wardrobeItems: variedWardrobe,
+  message: "Style this for dinner",
+  occasionName: "dinner",
+  weatherContext: "cool dry evening",
+  limit: 3
+});
+assert.ok(variedMatches.length >= 2, "photo matching should return multiple alternatives when the closet supports them");
+const variedOverlap = variedMatches[0].items.filter((item: any) => variedMatches[1].items.some((other: any) => String(other._id) === String(item._id))).length /
+  Math.max(variedMatches[0].items.length, variedMatches[1].items.length);
+assert.ok(variedOverlap <= 0.5, "photo-match alternatives must remain materially different after accessory completion");
+
+const previousMatchIds = variedMatches[0].items.map((item: any) => String(item._id));
+const regeneratedMatch = buildReferenceOutfitRecommendations({
+  referenceItem,
+  wardrobeItems: variedWardrobe,
+  message: "Create a fresh alternative",
+  occasionName: "dinner",
+  weatherContext: "cool dry evening",
+  recommendationMode: "something_different",
+  regeneration: {
+    requestKind: "regenerate",
+    previousItemIds: previousMatchIds,
+    minimumCoreChanges: 2,
+    maximumOverlap: 0.35
+  },
+  outfitHistorySummary: {
+    eventCount: 1,
+    recentRecommendationItemIdLists: [previousMatchIds],
+    lastRecommendationItemIds: previousMatchIds,
+    recentRecommendedItemIds: previousMatchIds,
+    recentItemRecommendationCounts: Object.fromEntries(previousMatchIds.map((id: string) => [id, 1]))
+  },
+  limit: 3
+})[0];
+assert.ok(regeneratedMatch, "photo-match regeneration should find a replacement when alternatives exist");
+assert.equal(regeneratedMatch.similarityMetadata?.regeneration?.valid, true, "photo-match regeneration must satisfy the final hard diversity policy");
+assert.ok(regeneratedMatch.similarityMetadata?.regeneration?.coreChanges >= 2, "photo-match regeneration must change at least two supporting core garments");
+assert.ok(regeneratedMatch.similarityMetadata?.regeneration?.overlap <= 0.35, "photo-match regeneration must enforce overlap after completion");
+
 const shoeReference = {
   ...referenceItem,
   _id: "100000000000000000000002",

@@ -56,7 +56,26 @@ for (const category of ["shoes", "bags", "dresses", "womens_hair"]) {
 const regenerationCloset = wardrobe(56);
 const first: any = buildRecommendation({ wardrobeItems: regenerationCloset, occasionName: "casual", weatherContext: "dry", recommendationMode: "todays_best" });
 const firstIds = ids(first.items || []);
-const second: any = buildRecommendation({ wardrobeItems: regenerationCloset, occasionName: "casual", weatherContext: "dry", recommendationMode: "something_different", outfitHistorySummary: { eventCount: 1, lastRecommendationItemIds: firstIds, recentRecommendedItemIds: firstIds, recentRecommendationSignatures: [] } });
+const second: any = buildRecommendation({
+  wardrobeItems: regenerationCloset,
+  occasionName: "casual",
+  weatherContext: "dry",
+  recommendationMode: "something_different",
+  outfitHistorySummary: {
+    eventCount: 1,
+    lastRecommendationItemIds: firstIds,
+    recentRecommendedItemIds: firstIds,
+    recentRecommendationItemIdLists: [firstIds],
+    recentRecommendationSignatures: [],
+    recentItemRecommendationCounts: Object.fromEntries(firstIds.map((id) => [id, 1]))
+  },
+  regeneration: {
+    requestKind: "regenerate",
+    previousItemIds: firstIds,
+    minimumCoreChanges: 2,
+    maximumOverlap: 0.4
+  }
+});
 const regenerationOverlap = overlap(ids(second.items || []), firstIds);
 results.push({ name: "Regeneration-large", group: "Regeneration", complete: second.completenessStatus === "complete", fallback: second.status === "limited_wardrobe", forbidden: false, duplicateRole: false, referenceRetained: null, confidence: Number(second.confidenceScore || 0), itemIds: ids(second.items || []), overlap: regenerationOverlap });
 
@@ -77,7 +96,9 @@ const metrics = {
 assert.equal(metrics.referenceRetentionRate, 1, "reference retention quality gate");
 assert.equal(metrics.duplicateExclusiveRoleViolationRate, 0, "duplicate role quality gate");
 assert.equal(metrics.formalForbiddenItemViolations, 0, "formal forbidden-item quality gate");
-assert.ok(metrics.regenerationOverlap <= 0.5, "regeneration overlap quality gate");
+assert.ok(metrics.regenerationOverlap <= 0.4, "regeneration overlap quality gate");
+assert.equal(second.similarityMetadata?.regeneration?.valid, true, "structured regeneration satisfies every hard constraint");
+assert.ok(second.similarityMetadata?.regeneration?.coreChanges >= 2, "structured regeneration changes at least two core fashion pieces");
 const byGroup = Object.fromEntries(Array.from(new Set(results.map((entry) => entry.group))).map((group) => { const groupResults = results.filter((entry) => entry.group === group); return [group, { evaluated: groupResults.length, complete: groupResults.filter((entry) => entry.complete).length, gracefulFallbacks: groupResults.filter((entry) => entry.fallback).length, forbiddenResults: groupResults.filter((entry) => entry.forbidden).length, duplicateRoleResults: groupResults.filter((entry) => entry.duplicateRole).length }]; }));
 console.info = originalConsoleInfo;
 console.log(JSON.stringify({ metrics, byGroup }, null, 2));

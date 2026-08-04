@@ -89,12 +89,14 @@ export function rotationScore(item: any, historySummary?: any, allowRecentRepeat
   const recentRecommended = new Set((historySummary?.recentRecommendedItemIds || []).map(String));
   const recentlyWorn = new Set((historySummary?.recentlyWornItemIds || []).map(String));
   const recommendationCount = Number(item.recommendationCount || item.recommendationMetadata?.recommendationCount || 0);
+  const recentRecommendationCount = Number(historySummary?.recentItemRecommendationCounts?.[id] || 0);
   const timesWorn = Number(item.timesWorn || item.recommendationMetadata?.timesWorn || 0);
   const lastRecommendedAt = item.lastRecommendedAt || item.recommendationMetadata?.lastRecommendedAt;
   const daysSinceRecommended = lastRecommendedAt ? (Date.now() - new Date(lastRecommendedAt).getTime()) / 86_400_000 : 999;
 
   let score = 8;
   if (!allowRecentRepeat && recentRecommended.has(id)) score -= 10;
+  if (!allowRecentRepeat) score -= Math.min(12, recentRecommendationCount * 3);
   if (!allowRecentRepeat && recentlyWorn.has(id)) score -= 12;
   if (daysSinceRecommended > 21) score += 7;
   if (daysSinceRecommended < 4) score -= 8;
@@ -306,9 +308,15 @@ export function noveltyPreferenceScore(items: any[], historySummary?: any) {
 
   const recentRecommended = new Set((historySummary.recentRecommendedItemIds || []).map(String));
   const recentlyWorn = new Set((historySummary.recentlyWornItemIds || []).map(String));
+  const recentCounts = historySummary.recentItemRecommendationCounts || {};
   const itemIds = items.map((item) => String(item._id || item.id)).filter(Boolean);
   const recentShare = itemIds.filter((id) => recentRecommended.has(id) || recentlyWorn.has(id)).length / Math.max(1, itemIds.length);
-  return Math.round(14 - recentShare * 24);
+  const frequencyShare = itemIds.reduce((sum, id) => sum + Math.min(1, Number(recentCounts[id] || 0) / 5), 0) / Math.max(1, itemIds.length);
+  const recentOutfitOverlap = Math.max(0, ...(historySummary.recentRecommendationItemIdLists || []).map((recentIds: string[]) => {
+    const recent = new Set(recentIds.map(String));
+    return itemIds.filter((id) => recent.has(id)).length / Math.max(1, itemIds.length, recent.size);
+  }));
+  return Math.round(16 - recentShare * 10 - frequencyShare * 18 - recentOutfitOverlap * 16);
 }
 
 export function comfortScore(items: any[], styleProfile?: any) {

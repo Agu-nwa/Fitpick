@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { z } from "zod";
+import { recommendationRegenerationSchema } from "@/schemas/stylist.schema";
 import { openai } from "@/lib/ai/openai";
 import { aiCache, createCacheKey } from "@/lib/ai/cache/ai-cache";
 import { getAiModel } from "@/lib/ai/models/registry";
@@ -58,7 +59,8 @@ export const referenceRecommendationSchema = z
     message: z.string().trim().max(800).optional(),
     occasion: z.string().trim().max(120).optional(),
     weatherContext: z.string().trim().max(300).optional(),
-    allowShoppingAdvice: z.boolean().default(false)
+    allowShoppingAdvice: z.boolean().default(false),
+    regeneration: recommendationRegenerationSchema.optional()
   })
   .strict();
 

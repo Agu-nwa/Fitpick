@@ -30,6 +30,12 @@ import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibil
 import { referenceItemToPseudoWardrobeItem, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { recommendationEligible, rescueFootwear, taxonomyDiagnostics } from "@/lib/recommendation/engine";
 import { buildLimitedWardrobeFallback } from "@/lib/recommendation/limited-wardrobe";
+import {
+  evaluateRegenerationCandidate,
+  logRecommendationDiversity,
+  resolveRegenerationPolicy,
+  type RecommendationRegenerationContext
+} from "@/lib/recommendation/regeneration";
 
 type ReferenceMatchInput = {
   referenceItem: any;
@@ -43,6 +49,7 @@ type ReferenceMatchInput = {
   outfitHistorySummary?: any;
   allowNeedsCare?: boolean;
   recommendationMode?: string;
+  regeneration?: RecommendationRegenerationContext;
   compatibilityEdges?: any[];
   limit?: number;
 };
@@ -60,6 +67,13 @@ function cleanText(value: unknown, max = 180) {
 
 function itemId(item: any) {
   return String(item?._id || item?.id || "");
+}
+
+function itemOverlap(left: any[] = [], right: any[] = []) {
+  const leftIds = new Set(left.map(itemId).filter(Boolean));
+  const rightIds = new Set(right.map(itemId).filter(Boolean));
+  const shared = Array.from(leftIds).filter((id) => rightIds.has(id)).length;
+  return shared / Math.max(1, leftIds.size, rightIds.size);
 }
 
 function itemLabel(item: any) {
@@ -149,9 +163,12 @@ function makeCombinations(input: {
   scoringInput: any;
 }) {
   const sorted = sortCandidates(input.wardrobeItems, input.anchor, input.occasionName, input.weatherContext);
-  const optionalGroups = input.plan.optional.map((category) => ({
+  // Finishers are selected after core diversification. Including bags and
+  // accessories in this Cartesian product made distinct core looks converge
+  // on the same early-ranked finishing items and exhausted the candidate cap.
+  const optionalGroups = input.plan.optional.filter((category) => category === "outerwear").map((category) => ({
     category,
-    items: optionalCandidates(sorted, category, 3)
+    items: optionalCandidates(sorted, category, 6)
   }));
 
   const outfits: any[] = [];
@@ -380,7 +397,22 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       limit: 80
     }
   );
-  const diverse = diversifyOutfits(rankedCombinations, { limit: input.limit || 3, historySummary: input.outfitHistorySummary, diversityWeight: 0.48 });
+  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, available);
+  const lockedFinisherItems = available.filter((item) =>
+    regenerationPolicy.lockedItemIds.includes(itemId(item)) && isAccessoryCandidate(item)
+  );
+  const regenerationEligibleCombinations = regenerationPolicy.enabled
+    ? rankedCombinations.filter((candidate) => evaluateRegenerationCandidate([...candidate.items, ...lockedFinisherItems], regenerationPolicy).valid)
+    : rankedCombinations;
+  const selectionCandidates = regenerationEligibleCombinations.length ? regenerationEligibleCombinations : rankedCombinations;
+  const diverse = diversifyOutfits(selectionCandidates, {
+    limit: Math.min(8, Math.max((input.limit || 3) * 2, 6)),
+    historySummary: input.outfitHistorySummary,
+    diversityWeight: 0.58,
+    avoidLastOutfit: regenerationPolicy.enabled,
+    maximumLastOutfitOverlap: regenerationPolicy.enabled ? regenerationPolicy.maximumOverlap : 0.5,
+    maximumSelectedOverlap: 0.52
+  });
   const selected = diverse;
   const readiness = wardrobeReadiness(available);
   const gapInsights = wardrobeGapInsights(available, occasion);
@@ -411,9 +443,11 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       completenessWarnings: ["More saved closet items are needed for a complete outfit."],
       footwearIncluded: false,
       stylingTips: ["Add more saved closet items, then match this photo again."],
-      recommendationMode: "photo_match",
-      styleIntent: "Photo Match",
-      freshnessCue: "Freshness starts after more photo matches are generated.",
+      recommendationMode: input.recommendationMode || "photo_match",
+      styleIntent: regenerationPolicy.enabled ? "Something Different" : "Photo Match",
+      freshnessCue: regenerationPolicy.enabled
+        ? "A different photo-led match needs more compatible closet choices."
+        : "Freshness starts after more photo matches are generated.",
       wardrobeReadiness: readiness,
       gapInsights,
       scoreBreakdown: {
@@ -436,7 +470,14 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     }];
   }
 
-  return selected.map((candidate, index) => {
+  const completedRecommendations: any[] = [];
+  const usedFinisherIds = new Set<string>();
+  const targetCount = Math.max(1, Math.min(input.limit || 3, 3));
+  const allowRegenerationFallback = regenerationPolicy.enabled && regenerationEligibleCombinations.length === 0;
+
+  for (const candidate of selected) {
+    if (completedRecommendations.length >= targetCount) break;
+    const index = completedRecommendations.length;
     const candidateItems = sanitizeOutfitItems(candidate.items || []).items;
     const coreOnlyItems = candidateItems.filter((item) => !isAccessoryCandidate(item));
     const coreItems = coreOnlyItems.length ? coreOnlyItems : candidateItems;
@@ -447,7 +488,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const accessoryCompletion = selectAccessoryCompletion({
       // Include the temporary anchor for role locking only. The provider returns
       // newly selected closet accessories, so the anchor is never persisted.
-      selectedItems: [anchor, ...footwearRescue.items],
+      selectedItems: [anchor, ...footwearRescue.items, ...lockedFinisherItems],
       wardrobeItems: available,
       occasionName: occasion,
       weatherContext: input.weatherContext,
@@ -456,9 +497,19 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       allowRecentRepeat: /repeat|again|same look|rewear/i.test(occasion),
       styleProfile: input.styleProfile,
       memorySummary: input.memorySummary,
-      outfitHistorySummary: input.outfitHistorySummary
+      outfitHistorySummary: input.outfitHistorySummary,
+      excludedItemIds: Array.from(new Set([
+        ...(regenerationPolicy.enabled
+          ? regenerationPolicy.previousFinisherItemIds.filter((id) => !regenerationPolicy.lockedItemIds.includes(id))
+          : []),
+        ...Array.from(usedFinisherIds)
+      ])),
+      emitMetrics: completedRecommendations.length === 0
     });
-    const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...accessoryCompletion.items]).items;
+    const completedItems = sanitizeOutfitItems([...footwearRescue.items, ...lockedFinisherItems, ...accessoryCompletion.items]).items;
+    const regenerationEvaluation = evaluateRegenerationCandidate(completedItems, regenerationPolicy);
+    if (regenerationPolicy.enabled && !regenerationEvaluation.valid && !allowRegenerationFallback) continue;
+    if (completedRecommendations.some((recommendation) => itemOverlap(completedItems, recommendation.items) > 0.5)) continue;
     const completedItemsWithAnchor = [anchor, ...completedItems];
     const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor, { allowedStructures: outfitTemplate.validStructures, footwearState: footwearRescue.state });
     const finalValidation = validateRecommendationCandidate({
@@ -508,7 +559,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       : buildLimitedWardrobeFallback({ items: completedItemsWithAnchor, missingRoles: missing, occasion });
     const limitedFallback = fullLimitedFallback ? (({ occasion: _occasion, ...rest }) => rest)(fullLimitedFallback) : {};
 
-    return {
+    completedRecommendations.push({
       title: index === 0 ? `${displayReferenceLabel(referenceItem)} outfit` : `${displayReferenceLabel(referenceItem)} option ${index + 1}`,
       occasion,
       confidence: confidenceFromScore(candidate.score),
@@ -529,11 +580,18 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       confidenceScore: Math.max(boundedConfidence(candidate.score), confidenceEngine.overallConfidence / 100),
       completenessStatus: completeness.completenessStatus,
       missingCategories: missing,
-      completenessWarnings: completeness.completenessWarnings,
+      completenessWarnings: [
+        ...completeness.completenessWarnings,
+        ...(regenerationPolicy.enabled && !regenerationEvaluation.valid
+          ? ["A fully different complete match was not available, so the closest safe alternative was used."]
+          : [])
+      ],
       footwearIncluded: completeness.footwearIncluded,
-      recommendationMode: "photo_match",
-      styleIntent: "Photo Match",
-      freshnessCue: "Built as a fresh photo-led closet match.",
+      recommendationMode: input.recommendationMode || "photo_match",
+      styleIntent: regenerationPolicy.enabled ? "Something Different" : "Photo Match",
+      freshnessCue: regenerationPolicy.enabled
+        ? "Rebuilt with enforced closet-item changes."
+        : "Built as a fresh photo-led closet match.",
       wardrobeReadiness: readiness,
       gapInsights,
       ...limitedFallback,
@@ -586,7 +644,11 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
           warnings: finalValidation.warnings,
           rejectReason: finalValidation.rejectReason,
           structure: finalValidation.structure
-        }
+        },
+        regeneration: regenerationEvaluation,
+        completedOutfitMaximumPeerOverlap: completedRecommendations.length
+          ? Math.max(...completedRecommendations.map((recommendation) => itemOverlap(completedItems, recommendation.items)))
+          : 0
       },
       candidateCount: combinations.length,
       diverseCandidateCount: selected.length,
@@ -597,6 +659,23 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       })),
       outfitPieces: outfitPieces(referenceItem, completedItems),
       referenceItems: [serializeReferenceFashionItem(referenceItem)]
-    };
+    });
+    for (const item of completedItems.filter(isAccessoryCandidate)) usedFinisherIds.add(itemId(item));
+  }
+
+  const primaryRegenerationEvaluation = completedRecommendations[0]?.similarityMetadata?.regeneration;
+  logRecommendationDiversity({
+    flow: "match",
+    policy: regenerationPolicy,
+    evaluation: primaryRegenerationEvaluation,
+    candidateCount: rankedCombinations.length,
+    eligibleCandidateCount: regenerationEligibleCombinations.length,
+    status: !regenerationPolicy.enabled
+      ? "not_requested"
+      : primaryRegenerationEvaluation?.valid
+        ? "satisfied"
+        : "fallback"
   });
+
+  return completedRecommendations;
 }
