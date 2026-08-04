@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { getSessionUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const session = await getSessionUser();
-  if (session) redirect("/welcome");
+  const auth = await requireUser();
+  if (auth.ok) redirect("/welcome");
   const params = await searchParams;
 
   return (

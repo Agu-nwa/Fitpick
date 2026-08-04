@@ -19,8 +19,6 @@ const protectedPagePrefixes = [
   "/wardrobe"
 ];
 
-const authPages = new Set(["/login", "/register"]);
-
 function getSessionCookieName() {
   return process.env.SESSION_COOKIE_NAME || "fitpick_session";
 }
@@ -76,10 +74,6 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/") {
     const destination = (await hasValidSessionToken(request)) ? "/home" : "/login";
     return NextResponse.redirect(new URL(destination, request.url));
-  }
-
-  if (authPages.has(pathname) && (await hasValidSessionToken(request))) {
-    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   if (isProtectedPage(pathname) && !(await hasValidSessionToken(request))) {
