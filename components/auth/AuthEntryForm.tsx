@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { requestAuthOtp, verifyAuthOtp } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { useRevealContent } from "@/hooks/use-reveal-content";
+import { useSession } from "@/hooks/use-session";
 import { safeUserMessage } from "@/lib/user-facing-errors";
 
 type Step = "email" | "code";
@@ -43,6 +44,7 @@ export function AuthEntryForm({
   nextPath?: string | null;
 }) {
   const router = useRouter();
+  const session = useSession();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -97,6 +99,7 @@ export function AuthEntryForm({
     }
 
     const user = result.data.user;
+    await session.refresh();
     router.push(user?.onboardingWelcomeCompletedAt ? (user.modelSetupCompletedAt ? nextPath : "/onboarding") : "/welcome");
     router.refresh();
   }

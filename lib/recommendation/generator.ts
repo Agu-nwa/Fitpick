@@ -33,6 +33,7 @@ function optionalCandidates(items: any[], max = 4, requiredWhenAvailable = false
 
 export const SLOT_CANDIDATE_QUOTA = 16;
 export const CORE_BEAM_WIDTH = 180;
+export const CORE_PAIR_BEAM_WIDTH = 72;
 
 function balancedSlotCandidates(items: any[], scoringInput: any, quota = SLOT_CANDIDATE_QUOTA) {
   const ranked = [...items].sort((a, b) => {
@@ -85,6 +86,11 @@ export function generateCombinations(
 
   const outfits: any[] = [];
   const maxCandidates = Math.max(60, Math.min(Number(scoringInput.maxCandidates || 650), 1200));
+  const learningSignals = scoringInput.learningSignals || buildLearningSignals({
+    items: scoringInput.wardrobeItems || [],
+    memorySummary: scoringInput.memorySummary,
+    outfitHistorySummary: scoringInput.outfitHistorySummary
+  });
 
   function pushOutfit(items: any[]) {
     if (outfits.length >= maxCandidates) return;
@@ -92,11 +98,6 @@ export function generateCombinations(
     if (!uniqueItems.length) return;
 
     const detailed = scoreOutfitDetailed(uniqueItems, scoringInput);
-    const learningSignals = buildLearningSignals({
-      items: scoringInput.wardrobeItems || [],
-      memorySummary: scoringInput.memorySummary,
-      outfitHistorySummary: scoringInput.outfitHistorySummary
-    });
     const personalScore = personalPreferenceScore(uniqueItems, scoringInput);
     const learningScore = learningSignalScore(uniqueItems, learningSignals);
     const rotationScore = wardrobeRotationScore(uniqueItems, scoringInput.outfitHistorySummary);
@@ -129,9 +130,16 @@ export function generateCombinations(
   }
 
   const footwear = byCategory("shoes").length ? byCategory("shoes") : [null];
+  const topBottomPairs: any[][] = [];
+  for (const top of byCategory("tops")) for (const bottom of byCategory("bottoms")) topBottomPairs.push([top, bottom]);
+  const rankedTopBottomPairs = topBottomPairs
+    .map((items) => ({ items, score: scoreOutfitDetailed(items.filter(Boolean), scoringInput).total }))
+    .sort((a, b) => b.score - a.score || a.items.map(idFor).join("|").localeCompare(b.items.map(idFor).join("|")))
+    .slice(0, CORE_PAIR_BEAM_WIDTH);
+
   const coreCandidates: any[][] = [];
   for (const onePiece of byCategory("dresses")) for (const shoe of footwear) coreCandidates.push([onePiece, shoe]);
-  for (const top of byCategory("tops")) for (const bottom of byCategory("bottoms")) for (const shoe of footwear) coreCandidates.push([top, bottom, shoe]);
+  for (const pair of rankedTopBottomPairs) for (const shoe of footwear) coreCandidates.push([...pair.items, shoe]);
   const rankedCore = coreCandidates
     .map((items) => ({ items, score: scoreOutfitDetailed(items.filter(Boolean), scoringInput).total }))
     .sort((a, b) => b.score - a.score || a.items.map(idFor).join("|").localeCompare(b.items.map(idFor).join("|")))

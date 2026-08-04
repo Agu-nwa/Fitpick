@@ -135,6 +135,55 @@ export function serializeWardrobeItem(item: any) {
   };
 }
 
+/**
+ * Compact representation for the closet grid. Item detail and review routes
+ * continue to use serializeWardrobeItem so editing and AI/audit metadata are
+ * never lost; the list only sends fields its cards, filters, and review badge
+ * consume.
+ */
+export function serializeWardrobeListItem(item: any) {
+  const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const condition = inferCondition({
+    category: item.category,
+    color: item.color,
+    fit: item.fit || item.garmentFit,
+    occasions: item.occasions,
+    condition: item.condition
+  });
+
+  return {
+    id: String(item._id),
+    createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : null,
+    name: item.name,
+    category: item.category,
+    subcategory: item.subcategory || "",
+    canonicalSubtype: item.canonicalSubtype || "",
+    structureRole: item.structureRole || "unknown",
+    stylingRole: item.stylingRole || "unknown",
+    setComponents: item.setComponents || [],
+    visibilityRole: item.visibilityRole || "unknown",
+    formalityLevel: item.formalityLevel || "",
+    taxonomyNeedsReview: item.taxonomyNeedsReview !== false,
+    taxonomyStatus: item.taxonomyStatus || (item.taxonomyNeedsReview === false ? "confirmed" : item.canonicalSubtype ? "needs_review" : "unresolved"),
+    taxonomyConflicts: item.taxonomyConflicts || [],
+    color: item.color || "",
+    occasions: item.occasions || [],
+    weather: item.weather || [],
+    userInputMetadata: item.userInputMetadata || {},
+    categorySpecificMetadata: item.categorySpecificMetadata || {},
+    recommendationMetadata: item.recommendationMetadata || {},
+    searchMetadata: item.searchMetadata || {},
+    verifiedMetadata: item.verifiedMetadata || {},
+    condition,
+    timesWorn: item.timesWorn || 0,
+    lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
+    imageUrl,
+    thumbnailUrl: preferredWardrobeImage(item.images || {}, item.thumbnailUrl || imageUrl),
+    hasImage: Boolean(item.storageKey || item.thumbnailUrl || imageUrl)
+  };
+}
+
 export function serializeWardrobeUpload(upload: any) {
   return {
     id: String(upload._id),

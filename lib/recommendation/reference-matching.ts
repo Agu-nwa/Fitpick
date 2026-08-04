@@ -172,6 +172,11 @@ function makeCombinations(input: {
   }));
 
   const outfits: any[] = [];
+  const learningSignals = input.scoringInput.learningSignals || buildLearningSignals({
+    items: input.scoringInput.wardrobeItems || [],
+    memorySummary: input.scoringInput.memorySummary,
+    outfitHistorySummary: input.scoringInput.outfitHistorySummary
+  });
 
   function walkRequired(requiredGroups: Array<{ category: string; items: any[] }>, index: number, selected: any[]) {
     if (index >= requiredGroups.length) {
@@ -190,7 +195,7 @@ function makeCombinations(input: {
   }
 
   function walkOptional(index: number, selected: any[]) {
-    if (outfits.length >= 800) return;
+    if (outfits.length >= 360) return;
     if (index >= optionalGroups.length) {
       const unique = sanitizeOutfitItems(selected.filter(Boolean)).items;
       if (!unique.length) return;
@@ -202,11 +207,6 @@ function makeCombinations(input: {
           scoreItemForTemplate(item, input.scoringInput.outfitTemplate) +
           (input.scoringInput.occasionProfile ? scoreItemForOccasionProfile(item, input.scoringInput.occasionProfile) : 0);
       }, 0);
-      const learningSignals = buildLearningSignals({
-        items: input.scoringInput.wardrobeItems || [],
-        memorySummary: input.scoringInput.memorySummary,
-        outfitHistorySummary: input.scoringInput.outfitHistorySummary
-      });
       const personalScore = personalPreferenceScore(unique, input.scoringInput);
       const learningScore = learningSignalScore(unique, learningSignals);
       const rotationScore = wardrobeRotationScore(unique, input.scoringInput.outfitHistorySummary);
@@ -367,7 +367,8 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     occasionProfile,
     outfitTemplate,
     wardrobeItems: available,
-    compatibilityEdges: input.compatibilityEdges || []
+    compatibilityEdges: input.compatibilityEdges || [],
+    learningSignals
   };
   const combinations = makeCombinations({
     anchor,

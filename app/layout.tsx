@@ -3,6 +3,7 @@ import "./globals.css";
 import ClientRecovery from "@/components/system/ClientRecovery";
 import GlobalNotificationListener from "@/components/notifications/GlobalNotificationListener";
 import PwaServiceWorker from "@/components/system/PwaServiceWorker";
+import { SessionProvider } from "@/components/auth/SessionProvider";
 
 export const metadata: Metadata = {
   title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
@@ -42,18 +43,20 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-canvas">
       <body className="font-sans">
-        <ClientRecovery />
-        <GlobalNotificationListener />
-        <PwaServiceWorker />
+        <SessionProvider>
+          <ClientRecovery />
+          <GlobalNotificationListener />
+          <PwaServiceWorker />
 
-        <a
-          href="#main-content"
-          className="sr-only-fitpick focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-cocoa focus:px-4 focus:py-2 focus:text-sm"
-        >
-          Skip to content
-        </a>
+          <a
+            href="#main-content"
+            className="sr-only-fitpick focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-cocoa focus:px-4 focus:py-2 focus:text-sm"
+          >
+            Skip to content
+          </a>
 
-        {children}
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

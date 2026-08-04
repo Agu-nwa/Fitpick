@@ -306,7 +306,8 @@ export function buildRecommendation(input: EngineInput) {
       compatibilityEdges: input.compatibilityEdges || [],
       weather: input.weather,
       preferences: input.preferences,
-      maxCandidates: 650
+      learningSignals,
+      maxCandidates: 360
     }
   );
 

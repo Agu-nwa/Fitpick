@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCircle2, X } from "lucide-react";
 import { getAppNotifications, markAppNotificationRead, type AppNotificationSummary } from "@/lib/api-client";
+import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 15_000;
@@ -15,6 +16,7 @@ function isActionableTryOnNotification(notification: AppNotificationSummary) {
 }
 
 export default function GlobalNotificationListener() {
+  const session = useSession();
   const [notification, setNotification] = useState<AppNotificationSummary | null>(null);
   const [visible, setVisible] = useState(false);
   const announcedIds = useRef<Set<string>>(new Set());
@@ -26,6 +28,8 @@ export default function GlobalNotificationListener() {
   }, [notification?.type]);
 
   useEffect(() => {
+    if (session.status !== "authenticated") return;
+
     let cancelled = false;
 
     async function poll() {
@@ -71,7 +75,7 @@ export default function GlobalNotificationListener() {
       cancelled = true;
       if (pollingRef.current) window.clearInterval(pollingRef.current);
     };
-  }, []);
+  }, [session.status]);
 
   async function openNotification() {
     if (!notification) return;

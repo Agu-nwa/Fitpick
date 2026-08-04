@@ -1,47 +1,40 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const cards = [
   {
-    src: "/fashion/product-blue-blouse.png",
-    alt: "Blue blouse product card",
+    src: "/fashion/product-blue-blouse.webp",
     className: "left-[7%] top-[13%] h-48 w-36 rotate-[-4deg] lg:h-64 lg:w-48"
   },
   {
-    src: "/fashion/product-blush-bag.png",
-    alt: "Blush handbag product card",
+    src: "/fashion/product-blush-bag.webp",
     className: "left-[11%] top-[48%] h-40 w-32 rotate-[3deg] lg:h-56 lg:w-44"
   },
   {
-    src: "/fashion/editorial-blue-blouse.png",
-    alt: "Woman in blue blouse editorial card",
+    src: "/fashion/editorial-blue-blouse.webp",
     className: "right-[7%] top-[12%] h-48 w-36 rotate-[3deg] lg:h-64 lg:w-48"
   },
   {
-    src: "/fashion/editorial-male-teal.png",
-    alt: "Man in muted teal overshirt editorial card",
+    src: "/fashion/editorial-male-teal.webp",
     className: "right-[10%] top-[48%] h-52 w-40 rotate-[-2deg] lg:h-72 lg:w-56"
   },
   {
-    src: "/fashion/product-male-overshirt.png",
-    alt: "Mens muted teal overshirt product card",
+    src: "/fashion/product-male-overshirt.webp",
     className: "left-[3%] bottom-[6%] h-40 w-32 rotate-[2deg] lg:h-56 lg:w-44"
   },
   {
-    src: "/fashion/product-espresso-boots.png",
-    alt: "Espresso leather boots product card",
+    src: "/fashion/product-espresso-boots.webp",
     className: "right-[4%] bottom-[5%] h-40 w-32 rotate-[-3deg] lg:h-56 lg:w-44"
   }
 ];
 
 const mobileCards = [
   {
-    src: "/fashion/editorial-male-teal.png",
-    alt: "Man in muted teal overshirt editorial card",
+    src: "/fashion/editorial-male-teal.webp",
     className: "-right-10 top-20 h-44 w-32 rotate-[4deg]"
   },
   {
-    src: "/fashion/product-blush-bag.png",
-    alt: "Blush handbag product card",
+    src: "/fashion/product-blush-bag.webp",
     className: "-left-8 bottom-24 h-36 w-28 rotate-[-5deg]"
   }
 ];
@@ -70,12 +63,14 @@ export function FashionBackdrop({
             )}
             style={{ animationDelay: `${index * 0.45}s` }}
           >
-            <img
+            <Image
               src={card.src}
-              alt={card.alt}
-              className="block max-w-full object-cover"
-              style={{ width: "100%", height: "100%" }}
+              alt=""
+              fill
+              sizes="128px"
+              className="object-cover"
               loading="lazy"
+              unoptimized
             />
           </div>
         ))}
@@ -92,12 +87,14 @@ export function FashionBackdrop({
             )}
             style={{ animationDelay: `${index * 0.4}s` }}
           >
-            <img
+            <Image
               src={card.src}
-              alt={card.alt}
-              className="block max-w-full object-cover"
-              style={{ width: "100%", height: "100%" }}
+              alt=""
+              fill
+              sizes={density === "soft" ? "192px" : "224px"}
+              className="object-cover"
               loading="lazy"
+              unoptimized
             />
           </div>
         ))}

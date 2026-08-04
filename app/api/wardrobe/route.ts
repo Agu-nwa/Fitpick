@@ -7,7 +7,7 @@ import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
-import { inferCondition, serializeWardrobeItem, wardrobeSummary } from "@/lib/wardrobe";
+import { inferCondition, serializeWardrobeItem, serializeWardrobeListItem, wardrobeSummary } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { createWardrobeItemSchema, wardrobeFiltersSchema } from "@/schemas/wardrobe.schema";
 
@@ -41,8 +41,11 @@ export async function GET(request: NextRequest) {
       query.archivedAt = null;
     }
 
-    const items = await WardrobeItem.find(query).sort({ updatedAt: -1 }).lean();
-    const serialized = items.map(serializeWardrobeItem);
+    const items = await WardrobeItem.find(query)
+      .select("-aiAnalysis -ocrMetadata -virtualTryOnMetadata -garmentMeasurements -normalisedMetadata")
+      .sort({ updatedAt: -1 })
+      .lean();
+    const serialized = items.map(serializeWardrobeListItem);
 
     return apiSuccess({
       items: serialized,
