@@ -123,6 +123,13 @@ async function saveProviderPreview(input: {
         visualizationWarnings: [...grounding.visualizationWarnings, ...outputWarnings].slice(0, 12),
         footwearIncluded: grounding.footwearIncluded,
         visualGroundingStatus: grounding.visualGroundingStatus,
+        requestedRoles: output.requestedRoles || [],
+        providerSupportedRoles: output.providerSupportedRoles || [],
+        partiallySupportedRoles: output.partiallySupportedRoles || [],
+        unsupportedRoles: output.unsupportedRoles || [],
+        previewFidelityLevel: output.previewFidelityLevel || "partial",
+        providerSentItemIds: output.providerSentItemIds || [],
+        recommendationOnlyItemIds: output.recommendationOnlyItemIds || [],
         generatedAt: ready ? new Date() : null,
         errorMessage: failed ? failureMessage : "",
         lastAttemptAt: new Date()
@@ -147,6 +154,13 @@ async function saveProviderPreview(input: {
         "preview.visualizationWarnings": [...grounding.visualizationWarnings, ...outputWarnings].slice(0, 12),
         "preview.footwearIncluded": grounding.footwearIncluded,
         "preview.visualGroundingStatus": grounding.visualGroundingStatus,
+        "preview.requestedRoles": output.requestedRoles || [],
+        "preview.providerSupportedRoles": output.providerSupportedRoles || [],
+        "preview.partiallySupportedRoles": output.partiallySupportedRoles || [],
+        "preview.unsupportedRoles": output.unsupportedRoles || [],
+        "preview.previewFidelityLevel": output.previewFidelityLevel || "partial",
+        "preview.providerSentItemIds": output.providerSentItemIds || [],
+        "preview.recommendationOnlyItemIds": output.recommendationOnlyItemIds || [],
         "preview.generatedAt": ready ? new Date() : null,
         "preview.errorMessage": failed ? failureMessage : ""
       }

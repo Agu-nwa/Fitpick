@@ -47,6 +47,11 @@
     "test:profile-unification": "tsx scripts/profile-unification-test.ts",
     "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
     "test:recommendation-correctness": "tsx scripts/recommendation-correctness-test.ts",
+    "test:recommendation-evaluation": "tsx scripts/recommendation-evaluation-suite.ts",
+    "test:recommendation-history": "tsx scripts/recommendation-history-integrity-test.ts",
+    "test:tryon-capabilities": "tsx scripts/tryon-provider-capabilities-test.ts",
+    "test:viewport": "playwright test tests/viewport",
+    "audit:wardrobe-taxonomy-readonly": "tsx scripts/wardrobe-taxonomy-audit.ts --dry-run --summary",
     "test:wardrobe-validation": "tsx scripts/wardrobe-upload-validation-test.ts",
     "test:wardrobe-taxonomy": "tsx scripts/wardrobe-canonical-taxonomy-test.ts",
     "backfill:wardrobe-taxonomy": "tsx scripts/backfill-wardrobe-taxonomy-v2.ts",
@@ -98,6 +103,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",

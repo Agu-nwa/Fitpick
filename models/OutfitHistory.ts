@@ -39,6 +39,10 @@ const OutfitHistorySchema = new Schema(
 );
 
 OutfitHistorySchema.index({ userId: 1, itemSignature: 1, generatedAt: -1 });
+OutfitHistorySchema.index(
+  { userId: 1, outfitId: 1 },
+  { unique: true, partialFilterExpression: { outfitId: { $type: "objectId" } } }
+);
 OutfitHistorySchema.index({ userId: 1, recommendationMode: 1, generatedAt: -1 });
 OutfitHistorySchema.index({ userId: 1, wornAt: -1 });
 

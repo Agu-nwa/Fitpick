@@ -170,6 +170,60 @@ assert.ok(first.outfitPieces.some((piece: any) => piece.source === "reference-up
 assert.ok(first.outfitPieces.some((piece: any) => piece.source === "wardrobe" && piece.wardrobeItemId), "outfit pieces must include saved wardrobe sources");
 assert.equal(first.referenceItems[0]?.id, referenceItem._id);
 assert.equal(first.similarityMetadata?.source, "reference-upload");
+
+const shoeReference = {
+  ...referenceItem,
+  _id: "100000000000000000000002",
+  category: "shoes",
+  subcategory: "sneakers",
+  primaryColor: "black",
+  occasions: ["casual"]
+};
+const shoeMatch = buildReferenceOutfitRecommendations({
+  referenceItem: shoeReference,
+  wardrobeItems: wardrobe,
+  occasionName: "casual",
+  weatherContext: "dry",
+  limit: 1
+})[0];
+assert.ok(shoeMatch.items.some((item: any) => item.category === "tops"), "shoe anchor should add an owned top");
+assert.ok(shoeMatch.items.some((item: any) => item.category === "bottoms"), "shoe anchor should add an owned bottom");
+assert.equal(shoeMatch.items.some((item: any) => item.category === "shoes"), false, "shoe anchor must not add duplicate owned footwear");
+assert.equal(shoeMatch.completenessStatus, "complete", "reference footwear should satisfy outfit completeness");
+
+const bagReference = {
+  ...referenceItem,
+  _id: "100000000000000000000003",
+  category: "bags",
+  subcategory: "Clutch",
+  primaryColor: "black"
+};
+const bagMatch = buildReferenceOutfitRecommendations({
+  referenceItem: bagReference,
+  wardrobeItems: wardrobe,
+  occasionName: "dinner",
+  weatherContext: "dry",
+  limit: 1
+})[0];
+assert.equal(bagMatch.items.some((item: any) => item.category === "bags"), false, "bag anchor must lock the carry role and prevent a competing closet bag");
+assert.equal(bagMatch.referenceItems[0]?.id, bagReference._id, "bag anchor remains attached to the recommendation");
+
+const watchReference = {
+  ...referenceItem,
+  _id: "100000000000000000000004",
+  category: "accessories",
+  subcategory: "Watches",
+  primaryColor: "silver"
+};
+const watchMatch = buildReferenceOutfitRecommendations({
+  referenceItem: watchReference,
+  wardrobeItems: wardrobe,
+  occasionName: "dinner",
+  weatherContext: "dry",
+  limit: 1
+})[0];
+assert.equal(watchMatch.items.some((item: any) => /watch/i.test(`${item.name} ${item.subcategory}`)), false, "watch anchor must lock the watch role and prevent a competing closet watch");
+assert.equal(watchMatch.referenceItems[0]?.id, watchReference._id, "watch anchor remains attached to the recommendation");
 assert.equal(typeof markReferenceItemsLinkedToOutfit, "function", "reference items must link to generated outfit records");
 assert.equal(typeof markReferenceItemsSavedWithOutfit, "function", "saved looks must preserve temporary reference metadata");
 assert.equal(typeof markReferenceItemConvertedToWardrobe, "function", "explicit closet conversion must mark reference records");

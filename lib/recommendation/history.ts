@@ -3,6 +3,7 @@ import "server-only";
 import type { Types } from "mongoose";
 import { OutfitHistory } from "@/models/OutfitHistory";
 import { outfitItemSignature } from "@/lib/recommendation/signature";
+export { buildOutfitHistorySummary } from "@/lib/recommendation/history-summary";
 
 export type OutfitHistoryEventType =
   | "generated"
@@ -72,9 +73,10 @@ export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
     ? { userId: input.userId, outfitId: input.outfitId }
     : { userId: input.userId, itemSignature };
 
-  return OutfitHistory.findOneAndUpdate(
-    selector,
-    {
+  try {
+    return await OutfitHistory.findOneAndUpdate(
+      selector,
+      {
       $setOnInsert: {
         userId: input.userId,
         outfitId: input.outfitId || null,
@@ -94,9 +96,17 @@ export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
         ...(input.feedbackReason !== undefined ? { feedbackReason: cleanText(input.feedbackReason, 500) } : {}),
         ...(typeof input.feedbackRating === "number" ? { feedbackRating: Math.max(1, Math.min(5, input.feedbackRating)) } : {})
       }
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (error) {
+    // A unique user/outfit index makes concurrent successful writes idempotent.
+    // If two requests race on the initial upsert, return the winning record.
+    if ((error as { code?: number })?.code === 11000) {
+      return OutfitHistory.findOne(selector);
+    }
+    throw error;
+  }
 }
 
 export async function getRecentOutfitHistory(userId: string | Types.ObjectId, limit = 50) {
@@ -104,27 +114,4 @@ export async function getRecentOutfitHistory(userId: string | Types.ObjectId, li
     .sort({ generatedAt: -1, createdAt: -1 })
     .limit(Math.max(1, Math.min(limit, 120)))
     .lean();
-}
-
-export function buildOutfitHistorySummary(history: any[] = []) {
-  const recentRecommendations = history.slice(0, 30);
-  const recentlyWorn = history.filter((entry) => entry.wornAt).slice(0, 30);
-  const rejected = history.filter((entry) => entry.rejectedAt).slice(0, 30);
-  const saved = history.filter((entry) => entry.savedAt || entry.acceptedAt).slice(0, 30);
-  const regenerated = history.filter((entry) => entry.swappedAt || entry.editedAt).slice(0, 30);
-
-  return {
-    eventCount: history.length,
-    recentRecommendationSignatures: recentRecommendations.map((entry) => entry.itemSignature).filter(Boolean),
-    recentlyWornSignatures: recentlyWorn.map((entry) => entry.itemSignature).filter(Boolean),
-    rejectedSignatures: rejected.map((entry) => entry.itemSignature).filter(Boolean),
-    savedSignatures: saved.map((entry) => entry.itemSignature).filter(Boolean),
-    recentRecommendedItemIds: Array.from(new Set(recentRecommendations.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    recentlyWornItemIds: Array.from(new Set(recentlyWorn.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    rejectedItemIds: Array.from(new Set(rejected.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    savedItemIds: Array.from(new Set(saved.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    wornItemIds: Array.from(new Set(recentlyWorn.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    regeneratedItemIds: Array.from(new Set(regenerated.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    lastGeneratedAt: recentRecommendations[0]?.generatedAt ? new Date(recentRecommendations[0].generatedAt).toISOString() : null
-  };
 }

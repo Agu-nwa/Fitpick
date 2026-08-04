@@ -112,6 +112,13 @@ export type OutfitRecommendation = {
     visualizationWarnings?: string[];
     footwearIncluded?: boolean;
     visualGroundingStatus?: VisualGroundingStatus;
+    previewFidelityLevel?: "full" | "partial" | "core_only";
+    requestedRoles?: string[];
+    providerSupportedRoles?: string[];
+    partiallySupportedRoles?: string[];
+    unsupportedRoles?: string[];
+    providerSentItemIds?: string[];
+    recommendationOnlyItemIds?: string[];
     generatedAt?: string | null;
     errorMessage?: string;
     attempts?: number;

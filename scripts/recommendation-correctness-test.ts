@@ -4,6 +4,10 @@ import { completeFootwear } from "../lib/recommendation/footwear-completion";
 import { accessoryRoleFor, selectAccessoryCompletion, validateAccessoryRoles } from "../lib/recommendation/accessory-completion";
 import { inferAccessoryTaxonomy } from "../lib/wardrobe/accessory-taxonomy";
 import { sanitizeOutfitItems } from "../lib/recommendation/outfit-slots";
+import { validateRecommendationCandidate } from "../lib/recommendation/candidate-validator";
+import { occasionProfiles } from "../lib/recommendation/occasion-profiles";
+import { outfitTemplates } from "../lib/recommendation/outfit-templates";
+import { diversifyOutfits } from "../lib/recommendation/diversity";
 
 const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", ...extra });
 const top = item("top", "tops", "White shirt", { canonicalSubtype: "shirt", taxonomyNeedsReview: false });
@@ -63,5 +67,42 @@ assert.ok(!/score|points?|\d+\.\d+/.test(businessFinish.decision.reason.toLowerC
 assert.notEqual(accessoryRoleFor(item("cap", "accessories", "Street cap")), "other", "28 streetwear cap is recognized");
 assert.equal(accessoryRoleFor(item("native-cap", "native", "Traditional cap", { canonicalSubtype: "traditional_cap", taxonomyNeedsReview: false })), "headwear", "29 native headwear is recognized");
 assert.notEqual(accessoryRoleFor(earrings), accessoryRoleFor(necklace), "27 dress finishers can occupy distinct alternatives");
+
+const weddingProfile = occasionProfiles.find((profile) => profile.id === "wedding")!;
+const weddingShorts = item("wedding-shorts", "bottoms", "Denim shorts", { canonicalSubtype: "shorts", taxonomyNeedsReview: false });
+const formalConflict = validateRecommendationCandidate({
+  items: [top, weddingShorts, shoe],
+  template: outfitTemplates.wedding,
+  profile: weddingProfile
+});
+assert.equal(formalConflict.valid, false, "formal wedding candidates reject clearly casual denim shorts");
+assert.ok(formalConflict.warnings.includes("formal_context_casual_item"), "formal conflict remains explainable");
+assert.equal(formalConflict.hardFailure, true, "formal occasion conflicts cannot be relaxed for a small wardrobe");
+assert.ok(formalConflict.rejectionReasons.includes("occasion_forbidden_subtype"), "formal rejection includes a structured reason");
+
+const formalSneakerConflict = validateRecommendationCandidate({
+  items: [top, bottom, item("sports-shoe", "shoes", "Black athletic sneaker")],
+  template: outfitTemplates.wedding,
+  profile: weddingProfile
+});
+assert.ok(formalSneakerConflict.rejectionReasons.includes("athletic_footwear_for_formal_event"), "formal events reject athletic footwear explicitly");
+
+const rainSlidesConflict = validateRecommendationCandidate({
+  items: [top, bottom, item("slides", "shoes", "Open toe slides")],
+  weatherContext: "heavy rain"
+});
+assert.ok(rainSlidesConflict.rejectionReasons.includes("weather_conflict"), "explicit weather conflicts are rejected");
+
+const different = diversifyOutfits([
+  { items: [top, bottom, shoe], score: 100 },
+  { items: [top, item("bottom-2", "bottoms", "Navy trousers"), shoe], score: 99 },
+  { items: [dress, item("shoe-2", "shoes", "Silver pumps")], score: 94 }
+], {
+  limit: 1,
+  avoidLastOutfit: true,
+  maximumLastOutfitOverlap: 0.5,
+  historySummary: { eventCount: 1, lastRecommendationItemIds: ["top", "bottom", "shoe"], recentRecommendedItemIds: ["top", "bottom", "shoe"] }
+});
+assert.equal(different[0].items[0]._id, "dress", "something different selects a materially different architecture when available");
 
 console.log("Recommendation correctness checks passed.");

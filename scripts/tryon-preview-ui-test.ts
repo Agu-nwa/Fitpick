@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync("components/outfit/LookPreviewClient.tsx", "utf8");
+const shellSource = readFileSync("components/layout/AppShell.tsx", "utf8");
 
 for (const removedCopy of [
   "Why it works",
@@ -29,5 +30,9 @@ assert.ok(source.includes("Retry Try-On"), "Failed preview must offer Retry Try-
 assert.ok(source.includes("handleGenerate(true)"), "Retry must start a new generation.");
 assert.ok(source.includes('idempotencyKey: createClientIdempotencyKey("avatar-preview")'), "Retry must use a fresh client idempotency key.");
 assert.ok(source.includes("previewProcessing"), "Processing state must hide irrelevant actions.");
+assert.ok(source.includes("min-w-0"), "Preview layout must allow content to shrink within a mobile viewport.");
+assert.ok(!source.includes("min-h-[720px]"), "Preview media must not force a desktop-sized minimum height on mobile.");
+assert.ok(shellSource.includes("pb-[calc(11rem+var(--safe-bottom))]"), "Application content must reserve safe-area space above the fixed mobile navigation.");
+assert.ok(shellSource.includes("overflow-x-clip"), "Application shell must prevent horizontal viewport overflow without clipping vertical content.");
 
 console.log("Try-on preview UI state check passed.");

@@ -21,6 +21,7 @@ import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 import { logTaxonomyMetric } from "@/lib/wardrobe/taxonomy-observability";
 import { buildInternalStyleProfile } from "@/lib/recommendation/style-profile";
 import { validateRecommendationCandidate } from "@/lib/recommendation/candidate-validator";
+import { buildLimitedWardrobeFallback } from "@/lib/recommendation/limited-wardrobe";
 import {
   metadataList,
   metadataValue,
@@ -305,12 +306,13 @@ export function buildRecommendation(input: EngineInput) {
       items: candidate.items,
       template: outfitTemplate,
       profile: occasionProfile,
+      weatherContext: input.weatherContext,
       allowIncomplete: readiness.isSmallWardrobe
     })
   }));
   const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
   const rankedCombinations = rankCandidatesForEditorialReview(
-    validCombinations.length ? validCombinations : validatedCombinations,
+    validCombinations.length || !readiness.isSmallWardrobe ? validCombinations : validatedCombinations.filter((candidate) => !candidate.stylingValidation.hardFailure),
     {
       template: outfitTemplate,
       profile: occasionProfile,
@@ -322,7 +324,9 @@ export function buildRecommendation(input: EngineInput) {
   const diverseOutfits = diversifyOutfits(rankedCombinations, {
     limit: 3,
     historySummary: input.outfitHistorySummary,
-    diversityWeight: recommendationMode === "todays_best" ? 0.34 : 0.5
+    diversityWeight: recommendationMode === "todays_best" ? 0.34 : 0.5,
+    avoidLastOutfit: recommendationMode === "something_different",
+    maximumLastOutfitOverlap: 0.5
   });
 
   const bestOutfit = diverseOutfits[0] || rankedCombinations[0] || combinations[0];
@@ -334,6 +338,7 @@ export function buildRecommendation(input: EngineInput) {
 
   if (!coreItems.length) {
     const completeness = evaluateOutfitCompleteness([]);
+    const { occasion: _fallbackOccasion, ...fallback } = buildLimitedWardrobeFallback({ items: readyFirst, missingRoles: completeness.missingCategories, occasion: input.occasionName });
     return {
       title: "No outfit found",
       occasion: input.occasionName || "Today",
@@ -375,7 +380,8 @@ export function buildRecommendation(input: EngineInput) {
         outfitTemplateId: outfitTemplate.id,
         occasionProfileId: occasionProfile.id
       },
-      alternatives: []
+      alternatives: [],
+      ...fallback
     };
   }
 
@@ -429,6 +435,7 @@ export function buildRecommendation(input: EngineInput) {
     items: completedItems,
     template: outfitTemplate,
     profile: occasionProfile,
+    weatherContext: input.weatherContext,
     allowIncomplete: readiness.isSmallWardrobe
   });
   const completenessMissing = Array.from(new Set([...completeness.missingCategories, ...missing]));
@@ -555,6 +562,10 @@ export function buildRecommendation(input: EngineInput) {
   const smallWardrobeNote = readiness.isSmallWardrobe
     ? ` You currently have ${readiness.itemCount} closet item${readiness.itemCount === 1 ? "" : "s"}, so variety may be naturally limited.`
     : "";
+  const fullLimitedFallback = completeness.completenessStatus === "complete"
+    ? null
+    : buildLimitedWardrobeFallback({ items: completedItems, missingRoles: completeness.missingCategories, occasion });
+  const limitedFallback = fullLimitedFallback ? (({ occasion: _occasion, ...rest }) => rest)(fullLimitedFallback) : {};
 
   return {
     title: recommendationMode === "todays_best" ? `${occasion} outfit` : `${modeTitle} for ${occasion}`,
@@ -587,6 +598,7 @@ export function buildRecommendation(input: EngineInput) {
     freshnessCue: novelty >= 14 ? "Fresh compared with recent looks" : input.outfitHistorySummary?.eventCount ? "Familiar pieces used intentionally" : "Rotation starts after more use",
     wardrobeReadiness: readiness,
     gapInsights,
+    ...limitedFallback,
     scoreBreakdown: {
       ...(bestOutfit.scoreBreakdown || {}),
       accessoryCompletion: accessoryCompletion.decision,

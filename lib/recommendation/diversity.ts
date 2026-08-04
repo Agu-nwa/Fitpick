@@ -73,22 +73,27 @@ export function noveltyScore(items: any[] = [], historySummary?: any) {
 
 export function diversifyOutfits<T extends { items: any[]; score: number; scoreBreakdown?: any; similarityMetadata?: any }>(
   outfits: T[],
-  options: { limit?: number; historySummary?: any; diversityWeight?: number } = {}
+  options: { limit?: number; historySummary?: any; diversityWeight?: number; avoidLastOutfit?: boolean; maximumLastOutfitOverlap?: number } = {}
 ) {
   const limit = Math.max(1, Math.min(options.limit || 3, 8));
   const diversityWeight = typeof options.diversityWeight === "number" ? options.diversityWeight : 0.34;
   const selected: T[] = [];
   const seenSignatures = new Set<string>();
-  const candidates = outfits
+  const lastIds = new Set((options.historySummary?.lastRecommendationItemIds || []).map(String));
+  const maximumLastOutfitOverlap = options.maximumLastOutfitOverlap ?? 0.5;
+  const mappedCandidates = outfits
     .map((outfit) => {
       const signature = outfitItemSignature(ids(outfit.items));
       const historySimilarity = similarityToHistory(outfit.items, options.historySummary);
+      const currentIds = ids(outfit.items);
+      const lastOutfitOverlap = currentIds.filter((id) => lastIds.has(id)).length / Math.max(1, currentIds.length);
       return {
         ...outfit,
         similarityMetadata: {
           ...(outfit.similarityMetadata || {}),
           signature,
           historySimilarity,
+          lastOutfitOverlap,
           colorCompatibility: colorCompatibilityScore(outfit.items)
         },
         score: outfit.score - historySimilarity * 28
@@ -100,6 +105,8 @@ export function diversifyOutfits<T extends { items: any[]; score: number; scoreB
       seenSignatures.add(outfit.similarityMetadata.signature);
       return true;
     });
+  const lowOverlapCandidates = mappedCandidates.filter((candidate) => candidate.similarityMetadata.lastOutfitOverlap <= maximumLastOutfitOverlap);
+  const candidates = options.avoidLastOutfit && lowOverlapCandidates.length ? lowOverlapCandidates : mappedCandidates;
 
   while (selected.length < limit && candidates.length) {
     let bestIndex = 0;

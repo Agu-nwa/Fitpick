@@ -191,9 +191,11 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const previewFailed = !previewProcessing && isPreviewFailed(preview, error);
   const hasPreviewStarted = Boolean(preview && preview.status !== "not_started");
   const displayCopy = editorialLookCopy(outfit);
+  const fidelityLevel = preview?.previewFidelityLevel || outfit.preview?.previewFidelityLevel || "partial";
+  const fidelityLabel = fidelityLevel === "full" ? "Complete preview" : fidelityLevel === "core_only" ? "Core outfit preview" : "Accessory details may vary";
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 pb-8">
       <div className="relative overflow-hidden rounded-xl4 border border-line/80 bg-surface/82 p-6 shadow-card backdrop-blur-xl sm:p-9">
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
@@ -203,9 +205,9 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
-        <section ref={previewStageRef} className="space-y-4">
-          <Card className="overflow-hidden p-0">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
+        <section ref={previewStageRef} className="min-w-0 space-y-4">
+          <Card className="min-w-0 overflow-hidden p-0">
             {imageUrl ? (
               <ImageFrame
                 src={imageUrl}
@@ -213,7 +215,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
                 aspect="fullBody"
                 fit="contain"
                 placeholder="Virtual Try-On preview"
-                className="min-h-[520px] rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-4 sm:min-h-[640px] lg:min-h-[720px]"
+                className="min-w-0 w-full rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-2 sm:p-4"
                 imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
               />
             ) : (
@@ -227,15 +229,19 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           </Card>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <Card className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
               {referenceItems.length ? <Badge tone="premium">Photo match</Badge> : null}
+              {previewReady ? <Badge tone="premium">{fidelityLabel}</Badge> : null}
             </div>
             <p className="text-sm leading-6 text-muted">
               This is a preview, not a perfect fitting.
             </p>
+            {previewReady && fidelityLevel !== "full" ? (
+              <p className="text-xs leading-5 text-muted">Your complete look includes all selected pieces. Some small accessories may not appear in the generated preview.</p>
+            ) : null}
           </Card>
 
           {referenceItems.length ? (
@@ -254,7 +260,10 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           ) : null}
 
           <Card className="space-y-3">
-            <p className="text-sm font-semibold text-ink">Closet items in this look</p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Styled Look</p>
+              <p className="mt-1 text-sm font-semibold text-ink">Closet items in this look</p>
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
               {outfit.items.map((item) => (
                 <article key={item.id} className="rounded-2xl border border-line bg-canvas/60 p-2">

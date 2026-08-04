@@ -29,6 +29,7 @@ import {
 import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { referenceItemToPseudoWardrobeItem, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { recommendationEligible, rescueFootwear, taxonomyDiagnostics } from "@/lib/recommendation/engine";
+import { buildLimitedWardrobeFallback } from "@/lib/recommendation/limited-wardrobe";
 
 type ReferenceMatchInput = {
   referenceItem: any;
@@ -47,6 +48,7 @@ type ReferenceMatchInput = {
 
 type CategoryPlan = {
   required: string[];
+  alternatives?: string[][];
   optional: string[];
 };
 
@@ -78,16 +80,16 @@ function categoryPlanFor(anchorCategory: string, occasionName = ""): CategoryPla
     case "tops":
       return { required: ["bottoms", "shoes"], optional: dressyOptional };
     case "outerwear":
-      return { required: ["tops", "bottoms", "shoes"], optional: ["bags", "accessories"] };
+      return { required: ["tops", "bottoms", "shoes"], alternatives: [["dresses", "shoes"]], optional: ["bags", "accessories"] };
     case "bottoms":
       return { required: ["tops", "shoes"], optional: dressyOptional };
     case "shoes":
-      return { required: ["tops", "bottoms"], optional: ["outerwear", "bags", "accessories"] };
+      return { required: ["tops", "bottoms"], alternatives: [["dresses"], ["native"]], optional: ["outerwear", "bags", "accessories"] };
     case "dresses":
       return { required: ["shoes"], optional: ["outerwear", "bags", "accessories"] };
     case "bags":
     case "accessories":
-      return { required: ["tops", "bottoms", "shoes"], optional: ["outerwear", anchorCategory === "bags" ? "accessories" : "bags"] };
+      return { required: ["tops", "bottoms", "shoes"], alternatives: [["dresses", "shoes"], ["native", "shoes"]], optional: ["outerwear", anchorCategory === "bags" ? "accessories" : "bags"] };
     default:
       return { required: ["tops", "bottoms", "shoes"], optional: ["outerwear", "bags", "accessories"] };
   }
@@ -122,7 +124,11 @@ function referenceSimilarityScore(anchor: any, candidate: any, occasionName = ""
   if (occasionName && candidateOccasions.some((entry: string) => occasionName.toLowerCase().includes(entry.toLowerCase()) || entry.toLowerCase().includes(occasionName.toLowerCase()))) score += 6;
   if (weatherContext && candidateWeather.some((entry: string) => weatherContext.toLowerCase().includes(entry.toLowerCase()) || entry.toLowerCase().includes(weatherContext.toLowerCase()))) score += 4;
   if (candidate.condition === "ready") score += 4;
-  if (candidate.lastRecommendedAt) score -= 1;
+  if (candidate.lastRecommendedAt) {
+    const ageDays = (Date.now() - new Date(candidate.lastRecommendedAt).getTime()) / 86_400_000;
+    score -= ageDays < 4 ? 18 : ageDays < 14 ? 10 : 2;
+  }
+  score -= Math.min(12, Number(candidate.recommendationCount || 0) * 2);
   return score;
 }
 
@@ -142,10 +148,6 @@ function makeCombinations(input: {
   scoringInput: any;
 }) {
   const sorted = sortCandidates(input.wardrobeItems, input.anchor, input.occasionName, input.weatherContext);
-  const requiredGroups = input.plan.required.map((category) => ({
-    category,
-    items: categoryCandidates(sorted, category, 8)
-  }));
   const optionalGroups = input.plan.optional.map((category) => ({
     category,
     items: optionalCandidates(sorted, category, 3)
@@ -153,7 +155,7 @@ function makeCombinations(input: {
 
   const outfits: any[] = [];
 
-  function walkRequired(index: number, selected: any[]) {
+  function walkRequired(requiredGroups: Array<{ category: string; items: any[] }>, index: number, selected: any[]) {
     if (index >= requiredGroups.length) {
       walkOptional(0, selected);
       return;
@@ -161,12 +163,11 @@ function makeCombinations(input: {
 
     const group = requiredGroups[index];
     if (!group.items.length) {
-      walkRequired(index + 1, selected);
       return;
     }
 
     for (const item of group.items) {
-      walkRequired(index + 1, [...selected, item]);
+      walkRequired(requiredGroups, index + 1, [...selected, item]);
     }
   }
 
@@ -215,7 +216,14 @@ function makeCombinations(input: {
     }
   }
 
-  walkRequired(0, []);
+  const requiredPlans = [input.plan.required, ...(input.plan.alternatives || [])];
+  for (const requiredPlan of requiredPlans) {
+    const requiredGroups = requiredPlan.map((category) => ({
+      category,
+      items: categoryCandidates(sorted, category, 8)
+    }));
+    walkRequired(requiredGroups, 0, []);
+  }
   if (!outfits.length && sorted.length) {
     const fallback = sanitizeOutfitItems(sorted.slice(0, 4)).items;
     const withAnchor = [input.anchor, ...fallback];
@@ -354,15 +362,16 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
   const validatedCombinations = combinations.map((candidate) => ({
     ...candidate,
     stylingValidation: validateRecommendationCandidate({
-      items: candidate.items,
+      items: candidate.itemsWithAnchor,
       template: outfitTemplate,
       profile: occasionProfile,
+      weatherContext: input.weatherContext,
       allowIncomplete: false
     })
   }));
   const validCombinations = validatedCombinations.filter((candidate) => candidate.stylingValidation.valid);
   const rankedCombinations = rankCandidatesForEditorialReview(
-    validCombinations.length ? validCombinations : validatedCombinations,
+    validCombinations,
     {
       template: outfitTemplate,
       profile: occasionProfile,
@@ -371,11 +380,12 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     }
   );
   const diverse = diversifyOutfits(rankedCombinations, { limit: input.limit || 3, historySummary: input.outfitHistorySummary, diversityWeight: 0.48 });
-  const selected = diverse.length ? diverse : combinations.slice(0, input.limit || 3);
+  const selected = diverse;
   const readiness = wardrobeReadiness(available);
   const gapInsights = wardrobeGapInsights(available, occasion);
 
   if (!selected.length) {
+    const { occasion: _fallbackOccasion, ...fallback } = buildLimitedWardrobeFallback({ items: [anchor, ...available], missingRoles: plan.required, occasion });
     return [{
       title: `Match for ${displayReferenceLabel(referenceItem)}`,
       occasion,
@@ -419,7 +429,8 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       diverseCandidateCount: selected.length,
       alternatives: [],
       outfitPieces: outfitPieces(referenceItem, []),
-      referenceItems: [serializeReferenceFashionItem(referenceItem)]
+      referenceItems: [serializeReferenceFashionItem(referenceItem)],
+      ...fallback
     }];
   }
 
@@ -427,9 +438,14 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const candidateItems = sanitizeOutfitItems(candidate.items || []).items;
     const coreOnlyItems = candidateItems.filter((item) => !isAccessoryCandidate(item));
     const coreItems = coreOnlyItems.length ? coreOnlyItems : candidateItems;
-    const footwearRescue = rescueFootwear(coreItems, available, scoringInput);
+    const anchorSuppliesFootwear = normalizeOutfitSlot(anchor) === "shoes";
+    const footwearRescue = anchorSuppliesFootwear
+      ? { items: coreItems, state: "footwear_selected" as const, rescued: false, candidateCount: 0, diagnostics: [] }
+      : rescueFootwear(coreItems, available, scoringInput);
     const accessoryCompletion = selectAccessoryCompletion({
-      selectedItems: footwearRescue.items,
+      // Include the temporary anchor for role locking only. The provider returns
+      // newly selected closet accessories, so the anchor is never persisted.
+      selectedItems: [anchor, ...footwearRescue.items],
       wardrobeItems: available,
       occasionName: occasion,
       weatherContext: input.weatherContext,
@@ -444,9 +460,10 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
     const completedItemsWithAnchor = [anchor, ...completedItems];
     const completeness = evaluateOutfitCompleteness(completedItemsWithAnchor, { allowedStructures: outfitTemplate.validStructures, footwearState: footwearRescue.state });
     const finalValidation = validateRecommendationCandidate({
-      items: completedItems,
+      items: completedItemsWithAnchor,
       template: outfitTemplate,
       profile: occasionProfile,
+      weatherContext: input.weatherContext,
       allowIncomplete: false
     });
     const missing = completeness.missingCategories;
@@ -484,6 +501,10 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       polished: completedItemsWithAnchor.some((item: any) => ["shoes", "outerwear", "accessories", "bags"].includes(item.category)),
       eventAware: /wedding|dinner|formal|church|event/i.test(occasion)
     });
+    const fullLimitedFallback = completeness.completenessStatus === "complete"
+      ? null
+      : buildLimitedWardrobeFallback({ items: completedItemsWithAnchor, missingRoles: missing, occasion });
+    const limitedFallback = fullLimitedFallback ? (({ occasion: _occasion, ...rest }) => rest)(fullLimitedFallback) : {};
 
     return {
       title: index === 0 ? `${displayReferenceLabel(referenceItem)} outfit` : `${displayReferenceLabel(referenceItem)} option ${index + 1}`,
@@ -512,6 +533,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       freshnessCue: "Built as a fresh photo-led closet match.",
       wardrobeReadiness: readiness,
       gapInsights,
+      ...limitedFallback,
       scoreBreakdown: {
         ...(candidate.scoreBreakdown || {}),
         accessoryCompletion: accessoryCompletion.decision,

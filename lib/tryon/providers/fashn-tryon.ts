@@ -5,6 +5,7 @@ import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
+import { prepareTryOnItems } from "@/lib/tryon/provider-capabilities";
 import { AvatarProfile } from "@/models/AvatarProfile";
 
 type FashnStatus = "starting" | "in_queue" | "processing" | "completed" | "failed" | string;
@@ -37,8 +38,6 @@ type FashnDiagnostics = {
   outputCount?: number;
   providerStatus?: string;
 };
-
-const fashionCategories = ["top", "shirt", "blouse", "jacket", "coat", "dress", "bottom", "trouser", "pant", "jean", "skirt", "shoe", "bag", "accessory"];
 
 function config() {
   const baseUrl = (process.env.FASHN_BASE_URL || "https://api.fashn.ai/v1").replace(/\/$/, "");
@@ -173,14 +172,9 @@ function errorMessage(error: FashnStatusResponse["error"] | FashnRunResponse["er
 }
 
 function rankedProductImages(items: any[]) {
-  const ranked = [...items].sort((a, b) => {
-    const aCategory = `${a.category || ""} ${a.subcategory || ""}`.toLowerCase();
-    const bCategory = `${b.category || ""} ${b.subcategory || ""}`.toLowerCase();
-    const aScore = fashionCategories.findIndex((category) => aCategory.includes(category));
-    const bScore = fashionCategories.findIndex((category) => bCategory.includes(category));
-    return (aScore === -1 ? 999 : aScore) - (bScore === -1 ? 999 : bScore);
-  });
-  return ranked.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).filter((entry) => entry.url);
+  // prepareTryOnItems already applies the provider-aware, deterministic order.
+  // Preserve it so a locked Match reference is always sent before supporting pieces.
+  return items.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).filter((entry) => entry.url);
 }
 
 async function outputToPersistedImages(input: TryOnPreviewInput, output: string[] = []) {
@@ -402,7 +396,13 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const modelImage = await preferredTryOnModelImageUrl(avatarProfile);
       if (!modelImage) return { ...unavailableWithDiagnostics("Choose your My Model before using Virtual Try-On.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_model_image", providerReturnedJobId: false })), status: "failed" };
 
-      const products = rankedProductImages(loaded.items).slice(0, providerConfig.maxOutfitItems);
+      const preparation = prepareTryOnItems({
+        provider: "fashn",
+        items: loaded.items,
+        referenceItemIds: loaded.referenceItemIds,
+        maximumItems: providerConfig.maxOutfitItems
+      });
+      const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
       if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };
 
       const startedAt = Date.now();
@@ -440,6 +440,19 @@ export function createFashnTryOnProvider(): TryOnProvider {
 
         if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
+        result.requestedRoles = preparation.fidelity.requestedRoles;
+        result.providerSupportedRoles = preparation.fidelity.providerSupportedRoles;
+        result.partiallySupportedRoles = preparation.fidelity.partiallySupportedRoles;
+        result.unsupportedRoles = preparation.fidelity.unsupportedRoles;
+        result.previewFidelityLevel = preparation.fidelity.previewFidelityLevel;
+        result.providerSentItemIds = preparation.sentItemIds;
+        result.recommendationOnlyItemIds = preparation.recommendationOnlyItemIds;
+        result.providerDiagnostics = {
+          ...(result.providerDiagnostics || {}),
+          sentItemCount: preparation.sentItemIds.length,
+          recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length,
+          previewFidelityLevel: preparation.fidelity.previewFidelityLevel
+        };
 
         logAiEvent({
           operation: "fashn-tryon-run",

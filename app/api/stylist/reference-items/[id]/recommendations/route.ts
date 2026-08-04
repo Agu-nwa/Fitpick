@@ -8,7 +8,7 @@ import { referenceRecommendationSchema, serializeReferenceFashionItem } from "@/
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
-import { buildOutfitHistorySummary, getRecentOutfitHistory } from "@/lib/recommendation/history";
+import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { readJson, validateBody } from "@/lib/validation";
@@ -69,6 +69,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
       compatibilityEdges,
       limit: 3
     });
+
+    const primary = recommendations.find((recommendation) => recommendation.items.length > 0);
+    if (primary) {
+      const itemIds = primary.items.map((item: any) => item._id).filter(Boolean);
+      await Promise.allSettled([
+        WardrobeItem.updateMany(
+          { _id: { $in: itemIds }, userId: auth.user._id },
+          { $set: { lastRecommendedAt: new Date() }, $inc: { recommendationCount: 1 } }
+        ),
+        recordOutfitHistory({
+          userId: auth.user._id,
+          itemIds,
+          eventType: "generated",
+          source: "stylist_chat",
+          recommendationMode: "photo_match",
+          occasion: primary.occasion,
+          context: {
+            referenceItemId: String(referenceItem._id),
+            anchorCategory: referenceItem.category || "",
+            weatherContext: parsed.data.weatherContext || ""
+          },
+          scoreBreakdown: primary.scoreBreakdown,
+          similarityMetadata: primary.similarityMetadata
+        })
+      ]);
+    }
 
     return apiSuccess({
       referenceItem: serializeReferenceFashionItem(referenceItem),

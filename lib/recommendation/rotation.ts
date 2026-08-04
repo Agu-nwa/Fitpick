@@ -13,10 +13,11 @@ export function wardrobeRotationScore(items: any[], historySummary?: any) {
     const id = itemId(item);
     const recommendationCount = Number(item.recommendationCount || item.recommendationMetadata?.recommendationCount || 0);
     const timesWorn = Number(item.timesWorn || item.recommendationMetadata?.timesWorn || 0);
-    if (!recentRecommended.has(id) && !recentlyWorn.has(id)) score += 5;
+    if (!recentRecommended.has(id) && !recentlyWorn.has(id)) score += 7;
     if (recommendationCount <= 1 && timesWorn <= 1) score += 3;
-    if (recommendationCount > 5 && timesWorn < 2) score -= 4;
-    if (recentlyWorn.has(id)) score -= 8;
+    if (recentRecommended.has(id)) score -= 16;
+    if (recommendationCount > 5 && timesWorn < 2) score -= 10;
+    if (recentlyWorn.has(id)) score -= 20;
   }
 
   return Math.max(-28, Math.min(28, Math.round(score)));

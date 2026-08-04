@@ -42,6 +42,13 @@ const AvatarOutfitPreviewSchema = new Schema(
       enum: ["grounded", "partially_grounded", "missing_references", "failed"],
       default: "partially_grounded"
     },
+    requestedRoles: { type: [String], default: [] },
+    providerSupportedRoles: { type: [String], default: [] },
+    partiallySupportedRoles: { type: [String], default: [] },
+    unsupportedRoles: { type: [String], default: [] },
+    previewFidelityLevel: { type: String, enum: ["full", "partial", "core_only"], default: "partial" },
+    providerSentItemIds: { type: [String], default: [] },
+    recommendationOnlyItemIds: { type: [String], default: [] },
     attempts: { type: Number, default: 0 },
     lastAttemptAt: { type: Date, default: null },
     generatedAt: { type: Date, default: null },

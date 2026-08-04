@@ -24,12 +24,12 @@ export function AppShell({
   return (
     <main
       id="main-content"
-      className="relative isolate flex min-h-[100svh] w-full overflow-hidden bg-canvas text-ink lg:flex-row"
+      className="relative isolate flex min-h-[100svh] w-full overflow-x-clip bg-canvas text-ink lg:flex-row"
     >
       <FashionBackdrop density="soft" />
       {showNav ? <DesktopNav /> : null}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cn("mx-auto flex w-full max-w-[1480px] flex-1 flex-col px-5 pb-[calc(10rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))] sm:px-8 lg:px-12 lg:pb-12 lg:pt-10 xl:px-16", className)}>
+        <div className={cn("mx-auto flex min-w-0 w-full max-w-[1480px] flex-1 flex-col px-5 pb-[calc(11rem+var(--safe-bottom))] pt-[calc(1.5rem+var(--safe-top))] sm:px-8 lg:px-12 lg:pb-12 lg:pt-10 xl:px-16", className)}>
           <ContextPageChrome showAccountNav={showNav} />
           {children}
         </div>

@@ -1,6 +1,7 @@
 import type { FitEvaluation } from "@/lib/fit/fit-lock";
 import type { PreviewAccuracyLevelId, getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import type { PosePreset, VisualizationStyle } from "@/lib/avatar/avatar-profile";
+import type { PreviewFidelityLevel, TryOnVisualRole } from "@/lib/tryon/provider-capabilities";
 
 export type TryOnProviderType =
   | "internal_preview"
@@ -41,6 +42,13 @@ export type TryOnProviderOutput = {
   jobId?: string | null;
   cached?: boolean;
   providerDiagnostics?: Record<string, unknown>;
+  requestedRoles?: TryOnVisualRole[];
+  providerSupportedRoles?: TryOnVisualRole[];
+  partiallySupportedRoles?: TryOnVisualRole[];
+  unsupportedRoles?: TryOnVisualRole[];
+  previewFidelityLevel?: PreviewFidelityLevel;
+  providerSentItemIds?: string[];
+  recommendationOnlyItemIds?: string[];
 };
 
 export interface TryOnProvider {
