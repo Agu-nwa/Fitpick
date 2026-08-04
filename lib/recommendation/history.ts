@@ -77,25 +77,27 @@ export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
     return await OutfitHistory.findOneAndUpdate(
       selector,
       {
-      $setOnInsert: {
-        userId: input.userId,
-        outfitId: input.outfitId || null,
-        itemIds,
-        itemSignature,
-        heroItemId: itemIds[0] || null,
-        source: input.source || "outfit_page",
-        recommendationMode: cleanText(input.recommendationMode || "todays_best", 80) || "todays_best",
-        occasion: cleanText(input.occasion || "", 120),
-        context: input.context || {},
-        scoreBreakdown: input.scoreBreakdown || {},
-        similarityMetadata: input.similarityMetadata || {},
-        generatedAt: now
-      },
-      $set: {
-        ...eventPatch(input.eventType, now),
-        ...(input.feedbackReason !== undefined ? { feedbackReason: cleanText(input.feedbackReason, 500) } : {}),
-        ...(typeof input.feedbackRating === "number" ? { feedbackRating: Math.max(1, Math.min(5, input.feedbackRating)) } : {})
-      }
+        $setOnInsert: {
+          userId: input.userId,
+          outfitId: input.outfitId || null,
+          itemIds,
+          itemSignature,
+          heroItemId: itemIds[0] || null,
+          source: input.source || "outfit_page",
+          recommendationMode: cleanText(input.recommendationMode || "todays_best", 80) || "todays_best",
+          occasion: cleanText(input.occasion || "", 120),
+          context: input.context || {},
+          scoreBreakdown: input.scoreBreakdown || {},
+          similarityMetadata: input.similarityMetadata || {}
+        },
+        $set: {
+          // `generatedAt` is supplied here for generated events and by the schema
+          // default for other first-time events. It must not also appear in
+          // `$setOnInsert`, because MongoDB rejects conflicting update paths.
+          ...eventPatch(input.eventType, now),
+          ...(input.feedbackReason !== undefined ? { feedbackReason: cleanText(input.feedbackReason, 500) } : {}),
+          ...(typeof input.feedbackRating === "number" ? { feedbackRating: Math.max(1, Math.min(5, input.feedbackRating)) } : {})
+        }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );

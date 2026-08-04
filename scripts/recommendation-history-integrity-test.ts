@@ -9,6 +9,11 @@ const matchRoute = readFileSync("app/api/stylist/reference-items/[id]/recommenda
 assert.ok(model.includes("{ userId: 1, outfitId: 1 }") && model.includes("unique: true"), "outfit history enforces user-scoped outfit idempotency");
 assert.ok(history.includes("OutfitHistory.find({ userId })"), "history reads are user scoped");
 assert.ok(history.includes("findOneAndUpdate") && history.includes("upsert: true"), "duplicate and concurrent history writes are idempotent");
+assert.equal(
+  history.match(/generatedAt: now/g)?.length,
+  1,
+  "generated history writes never assign generatedAt through conflicting MongoDB update operators"
+);
 assert.ok(chatRoute.includes('eventType: "generated"'), "Create Look success records generated history");
 assert.ok(matchRoute.includes('eventType: "generated"'), "Match success records generated history");
 assert.ok(!matchRoute.includes('eventType: "failed"'), "failed Match requests do not create recommendation history");
