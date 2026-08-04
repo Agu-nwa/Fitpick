@@ -122,6 +122,9 @@ export type VerifyOtpData = {
 export type AccountDeletionRequestData = {
   deletionRequested: boolean;
   requestedAt?: string;
+  completedAt?: string | null;
+  status?: string;
+  retainedRecords?: string[];
 };
 
 export type WardrobeListData = {
@@ -806,8 +809,10 @@ export const verifyAuthOtp = (body: { email: string; code: string; purpose: Auth
 export const register = (body: unknown) => apiRequest("/api/auth/register", { method: "POST", body });
 export const login = (body: unknown) => apiRequest("/api/auth/login", { method: "POST", body });
 export const logout = () => apiRequest("/api/auth/logout", { method: "POST" });
-export const requestAccountDeletion = (body: { reason?: string } = {}) =>
+export const requestAccountDeletion = (body: { reason?: string; confirmation: "DELETE" }) =>
   apiRequest<AccountDeletionRequestData>("/api/users/me/delete-request", { method: "POST", body });
+export const getAccountDeletionStatus = () =>
+  apiRequest<AccountDeletionRequestData>("/api/users/me/delete-request", { cache: "no-store" });
 export const getPreferences = () => apiRequest<PreferencesData>("/api/preferences", { cache: "no-store" });
 export const updatePreferences = (body: unknown) => apiRequest<PreferencesData>("/api/preferences", { method: "PATCH", body });
 export const getOccasions = () => apiRequest<OccasionsData>("/api/occasions", { cache: "no-store" });

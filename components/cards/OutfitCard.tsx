@@ -6,6 +6,7 @@ import { ReasonChip } from "@/components/outfit/ReasonChip";
 import { cn } from "@/lib/utils";
 
 export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
+  const roleById = new Map((outfit.recommendationPieces || []).map((piece) => [piece.wardrobeItemId, piece.role]));
   return (
     <Card className="group overflow-hidden p-0">
       <div className="p-5">
@@ -17,17 +18,26 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
           </div>
           <Badge tone={outfit.confidence === "Strong match" ? "success" : outfit.confidence === "Good match" ? "premium" : "warning"}>{outfit.confidence}</Badge>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {outfit.items.map((item) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {outfit.items.map((item, index) => {
+            const role = roleById.get(item.id);
+            const primary = ["top", "bottom", "dress", "outerwear"].includes(role || "") && index < 4;
+            const compact = ["footwear", "bag", "accessory"].includes(role || "");
+            return (
             <ImageFrame
               key={item.id}
               src={item.thumbnailUrl || item.imageUrl}
               alt={item.name}
-              className={cn("border-0", item.thumbnailUrl || item.imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300")}
+              fit={compact ? "contain" : "cover"}
+              className={cn(
+                "border-0 bg-surface",
+                primary ? "col-span-2 row-span-2" : "",
+                item.thumbnailUrl || item.imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300"
+              )}
               imageClassName="transition duration-700 group-hover:scale-105"
-              placeholder={item.name}
+              placeholder={<span>{item.name}<span className="mt-1 block font-normal capitalize">{role || item.category}</span></span>}
             />
-          ))}
+          );})}
         </div>
       </div>
       <div className="border-t border-line bg-canvas/60 p-4">

@@ -342,9 +342,7 @@ function outfitVisualImages(outfit: OutfitRecommendation) {
       name: item.name,
       category: item.category,
       imageUrl: item.thumbnailUrl || item.imageUrl
-    }))
-    .filter((item) => Boolean(item.imageUrl))
-    .slice(0, 6);
+    }));
 }
 
 function EditorialOutfitVisual({
@@ -387,12 +385,14 @@ function EditorialOutfitVisual({
       {images.map((item, index) => (
         <ImageFrame
           key={`${item.id}-${index}`}
-          src={item.imageUrl}
+          src={item.imageUrl || undefined}
           alt={item.name}
           placeholder={item.category}
+          fit={/shoes|bags|accessories/i.test(item.category) ? "contain" : "cover"}
           className={cn(
             "h-full min-h-28 rounded-2xl border-0 bg-surface",
-            index === 0 ? "col-span-2 row-span-2 min-h-72 sm:col-span-2" : ""
+            index === 0 ? "col-span-2 row-span-2 min-h-72 sm:col-span-2" : "",
+            !item.imageUrl ? "border border-dashed border-line" : ""
           )}
         />
       ))}

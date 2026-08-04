@@ -21,6 +21,7 @@ import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { TryOnGeneration } from "@/models/TryOnGeneration";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { generateStudioModelAssetByKey } from "@/lib/studio-model/catalog/asset-generator";
+import { runAccountDeletionJob } from "@/lib/account-deletion/account-deletion";
 
 const avatarPreviewJobType = ["avatar", "preview", "generation"].join("_");
 
@@ -117,6 +118,11 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
 export async function runBackgroundJobByType(job: any) {
   const payload = job.payload || {};
   const userId = String(job.userId);
+
+  if (job.type === "account_deletion") {
+    const request = await runAccountDeletionJob(userId);
+    return { deletionRequestId: String(request._id), status: request.status };
+  }
 
   const chargeSuccessfulJob = async (fallbackFeature: CreditFeature, cached?: boolean) => {
     const feature = isCreditFeature(payload.creditFeature) ? payload.creditFeature : fallbackFeature;

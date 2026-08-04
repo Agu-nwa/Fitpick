@@ -30,6 +30,8 @@
 
 ## Assumptions Made
 
+Deletion decisions still required: approved financial/security retention, backup retention per system, S3 versioning behavior, provider contract retention, completion-notification owner, cancellation policy, and evidence standards for manual provider actions.
+
 No unresolved fact above is treated as confirmed elsewhere in this package.
 
 ## Missing Information Required from MyFitPick

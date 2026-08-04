@@ -51,6 +51,16 @@ export type OutfitPiece = {
   label?: string;
 };
 
+export type RecommendationPiece = {
+  wardrobeItemId: string;
+  category: string;
+  subtype?: string;
+  displayName: string;
+  role: "top" | "bottom" | "dress" | "outerwear" | "footwear" | "bag" | "accessory";
+  imageUrl?: string;
+  hasUsableImage: boolean;
+};
+
 export type OutfitRecommendation = {
   id: string;
   title: string;
@@ -58,6 +68,7 @@ export type OutfitRecommendation = {
   confidence: OutfitConfidence;
   items: WardrobeItem[];
   outfitPieces?: OutfitPiece[];
+  recommendationPieces?: RecommendationPiece[];
   referenceItems?: ReferenceFashionItemSummary[];
   reasonChips: string[];
   summary: string;

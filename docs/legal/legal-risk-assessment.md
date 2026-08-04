@@ -4,7 +4,7 @@
 
 | Severity | Risk / affected feature | Likelihood | Impact | Current control | Gap and mitigation | Owner | Launch blocker |
 |---|---|---|---|---|---|---|---|
-| Critical | Account deletion does not execute deletion | High | High | User can submit request; audit timestamp recorded | Build verified DB/S3/cache/provider/backup workflow, status and SLA | Engineering/Privacy | Yes |
+| Critical | Account deletion lifecycle lacks production/provider/backup verification | High | High | Explicit confirmation, immediate access disablement, retryable job, referenced S3 cleanup, local deletion/anonymization, provider action register, tombstone | Exercise production-safe deletion test; complete manual provider actions; approve retention and backup replay | Engineering/Privacy | Yes |
 | Critical | No accountable entity/Privacy Officer/age rule | High | High | Support email only | Decide, appoint, publish and operationalize | Executive/Legal | Yes |
 | Critical | Quebec Law 25 governance/PIAs not evidenced | Medium | High | Some consent fields and security controls | Complete PIAs, incident governance, officer and policies | Legal/Privacy | Quebec launch |
 | Critical | Breach response and breach register absent | Medium | High | Sentry/audit/safe logs | Implement detection, assessment, records and notification plan | Security/Privacy | Yes |

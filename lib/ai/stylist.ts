@@ -6,6 +6,7 @@ import { buildStylistPrompt } from "@/lib/ai/prompts";
 import { assertWardrobeGrounding, containsPromptInjectionSignals, safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { stylistResponseSchema, type StylistIntent, type StylistResponse } from "@/lib/ai/schemas/stylist.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
+import { constrainStylistToFinalizedRecommendation } from "@/lib/recommendation/integrity";
 
 function detectIntent(message: string, allowShoppingAdvice: boolean): StylistIntent {
   const text = message.toLowerCase();
@@ -157,7 +158,8 @@ export async function askStylist({
   const cached = await aiCache.get<StylistResponse>(cacheKey);
   if (cached) {
     logAiEvent({ operation: "stylist-chat", model, latencyMs: 0, status: "success", cacheHit: true });
-    return { ok: true, reply: cached.message, stylist: cached };
+    const constrainedCached = constrainStylistToFinalizedRecommendation(cached, deterministicRecommendation) as StylistResponse;
+    return { ok: true, reply: constrainedCached.message, stylist: constrainedCached };
   }
 
   const startedAt = Date.now();
@@ -182,7 +184,10 @@ export async function askStylist({
     if (!json.ok) throw new Error(json.reason);
     const validated = validateJsonResponse(stylistResponseSchema, json.data);
     if (!validated.ok) throw new Error(validated.reason);
-    const groundedBase = groundStylistResponse(validated.data, ownedItemIds, allowShoppingAdvice);
+    const groundedBase = constrainStylistToFinalizedRecommendation(
+      groundStylistResponse(validated.data, ownedItemIds, allowShoppingAdvice),
+      deterministicRecommendation
+    );
     const grounded = promptInjectionDetected
       ? {
           ...groundedBase,

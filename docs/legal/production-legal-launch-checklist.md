@@ -10,7 +10,7 @@ Status values: **Done**, **Partial**, **Not started**, **Not verifiable**.
 | Public legal routes/footer/auth links | Partial; routes and legal chrome exist | Product/Engineering | High | Yes | Follow implementation plan after approval |
 | Versioned Terms/Privacy acceptance | Not started | Engineering/Legal | High | Yes | Add consent record/version/source |
 | Sensitive image/Studio Model consent | Partial; boolean fields | Product/Privacy | Critical | Yes | Add granular informed consent |
-| Account deletion | Partial; request marker only | Engineering/Privacy | Critical | Yes | Build/test full workflow |
+| Account deletion | Implemented locally; production evidence pending | Engineering/Privacy | Critical | Yes | Run controlled end-to-end deletion, verify worker/S3/provider actions and completion communication |
 | Object/provider/backup deletion | Not started/not verifiable | Engineering/Security | Critical | Yes | Implement and evidence |
 | Data access/export/correction | Partial editing; no export | Engineering/Privacy | High | Yes | Add verified rights workflow |
 | Retention schedule | Not started | Privacy/Legal | Critical | Yes | Approve and implement |

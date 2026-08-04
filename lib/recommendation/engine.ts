@@ -29,6 +29,7 @@ import {
 } from "@/lib/recommendation/scoring";
 import { generateCombinations } from "@/lib/recommendation/generator";
 import { serializeWardrobeItem } from "@/lib/wardrobe";
+import { buildRecommendationPieces, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
 
 export function repeatWindowDays(preference?: string) {
   if (preference === "high") return 30;
@@ -705,6 +706,13 @@ export function serializeOutfit(
   items: any[]
 ) {
   const computedCompleteness = evaluateOutfitCompleteness(items);
+  const recommendationPieces = buildRecommendationPieces(items);
+  const integrity = recommendationIntegrityDiagnostics({
+    finalizedItems: items,
+    persistedItemIds: outfit.itemIds || items.map((item: any) => item._id),
+    serializedItems: items,
+    stylingItemIds: (outfit.recommendationPieces || []).map((piece: any) => piece.wardrobeItemId)
+  });
   const previewDefaults = {
     status: "not_started",
     provider: "",
@@ -738,6 +746,11 @@ export function serializeOutfit(
     confidence: outfit.confidence,
     summary: outfit.summary || "",
     items: items.map(serializeWardrobeItem),
+    recommendationPieces,
+    integrity: {
+      valid: integrity.valid,
+      missingItemIds: Array.from(new Set([...integrity.missingPersistedItemIds, ...integrity.missingSerializedItemIds, ...integrity.missingLoadedItemIds, ...integrity.invalidStylingItemIds]))
+    },
     outfitPieces: outfit.outfitPieces || outfit.reasoningMetadata?.outfitPieces || [],
     referenceItems: outfit.referenceItems || outfit.reasoningMetadata?.referenceItems || [],
     reasonChips: outfit.reasonChips || [],

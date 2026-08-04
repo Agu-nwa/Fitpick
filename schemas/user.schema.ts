@@ -12,5 +12,6 @@ export const updateUserSchema = z.object({
 });
 
 export const deleteRequestSchema = z.object({
-  reason: z.string().trim().max(240).optional()
+  reason: z.string().trim().max(240).optional(),
+  confirmation: z.literal("DELETE")
 });

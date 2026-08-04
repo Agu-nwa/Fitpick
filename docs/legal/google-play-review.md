@@ -23,7 +23,7 @@ The repository confirms a PWA and an iOS Capacitor wrapper. It does not confirm 
 ## Launch blockers for a future Android release
 
 - No confirmed Android/Play Billing implementation.
-- Account deletion is incomplete.
+- In-app account deletion now disables access and queues cleanup, but an external web deletion path and production completion evidence remain required.
 - Data Safety answers, minimum age and content rating are unresolved.
 - Production SDK data practices and external-payment presentation are unverified.
 

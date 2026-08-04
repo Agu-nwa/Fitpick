@@ -29,6 +29,7 @@ import { WornLook } from "@/models/WornLook";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
+import { buildRecommendationPieces, logRecommendationIntegrity, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
 
 import { outfitRecommendationRequestSchema }
   from "@/schemas/outfit.schema";
@@ -195,6 +196,8 @@ export async function POST(request: NextRequest) {
           (item: any) => item._id
         ),
 
+        recommendationPieces: buildRecommendationPieces(built.items),
+
         confidence: built.confidence,
 
         reasonChips:
@@ -281,6 +284,17 @@ export async function POST(request: NextRequest) {
 
         source: "outfit_page"
       });
+
+    const integrity = recommendationIntegrityDiagnostics({
+      finalizedItems: built.items,
+      persistedItemIds: recommendation.itemIds,
+      serializedItems: built.items,
+      stylingItemIds: recommendation.recommendationPieces.map((piece: any) => piece.wardrobeItemId)
+    });
+    logRecommendationIntegrity(String(recommendation._id), integrity);
+    if (!integrity.valid) {
+      throw new Error("Recommendation integrity validation failed before response serialization.");
+    }
 
     if (built.items.length) {
       await Promise.all([

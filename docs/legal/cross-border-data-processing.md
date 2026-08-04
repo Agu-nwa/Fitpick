@@ -36,6 +36,8 @@ Providers may change. Material changes to purpose, sensitivity or jurisdiction s
 
 ## Assumptions Made
 
+Deletion implementation note: local and referenced S3 content cleanup is automated; Stripe, RevenueCat/Apple, OpenAI/FASHN, Sentry, and Resend review actions are tracked as manual pending until supported deletion behavior and contracts are verified. No fictional provider deletion API is claimed.
+
 International providers may process data outside Canada; exact regions are unknown.
 
 ## Missing Information Required from MyFitPick

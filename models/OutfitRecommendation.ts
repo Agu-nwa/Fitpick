@@ -9,6 +9,7 @@ const OutfitRecommendationSchema = new Schema(
     itemIds: { type: [{ type: Schema.Types.ObjectId, ref: "WardrobeItem" }], default: [] },
     referenceItemIds: { type: [{ type: Schema.Types.ObjectId, ref: "ReferenceFashionItem" }], default: [] },
     outfitPieces: { type: Schema.Types.Mixed, default: [] },
+    recommendationPieces: { type: Schema.Types.Mixed, default: [] },
     referenceItems: { type: Schema.Types.Mixed, default: [] },
     confidence: { type: String, enum: ["Strong match", "Good match", "Needs review"], default: "Needs review" },
     reasonChips: { type: [String], default: [] },

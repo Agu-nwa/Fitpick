@@ -32,6 +32,13 @@ export async function requireUser() {
     };
   }
 
+  if (user.deletionStatus && user.deletionStatus !== "active") {
+    return {
+      ok: false as const,
+      response: apiError("UNAUTHORIZED", "This account is being deleted and can no longer be used.")
+    };
+  }
+
   if (!session.sessionId || !user.activeSessionId || user.activeSessionId !== session.sessionId) {
     return {
       ok: false as const,

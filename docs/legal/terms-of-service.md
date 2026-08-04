@@ -87,6 +87,8 @@ Users agree to receive transactional electronic communications needed to operate
 
 ## Assumptions Made
 
+Implementation note (August 4, 2026): deletion requests require explicit confirmation, disable access, and are processed asynchronously. Completion can accurately be reported as including retained records where required. [CANADIAN LEGAL REVIEW REQUIRED: Approve account-closure, Credits, transaction-retention, and cancellation language.]
+
 The codebase describes current features; no recurring subscription or Google Play Billing is assumed.
 
 ## Missing Information Required from MyFitPick

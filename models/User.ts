@@ -19,6 +19,8 @@ const UserSchema = new Schema(
     reversedCreditPurchaseReferences: { type: [String], default: [], select: false },
     activeSessionId: { type: String, default: "", select: false, index: true },
     activeSessionIssuedAt: { type: Date, default: null },
+    deletionStatus: { type: String, enum: ["active", "pending", "completed"], default: "active", index: true },
+    deletionRequestedAt: { type: Date, default: null },
     modelSetupCompletedAt: { type: Date, default: null },
     weatherLocationName: { type: String, default: "", trim: true, maxlength: 120 },
     weatherCountryCode: { type: String, default: "", trim: true, uppercase: true, maxlength: 2 },

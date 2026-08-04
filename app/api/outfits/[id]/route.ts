@@ -8,6 +8,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { logRecommendationIntegrity, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const loadedItems = await WardrobeItem.find({ _id: { $in: itemIds }, userId: auth.user._id }).lean();
     const itemsById = new Map(loadedItems.map((item: any) => [String(item._id), item]));
     const items = itemIds.map((id) => itemsById.get(id)).filter(Boolean);
+
+    const integrity = recommendationIntegrityDiagnostics({
+      finalizedItems: items,
+      persistedItemIds: itemIds,
+      serializedItems: items,
+      stylingItemIds: (outfit.recommendationPieces || []).map((piece: any) => piece.wardrobeItemId)
+    });
+    logRecommendationIntegrity(String(outfit._id), integrity);
+    if (!integrity.valid) {
+      return apiError("CONFLICT", "This saved outfit is incomplete and cannot be displayed reliably.");
+    }
 
     return apiSuccess({ outfit: serializeOutfit(outfit, items) });
   } catch (error) {

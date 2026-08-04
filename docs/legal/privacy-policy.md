@@ -123,6 +123,8 @@ Material changes should be communicated and, where required, renewed consent obt
 
 ## Assumptions Made
 
+Implementation note (August 4, 2026): a confirmed deletion request disables ordinary account access immediately and queues retryable cleanup. User-owned local content and referenced storage objects are scheduled for deletion. Limited transaction, audit, deletion-tombstone, provider, or backup records may remain subject to approved legal and operational retention. [CANADIAN LEGAL REVIEW REQUIRED: Approve this description and the final retention schedule before publication.]
+
 The repository represents the current product; configured providers may differ by environment.
 
 ## Missing Information Required from MyFitPick

@@ -22,6 +22,8 @@ Google Play Billing is not confirmed. Redis may be configured for rate limiting 
 
 ## Assumptions Made
 
+Deletion operations now classify AWS S3 referenced user objects as automatic cleanup. Stripe, RevenueCat/Apple, OpenAI/FASHN, Sentry, and Resend actions remain `manual_pending` until official supported behavior, contracts, identifiers, and evidence are confirmed.
+
 Imports and environment references show implementation, not necessarily production activation.
 
 ## Missing Information Required from MyFitPick

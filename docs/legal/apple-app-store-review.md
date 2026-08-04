@@ -17,7 +17,7 @@
 |---|---|---|
 | App Privacy labels | Not verifiable | Map account, contact, photos, user content, purchases, identifiers, diagnostics and approximate location to Apple definitions; verify tracking is “No” only after SDK/network review. |
 | Privacy-policy access | Partially compliant | Public route exists; ensure App Store Connect URL and in-app pre-account/settings access. |
-| Account deletion | High-risk gap | Current endpoint only records a pending request. Apple expects initiation in-app and effective deletion, subject to lawful retention. Implement and test full workflow. |
+| Account deletion | Implemented, verification pending | The in-app request now requires explicit confirmation, immediately disables access, queues retryable local/S3 cleanup, and tracks retained/provider records. Production worker execution, provider actions, backups, and completion communication still require verification. |
 | Sign in with Apple | Not applicable/not confirmed | Only email/password/OTP evidence found. Reassess if any third-party/social login is added. |
 | In-App Purchase | Partially compliant | Consumable products and RevenueCat exist; verify App Store Connect products, receipts, webhook signing, sandbox/reviewer flow and no prohibited external purchase CTA in iOS. |
 | Restore purchases | Legal/product review | Consumables generally are not restorable like non-consumables; transaction reconciliation must still prevent lost fulfilment. Explain behaviour accurately. |
@@ -30,7 +30,7 @@
 
 ## Likely launch blockers
 
-1. Account deletion is a request marker, not a completed deletion workflow.
+1. Account deletion is implemented as a background lifecycle, but production execution and provider/backup completion evidence are not yet verified.
 2. App Privacy answers cannot be finalized without production SDK/vendor/region inventory.
 3. Minimum age and content-rating decisions are absent.
 4. IAP sandbox, reviewer credentials and external-payment restrictions need end-to-end verification.

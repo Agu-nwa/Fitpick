@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { isOwnedDeletionKey } from "../lib/account-deletion/account-deletion";
+import { accountDeletionStates } from "../models/AccountDeletionRequest";
+import { deleteRequestSchema } from "../schemas/user.schema";
+
+const userId = "64b64c0f0f0f0f0f0f0f0f0f";
+assert.equal(isOwnedDeletionKey(userId, `wardrobe/${userId}/front.webp`), true, "user wardrobe object is deletable");
+assert.equal(isOwnedDeletionKey(userId, `generated-previews/${userId}/look.webp`), true, "user preview object is deletable");
+assert.equal(isOwnedDeletionKey(userId, `avatar-previews/${userId}/tryon.webp`), true, "user try-on object is deletable");
+assert.equal(isOwnedDeletionKey(userId, "studio-model/catalog/shared-standard.webp"), false, "shared catalogue object is preserved");
+assert.equal(isOwnedDeletionKey(userId, "wardrobe/another-user/front.webp"), false, "another user's object is preserved");
+assert.equal(deleteRequestSchema.safeParse({ confirmation: "DELETE" }).success, true, "explicit destructive confirmation is required");
+assert.equal(deleteRequestSchema.safeParse({}).success, false, "an accidental empty request is rejected");
+assert.ok(accountDeletionStates.includes("access_disabled"));
+assert.ok(accountDeletionStates.includes("completed_with_retained_records"));
+assert.ok(accountDeletionStates.includes("failed"));
+
+const routeSource = fs.readFileSync(new URL("../app/api/users/me/delete-request/route.ts", import.meta.url), "utf8");
+const lifecycleSource = fs.readFileSync(new URL("../lib/account-deletion/account-deletion.ts", import.meta.url), "utf8");
+const authSource = fs.readFileSync(new URL("../lib/auth.ts", import.meta.url), "utf8");
+const handlerSource = fs.readFileSync(new URL("../lib/jobs/handlers.ts", import.meta.url), "utf8");
+const modelSource = fs.readFileSync(new URL("../models/AccountDeletionRequest.ts", import.meta.url), "utf8");
+const otpRequestSource = fs.readFileSync(new URL("../app/api/auth/request-otp/route.ts", import.meta.url), "utf8");
+const otpVerifySource = fs.readFileSync(new URL("../app/api/auth/verify-otp/route.ts", import.meta.url), "utf8");
+
+assert.match(routeSource, /requireUser\(\)/, "deletion request authenticates the current user");
+assert.doesNotMatch(routeSource, /parsed\.data\.userId|body\.userId/, "ordinary client cannot select another deletion subject");
+assert.match(routeSource, /activeSessionIssuedAt/, "destructive request requires recent authentication");
+assert.match(routeSource, /enqueueJob\("account_deletion"/, "cleanup runs through the background queue");
+assert.match(modelSource, /userId:.*unique: true/, "duplicate deletion requests are idempotent per user");
+assert.match(lifecycleSource, /activeSessionId: ""/, "active session is invalidated");
+assert.match(authSource, /deletionStatus.*!== "active"/, "deleted account is blocked from ordinary authenticated APIs");
+assert.match(otpRequestSource, /deletionStatus.*!== "active"/, "deleted account cannot request a sign-in code");
+assert.match(otpVerifySource, /deletionStatus.*!== "active"/, "deleted account cannot receive a new session");
+assert.match(lifecycleSource, /"wardrobeitems", "wardrobeuploads"/, "wardrobe records are in the deletion plan");
+assert.match(lifecycleSource, /deleteStoredObject/, "owned S3 objects are deleted");
+assert.match(lifecycleSource, /deletedObjectCount/, "object cleanup records resumable progress");
+assert.match(lifecycleSource, /retainedCollections/, "financial and audit records are explicitly retained rather than falsely deleted");
+assert.match(lifecycleSource, /manual_pending/, "unsupported provider cleanup becomes tracked manual work");
+assert.match(lifecycleSource, /subjectEmail = ""/, "temporary cleanup identity is removed after completion");
+assert.match(handlerSource, /runAccountDeletionJob/, "the worker dispatches deletion jobs");
+assert.match(routeSource, /serializeAccountDeletionRequest/, "stable deletion status is returned without provider internals");
+
+console.log("Account deletion integrity tests passed.");

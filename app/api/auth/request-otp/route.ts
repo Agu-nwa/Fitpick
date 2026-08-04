@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
 
     const email = normalizeEmail(parsed.data.email);
     const purpose = parsed.data.purpose;
-    const existing = await User.findOne({ email }).select("_id").lean();
+    const existing = await User.findOne({ email }).select("_id deletionStatus").lean();
+
+    if (existing?.deletionStatus && existing.deletionStatus !== "active") {
+      return apiError("FORBIDDEN", "This account is being deleted and cannot be signed in.");
+    }
 
     if (purpose === "signup" && existing) {
       return apiError("CONFLICT", "Account already exists. Sign in instead.");

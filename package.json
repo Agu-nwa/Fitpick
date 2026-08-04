@@ -47,6 +47,8 @@
     "test:profile-unification": "tsx scripts/profile-unification-test.ts",
     "test:recommendations": "tsx scripts/recommendation-engine-test.ts",
     "test:recommendation-correctness": "tsx scripts/recommendation-correctness-test.ts",
+    "test:recommendation-integrity": "tsx scripts/recommendation-integrity-test.ts",
+    "test:account-deletion": "tsx scripts/account-deletion-integrity-test.ts",
     "test:recommendation-evaluation": "tsx scripts/recommendation-evaluation-suite.ts",
     "test:recommendation-history": "tsx scripts/recommendation-history-integrity-test.ts",
     "test:tryon-capabilities": "tsx scripts/tryon-provider-capabilities-test.ts",

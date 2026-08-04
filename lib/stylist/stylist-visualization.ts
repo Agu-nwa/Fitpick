@@ -37,7 +37,8 @@ import {
   serializeOutfitPreview
 } from "@/lib/outfit-preview/outfit-preview";
 import { serializeOutfit } from "@/lib/recommendation/engine";
-import { sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
+import { buildRecommendationPieces, logRecommendationIntegrity, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
 import { markReferenceItemsLinkedToOutfit } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
@@ -275,7 +276,34 @@ export async function createOrReuseStylistOutfitRecommendation(
   if (!itemIds.length) return null;
 
   const occasion = cleanText(recommendationResult?.occasion || "Today", 80) || "Today";
+  const finalizedNames = items.map((item) => cleanText(item?.name || "Closet item", 120)).filter(Boolean);
+  const finalizedSummary = sanitized.removed.length
+    ? `${finalizedNames.join(", ")} form the finalized ${occasion.toLowerCase()} outfit from your closet.`
+    : cleanText(recommendationResult?.summary || "", 900);
+  const finalizedWhyItWorks = sanitized.removed.length
+    ? `${finalizedNames.join(", ")} are the validated pieces in this look.`
+    : cleanText(recommendationResult?.whyItWorks || "", 500);
+  const finalizedStylingTips = sanitized.removed.length
+    ? [`Style only these finalized pieces: ${finalizedNames.join(", ")}.`]
+    : Array.isArray(recommendationResult?.stylingTips)
+      ? recommendationResult.stylingTips.map((tip: unknown) => cleanText(tip, 180)).filter(Boolean).slice(0, 8)
+      : [];
   const referenceItemIds = referenceItemIdsFromRecommendation(recommendationResult);
+  const finalizedIdSet = new Set(itemIds);
+  const suppliedPieces = Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces : [];
+  const finalizedOutfitPieces = [
+    ...suppliedPieces.filter((piece: any) => piece?.source === "reference-upload" && referenceItemIds.includes(String(piece.referenceItemId || ""))),
+    ...items.map((item) => {
+      const supplied = suppliedPieces.find((piece: any) => piece?.source === "wardrobe" && finalizedIdSet.has(String(piece.wardrobeItemId || "")) && String(piece.wardrobeItemId) === itemId(item));
+      return supplied || {
+        source: "wardrobe",
+        wardrobeItemId: itemId(item),
+        category: item.category || "",
+        role: normalizeOutfitSlot(item),
+        label: item.name || "Closet item"
+      };
+    })
+  ].slice(0, 12);
   const reuseKey = reuseKeyFor(userId, itemIds, occasion, referenceItemIds);
   const requestText = cleanText(stylistContext.requestText, 220);
   const source = stylistContext.source || "stylist_chat";
@@ -283,30 +311,31 @@ export async function createOrReuseStylistOutfitRecommendation(
   const outfit = await OutfitRecommendation.findOneAndUpdate(
     { userId, source, reuseKey },
     {
+      $set: {
+        itemIds,
+        recommendationPieces: buildRecommendationPieces(items),
+        outfitPieces: finalizedOutfitPieces,
+        summary: finalizedSummary,
+        whyItWorks: finalizedWhyItWorks,
+        stylingTips: finalizedStylingTips
+      },
       $setOnInsert: {
         userId,
         title: cleanText(recommendationResult?.title || `${occasion} outfit`, 120),
         occasion,
-        itemIds,
         referenceItemIds,
-        outfitPieces: Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces.slice(0, 12) : [],
         referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : [],
         confidence: recommendationResult?.confidence || "Needs review",
         reasonChips: recommendationResult?.reasonChips || [],
-        summary: cleanText(recommendationResult?.summary || "", 900),
         weatherContext: cleanText(recommendationResult?.weatherContext || "", 160),
         repetitionNote: cleanText(recommendationResult?.repetitionNote || "", 260),
         careNote: cleanText(recommendationResult?.careNote || "", 260),
         colorNote: cleanText(recommendationResult?.colorNote || "", 260),
         occasionFit: cleanText(recommendationResult?.occasionFit || "", 360),
-        whyItWorks: cleanText(recommendationResult?.whyItWorks || "", 500),
         materialNote: cleanText(recommendationResult?.materialNote || "", 360),
         silhouetteNote: cleanText(recommendationResult?.silhouetteNote || "", 360),
         improvementNote: cleanText(recommendationResult?.improvementNote || "", 360),
         addLater: cleanText(recommendationResult?.addLater || "", 240),
-        stylingTips: Array.isArray(recommendationResult?.stylingTips)
-          ? recommendationResult.stylingTips.map((tip: unknown) => cleanText(tip, 180)).filter(Boolean).slice(0, 8)
-          : [],
         recommendationMode: cleanText(recommendationResult?.recommendationMode || "todays_best", 80) || "todays_best",
         styleIntent: cleanText(recommendationResult?.styleIntent || "", 120),
         freshnessCue: cleanText(recommendationResult?.freshnessCue || "", 180),
@@ -351,7 +380,7 @@ export async function createOrReuseStylistOutfitRecommendation(
             ? { removedCount: sanitized.removed.length, reasons: sanitized.removed.map((entry) => entry.reason).slice(0, 8) }
             : null,
           referenceItemIds,
-          outfitPieces: Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces.slice(0, 12) : [],
+          outfitPieces: finalizedOutfitPieces,
           referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
         }
       }
@@ -363,6 +392,15 @@ export async function createOrReuseStylistOutfitRecommendation(
     referenceItemIds,
     outfitRecommendationId: String(outfit._id)
   });
+
+  const integrity = recommendationIntegrityDiagnostics({
+    finalizedItems: items,
+    persistedItemIds: outfit.itemIds,
+    serializedItems: items,
+    stylingItemIds: (outfit.recommendationPieces || []).map((piece: any) => piece.wardrobeItemId)
+  });
+  logRecommendationIntegrity(String(outfit._id), integrity);
+  if (!integrity.valid) throw new Error("Stylist recommendation integrity validation failed before serialization.");
 
   return {
     outfit,

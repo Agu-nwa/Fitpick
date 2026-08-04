@@ -11,7 +11,8 @@ const jobTypes = [
   "fit_locked_preview_generation",
   "true_3d_tryon_generation",
   "style_profile_learning",
-  "memory_rollup"
+  "memory_rollup",
+  "account_deletion"
 ] as const;
 
 const jobStatuses = ["queued", "processing", "completed", "failed", "cancelled", "dead_letter"] as const;

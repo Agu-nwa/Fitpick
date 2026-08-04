@@ -93,6 +93,10 @@ export async function POST(request: NextRequest) {
       return apiError("CONFLICT", "Account already exists. Sign in instead.");
     }
 
+    if (user.deletionStatus && user.deletionStatus !== "active") {
+      return apiError("FORBIDDEN", "This account is being deleted and cannot be signed in.");
+    }
+
     const activeSessionId = createActiveSessionId();
     user.activeSessionId = activeSessionId;
     user.activeSessionIssuedAt = new Date();

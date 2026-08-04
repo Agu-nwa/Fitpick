@@ -40,6 +40,8 @@ Launch to Quebec should be blocked pending designation of the person in charge, 
 
 ## Assumptions Made
 
+Engineering update (August 4, 2026): the application now has an idempotent deletion request, immediate access disablement, retryable job, referenced-object cleanup, local deletion/anonymization, minimal tombstone, and provider action tracking. The control remains unverified in production and lacks an approved retention schedule, backup replay evidence, and completed third-party actions.
+
 MyFitPick is a Canadian private-sector organization serving consumers and may serve users nationally.
 
 ## Missing Information Required from MyFitPick

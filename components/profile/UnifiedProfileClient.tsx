@@ -319,7 +319,7 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
 
     setRequestingDeletion(true);
     setMessage("");
-    const result = await requestAccountDeletion({});
+    const result = await requestAccountDeletion({ confirmation: "DELETE" });
     setRequestingDeletion(false);
 
     if (!result.ok) {
@@ -327,7 +327,7 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
       return;
     }
 
-    setMessage("Account deletion request received. MyFitPick will follow up by email.");
+    setMessage("Your account has been disabled. Deletion will be processed according to retention and legal requirements.");
   }
 
   return (
@@ -347,7 +347,7 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
       <Card className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-ink">Legal and privacy</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Review the public policies for privacy, Credits, refunds, and virtual try-on previews.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Review the public policies for privacy, Credits, refunds, and virtual try-on previews. Account deletion disables access immediately. Limited transaction, security, provider, or backup records may remain where legally or operationally required.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <Link href="/legal" className="block">
