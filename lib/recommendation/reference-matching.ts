@@ -37,6 +37,7 @@ type ReferenceMatchInput = {
   message?: string;
   occasionName?: string;
   weatherContext?: string;
+  weatherAvailability?: "available" | "unavailable" | "not_requested";
   styleProfile?: any;
   memorySummary?: any;
   outfitHistorySummary?: any;
@@ -394,6 +395,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       items: [],
       reasonChips: ["Photo anchor", "Closet limited"],
       weatherContext: input.weatherContext || "",
+      weatherAvailability: input.weatherAvailability || (input.weatherContext ? "available" : "not_requested"),
       repetitionNote: "",
       careNote: "",
       colorNote: "",
@@ -514,6 +516,7 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       items: completedItems,
       reasonChips: ["Photo anchor", ...chips].slice(0, 8),
       weatherContext: input.weatherContext || "",
+      weatherAvailability: input.weatherAvailability || (input.weatherContext ? "available" : "not_requested"),
       repetitionNote: "Photo matches are rotated as you keep styling.",
       careNote: completedItems.some((item: any) => item.condition === "needs-care") ? "One closet item may need care before wearing." : "Selected closet items are marked ready.",
       colorNote: colorNote(completedItemsWithAnchor),

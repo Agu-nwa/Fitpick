@@ -52,6 +52,8 @@ const ReferenceFashionItemSchema = new Schema(
     analysisSummary: { type: String, default: "", trim: true, maxlength: 500 },
     analysisProvider: { type: String, default: "", trim: true, maxlength: 40 },
     analysisModel: { type: String, default: "", trim: true, maxlength: 80 },
+    analysisFailureCode: { type: String, default: "", trim: true, maxlength: 80 },
+    manualSelectionRequired: { type: Boolean, default: false },
     analyzedAt: { type: Date, default: null },
     expiresAt: { type: Date, default: null, index: true },
     savedOutfitId: { type: Schema.Types.ObjectId, ref: "OutfitRecommendation", default: null, index: true },

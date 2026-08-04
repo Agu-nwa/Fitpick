@@ -6,8 +6,11 @@ import { requireUser } from "@/lib/auth";
 import { requestMeta } from "@/lib/audit";
 import { referenceRecommendationSchema, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
+import { isWeatherSensitiveMessage } from "@/lib/weather/weather-service";
+import { resolveRecommendationWeatherAvailability } from "@/lib/weather/stylist-weather-state";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
+import { resolveCanonicalOccasionIntent } from "@/lib/recommendation/occasion-intent";
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { logSafeError } from "@/lib/security/safe-log";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
@@ -57,12 +60,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       minScore: 45
     });
 
+    const occasionIntent = resolveCanonicalOccasionIntent(parsed.data.occasion || parsed.data.message);
+    const weatherAvailability = resolveRecommendationWeatherAvailability({
+      requested: isWeatherSensitiveMessage(`${parsed.data.message || ""} ${parsed.data.occasion || ""}`),
+      weatherContext: parsed.data.weatherContext
+    });
     const recommendations = buildReferenceOutfitRecommendations({
       referenceItem,
       wardrobeItems: wardrobe,
       message: parsed.data.message,
-      occasionName: parsed.data.occasion || parsed.data.message,
+      occasionName: occasionIntent.label,
       weatherContext: parsed.data.weatherContext,
+      weatherAvailability,
       styleProfile: serializeStyleProfile(styleProfile),
       memorySummary: serializeMemorySummary(memorySummary),
       outfitHistorySummary: buildOutfitHistorySummary(outfitHistory),

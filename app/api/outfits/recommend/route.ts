@@ -110,12 +110,14 @@ export async function POST(request: NextRequest) {
     const savedLatitude = typeof auth.user.weatherLatitude === "number" ? auth.user.weatherLatitude : undefined;
     const savedLongitude = typeof auth.user.weatherLongitude === "number" ? auth.user.weatherLongitude : undefined;
 
-    if (
+    const hasWeatherLocation = Boolean(
       (typeof parsed.data.latitude === "number" && typeof parsed.data.longitude === "number") ||
       (typeof savedLatitude === "number" && typeof savedLongitude === "number") ||
       parsed.data.weatherLocation ||
       auth.user.weatherLocationName
-    ) {
+    );
+
+    if (hasWeatherLocation) {
       try {
         weatherForecast = await getWeatherForecast({
           latitude: typeof parsed.data.latitude === "number" ? parsed.data.latitude : savedLatitude,
@@ -165,6 +167,9 @@ export async function POST(request: NextRequest) {
         weatherForecast
           ? weatherForecast.summary
           : parsed.data.weatherContext || "",
+      weatherAvailability: weatherForecast || parsed.data.weatherContext
+        ? "available"
+        : (hasWeatherLocation ? "unavailable" : "not_requested"),
 
       allowNeedsCare:
         parsed.data.allowNeedsCare,
@@ -207,6 +212,9 @@ export async function POST(request: NextRequest) {
 
         weatherContext:
           built.weatherContext,
+
+        weatherAvailability:
+          built.weatherAvailability,
 
         repetitionNote:
           built.repetitionNote,

@@ -39,10 +39,22 @@ import {
 import { serializeOutfit } from "@/lib/recommendation/engine";
 import { normalizeOutfitSlot, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { buildRecommendationPieces, logRecommendationIntegrity, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
+import {
+  assertRecommendationLifecycleComplete,
+  buildRecommendationLifecycle,
+  buildVerifiedRecommendationCopy,
+  orderVerifiedRecommendationItems,
+  recommendationOwnershipQuery,
+  RecommendationPersistenceIntegrityError,
+  safeRecommendationLifecycleLog,
+  validRecommendationItemIds
+} from "@/lib/recommendation/persistence-integrity";
 import { markReferenceItemsLinkedToOutfit } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
+import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
+import { WardrobeItem } from "@/models/WardrobeItem";
 
 export const stylistVisualizationDisclaimer = "This is a preview, not a perfect fitting.";
 
@@ -207,6 +219,96 @@ function reuseKeyFor(userId: string, itemIds: string[], occasion: string, refere
     .slice(0, 64);
 }
 
+function assertVerifiedSelectionLifecycle(
+  lifecycle: ReturnType<typeof buildRecommendationLifecycle>,
+  context: { recommendationId?: string; requestType?: string } = {}
+) {
+  try {
+    assertRecommendationLifecycleComplete(lifecycle);
+  } catch (error) {
+    console.warn("fitpick.recommendation.lifecycle", {
+      recommendationId: context.recommendationId || "pending",
+      requestType: context.requestType || "ownership_verification",
+      status: "invalid",
+      failureCode: error instanceof RecommendationPersistenceIntegrityError
+        ? error.code
+        : "verified_recommendation_incomplete",
+      ...safeRecommendationLifecycleLog(lifecycle),
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
+  if (lifecycle.losses.length) {
+    console.info("fitpick.recommendation.lifecycle", {
+      recommendationId: context.recommendationId || "pending",
+      requestType: context.requestType || "ownership_verification",
+      status: "degraded_optional",
+      ...safeRecommendationLifecycleLog(lifecycle),
+      timestamp: new Date().toISOString()
+    });
+  }
+  return lifecycle;
+}
+
+export async function verifyStylistRecommendationSelection(userId: string, recommendationResult: any) {
+  const engineSelectedItems = Array.isArray(recommendationResult?.integrityEngineSelectedItems)
+    ? recommendationResult.integrityEngineSelectedItems
+    : Array.isArray(recommendationResult?.items)
+      ? recommendationResult.items
+      : [];
+  const selectedIds = validRecommendationItemIds(engineSelectedItems);
+  if (!selectedIds.length) {
+    const lifecycle = buildRecommendationLifecycle({ engineSelectedItems, ownershipResolvedItems: [] });
+    assertVerifiedSelectionLifecycle(lifecycle);
+    return {
+      items: [],
+      ownershipResolvedItems: [],
+      referenceItemIds: referenceItemIdsFromRecommendation(recommendationResult),
+      lifecycle,
+      copy: buildVerifiedRecommendationCopy({
+        occasion: recommendationResult?.occasion,
+        items: [],
+        optionalLosses: lifecycle.losses
+      })
+    };
+  }
+
+  const verifiedItems = await WardrobeItem.find(recommendationOwnershipQuery(userId, selectedIds)).lean();
+  const ownershipResolvedItems = orderVerifiedRecommendationItems(selectedIds, verifiedItems);
+  const sanitized = sanitizeOutfitItems(ownershipResolvedItems);
+  const referenceItemIds = referenceItemIdsFromRecommendation(recommendationResult);
+  let referenceAnchorMissing = false;
+  if (referenceItemIds.length) {
+    const verifiedReferenceCount = await ReferenceFashionItem.countDocuments({
+      _id: { $in: referenceItemIds },
+      userId,
+      status: "ready",
+      usableForMatching: true
+    });
+    referenceAnchorMissing = verifiedReferenceCount !== referenceItemIds.length;
+  }
+
+  const lifecycle = buildRecommendationLifecycle({
+    engineSelectedItems,
+    ownershipResolvedItems,
+    sanitizedItems: sanitized.items,
+    referenceAnchorMissing
+  });
+  assertVerifiedSelectionLifecycle(lifecycle);
+
+  return {
+    items: sanitized.items,
+    ownershipResolvedItems,
+    referenceItemIds,
+    lifecycle,
+    copy: buildVerifiedRecommendationCopy({
+      occasion: recommendationResult?.occasion,
+      items: sanitized.items,
+      optionalLosses: lifecycle.losses
+    })
+  };
+}
+
 async function markPremiumPreviewStatus(
   userId: string,
   outfitId: string,
@@ -263,32 +365,23 @@ export async function createOrReuseStylistOutfitRecommendation(
     source?: "stylist_chat" | "system";
   } = {}
 ): Promise<PersistedStylistOutfit | null> {
-  const owned = new Set((stylistContext.ownedItemIds || []).map(String));
-  const ownedItems = (recommendationResult?.items || [])
-    .filter((item: any) => {
-      const id = itemId(item);
-      return id && (!owned.size || owned.has(id));
-    });
-  const sanitized = sanitizeOutfitItems(ownedItems);
-  const items = sanitized.items;
+  // The capped prompt context is intentionally ignored here. Ownership is
+  // authorized against the database for this user at the persistence boundary.
+  const verifiedSelection = await verifyStylistRecommendationSelection(userId, recommendationResult);
+  const items = verifiedSelection.items;
+  const lifecycleBeforePersistence = verifiedSelection.lifecycle;
 
   const itemIds: string[] = Array.from(new Set<string>(items.map(itemId).filter(Boolean)));
   if (!itemIds.length) return null;
 
   const occasion = cleanText(recommendationResult?.occasion || "Today", 80) || "Today";
-  const finalizedNames = items.map((item) => cleanText(item?.name || "Closet item", 120)).filter(Boolean);
-  const finalizedSummary = sanitized.removed.length
-    ? `${finalizedNames.join(", ")} form the finalized ${occasion.toLowerCase()} outfit from your closet.`
-    : cleanText(recommendationResult?.summary || "", 900);
-  const finalizedWhyItWorks = sanitized.removed.length
-    ? `${finalizedNames.join(", ")} are the validated pieces in this look.`
-    : cleanText(recommendationResult?.whyItWorks || "", 500);
-  const finalizedStylingTips = sanitized.removed.length
-    ? [`Style only these finalized pieces: ${finalizedNames.join(", ")}.`]
-    : Array.isArray(recommendationResult?.stylingTips)
-      ? recommendationResult.stylingTips.map((tip: unknown) => cleanText(tip, 180)).filter(Boolean).slice(0, 8)
-      : [];
-  const referenceItemIds = referenceItemIdsFromRecommendation(recommendationResult);
+  const finalizedSummary = cleanText(verifiedSelection.copy.summary, 900);
+  const finalizedWhyItWorks = cleanText(verifiedSelection.copy.whyItWorks, 500);
+  const finalizedStylingTips = verifiedSelection.copy.stylingTips
+    .map((tip) => cleanText(tip, 180))
+    .filter(Boolean)
+    .slice(0, 8);
+  const referenceItemIds = verifiedSelection.referenceItemIds;
   const finalizedIdSet = new Set(itemIds);
   const suppliedPieces = Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces : [];
   const finalizedOutfitPieces = [
@@ -317,7 +410,41 @@ export async function createOrReuseStylistOutfitRecommendation(
         outfitPieces: finalizedOutfitPieces,
         summary: finalizedSummary,
         whyItWorks: finalizedWhyItWorks,
-        stylingTips: finalizedStylingTips
+        stylingTips: finalizedStylingTips,
+        completenessWarnings: Array.from(new Set([
+          ...(Array.isArray(recommendationResult?.completenessWarnings)
+            ? recommendationResult.completenessWarnings.map((warning: unknown) => cleanText(warning, 220)).filter(Boolean)
+            : []),
+          ...verifiedSelection.copy.warnings
+        ])).slice(0, 8),
+        reasoningMetadata: {
+          generatedBy: "stylist_visualization_orchestrator",
+          visualSource: "stylist_chat",
+          deterministicConfidence: recommendationResult?.confidenceScore || 0,
+          recommendationMode: recommendationResult?.recommendationMode || "todays_best",
+          styleIntent: recommendationResult?.styleIntent || "",
+          freshnessCue: recommendationResult?.freshnessCue || "",
+          wardrobeReadiness: recommendationResult?.wardrobeReadiness || null,
+          gapInsights: recommendationResult?.gapInsights || [],
+          scoreBreakdown: recommendationResult?.scoreBreakdown || {},
+          similarityMetadata: recommendationResult?.similarityMetadata || {},
+          accessoryDecision:
+            recommendationResult?.scoreBreakdown?.accessoryCompletion ||
+            recommendationResult?.similarityMetadata?.accessoryDecision ||
+            null,
+          candidateCount: recommendationResult?.candidateCount || 0,
+          diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
+          alternatives: recommendationResult?.alternatives || [],
+          itemCount: itemIds.length,
+          recommendationLifecycle: safeRecommendationLifecycleLog(lifecycleBeforePersistence),
+          optionalOmissions: lifecycleBeforePersistence.losses
+            .filter((loss) => !loss.critical)
+            .map((loss) => ({ role: loss.role, reason: loss.reason }))
+            .slice(0, 8),
+          referenceItemIds,
+          outfitPieces: finalizedOutfitPieces,
+          referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
+        }
       },
       $setOnInsert: {
         userId,
@@ -328,6 +455,7 @@ export async function createOrReuseStylistOutfitRecommendation(
         confidence: recommendationResult?.confidence || "Needs review",
         reasonChips: recommendationResult?.reasonChips || [],
         weatherContext: cleanText(recommendationResult?.weatherContext || "", 160),
+        weatherAvailability: recommendationResult?.weatherAvailability || (recommendationResult?.weatherContext ? "available" : "not_requested"),
         repetitionNote: cleanText(recommendationResult?.repetitionNote || "", 260),
         careNote: cleanText(recommendationResult?.careNote || "", 260),
         colorNote: cleanText(recommendationResult?.colorNote || "", 260),
@@ -349,40 +477,11 @@ export async function createOrReuseStylistOutfitRecommendation(
         confidenceScore: Math.max(0, Math.min(1, Number(recommendationResult?.confidenceScore || 0))),
         completenessStatus: recommendationResult?.completenessStatus || "missing_core_item",
         missingCategories: Array.isArray(recommendationResult?.missingCategories) ? recommendationResult.missingCategories.slice(0, 8) : [],
-        completenessWarnings: Array.isArray(recommendationResult?.completenessWarnings)
-          ? recommendationResult.completenessWarnings.map((warning: unknown) => cleanText(warning, 220)).filter(Boolean).slice(0, 8)
-          : [],
         footwearIncluded: Boolean(recommendationResult?.footwearIncluded),
         swapGroups: recommendationResult?.swapGroups || [],
         source,
         requestText,
-        reuseKey,
-        reasoningMetadata: {
-          generatedBy: "stylist_visualization_orchestrator",
-          visualSource: "stylist_chat",
-          deterministicConfidence: recommendationResult?.confidenceScore || 0,
-          recommendationMode: recommendationResult?.recommendationMode || "todays_best",
-          styleIntent: recommendationResult?.styleIntent || "",
-          freshnessCue: recommendationResult?.freshnessCue || "",
-          wardrobeReadiness: recommendationResult?.wardrobeReadiness || null,
-          gapInsights: recommendationResult?.gapInsights || [],
-          scoreBreakdown: recommendationResult?.scoreBreakdown || {},
-          similarityMetadata: recommendationResult?.similarityMetadata || {},
-          accessoryDecision:
-            recommendationResult?.scoreBreakdown?.accessoryCompletion ||
-            recommendationResult?.similarityMetadata?.accessoryDecision ||
-            null,
-          candidateCount: recommendationResult?.candidateCount || 0,
-          diverseCandidateCount: recommendationResult?.diverseCandidateCount || 0,
-          alternatives: recommendationResult?.alternatives || [],
-          itemCount: itemIds.length,
-          slotSanitization: sanitized.removed.length
-            ? { removedCount: sanitized.removed.length, reasons: sanitized.removed.map((entry) => entry.reason).slice(0, 8) }
-            : null,
-          referenceItemIds,
-          outfitPieces: finalizedOutfitPieces,
-          referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
-        }
+        reuseKey
       }
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -393,11 +492,34 @@ export async function createOrReuseStylistOutfitRecommendation(
     outfitRecommendationId: String(outfit._id)
   });
 
+  const serializedOutfit = serializeOutfit(outfit, items);
+  const serializedItems = serializedOutfit.items;
   const integrity = recommendationIntegrityDiagnostics({
     finalizedItems: items,
     persistedItemIds: outfit.itemIds,
-    serializedItems: items,
+    serializedItems,
     stylingItemIds: (outfit.recommendationPieces || []).map((piece: any) => piece.wardrobeItemId)
+  });
+  const lifecycle = buildRecommendationLifecycle({
+    engineSelectedItems: recommendationResult?.integrityEngineSelectedItems || recommendationResult?.items || [],
+    ownershipResolvedItems: verifiedSelection.ownershipResolvedItems,
+    sanitizedItems: items,
+    persistedItemIds: outfit.itemIds,
+    serializedItems,
+    // Both wardrobe cards and the stylist editorial card map this full response
+    // array without a display cap, so it is the rendering contract boundary.
+    renderedItemIds: serializedItems.map((item: any) => item.id)
+  });
+  assertVerifiedSelectionLifecycle(lifecycle, {
+    recommendationId: String(outfit._id),
+    requestType: source
+  });
+  console.info("fitpick.recommendation.lifecycle", {
+    recommendationId: String(outfit._id),
+    requestType: source,
+    status: lifecycle.losses.length ? "degraded_optional" : "valid",
+    ...safeRecommendationLifecycleLog(lifecycle),
+    timestamp: new Date().toISOString()
   });
   logRecommendationIntegrity(String(outfit._id), integrity);
   if (!integrity.valid) throw new Error("Stylist recommendation integrity validation failed before serialization.");
@@ -406,7 +528,7 @@ export async function createOrReuseStylistOutfitRecommendation(
     outfit,
     items,
     outfitRecommendationId: String(outfit._id),
-    serializedOutfit: serializeOutfit(outfit, items)
+    serializedOutfit
   };
 }
 

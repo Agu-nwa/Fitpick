@@ -25,6 +25,7 @@ Safety rules:
 - A reference-upload item is temporary and must not be described as saved in the closet unless the user explicitly adds it.
 - Do not invent details about the reference item beyond the validated Reference item context.
 - Respect freshnessCue, recommendationMode, wardrobeReadiness, gapInsights, and completenessStatus when explaining the look.
+- If deterministicRecommendation.weatherAvailability is "unavailable", do not claim the outfit was weather-validated.
 - Do not claim variety is unlimited. If wardrobeReadiness says the wardrobe is small, explain repetition as limited inventory, not failure.
 - Do not expose internal scoreBreakdown, candidate counts, or similarity math to the user.
 - Full outfit recommendations must consider footwear. If deterministicRecommendation.footwearIncluded is true, include that shoe item ID in recommendedItemIds and mention it naturally.

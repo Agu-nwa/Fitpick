@@ -4,7 +4,7 @@ import { openai } from "@/lib/ai/openai";
 import { aiCache, createCacheKey } from "@/lib/ai/cache/ai-cache";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
-import { safeAIError, sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
+import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { logSafeError } from "@/lib/security/safe-log";
@@ -17,6 +17,18 @@ import type { WardrobeCategory } from "@/types/wardrobe";
 const wardrobeCategories = ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"] as const;
 const referenceStatuses = ["uploaded", "analyzing", "needs-selection", "needs_clarification", "ready", "failed", "expired", "converted_to_wardrobe"] as const;
 const publicSourceSchema = z.enum(["camera", "upload"]);
+
+const manualReferenceChoices = [
+  { id: "manual-top", label: "Top or shirt", category: "tops", subcategory: "top" },
+  { id: "manual-bottom", label: "Bottom or trousers", category: "bottoms", subcategory: "bottom" },
+  { id: "manual-dress", label: "Dress or one-piece", category: "dresses", subcategory: "dress" },
+  { id: "manual-native", label: "Native or traditional wear", category: "native", subcategory: "native wear" },
+  { id: "manual-outerwear", label: "Jacket or outerwear", category: "outerwear", subcategory: "outerwear" },
+  { id: "manual-shoes", label: "Shoes or footwear", category: "shoes", subcategory: "shoes" },
+  { id: "manual-bag", label: "Bag", category: "bags", subcategory: "bag" },
+  { id: "manual-accessory", label: "Accessory or jewelry", category: "accessories", subcategory: "accessory" },
+  { id: "manual-hair", label: "Women's hair item", category: "womens_hair", subcategory: "hair item" }
+] as const;
 
 export type ReferenceFashionStatus = typeof referenceStatuses[number];
 export type ReferenceFashionCategory = typeof wardrobeCategories[number];
@@ -176,9 +188,32 @@ export function serializeReferenceFashionItem(item: any) {
     usableForTryOn: Boolean(item.usableForTryOn),
     warnings: (item.warnings || []).slice(0, 8),
     analysisSummary: item.analysisSummary || "",
+    analysisFailureCode: item.analysisFailureCode || "",
+    manualSelectionRequired: Boolean(item.manualSelectionRequired),
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
     updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : null,
     expiresAt: item.expiresAt ? new Date(item.expiresAt).toISOString() : null
+  };
+}
+
+export function manualReferenceSelectionPatch(failureCode: string) {
+  return {
+    status: "needs-selection" as const,
+    category: "",
+    subcategory: "",
+    detectedItems: manualReferenceChoices.map((choice) => ({
+      ...choice,
+      primaryColor: "",
+      confidence: 0
+    })),
+    selectedDetectedItemId: "",
+    usableForMatching: false,
+    usableForTryOn: false,
+    warnings: ["Automatic analysis is unavailable. Choose the uploaded item's category to continue."],
+    analysisSummary: "Manual category selection is required before matching this uploaded image.",
+    analysisFailureCode: cleanText(failureCode, 80) || "analysis_unavailable",
+    manualSelectionRequired: true,
+    analyzedAt: new Date()
   };
 }
 
@@ -451,6 +486,8 @@ function applyAnalysisToRecord(record: any, analysis: ReferenceFashionItemAnalys
     analysisSummary: cleanText(analysis.analysisSummary, 500),
     analysisProvider: "openai",
     analysisModel: model,
+    analysisFailureCode: "",
+    manualSelectionRequired: false,
     analyzedAt: new Date()
   };
 }
@@ -461,10 +498,13 @@ export async function analyzeReferenceFashionItem(referenceItemId: string, userI
 
   const model = getAiModel("wardrobeVision");
   if (!process.env.OPENAI_API_KEY) {
-    item.status = "failed";
-    item.warnings = ["Image analysis is not available right now."];
+    Object.assign(item, manualReferenceSelectionPatch("provider_not_configured"));
     await item.save();
-    return { ok: false as const, safeMessage: "I couldn’t identify a clear fashion item right now." };
+    return {
+      ok: false as const,
+      safeMessage: "Automatic analysis is unavailable. Choose the item category below to continue.",
+      item
+    };
   }
 
   const cacheKey = createCacheKey("reference-fashion-item", {
@@ -507,6 +547,8 @@ export async function analyzeReferenceFashionItem(referenceItemId: string, userI
     if (!validated.ok) throw new Error(validated.reason);
 
     const patch = applyAnalysisToRecord(item, validated.data, model);
+    patch.analysisFailureCode = "";
+    patch.manualSelectionRequired = false;
     Object.assign(item, patch);
     await item.save();
     await aiCache.set(cacheKey, validated.data, 60 * 60);
@@ -517,13 +559,12 @@ export async function analyzeReferenceFashionItem(referenceItemId: string, userI
   } catch (error) {
     logAiEvent({ operation: "reference-fashion-analysis", model, latencyMs: Date.now() - startedAt, status: "failed", errorCategory: errorCategory(error) });
     logSafeError("stylist.reference.analysis", error, { referenceItemId, userId });
-    item.status = "failed";
-    item.warnings = ["I couldn’t clearly identify the fashion item in this image. Try using a brighter photo where the full item is visible."];
+    Object.assign(item, manualReferenceSelectionPatch(errorCategory(error)));
     await item.save();
-    logReferenceItemEvent({ event: "reference_image_analysis_failed", userId, referenceItemId, status: "failed", errorCategory: errorCategory(error) });
+    logReferenceItemEvent({ event: "reference_image_analysis_failed", userId, referenceItemId, status: "needs-selection", errorCategory: errorCategory(error) });
     return {
       ok: false as const,
-      safeMessage: safeAIError(error) || "I couldn’t clearly identify the fashion item in this image. Try using a brighter photo where the full item is visible.",
+      safeMessage: "Automatic analysis could not finish. Choose the item category below to continue with this photo.",
       item
     };
   }
@@ -565,6 +606,7 @@ export async function selectDetectedReferenceItem(input: { userId: string; refer
   item.primaryColor = cleanText(detected.primaryColor, 60) || item.primaryColor;
   item.status = item.category && item.imageQuality?.itemVisible !== false ? "ready" : "failed";
   item.usableForMatching = item.status === "ready";
+  item.manualSelectionRequired = false;
   await item.save();
 
   logReferenceItemEvent({ event: "reference_item_selected", userId: input.userId, referenceItemId: input.referenceItemId, status: item.status, category: item.category });

@@ -11,6 +11,9 @@ import { askStylist } from "@/lib/ai/stylist";
 import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/context/stylist-context";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
+import { parseStylistRequestIntent } from "@/lib/recommendation/occasion-intent";
+import { constrainStylistToFinalizedRecommendation } from "@/lib/recommendation/integrity";
+import { RecommendationPersistenceIntegrityError } from "@/lib/recommendation/persistence-integrity";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { ensureCreditsForFeature, insufficientCreditsPayload, InsufficientCreditsError, spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
@@ -20,11 +23,13 @@ import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-prof
 import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { getWeatherForecast, isWeatherSensitiveMessage, weatherErrorMetadata } from "@/lib/weather/weather-service";
+import { resolveRecommendationWeatherAvailability } from "@/lib/weather/stylist-weather-state";
 import {
   createOrReuseStylistOutfitRecommendation,
   serializeStylistVisualization,
   shouldGenerateVisualization,
-  triggerDigitalHumanPreviewForStylist
+  triggerDigitalHumanPreviewForStylist,
+  verifyStylistRecommendationSelection
 } from "@/lib/stylist/stylist-visualization";
 import { logReferenceItemEvent, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
@@ -64,6 +69,7 @@ function compactRecommendationForStylist(recommendation: any) {
     missingCategories: recommendation.missingCategories || [],
     completenessWarnings: recommendation.completenessWarnings || [],
     footwearIncluded: Boolean(recommendation.footwearIncluded),
+    weatherAvailability: recommendation.weatherAvailability || (recommendation.weatherContext ? "available" : "not_requested"),
     recommendationMode: recommendation.recommendationMode,
     styleIntent: recommendation.styleIntent,
     freshnessCue: recommendation.freshnessCue,
@@ -171,8 +177,12 @@ export async function POST(request: NextRequest) {
     const stylistContext = buildStylistContext(wardrobe, serializedStyleProfile, serializedMemorySummary);
     const recentMessages = buildRecentConversationContext(parsed.data.recentMessages || []);
     const sanitizedMessage = sanitizeUserPrompt(parsed.data.message);
+    const requestIntent = parseStylistRequestIntent(sanitizedMessage);
+    const occasionIntent = requestIntent.occasion;
     let weatherContext = "";
-    if (isWeatherSensitiveMessage(sanitizedMessage)) {
+    const weatherRequested = isWeatherSensitiveMessage(sanitizedMessage);
+    let weatherAvailability = resolveRecommendationWeatherAvailability({ requested: weatherRequested });
+    if (weatherRequested) {
       try {
         const forecast = await getWeatherForecast({
           city: auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
@@ -184,6 +194,7 @@ export async function POST(request: NextRequest) {
           days: 3
         });
         weatherContext = forecast.summary;
+        weatherAvailability = resolveRecommendationWeatherAvailability({ requested: true, weatherContext });
       } catch (error) {
         logSafeError("stylist.chat.weather", error, weatherErrorMetadata(error, {
           city: auth.user.weatherCityName || auth.user.weatherLocationName || undefined,
@@ -205,8 +216,9 @@ export async function POST(request: NextRequest) {
           referenceItem,
           wardrobeItems: wardrobe,
           message: sanitizedMessage,
-          occasionName: sanitizedMessage,
+          occasionName: occasionIntent.label,
           weatherContext,
+          weatherAvailability,
           styleProfile: serializedStyleProfile,
           memorySummary: serializedMemorySummary,
           outfitHistorySummary,
@@ -222,9 +234,11 @@ export async function POST(request: NextRequest) {
       }
     } else {
       deterministicRecommendation = buildRecommendation({
-        occasionName: sanitizedMessage,
+        occasionName: occasionIntent.label,
         weatherContext,
+        weatherAvailability,
         preferences: {},
+        styleDirection: requestIntent.styleDirections[0],
         styleProfile: serializedStyleProfile,
         memorySummary: serializedMemorySummary,
         outfitHistorySummary,
@@ -233,31 +247,39 @@ export async function POST(request: NextRequest) {
         wornLooks: []
       });
     }
+    // Re-resolve the engine selection against the database before it is sent to
+    // the explanation model. This forces every selected item into the final AI
+    // context even when it was outside the balanced 50-item prompt sample.
+    const engineSelectedItems = deterministicRecommendation.items || [];
+    const verifiedForExplanation = await verifyStylistRecommendationSelection(
+      String(auth.user._id),
+      deterministicRecommendation
+    );
+    deterministicRecommendation = {
+      ...deterministicRecommendation,
+      integrityEngineSelectedItems: engineSelectedItems,
+      items: verifiedForExplanation.items,
+      summary: verifiedForExplanation.copy.summary,
+      whyItWorks: verifiedForExplanation.copy.whyItWorks,
+      stylingTips: verifiedForExplanation.copy.stylingTips,
+      completenessWarnings: [
+        ...(deterministicRecommendation.completenessWarnings || []),
+        ...verifiedForExplanation.copy.warnings
+      ]
+    };
     const stylistRecommendation = compactRecommendationForStylist(deterministicRecommendation);
-    const wardrobeSummary = wardrobe
-      .slice(0, 50)
-      .map(
-        (item: any) => {
-          const verified = item.verifiedMetadata || {};
-          const verifiedLine = Object.entries(verified)
-            .slice(0, 10)
-            .map(([key, field]: [string, any]) => `${key}:${Array.isArray(field?.value) ? field.value.join(",") : field?.value || "unknown"}`)
-            .join(" | ");
-
-          return [
-            `id:${String(item._id)}`,
-            `name:${item.name || "unnamed"}`,
-            `category:${item.category || "unknown"}`,
-            `color:${item.color || "unknown"}`,
-            `subcategory:${item.subcategory || "unknown"}`,
-            `fabric:${item.fabric || "unknown"}`,
-            `pattern:${item.pattern || "unknown"}`,
-            `occasions:${(item.occasions || []).join(",") || "unknown"}`,
-            `weather:${(item.weather || []).join(",") || "unknown"}`,
-            verifiedLine ? `verified:${verifiedLine}` : ""
-          ].filter(Boolean).join(" | ");
-        }
-      )
+    const wardrobeSummary = stylistContext.promptWardrobeItems
+      .map((item: any) => [
+        `id:${item.id}`,
+        `name:${item.name}`,
+        `category:${item.category}`,
+        `color:${item.color}`,
+        `garmentType:${item.garmentType}`,
+        `fabric:${item.fabric}`,
+        `fit:${item.fit}`,
+        `occasions:${(item.occasions || []).join(",") || "unknown"}`,
+        `weather:${(item.weather || []).join(",") || "unknown"}`
+      ].join(" | "))
       .join("\n");
 
     const response = await askStylist({
@@ -321,6 +343,45 @@ export async function POST(request: NextRequest) {
         if (persistedReferenceOutfit) persistedReferenceOutfits.push(persistedReferenceOutfit);
       }
       persistedOutfit = persistedReferenceOutfits[0] || null;
+    } else if (hasOutfit && wantsVisualization) {
+      persistedOutfit = await createOrReuseStylistOutfitRecommendation(
+        String(auth.user._id),
+        deterministicRecommendation,
+        {
+          requestText: sanitizedMessage,
+          source: "stylist_chat"
+        }
+      );
+    }
+
+    if (persistedOutfit?.outfitRecommendationId) {
+      const persistedItemIds = persistedOutfit.items.map((item: any) => item._id);
+      await Promise.all([
+        WardrobeItem.updateMany(
+          { _id: { $in: persistedItemIds }, userId: auth.user._id },
+          {
+            $set: { lastRecommendedAt: new Date() },
+            $inc: { recommendationCount: 1 }
+          }
+        ),
+        recordOutfitHistory({
+          userId: auth.user._id,
+          outfitId: persistedOutfit.outfitRecommendationId,
+          itemIds: persistedItemIds,
+          eventType: "generated",
+          source: "stylist_chat",
+          recommendationMode: deterministicRecommendation.recommendationMode,
+          occasion: persistedOutfit.outfit.occasion,
+          context: {
+            requestText: sanitizedMessage.slice(0, 220),
+            weatherContext,
+            wardrobeItemCount: wardrobe.length,
+            referenceItemId: referenceItem ? String(referenceItem._id) : ""
+          },
+          scoreBreakdown: deterministicRecommendation.scoreBreakdown,
+          similarityMetadata: deterministicRecommendation.similarityMetadata
+        })
+      ]);
     }
 
     if (wantsVisualization) {
@@ -345,47 +406,6 @@ export async function POST(request: NextRequest) {
         });
       } else {
         try {
-          if (!persistedOutfit) {
-            persistedOutfit = await createOrReuseStylistOutfitRecommendation(
-              String(auth.user._id),
-              deterministicRecommendation,
-              {
-                ownedItemIds: stylistContext.ownedItemIds,
-                requestText: sanitizedMessage,
-                source: "stylist_chat"
-              }
-            );
-          }
-
-          if (persistedOutfit?.outfitRecommendationId) {
-            await Promise.all([
-              WardrobeItem.updateMany(
-                { _id: { $in: deterministicRecommendation.items.map((item: any) => item._id) }, userId: auth.user._id },
-                {
-                  $set: { lastRecommendedAt: new Date() },
-                  $inc: { recommendationCount: 1 }
-                }
-              ),
-              recordOutfitHistory({
-                userId: auth.user._id,
-                outfitId: persistedOutfit.outfitRecommendationId,
-                itemIds: deterministicRecommendation.items.map((item: any) => item._id),
-                eventType: "generated",
-                source: "stylist_chat",
-                recommendationMode: deterministicRecommendation.recommendationMode,
-                occasion: deterministicRecommendation.occasion,
-                context: {
-                  requestText: sanitizedMessage.slice(0, 220),
-                  weatherContext,
-                  wardrobeItemCount: wardrobe.length,
-                  referenceItemId: referenceItem ? String(referenceItem._id) : ""
-                },
-                scoreBreakdown: deterministicRecommendation.scoreBreakdown,
-                similarityMetadata: deterministicRecommendation.similarityMetadata
-              })
-            ]);
-          }
-
           visualization = persistedOutfit
             ? await triggerDigitalHumanPreviewForStylist(String(auth.user._id), persistedOutfit.outfitRecommendationId, { visualMode })
             : serializeStylistVisualization({
@@ -417,8 +437,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const verifiedStylist = persistedOutfit
+      ? constrainStylistToFinalizedRecommendation(response.stylist, {
+          items: persistedOutfit.items,
+          whyItWorks: persistedOutfit.outfit.whyItWorks,
+          summary: persistedOutfit.outfit.summary,
+          stylingTips: persistedOutfit.outfit.stylingTips
+        })
+      : response.stylist;
     const stylist = {
-      ...response.stylist,
+      ...verifiedStylist,
       visualMode: visualization.visualMode,
       outfitRecommendationId: visualization.outfitRecommendationId || persistedOutfit?.outfitRecommendationId || null,
       avatarPreview: visualization.avatarPreview,
@@ -429,7 +457,7 @@ export async function POST(request: NextRequest) {
     const redirectTo = responseOutfitId && !referenceItem ? `/outfit/${responseOutfitId}/preview` : null;
 
     return apiSuccess({
-      reply: response.reply,
+      reply: persistedOutfit ? verifiedStylist.message : response.reply,
       stylist,
       referenceItem: referenceItem ? serializeReferenceFashionItem(referenceItem) : null,
       referenceRecommendations: referenceRecommendations.map((recommendation, index) => {
@@ -472,6 +500,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     logSafeError("stylist.chat", error);
+
+    if (error instanceof RecommendationPersistenceIntegrityError) {
+      return apiError(
+        "CONFLICT",
+        "One or more selected closet items are no longer available. Refresh your closet and generate the look again."
+      );
+    }
 
     return apiError(
       "INTERNAL_ERROR",

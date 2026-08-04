@@ -1,9 +1,11 @@
 const redactedKeyPattern = /secret|token|password|cookie|authorization|credential|api[-_]?key|signed|base64|b64|prompt|raw/i;
+const rateLimitPattern = /\b(rate[\s_-]*limit(?:ed)?|too many requests|http[\s_-]*429|status[\s_-]*429|quota[\s_-]*exceeded|provider[\s_-]*quota|billing[\s_-]*hard[\s_-]*limit(?:[\s_-]*reached)?)\b/i;
 
 export function safeErrorCategory(error: unknown) {
+  if (error && typeof error === "object" && Number((error as { statusCode?: unknown; status?: unknown }).statusCode || (error as { status?: unknown }).status) === 429) return "rate_limit";
   if (error instanceof SyntaxError) return "syntax_error";
   if (error instanceof TypeError) return "type_error";
-  if (error instanceof Error && /rate/i.test(error.message)) return "rate_limit";
+  if (error instanceof Error && rateLimitPattern.test(error.message)) return "rate_limit";
   if (error instanceof Error && /s3|storage|upload/i.test(error.message)) return "storage";
   if (error instanceof Error && /webhook|signature/i.test(error.message)) return "webhook";
   if (error instanceof Error && /mongo|mongoose|database/i.test(error.message)) return "database";

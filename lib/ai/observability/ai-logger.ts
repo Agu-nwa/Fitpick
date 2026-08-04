@@ -9,6 +9,8 @@ type AiLogEvent = {
   errorCategory?: string;
 };
 
+const rateLimitPattern = /\b(rate[\s_-]*limit(?:ed)?|too many requests|http[\s_-]*429|status[\s_-]*429|quota[\s_-]*exceeded|provider[\s_-]*quota|billing[\s_-]*hard[\s_-]*limit(?:[\s_-]*reached)?)\b/i;
+
 export function logAiEvent(event: AiLogEvent) {
   console.info("fitpick.ai", {
     operation: event.operation,
@@ -25,7 +27,8 @@ export function logAiEvent(event: AiLogEvent) {
 
 export function errorCategory(error: unknown) {
   if (error instanceof SyntaxError) return "json_parse";
-  if (error instanceof Error && /rate/i.test(error.message)) return "rate_limit";
+  if (error && typeof error === "object" && Number((error as { statusCode?: unknown; status?: unknown }).statusCode || (error as { status?: unknown }).status) === 429) return "rate_limit";
+  if (error instanceof Error && rateLimitPattern.test(error.message)) return "rate_limit";
   if (error instanceof Error && /S3|storage|upload/i.test(error.message)) return "storage";
   if (error instanceof Error && /environment|configured|ENV_/i.test(error.message)) return "configuration";
   if (error instanceof Error && error.name) return error.name;

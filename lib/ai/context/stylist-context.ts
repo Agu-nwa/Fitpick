@@ -48,10 +48,13 @@ function compactMemorySummary(memorySummary?: any) {
 export function buildStylistContext(items: any[], styleProfile?: any, memorySummary?: any) {
   const wardrobe = buildWardrobeContext(items, { limit: 50 });
   return {
+    promptWardrobeItems: wardrobe,
     wardrobe,
     styleProfile: compactStyleProfile(styleProfile),
     memorySummary: compactMemorySummary(memorySummary),
-    ownedItemIds: wardrobe.map((item) => item.id),
+    // This is the complete eligible ownership set. The capped prompt sample above
+    // must never be reused as an authorization boundary.
+    ownedItemIds: items.map((item) => String(item?._id || item?.id || "")).filter(Boolean),
     fallback: buildSmallWardrobeFallbackContext(items)
   };
 }

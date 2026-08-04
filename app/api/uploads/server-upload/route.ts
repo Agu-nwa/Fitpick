@@ -10,6 +10,7 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
+import { reportBackgroundRemovalDisabled } from "@/lib/image-processing/background-removal-state";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       purpose: parsedPurpose.data
     });
     const uploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    const backgroundRemovalState = reportBackgroundRemovalDisabled();
 
     await recordAuditEvent({
       request,
@@ -81,6 +83,9 @@ export async function POST(request: NextRequest) {
           },
           maxSizeBytes: getMaxImageSizeBytes(),
           allowedMimeTypes: getAllowedImageTypes(),
+          backgroundRemovalState,
+          backgroundRemovalApplied: false,
+          backgroundRemovalProvider: "",
           nextAction: "uploaded_to_s3"
         }
       },

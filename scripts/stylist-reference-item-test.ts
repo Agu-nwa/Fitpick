@@ -5,6 +5,7 @@ import {
   markReferenceItemConvertedToWardrobe,
   markReferenceItemsLinkedToOutfit,
   markReferenceItemsSavedWithOutfit,
+  manualReferenceSelectionPatch,
   referenceItemToPseudoWardrobeItem,
   referenceItemToWardrobeAiAnalysis,
   serializeReferenceFashionItem
@@ -136,6 +137,15 @@ const serialized = serializeReferenceFashionItem(referenceItem);
 assert.equal(serialized?.id, referenceItem._id);
 assert.equal(serialized?.status, "ready");
 assert.ok(!("storageKey" in (serialized || {})), "public reference serialization must not expose storage keys");
+
+const manualFallback = manualReferenceSelectionPatch("provider_unavailable");
+assert.equal(manualFallback.status, "needs-selection", "provider failure offers manual selection without requiring re-upload");
+assert.equal(manualFallback.manualSelectionRequired, true);
+assert.ok(manualFallback.detectedItems.some((entry) => entry.category === "shoes"), "manual fallback supports a footwear anchor");
+assert.ok(manualFallback.detectedItems.some((entry) => entry.category === "bags"), "manual fallback supports a bag anchor");
+assert.ok(manualFallback.detectedItems.some((entry) => entry.category === "accessories"), "manual fallback supports an accessory anchor");
+assert.ok(manualFallback.detectedItems.some((entry) => entry.category === "native"), "manual fallback supports native wear");
+assert.ok(manualFallback.detectedItems.some((entry) => entry.category === "womens_hair"), "manual fallback supports women's hair anchors");
 
 const analysis = referenceItemToWardrobeAiAnalysis(referenceItem);
 assert.equal(analysis.fields.category.value, "outerwear");

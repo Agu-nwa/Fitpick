@@ -27,7 +27,11 @@ const allowedEvents = new Set([
   "recommendation.accessory.selected_sparse_metadata", "recommendation.accessory.review_required",
   "recommendation.footwear.selected_by_rescue", "recommendation.footwear.rejected_weather",
   "recommendation.footwear.rejected_formality", "recommendation.footwear.rejected_structure",
-  "recommendation.metadata.neckline_available", "recommendation.metadata.belt_compatibility_available", "recommendation.metadata.cuff_type_available"
+  "recommendation.metadata.neckline_available", "recommendation.metadata.belt_compatibility_available", "recommendation.metadata.cuff_type_available",
+  "recommendation.metadata.metal_tone_available", "recommendation.metadata.visual_weight_available",
+  "recommendation.metadata.formality_available", "recommendation.metadata.accessory_role_available",
+  "recommendation.accessory.metadata_complete", "recommendation.accessory.metadata_partial", "recommendation.accessory.metadata_sparse"
+  , "selected_accessory_metadata_complete", "selected_accessory_metadata_partial", "selected_accessory_metadata_sparse"
 ]);
 
 export function logTaxonomyMetric(event: string, values: Record<string, string | number | boolean> = {}) {

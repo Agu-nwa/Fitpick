@@ -29,6 +29,7 @@ import {
 } from "@/lib/recommendation/scoring";
 import { generateCombinations } from "@/lib/recommendation/generator";
 import { serializeWardrobeItem } from "@/lib/wardrobe";
+import { recommendationWeatherFitCopy } from "@/lib/weather/stylist-weather-state";
 import { buildRecommendationPieces, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
 
 export function repeatWindowDays(preference?: string) {
@@ -203,6 +204,7 @@ export type EngineInput = {
   occasionGroup?: string;
   formality?: string;
   weatherContext?: string;
+  weatherAvailability?: "available" | "unavailable" | "not_requested";
   allowNeedsCare?: boolean;
   styleDirection?: string;
   preferences?: any;
@@ -349,6 +351,7 @@ export function buildRecommendation(input: EngineInput) {
       items: [],
       reasonChips: [],
       weatherContext: input.weatherContext || "",
+      weatherAvailability: input.weatherAvailability || (input.weatherContext ? "available" : "not_requested"),
       repetitionNote: "",
       careNote: "",
       colorNote: "",
@@ -576,6 +579,7 @@ export function buildRecommendation(input: EngineInput) {
     items: completedItems,
     reasonChips: [completenessLabel(completeness.completenessStatus), modeTitle, novelty >= 14 ? "Fresh rotation" : "Context led", ...chips].slice(0, 8),
     weatherContext: input.weatherContext || "",
+    weatherAvailability: input.weatherAvailability || (input.weatherContext ? "available" : "not_requested"),
     repetitionNote: freshnessNote(
       completedItems,
       repeatDays
@@ -755,9 +759,12 @@ export function serializeOutfit(
     referenceItems: outfit.referenceItems || outfit.reasoningMetadata?.referenceItems || [],
     reasonChips: outfit.reasonChips || [],
     weatherContext: outfit.weatherContext || "",
+    weatherAvailability: outfit.weatherAvailability || (outfit.weatherContext ? "available" : "not_requested"),
     weatherFit:
-      outfit.weatherContext ||
-      "No weather context provided.",
+      recommendationWeatherFitCopy(
+        outfit.weatherContext,
+        outfit.weatherAvailability || (outfit.weatherContext ? "available" : "not_requested")
+      ),
     occasionFit: outfit.occasionFit || "",
     whyItWorks: outfit.whyItWorks || outfit.summary || "",
     materialNote: outfit.materialNote || "",

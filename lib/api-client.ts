@@ -235,6 +235,9 @@ export type ServerUploadData = {
     };
     maxSizeBytes: number;
     allowedMimeTypes: string[];
+    backgroundRemovalState?: "background_removal_disabled" | string;
+    backgroundRemovalApplied?: boolean;
+    backgroundRemovalProvider?: string;
     nextAction: string;
   };
 };

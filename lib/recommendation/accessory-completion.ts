@@ -65,6 +65,7 @@ type AccessoryCandidate = {
   positiveSignals: string[];
   penalties: string[];
   missingSignals: string[];
+  metadataStatus: "complete" | "partial" | "sparse";
 };
 
 export type AccessoryRejectionCode = "duplicate_role" | "occasion_conflict" | "formality_conflict" | "color_conflict" | "weather_conflict" | "wrist_stack_limit" | "structure_conflict" | "lower_ranked_compatible_item" | "insufficient_identity" | "none_compatible";
@@ -77,6 +78,7 @@ export type AccessoryDiagnostic = {
   positiveSignals: string[];
   penalties: string[];
   missingSignals: string[];
+  metadataStatus: "complete" | "partial" | "sparse";
   rejectionCode: AccessoryRejectionCode | "";
 };
 
@@ -257,6 +259,18 @@ function scoreAccessoryCandidate(input: {
   if (input.item.condition === "ready") positiveSignals.push("ready");
   const selectedNeckline = input.selectedItems.map((item) => item.neckline).find((value) => value && value !== "unknown");
   const selectedWaistband = input.selectedItems.map((item) => item.waistbandType).find((value) => value && value !== "unknown");
+  const selectedCuffType = input.selectedItems.map((item) => item.cuffType).find((value) => value && value !== "unknown");
+  const metalTone = metadataValue(input.item, "metalTone") || metadataValue(input.item, "hardwareFinish") || input.item.metalTone;
+  const visualWeight = metadataValue(input.item, "visualWeight") || input.item.accessoryScale;
+  const roleKnown = role !== "other";
+  if (!roleKnown) missingSignals.push("role"); else positiveSignals.push("role_metadata");
+  if (["watch", "wrist_jewelry", "neck_jewelry", "ear_jewelry", "hand_jewelry", "ankle_jewelry", "formal_detail"].includes(role)) {
+    if (!metalTone) missingSignals.push("metal_tone"); else positiveSignals.push("metal_tone_metadata");
+    if (!visualWeight) missingSignals.push("visual_weight"); else positiveSignals.push("visual_weight_metadata");
+  }
+  if (role === "formal_detail") {
+    if (!selectedCuffType) missingSignals.push("cuff_type"); else positiveSignals.push("cuff_type_metadata");
+  }
   let compatibilityAdjustment = 0;
   if (role === "neck_jewelry") {
     if (["high_neck", "collared"].includes(selectedNeckline)) { compatibilityAdjustment -= 20; penalties.push("neckline_conflict"); }
@@ -278,7 +292,7 @@ function scoreAccessoryCandidate(input: {
     readinessScore(input.item, input.allowNeedsCare) +
     styleProfileScore([input.item], input.styleProfile) * 0.75 +
     memoryPreferenceScore([input.item], input.memorySummary, Boolean(input.allowRecentRepeat)) * 0.65 +
-    colorScore + compatibilityAdjustment + Math.min(missingSignals.length * 2, 5) +
+    colorScore + compatibilityAdjustment +
     accessoryTypeBonus(input.item, role, input.occasionName, input.weatherContext) -
     restraintPenalty(input.item, role, input.occasionName);
 
@@ -289,6 +303,13 @@ function scoreAccessoryCandidate(input: {
     accessoryTypeBonus(input.item, role, input.occasionName, input.weatherContext) >= 18 ? "occasion-polish" : ""
   ].filter(Boolean);
 
+  const distinctMissingSignals = Array.from(new Set(missingSignals));
+  const metadataStatus = distinctMissingSignals.length <= 1
+    ? "complete" as const
+    : distinctMissingSignals.length <= 3
+      ? "partial" as const
+      : "sparse" as const;
+
   return {
     item: input.item,
     role,
@@ -296,7 +317,8 @@ function scoreAccessoryCandidate(input: {
     reasons,
     positiveSignals,
     penalties,
-    missingSignals
+    missingSignals: distinctMissingSignals,
+    metadataStatus
   };
 }
 
@@ -369,7 +391,7 @@ export function selectAccessoryCompletion(input: {
         shortlistedCount: 0,
         selectedRoles: [],
         omitted: candidateItems.slice(0, 12).map((item) => ({ itemId: itemId(item), role: accessoryRoleFor(item), reason: "taxonomy_needs_review" })),
-        diagnostics: candidateItems.slice(0, 50).map((item) => ({ itemId: itemId(item), role: accessoryRoleFor(item), score: 0, selected: false, positiveSignals: [], penalties: [], missingSignals: ["identity"], rejectionCode: "insufficient_identity" as const }))
+        diagnostics: candidateItems.slice(0, 50).map((item) => ({ itemId: itemId(item), role: accessoryRoleFor(item), score: 0, selected: false, positiveSignals: [], penalties: [], missingSignals: ["identity"], metadataStatus: "sparse" as const, rejectionCode: "insufficient_identity" as const }))
       }
     };
   }
@@ -389,11 +411,14 @@ export function selectAccessoryCompletion(input: {
     .slice(0, 12);
   const selected: AccessoryCandidate[] = [];
   const selectedRoles = new Set<AccessoryRole>(existingRoles);
-  const omitted: Array<{ itemId: string; role: AccessoryRole; reason: string }> = [];
+  const omitted: Array<{ itemId: string; role: AccessoryRole; reason: string }> = scored
+    .filter((candidate) => candidate.role === "waist" && candidate.penalties.includes("belt_incompatible"))
+    .map((candidate) => ({ itemId: itemId(candidate.item), role: candidate.role, reason: "structure_conflict" }));
   const context = `${input.occasionName || ""} ${input.formality || ""}`.toLowerCase();
   const selectedText = input.selectedItems.map(itemText).join(" ");
 
   for (const candidate of shortlisted) {
+    if (omitted.some((entry) => entry.itemId === itemId(candidate.item))) continue;
     if (selected.length >= MAX_ACCESSORIES_PER_LOOK) {
       omitted.push({ itemId: itemId(candidate.item), role: candidate.role, reason: "accessory_limit_reached" });
       continue;
@@ -458,7 +483,7 @@ export function selectAccessoryCompletion(input: {
         shortlistedCount: shortlisted.length,
         selectedRoles: [],
         omitted,
-        diagnostics: scored.slice(0, 50).map((candidate) => ({ itemId: itemId(candidate.item), role: candidate.role, score: candidate.score, selected: false, positiveSignals: candidate.positiveSignals, penalties: candidate.penalties, missingSignals: candidate.missingSignals, rejectionCode: (omitted.find((entry) => entry.itemId === itemId(candidate.item))?.reason || "none_compatible") as AccessoryRejectionCode }))
+        diagnostics: scored.slice(0, 50).map((candidate) => ({ itemId: itemId(candidate.item), role: candidate.role, score: candidate.score, selected: false, positiveSignals: candidate.positiveSignals, penalties: candidate.penalties, missingSignals: candidate.missingSignals, metadataStatus: candidate.metadataStatus, rejectionCode: (omitted.find((entry) => entry.itemId === itemId(candidate.item))?.reason || "none_compatible") as AccessoryRejectionCode }))
       }
     };
   }
@@ -475,6 +500,16 @@ export function selectAccessoryCompletion(input: {
   logTaxonomyMetric("recommendation.metadata.neckline_available", { availableCount: input.selectedItems.filter((item) => item.neckline && item.neckline !== "unknown").length });
   logTaxonomyMetric("recommendation.metadata.belt_compatibility_available", { availableCount: input.selectedItems.filter((item) => typeof item.beltCompatible === "boolean").length });
   logTaxonomyMetric("recommendation.metadata.cuff_type_available", { availableCount: input.selectedItems.filter((item) => item.cuffType && item.cuffType !== "unknown").length });
+  logTaxonomyMetric("recommendation.metadata.metal_tone_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("metal_tone_metadata")).length });
+  logTaxonomyMetric("recommendation.metadata.visual_weight_available", { availableCount: scored.filter((candidate) => candidate.positiveSignals.includes("visual_weight_metadata")).length });
+  logTaxonomyMetric("recommendation.metadata.formality_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("formality")).length });
+  logTaxonomyMetric("recommendation.metadata.accessory_role_available", { availableCount: scored.filter((candidate) => !candidate.missingSignals.includes("role")).length });
+  logTaxonomyMetric("recommendation.accessory.metadata_complete", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "complete").length });
+  logTaxonomyMetric("recommendation.accessory.metadata_partial", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "partial").length });
+  logTaxonomyMetric("recommendation.accessory.metadata_sparse", { candidateCount: scored.filter((candidate) => candidate.metadataStatus === "sparse").length });
+  logTaxonomyMetric("selected_accessory_metadata_complete", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "complete").length });
+  logTaxonomyMetric("selected_accessory_metadata_partial", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "partial").length });
+  logTaxonomyMetric("selected_accessory_metadata_sparse", { selectedCount: selected.filter((candidate) => candidate.metadataStatus === "sparse").length });
   if (omitted.length || roleValidation.invalid.length) logTaxonomyMetric("recommendation.accessory.rejected_by_role", { rejectedCount: omitted.length + roleValidation.invalid.length, selectedCount: validItems.length });
 
   return {
@@ -492,7 +527,7 @@ export function selectAccessoryCompletion(input: {
       diagnostics: scored.slice(0, 50).map((candidate) => {
         const selected = validItems.some((item) => itemId(item) === itemId(candidate.item));
         const rejection = omitted.find((entry) => entry.itemId === itemId(candidate.item));
-        return { itemId: itemId(candidate.item), role: candidate.role, score: candidate.score, selected, positiveSignals: candidate.positiveSignals, penalties: candidate.penalties, missingSignals: candidate.missingSignals, rejectionCode: selected ? "" : (rejection?.reason || "lower_ranked_compatible_item") as AccessoryRejectionCode };
+        return { itemId: itemId(candidate.item), role: candidate.role, score: candidate.score, selected, positiveSignals: candidate.positiveSignals, penalties: candidate.penalties, missingSignals: candidate.missingSignals, metadataStatus: candidate.metadataStatus, rejectionCode: selected ? "" : (rejection?.reason || "lower_ranked_compatible_item") as AccessoryRejectionCode };
       })
     }
   };

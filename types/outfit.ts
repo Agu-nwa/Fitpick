@@ -37,6 +37,8 @@ export type ReferenceFashionItemSummary = {
   usableForTryOn?: boolean;
   warnings?: string[];
   analysisSummary?: string;
+  analysisFailureCode?: string;
+  manualSelectionRequired?: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
   expiresAt?: string | null;
@@ -73,6 +75,7 @@ export type OutfitRecommendation = {
   reasonChips: string[];
   summary: string;
   weatherFit: string;
+  weatherAvailability?: "available" | "unavailable" | "not_requested";
   colorNote: string;
   occasionFit?: string;
   whyItWorks?: string;

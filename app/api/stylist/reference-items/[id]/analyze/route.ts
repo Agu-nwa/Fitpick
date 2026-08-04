@@ -40,9 +40,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return apiSuccess(
       {
         referenceItem: serializeReferenceFashionItem(result.item),
-        safeMessage: result.ok ? "" : "I couldn’t clearly identify the fashion item in this image. Try using a brighter photo where the full item is visible."
+        safeMessage: result.ok ? "" : result.safeMessage
       },
-      { message: result.ok ? "Reference photo analyzed." : "Photo needs a clearer view." }
+      { message: result.ok ? "Reference photo analyzed." : "Choose the item category to continue." }
     );
   } catch (error) {
     logSafeError("stylist.reference.analyze", error);

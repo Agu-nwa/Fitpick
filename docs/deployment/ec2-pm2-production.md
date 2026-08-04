@@ -1,75 +1,81 @@
-# FitPick EC2 + PM2 Production Commands
+# FitPick EC2 + PM2 Production Release
 
-Run these from the FitPick app directory on EC2.
+Build each release in its own directory. Do not run `next build` inside the directory currently served by PM2: replacing `.next` while the old process is live can mix old HTML and new Server Action assets.
 
-Before building or restarting PM2, create or update `.env.local` in this directory. The Next.js web app and the `fitpick-worker` PM2 process both rely on it. Do not commit real values.
+## Prepare an isolated release
 
-```bash
-git pull
-```
-
-Pulls the latest committed application code from GitHub.
+Run as the deployment user:
 
 ```bash
-npm install
-```
+cd /home/ubuntu/Fitpick
+git fetch --prune origin main
 
-Installs dependencies exactly from `package-lock.json`.
+RELEASE_SHA="$(git rev-parse --short=12 origin/main)"
+RELEASE_DIR="/home/ubuntu/fitpick-releases/$RELEASE_SHA"
+CURRENT_DIR="$(readlink -f /proc/$(pm2 pid fitpick)/cwd)"
 
-```bash
+mkdir -p /home/ubuntu/fitpick-releases
+git worktree add --detach "$RELEASE_DIR" origin/main
+cp "$CURRENT_DIR/.env.local" "$RELEASE_DIR/.env.local"
+chmod 600 "$RELEASE_DIR/.env.local"
+
+cd "$RELEASE_DIR"
+npm ci
+npm run typecheck
+npm run test:recommendation-integrity
+npm run test:deployment-safety
 npm run build:ec2
+npm run deploy:verify-build
 ```
 
-Builds the Next.js production bundle with a larger Node heap for small EC2 instances and catches TypeScript/build issues before restart.
+If any command fails, do not restart PM2. The currently running release remains untouched.
+
+## Atomic PM2 switch
+
+The deployment identity is exposed by `/api/health` and lets the checks prove which code is serving traffic.
 
 ```bash
-npm run test:secret-scan
-npm run test:safety-copy
-npm run check:routes
-```
+cd "$RELEASE_DIR"
+export NEXT_DEPLOYMENT_ID="$RELEASE_SHA"
 
-Runs lightweight deployment safety checks before PM2 restart.
-
-```bash
 pm2 startOrRestart ecosystem.config.js --update-env
+pm2 save
+
+node scripts/verify-production-release.mjs \
+  --runtime \
+  --expected-deployment="$RELEASE_SHA" \
+  --local-url=http://127.0.0.1:3000/api/health \
+  --public-url=https://myfitpick.com/api/health
 ```
 
-Starts or restarts both the FitPick web process and the background worker, then reloads updated environment variables.
+The runtime verification fails when build manifests are missing, PM2 uses the wrong release directory, more than one process owns port 3000, the listener is outside the FitPick PM2 process tree, health is not OK, or the local/public deployment identity does not match the expected commit.
 
-The worker also loads `.env.local` itself before validating config. If `ENABLE_BACKGROUND_JOBS=false`, it exits cleanly with status `disabled` and PM2 should not restart it in a loop.
+Inspect the release after the switch:
 
 ```bash
 pm2 status
+pm2 describe fitpick | grep -Ei 'status|exec cwd|script path'
+pm2 logs fitpick --lines 100 --nostream
 ```
 
-Shows process health, uptime, restart count, and memory usage.
+Users with a page open during the switch can still have an old browser bundle. A normal reload obtains the new build. If a browser reports a Server Action mismatch, close the old tab or perform a full reload; do not delete the active release's `.next` directory.
+
+## Roll back without rebuilding in place
+
+Choose a previously built release directory, then switch PM2 back to it:
 
 ```bash
-pm2 logs fitpick --lines 100
-pm2 logs fitpick-worker --lines 100
-```
-
-Shows the latest application and worker logs for deployment verification.
-
-Worker configuration failures should show only missing variable names, never secret values. If you see `errorCategory: "configuration"`, confirm `.env.local` includes `ENABLE_BACKGROUND_JOBS=true`, MongoDB, OpenAI, S3, CloudFront/public URL, and app URL variables.
-
-```bash
-pm2 save
-```
-
-Persists the current PM2 process list so it restores on reboot.
-
-## Rollback Basics
-
-If a deployment fails after `git pull`, identify the previous good commit and reset back to it:
-
-```bash
-git log --oneline -5
-git checkout <previous-good-commit>
-npm install
-npm run build:ec2
+ROLLBACK_DIR=/home/ubuntu/fitpick-releases/PREVIOUS_RELEASE_SHA
+cd "$ROLLBACK_DIR"
+export NEXT_DEPLOYMENT_ID="$(git rev-parse --short=12 HEAD)"
 pm2 startOrRestart ecosystem.config.js --update-env
 pm2 save
+
+node scripts/verify-production-release.mjs \
+  --runtime \
+  --expected-deployment="$NEXT_DEPLOYMENT_ID" \
+  --local-url=http://127.0.0.1:3000/api/health \
+  --public-url=https://myfitpick.com/api/health
 ```
 
-After rollback, create a follow-up fix branch before returning to the latest main branch.
+Keep at least the current and previous verified release directories. Remove older worktrees only during a separate, reviewed cleanup—not during an active deployment.

@@ -15,6 +15,11 @@ const OutfitRecommendationSchema = new Schema(
     reasonChips: { type: [String], default: [] },
     summary: { type: String, default: "" },
     weatherContext: { type: String, default: "" },
+    weatherAvailability: {
+      type: String,
+      enum: ["available", "unavailable", "not_requested"],
+      default: "not_requested"
+    },
     repetitionNote: { type: String, default: "" },
     careNote: { type: String, default: "" },
     colorNote: { type: String, default: "" },
