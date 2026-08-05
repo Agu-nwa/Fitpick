@@ -398,7 +398,9 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
       limit: 80
     }
   );
-  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, available);
+  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, available, {
+    allowedStructures: outfitTemplate.validStructures
+  });
   const lockedFinisherItems = available.filter((item) =>
     regenerationPolicy.lockedItemIds.includes(itemId(item)) && isAccessoryCandidate(item)
   );

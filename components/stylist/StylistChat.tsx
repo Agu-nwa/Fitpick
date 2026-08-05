@@ -25,6 +25,7 @@ import {
 } from "@/lib/api-client";
 import { imageUploadErrorMessage, normalizeImageForUpload, type NormalizedImageUpload } from "@/lib/image-upload/browser-normalize";
 import { IMAGE_UPLOAD_POLICY, type ImageUploadSource } from "@/lib/image-upload-policy";
+import { buildOutfitPresentationItems } from "@/lib/recommendation/outfit-presentation";
 import { safeTryOnErrorMessage, safeUploadErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, ReferenceFashionItemSummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
@@ -360,37 +361,44 @@ function ReferenceSelectionCard({
   );
 }
 
-function outfitVisualImages(outfit: OutfitRecommendation) {
-  return outfit.items
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      imageUrl: item.thumbnailUrl || item.imageUrl
-    }));
-}
-
 function EditorialOutfitVisual({
   outfit,
   featured,
-  preview
+  preview,
+  reference
 }: {
   outfit: OutfitRecommendation;
   featured?: boolean;
   preview?: StylistAvatarPreview;
+  reference?: ReferenceFashionItemSummary | null;
 }) {
   if (featured && preview?.imageUrl) {
     return (
-      <ImageFrame
-        src={preview.imageUrl}
-        alt={`${outfit.title} virtual try-on preview`}
-        placeholder={outfit.title}
-        className="min-h-[32rem] rounded-[1.5rem] border-0 bg-canvas sm:min-h-[42rem]"
-      />
+      <div className="relative overflow-hidden rounded-[1.5rem]">
+        <ImageFrame
+          src={preview.imageUrl}
+          alt={`${outfit.title} virtual try-on preview`}
+          placeholder={outfit.title}
+          className="min-h-[32rem] rounded-[1.5rem] border-0 bg-canvas sm:min-h-[42rem]"
+        />
+        {reference?.imageUrl ? (
+          <div className="absolute bottom-3 right-3 w-24 rounded-2xl border border-white/80 bg-surface/90 p-1.5 shadow-card backdrop-blur sm:w-32">
+            <ImageFrame
+              src={reference.imageUrl}
+              alt={`Uploaded item: ${referenceLabel(reference)}`}
+              aspect="square"
+              fit="contain"
+              placeholder={reference.category || "Uploaded item"}
+              className="rounded-xl border-0 bg-canvas"
+            />
+            <p className="mt-1 truncate px-1 text-[9px] font-bold uppercase tracking-[0.12em] text-cocoa">Uploaded item</p>
+          </div>
+        ) : null}
+      </div>
     );
   }
 
-  const images = outfitVisualImages(outfit);
+  const images = buildOutfitPresentationItems(outfit, reference);
   if (!images.length) {
     return (
       <div className={cn(
@@ -408,18 +416,30 @@ function EditorialOutfitVisual({
       featured ? "min-h-[32rem] grid-cols-2 gap-2 sm:min-h-[42rem] sm:grid-cols-3" : "min-h-[24rem] grid-cols-2 gap-2 sm:min-h-[30rem] sm:grid-cols-3"
     )}>
       {images.map((item, index) => (
-        <ImageFrame
-          key={`${item.id}-${index}`}
-          src={item.imageUrl || undefined}
-          alt={item.name}
-          placeholder={item.category}
-          fit={/shoes|bags|accessories/i.test(item.category) ? "contain" : "cover"}
+        <div
+          key={item.key}
           className={cn(
-            "h-full min-h-28 rounded-2xl border-0 bg-surface",
-            index === 0 ? "col-span-2 row-span-2 min-h-72 sm:col-span-2" : "",
-            !item.imageUrl ? "border border-dashed border-line" : ""
+            "relative min-h-28 overflow-hidden rounded-2xl bg-surface",
+            index === 0 ? "col-span-2 row-span-2 min-h-72 sm:col-span-2" : ""
           )}
-        />
+        >
+          <ImageFrame
+            src={item.imageUrl || undefined}
+            alt={item.source === "reference-upload" ? `Uploaded item: ${item.name}` : item.name}
+            placeholder={item.category}
+            fit={item.source === "reference-upload" || /shoes|bags|accessories/i.test(item.category) ? "contain" : "cover"}
+            className={cn(
+              "h-full min-h-28 rounded-2xl border-0 bg-surface",
+              index === 0 ? "min-h-72" : "",
+              !item.imageUrl ? "border border-dashed border-line" : ""
+            )}
+          />
+          {item.source === "reference-upload" ? (
+            <p className="absolute bottom-2 left-2 rounded-full border border-white/75 bg-surface/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-cocoa shadow-soft backdrop-blur">
+              Uploaded item
+            </p>
+          ) : null}
+        </div>
       ))}
     </div>
   );
@@ -574,7 +594,7 @@ function EditorialRecommendationCard({
             {reference ? "Best Match" : "Editor's Pick"}
           </p>
         ) : null}
-        <EditorialOutfitVisual outfit={outfit} featured={featured} preview={featured ? preview : undefined} />
+        <EditorialOutfitVisual outfit={outfit} featured={featured} preview={featured ? preview : undefined} reference={reference} />
       </div>
       <div className="grid gap-5 px-1 py-5 sm:px-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">

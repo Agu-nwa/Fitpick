@@ -25,6 +25,8 @@ assert.ok(source.includes("isPreviewProcessing"), "Preview page must derive a pr
 assert.ok(source.includes("isPreviewFailed"), "Preview page must derive a failed state.");
 assert.ok(source.includes("Save Look"), "Completed preview must offer Save Look.");
 assert.ok(source.includes("PreviewDownloadButton"), "Completed preview must offer Download Preview.");
+assert.ok(source.includes("buildOutfitPresentationItems(outfit)"), "Full look details must combine the uploaded anchor with closet pieces.");
+assert.ok(source.includes("Pieces in this look"), "Full look details must present the uploaded anchor as part of the complete look.");
 assert.ok(source.includes("Virtual Try-On couldn't be completed."), "Failed preview must show the approved failure copy.");
 assert.ok(source.includes("Retry Try-On"), "Failed preview must offer Retry Try-On.");
 assert.ok(source.includes("handleGenerate(true)"), "Retry must start a new generation.");

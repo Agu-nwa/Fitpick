@@ -69,6 +69,7 @@ export type OutfitRecommendation = {
   occasion: string;
   confidence: OutfitConfidence;
   items: WardrobeItem[];
+  referenceItemIds?: string[];
   outfitPieces?: OutfitPiece[];
   recommendationPieces?: RecommendationPiece[];
   referenceItems?: ReferenceFashionItemSummary[];

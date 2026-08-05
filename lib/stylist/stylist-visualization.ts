@@ -49,7 +49,7 @@ import {
   safeRecommendationLifecycleLog,
   validRecommendationItemIds
 } from "@/lib/recommendation/persistence-integrity";
-import { markReferenceItemsLinkedToOutfit } from "@/lib/ai/reference-fashion-item";
+import { markReferenceItemsLinkedToOutfit, serializeReferenceFashionItem } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
@@ -264,6 +264,7 @@ export async function verifyStylistRecommendationSelection(userId: string, recom
       items: [],
       ownershipResolvedItems: [],
       referenceItemIds: referenceItemIdsFromRecommendation(recommendationResult),
+      referenceItems: [],
       lifecycle,
       copy: buildVerifiedRecommendationCopy({
         occasion: recommendationResult?.occasion,
@@ -277,16 +278,17 @@ export async function verifyStylistRecommendationSelection(userId: string, recom
   const ownershipResolvedItems = orderVerifiedRecommendationItems(selectedIds, verifiedItems);
   const sanitized = sanitizeOutfitItems(ownershipResolvedItems);
   const referenceItemIds = referenceItemIdsFromRecommendation(recommendationResult);
-  let referenceAnchorMissing = false;
-  if (referenceItemIds.length) {
-    const verifiedReferenceCount = await ReferenceFashionItem.countDocuments({
+  const verifiedReferences = referenceItemIds.length
+    ? await ReferenceFashionItem.find({
       _id: { $in: referenceItemIds },
       userId,
       status: "ready",
       usableForMatching: true
-    });
-    referenceAnchorMissing = verifiedReferenceCount !== referenceItemIds.length;
-  }
+    }).lean()
+    : [];
+  const verifiedReferenceById = new Map(verifiedReferences.map((item: any) => [String(item._id), item] as const));
+  const orderedReferences = referenceItemIds.map((id) => verifiedReferenceById.get(id)).filter(Boolean);
+  const referenceAnchorMissing = orderedReferences.length !== referenceItemIds.length;
 
   const lifecycle = buildRecommendationLifecycle({
     engineSelectedItems,
@@ -300,6 +302,7 @@ export async function verifyStylistRecommendationSelection(userId: string, recom
     items: sanitized.items,
     ownershipResolvedItems,
     referenceItemIds,
+    referenceItems: orderedReferences,
     lifecycle,
     copy: buildVerifiedRecommendationCopy({
       occasion: recommendationResult?.occasion,
@@ -382,6 +385,10 @@ export async function createOrReuseStylistOutfitRecommendation(
     .filter(Boolean)
     .slice(0, 8);
   const referenceItemIds = verifiedSelection.referenceItemIds;
+  const finalizedReferenceItems = verifiedSelection.referenceItems
+    .map(serializeReferenceFashionItem)
+    .filter(Boolean)
+    .slice(0, 4);
   const finalizedIdSet = new Set(itemIds);
   const suppliedPieces = Array.isArray(recommendationResult?.outfitPieces) ? recommendationResult.outfitPieces : [];
   const finalizedOutfitPieces = [
@@ -406,6 +413,8 @@ export async function createOrReuseStylistOutfitRecommendation(
     {
       $set: {
         itemIds,
+        referenceItemIds,
+        referenceItems: finalizedReferenceItems,
         recommendationPieces: buildRecommendationPieces(items),
         outfitPieces: finalizedOutfitPieces,
         summary: finalizedSummary,
@@ -443,15 +452,13 @@ export async function createOrReuseStylistOutfitRecommendation(
             .slice(0, 8),
           referenceItemIds,
           outfitPieces: finalizedOutfitPieces,
-          referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : []
+          referenceItems: finalizedReferenceItems
         }
       },
       $setOnInsert: {
         userId,
         title: cleanText(recommendationResult?.title || `${occasion} outfit`, 120),
         occasion,
-        referenceItemIds,
-        referenceItems: Array.isArray(recommendationResult?.referenceItems) ? recommendationResult.referenceItems.slice(0, 4) : [],
         confidence: recommendationResult?.confidence || "Needs review",
         reasonChips: recommendationResult?.reasonChips || [],
         weatherContext: cleanText(recommendationResult?.weatherContext || "", 160),
@@ -494,6 +501,12 @@ export async function createOrReuseStylistOutfitRecommendation(
 
   const serializedOutfit = serializeOutfit(outfit, items);
   const serializedItems = serializedOutfit.items;
+  const serializedReferenceIds = new Set((serializedOutfit.referenceItems || []).map((item: any) => String(item?.id || item?._id || "")).filter(Boolean));
+  const serializedReferencePieceIds = new Set((serializedOutfit.outfitPieces || [])
+    .filter((piece: any) => piece?.source === "reference-upload")
+    .map((piece: any) => String(piece.referenceItemId || ""))
+    .filter(Boolean));
+  const missingReferencePresentation = referenceItemIds.some((id) => !serializedReferenceIds.has(id) || !serializedReferencePieceIds.has(id));
   const integrity = recommendationIntegrityDiagnostics({
     finalizedItems: items,
     persistedItemIds: outfit.itemIds,
@@ -508,7 +521,8 @@ export async function createOrReuseStylistOutfitRecommendation(
     serializedItems,
     // Both wardrobe cards and the stylist editorial card map this full response
     // array without a display cap, so it is the rendering contract boundary.
-    renderedItemIds: serializedItems.map((item: any) => item.id)
+    renderedItemIds: serializedItems.map((item: any) => item.id),
+    referenceAnchorMissing: missingReferencePresentation
   });
   assertVerifiedSelectionLifecycle(lifecycle, {
     recommendationId: String(outfit._id),
@@ -519,6 +533,14 @@ export async function createOrReuseStylistOutfitRecommendation(
     requestType: source,
     status: lifecycle.losses.length ? "degraded_optional" : "valid",
     ...safeRecommendationLifecycleLog(lifecycle),
+    timestamp: new Date().toISOString()
+  });
+  console.info("fitpick.recommendation.reference_integrity", {
+    recommendationId: String(outfit._id),
+    status: missingReferencePresentation ? "invalid" : "valid",
+    expectedReferenceCount: referenceItemIds.length,
+    serializedReferenceCount: serializedReferenceIds.size,
+    serializedReferencePieceCount: serializedReferencePieceIds.size,
     timestamp: new Date().toISOString()
   });
   logRecommendationIntegrity(String(outfit._id), integrity);

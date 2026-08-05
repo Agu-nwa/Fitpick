@@ -14,6 +14,7 @@ import { resolveCanonicalOccasionIntent } from "@/lib/recommendation/occasion-in
 import { buildOutfitHistorySummary, getRecentOutfitHistory, recordOutfitHistory } from "@/lib/recommendation/history";
 import { resolveOwnedRegenerationContext } from "@/lib/recommendation/regeneration-server";
 import { logSafeError } from "@/lib/security/safe-log";
+import { createOrReuseStylistOutfitRecommendation } from "@/lib/stylist/stylist-visualization";
 import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-profile/style-profile";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
@@ -87,9 +88,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
       limit: 3
     });
 
-    const primary = recommendations.find((recommendation) => recommendation.items.length > 0);
+    const persistedRecommendations = await Promise.all(
+      recommendations.map((recommendation) => createOrReuseStylistOutfitRecommendation(
+        String(auth.user._id),
+        recommendation,
+        {
+          requestText: parsed.data.message || `Style this ${referenceItem.category || "fashion item"} with my closet.`,
+          source: "stylist_chat"
+        }
+      ))
+    );
+
+    const primaryIndex = recommendations.findIndex((recommendation) => recommendation.items.length > 0);
+    const primary = primaryIndex >= 0 ? recommendations[primaryIndex] : null;
+    const persistedPrimary = primaryIndex >= 0 ? persistedRecommendations[primaryIndex] : null;
     if (primary) {
-      const itemIds = primary.items.map((item: any) => item._id).filter(Boolean);
+      const itemIds = (persistedPrimary?.items || primary.items).map((item: any) => item._id).filter(Boolean);
       const historyWrites: Array<Promise<unknown>> = [
         WardrobeItem.updateMany(
           { _id: { $in: itemIds }, userId: auth.user._id },
@@ -97,6 +111,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         ),
         recordOutfitHistory({
           userId: auth.user._id,
+          outfitId: persistedPrimary?.outfitRecommendationId,
           itemIds,
           eventType: "generated",
           source: "stylist_chat",
@@ -130,7 +145,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return apiSuccess({
       referenceItem: serializeReferenceFashionItem(referenceItem),
-      recommendations: recommendations.map((recommendation) => ({
+      recommendations: recommendations.map((recommendation, index) => persistedRecommendations[index]?.serializedOutfit || ({
         ...recommendation,
         items: recommendation.items.map(serializeWardrobeItem)
       }))

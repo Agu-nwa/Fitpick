@@ -332,7 +332,9 @@ export function buildRecommendation(input: EngineInput) {
     }
   );
 
-  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, readyFirst);
+  const regenerationPolicy = resolveRegenerationPolicy(input.regeneration, readyFirst, {
+    allowedStructures: outfitTemplate.validStructures
+  });
   const lockedFinisherItems = readyFirst.filter((item) =>
     regenerationPolicy.lockedItemIds.includes(String(item._id || item.id)) && isAccessoryCandidate(item)
   );
@@ -776,6 +778,16 @@ export function serializeOutfit(
     errorMessage: "",
     attempts: 0
   };
+  const topLevelOutfitPieces = Array.isArray(outfit.outfitPieces) ? outfit.outfitPieces : [];
+  const metadataOutfitPieces = Array.isArray(outfit.reasoningMetadata?.outfitPieces) ? outfit.reasoningMetadata.outfitPieces : [];
+  const topLevelReferenceItems = Array.isArray(outfit.referenceItems) ? outfit.referenceItems : [];
+  const metadataReferenceItems = Array.isArray(outfit.reasoningMetadata?.referenceItems) ? outfit.reasoningMetadata.referenceItems : [];
+  const referenceItemIds = Array.from(new Set([
+    ...((outfit.referenceItemIds || []) as unknown[]).map(String),
+    ...(topLevelOutfitPieces.length ? topLevelOutfitPieces : metadataOutfitPieces)
+      .filter((piece: any) => piece?.source === "reference-upload")
+      .map((piece: any) => String(piece.referenceItemId || ""))
+  ].filter(Boolean)));
   return {
     id: String(outfit._id),
     title:
@@ -790,8 +802,9 @@ export function serializeOutfit(
       valid: integrity.valid,
       missingItemIds: Array.from(new Set([...integrity.missingPersistedItemIds, ...integrity.missingSerializedItemIds, ...integrity.missingLoadedItemIds, ...integrity.invalidStylingItemIds]))
     },
-    outfitPieces: outfit.outfitPieces || outfit.reasoningMetadata?.outfitPieces || [],
-    referenceItems: outfit.referenceItems || outfit.reasoningMetadata?.referenceItems || [],
+    referenceItemIds,
+    outfitPieces: topLevelOutfitPieces.length ? topLevelOutfitPieces : metadataOutfitPieces,
+    referenceItems: topLevelReferenceItems.length ? topLevelReferenceItems : metadataReferenceItems,
     reasonChips: outfit.reasonChips || [],
     weatherContext: outfit.weatherContext || "",
     weatherAvailability: outfit.weatherAvailability || (outfit.weatherContext ? "available" : "not_requested"),

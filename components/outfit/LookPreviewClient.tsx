@@ -17,6 +17,7 @@ import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import { editorialLookCopy } from "@/lib/recommendation/editorial-look-copy";
+import { buildOutfitPresentationItems } from "@/lib/recommendation/outfit-presentation";
 import { safeTryOnErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 import type { OutfitRecommendation, ReferenceFashionItemSummary } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
@@ -31,10 +32,6 @@ function isFootwear(item: WardrobeItem) {
 
 function isReferenceFootwear(item: ReferenceFashionItemSummary) {
   return item.category === "shoes" || /shoe|sneaker|loafer|sandal|boot|heel|slipper/i.test(`${item.subcategory || ""} ${item.analysisSummary || ""}`);
-}
-
-function itemImage(item: WardrobeItem) {
-  return item.thumbnailUrl || item.imageUrl || item.images?.front?.url || "";
 }
 
 function referenceLabel(item: ReferenceFashionItemSummary) {
@@ -73,6 +70,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const revealContent = useRevealContent();
 
   const referenceItems = useMemo(() => outfit?.referenceItems?.filter((item) => item?.imageUrl) || [], [outfit]);
+  const presentationItems = useMemo(() => outfit ? buildOutfitPresentationItems(outfit) : [], [outfit]);
   const referenceFootwear = useMemo(() => referenceItems.find(isReferenceFootwear) || null, [referenceItems]);
   const footwear = useMemo(() => outfit?.items.find(isFootwear) || null, [outfit]);
   const footwearLabel = footwear?.name || (referenceFootwear ? referenceLabel(referenceFootwear) : "");
@@ -244,46 +242,43 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             ) : null}
           </Card>
 
-          {referenceItems.length ? (
-            <Card className="space-y-3">
-              <p className="text-sm font-semibold text-ink">Inspiration</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-                {referenceItems.map((item) => (
-                  <article key={item.id} className="rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2">
-                    <ImageFrame src={item.imageUrl} alt={referenceLabel(item)} aspect="square" placeholder={item.category || "Uploaded item"} className="mb-2" />
-                    <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{referenceLabel(item)}</p>
-                    <p className="mt-1 truncate text-[11px] text-muted">{[item.primaryColor, item.category].filter(Boolean).join(" · ") || "Photo upload"}</p>
-                  </article>
-                ))}
-              </div>
-            </Card>
-          ) : null}
-
           <Card className="space-y-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Styled Look</p>
-              <p className="mt-1 text-sm font-semibold text-ink">Closet items in this look</p>
+              <p className="mt-1 text-sm font-semibold text-ink">Pieces in this look</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-              {outfit.items.map((item) => (
-                <article key={item.id} className="rounded-2xl border border-line bg-canvas/60 p-2">
+              {presentationItems.map((item) => (
+                <article
+                  key={item.key}
+                  className={item.source === "reference-upload"
+                    ? "rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2"
+                    : "rounded-2xl border border-line bg-canvas/60 p-2"}
+                >
                   <button
                     type="button"
                     className="focus-ring block w-full rounded-2xl text-left"
                     onClick={() => {
-                      const src = itemImage(item);
-                      if (!src) return;
+                      if (!item.imageUrl) return;
                       setViewingImage({
-                        src,
-                        alt: item.name,
+                        src: item.imageUrl,
+                        alt: item.source === "reference-upload" ? `Uploaded item: ${item.name}` : item.name,
                         title: item.name,
                         subtitle: [item.color, item.category].filter(Boolean).join(" · ")
                       });
                     }}
                     aria-label={`View ${item.name}`}
                   >
-                    <ImageFrame src={itemImage(item)} alt={item.name} aspect="square" placeholder={item.category} className="mb-2" />
+                    <ImageFrame
+                      src={item.imageUrl}
+                      alt={item.source === "reference-upload" ? `Uploaded item: ${item.name}` : item.name}
+                      aspect="square"
+                      fit={item.source === "reference-upload" ? "contain" : undefined}
+                      placeholder={item.category}
+                      className="mb-2"
+                    />
                   </button>
+                  {item.source === "reference-upload" ? <Badge tone="premium">Uploaded item</Badge> : null}
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
                   <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
                 </article>

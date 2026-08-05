@@ -403,6 +403,32 @@ export function createFashnTryOnProvider(): TryOnProvider {
         maximumItems: providerConfig.maxOutfitItems
       });
       const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
+      const referenceIds = new Set(loaded.referenceItemIds.map(String));
+      const subjectItemIds = new Set(loaded.items.map((item: any) => String(item?._id || item?.id || "")).filter(Boolean));
+      const providerProductIds = new Set(products.map((product) => String(product.item?._id || product.item?.id || "")).filter(Boolean));
+      const eligibleReferenceIds = preparation.sentItemIds.filter((id) => referenceIds.has(String(id)));
+      const missingEligibleReferenceCount = eligibleReferenceIds.filter((id) => !providerProductIds.has(String(id))).length;
+      console.info("fitpick.tryon.reference_grounding", {
+        outfitId: input.outfitRecommendationId || "",
+        referenceAnchorCount: referenceIds.size,
+        referenceAnchorPresentInSubject: Array.from(referenceIds).every((id) => subjectItemIds.has(id)),
+        eligibleReferenceAnchorCount: eligibleReferenceIds.length,
+        providerReferenceAnchorCount: Array.from(providerProductIds).filter((id) => referenceIds.has(id)).length,
+        missingEligibleReferenceCount,
+        timestamp: new Date().toISOString()
+      });
+      if (missingEligibleReferenceCount) {
+        return {
+          ...unavailableWithDiagnostics("Virtual Try-On needs a usable image for the uploaded item.", diagnostics({
+            stage: "input_validation",
+            modelName: providerConfig.modelName,
+            safeReason: "missing_reference_product_image",
+            providerReturnedJobId: false,
+            modelImage
+          })),
+          status: "failed"
+        };
+      }
       if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };
 
       const startedAt = Date.now();

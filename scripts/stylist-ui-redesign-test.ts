@@ -22,6 +22,8 @@ assert.ok(stylistChat.includes("MatchFlowVisual"), "Match Outfit should show a c
 assert.ok(stylistChat.includes("DetectedPiecesPanel"), "Match workspace should show detected pieces.");
 assert.ok(stylistChat.includes("Upload inspiration"), "Match workspace should include a clear upload action.");
 assert.ok(stylistChat.includes("MyFitPick is finding closet matches."), "Match workspace should expose a clear generation state.");
+assert.ok(stylistChat.includes("buildOutfitPresentationItems(outfit, reference)"), "Match recommendation collages must include the uploaded reference anchor.");
+assert.ok(stylistChat.includes("Uploaded item"), "The uploaded reference must be visibly distinguished from closet-owned items.");
 assert.ok(!stylistChat.includes("Match photo"), "Old Match photo chip copy should be removed.");
 assert.ok(!stylistChat.includes("Improve size details"), "Try-on setup should not expose removed measurement language.");
 assert.ok(!stylistChat.includes("Avatar preview"), "Stylist UI should use Virtual Try-On language instead of chatbot-era avatar preview copy.");

@@ -1,3 +1,5 @@
+import { normalizeOutfitSlot } from "@/lib/recommendation/outfit-slots";
+
 function itemId(item: any) {
   return String(item?._id || item?.id || "");
 }
@@ -8,6 +10,7 @@ export function wardrobeRotationScore(items: any[], historySummary?: any) {
   const recentRecommended = new Set((historySummary.recentRecommendedItemIds || []).map(String));
   const recentlyWorn = new Set((historySummary.recentlyWornItemIds || []).map(String));
   const recentCounts = historySummary.recentItemRecommendationCounts || {};
+  const lastRecommendation = new Set((historySummary.lastRecommendationItemIds || []).map(String));
   let score = 0;
 
   for (const item of items) {
@@ -15,10 +18,14 @@ export function wardrobeRotationScore(items: any[], historySummary?: any) {
     const recommendationCount = Number(item.recommendationCount || item.recommendationMetadata?.recommendationCount || 0);
     const timesWorn = Number(item.timesWorn || item.recommendationMetadata?.timesWorn || 0);
     const recentRecommendationCount = Number(recentCounts[id] || 0);
+    const slot = normalizeOutfitSlot(item);
+    const isProminent = slot === "outerwear" || slot === "onePiece";
     if (!recentRecommended.has(id) && !recentlyWorn.has(id)) score += 7;
     if (recommendationCount <= 1 && timesWorn <= 1) score += 3;
     if (recentRecommended.has(id)) score -= 5;
     score -= Math.min(20, recentRecommendationCount * 3);
+    if (lastRecommendation.has(id)) score -= isProminent ? 24 : 8;
+    if (isProminent && recentRecommendationCount > 1) score -= Math.min(24, (recentRecommendationCount - 1) * 6);
     if (recommendationCount > 5 && timesWorn < 2) score -= Math.min(10, Math.ceil((recommendationCount - 5) / 2));
     if (recentlyWorn.has(id)) score -= 20;
   }

@@ -104,7 +104,8 @@ export async function askStylist({
   recentMessages = [],
   weatherContext,
   deterministicRecommendation,
-  referenceContext
+  referenceContext,
+  timeoutMs
 }: {
   message: string;
   wardrobeSummary: string;
@@ -118,6 +119,7 @@ export async function askStylist({
   weatherContext?: string;
   deterministicRecommendation?: unknown;
   referenceContext?: unknown;
+  timeoutMs?: number;
 }) {
   const model = getAiModel("stylistChat");
   const sanitizedMessage = sanitizeUserPrompt(message);
@@ -135,6 +137,23 @@ export async function askStylist({
     allowShoppingAdvice,
     fallback
   });
+
+  const hasFinalizedRecommendation = Boolean((deterministicRecommendation as any)?.items?.length);
+  const aiExplanationEnabled = process.env.STYLIST_AI_EXPLANATIONS_ENABLED === "true";
+  if (hasFinalizedRecommendation && !aiExplanationEnabled) {
+    logAiEvent({
+      operation: "stylist-chat",
+      model: "deterministic-recommendation",
+      latencyMs: 0,
+      status: "success",
+      cacheHit: true
+    });
+    return {
+      ok: true,
+      reply: fallbackResponse.message,
+      stylist: fallbackResponse
+    };
+  }
 
   if (!process.env.OPENAI_API_KEY) {
     return {
@@ -163,6 +182,10 @@ export async function askStylist({
   }
 
   const startedAt = Date.now();
+  const providerTimeoutMs = Math.max(
+    1_500,
+    Math.min(15_000, Number(timeoutMs || process.env.STYLIST_AI_EXPLANATION_TIMEOUT_MS || 4_500))
+  );
   try {
     const response = await openai.responses.create({
       model,
@@ -178,7 +201,7 @@ export async function askStylist({
         deterministicRecommendation,
         referenceContext
       })
-    });
+    }, { timeout: providerTimeoutMs });
 
     const json = safeParseJson(response.output_text || "{}");
     if (!json.ok) throw new Error(json.reason);

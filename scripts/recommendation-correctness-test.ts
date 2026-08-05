@@ -9,6 +9,7 @@ import { occasionProfiles } from "../lib/recommendation/occasion-profiles";
 import { outfitTemplates } from "../lib/recommendation/outfit-templates";
 import { diversifyOutfits } from "../lib/recommendation/diversity";
 import { evaluateRegenerationCandidate, resolveRegenerationPolicy } from "../lib/recommendation/regeneration";
+import { wardrobeRotationScore } from "../lib/recommendation/rotation";
 
 const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", ...extra });
 const top = item("top", "tops", "White shirt", { canonicalSubtype: "shirt", taxonomyNeedsReview: false });
@@ -136,5 +137,48 @@ const freshEvaluation = evaluateRegenerationCandidate([
 ], regenerationPolicy);
 assert.equal(freshEvaluation.valid, true, "37 regeneration accepts a materially different complete candidate");
 assert.ok(freshEvaluation.overlap <= 0.4, "38 final overlap is measured after finishing items are present");
+
+const prominentRepeatPolicy = resolveRegenerationPolicy({
+  requestKind: "regenerate",
+  previousItemIds: ["top", "bottom", "shoe", "blazer"],
+  minimumCoreChanges: 1,
+  maximumOverlap: 0.8
+}, regenerationWardrobe, { allowedStructures: ["top_bottom"] });
+const repeatedBlazer = evaluateRegenerationCandidate([
+  item("new-top", "tops", "Blue shirt"),
+  item("new-bottom", "bottoms", "Stone trousers"),
+  item("new-shoe", "shoes", "Brown loafers"),
+  regenerationWardrobe.find((entry) => entry._id === "blazer")
+], prominentRepeatPolicy);
+assert.ok(repeatedBlazer.rejectionReasons.includes("prominent_item_repeated"), "39 regeneration does not let the same unlocked blazer occupy the permitted overlap");
+
+const structuralWardrobe = [...regenerationWardrobe, dress, item("dress-shoe", "shoes", "Silver pumps")];
+const structurePolicy = resolveRegenerationPolicy({
+  requestKind: "regenerate",
+  previousItemIds: ["top", "bottom", "shoe"],
+  minimumCoreChanges: 1,
+  maximumOverlap: 0.8
+}, structuralWardrobe, { allowedStructures: ["top_bottom", "dress_one_piece"] });
+assert.equal(structurePolicy.requireStructureChange, true, "40 regeneration recognizes an owned alternative outfit architecture");
+assert.ok(
+  evaluateRegenerationCandidate([item("new-top", "tops", "Blue shirt"), item("new-bottom", "bottoms", "Stone trousers"), item("new-shoe", "shoes", "Brown loafers")], structurePolicy).rejectionReasons.includes("outfit_structure_repeated"),
+  "41 regeneration rejects a cosmetic same-structure replacement when a complete alternative architecture exists"
+);
+assert.equal(evaluateRegenerationCandidate([dress, item("dress-shoe", "shoes", "Silver pumps")], structurePolicy).valid, true, "42 regeneration accepts the complete alternative architecture");
+
+const repeatedBlazerScore = wardrobeRotationScore(
+  [regenerationWardrobe.find((entry) => entry._id === "blazer")],
+  { eventCount: 3, lastRecommendationItemIds: ["blazer"], recentRecommendedItemIds: ["blazer"], recentItemRecommendationCounts: { blazer: 3 } }
+);
+const freshBlazerScore = wardrobeRotationScore(
+  [item("fresh-blazer", "outerwear", "Navy blazer")],
+  { eventCount: 3, lastRecommendationItemIds: ["blazer"], recentRecommendedItemIds: ["blazer"], recentItemRecommendationCounts: { blazer: 3 } }
+);
+assert.ok(freshBlazerScore > repeatedBlazerScore, "43 prominent consecutive-repeat cooldown materially favors a fresh blazer");
+
+const elasticBottom = item("elastic-bottom", "bottoms", "Elastic waist trousers");
+const belt = item("safe-belt", "accessories", "Leather belt", { canonicalSubtype: "belt", stylingRole: "waist", taxonomyNeedsReview: false });
+const elasticBeltResult = selectAccessoryCompletion({ selectedItems: [top, elasticBottom, shoe], wardrobeItems: [belt], occasionName: "Business meeting", repeatDays: 14 });
+assert.ok(elasticBeltResult.decision.omitted.some((entry) => entry.itemId === "safe-belt" && entry.reason === "structure_conflict"), "44 safe text inference prevents a belt on an explicit elastic waistband");
 
 console.log("Recommendation correctness checks passed.");

@@ -11,6 +11,7 @@ import {
   serializeReferenceFashionItem
 } from "../lib/ai/reference-fashion-item";
 import { buildReferenceOutfitRecommendations } from "../lib/recommendation/reference-matching";
+import { buildOutfitPresentationItems } from "../lib/recommendation/outfit-presentation";
 
 function field(value: unknown, confidence = 0.92, source = "user_confirmed") {
   return { value, confidence, source };
@@ -252,6 +253,11 @@ assert.ok(shoeMatch.items.some((item: any) => item.category === "tops"), "shoe a
 assert.ok(shoeMatch.items.some((item: any) => item.category === "bottoms"), "shoe anchor should add an owned bottom");
 assert.equal(shoeMatch.items.some((item: any) => item.category === "shoes"), false, "shoe anchor must not add duplicate owned footwear");
 assert.equal(shoeMatch.completenessStatus, "complete", "reference footwear should satisfy outfit completeness");
+const shoePresentation = buildOutfitPresentationItems(shoeMatch as any, shoeMatch.referenceItems[0] as any);
+assert.equal(shoePresentation[0]?.source, "reference-upload", "the uploaded footwear anchor must lead the presented recommendation");
+assert.equal(shoePresentation[0]?.id, shoeReference._id, "the presented upload must be the selected reference anchor");
+assert.equal(shoePresentation.filter((item) => item.source === "reference-upload").length, 1, "the uploaded anchor must not be duplicated in the presentation");
+assert.ok(shoePresentation.slice(1).every((item) => item.source === "wardrobe"), "supporting presentation pieces must remain owned wardrobe items");
 
 const bagReference = {
   ...referenceItem,
