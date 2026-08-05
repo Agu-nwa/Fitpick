@@ -69,9 +69,12 @@ function ContextPageHeader({ config }: { config: HeaderConfig }) {
   );
 }
 
-export function ContextPageChrome({ showAccountNav }: { showAccountNav: boolean }) {
+export function ContextPageChrome({ showAccountNav, closeHref }: { showAccountNav: boolean; closeHref?: string }) {
   const pathname = usePathname();
-  const config = routeHeaderConfig(pathname);
+  const routeConfig = routeHeaderConfig(pathname);
+  const config = routeConfig && closeHref
+    ? { ...routeConfig, closeHref }
+    : routeConfig;
 
   if (config) return <ContextPageHeader config={config} />;
   if (showAccountNav) return <MobileAccountNav />;

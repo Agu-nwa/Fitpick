@@ -43,6 +43,8 @@ import { getConfiguredTryOnProviderType, runConfiguredVirtualTryOnJob } from "@/
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
+import { BackgroundJob } from "@/models/BackgroundJob";
+import { TryOnGeneration } from "@/models/TryOnGeneration";
 
 type RouteContext = {
   params: Promise<{
@@ -94,10 +96,22 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const cacheKey = buildAvatarCacheKeyFromItems(String(auth.user._id), id, loaded.items, loaded.avatarProfile, options);
     const cached = await getCachedAvatarPreview(String(auth.user._id), id, cacheKey);
     const latest = cached || await AvatarOutfitPreview.findOne({ userId: auth.user._id, outfitId: id }).sort({ updatedAt: -1 }).lean();
+    const generation = latest?.generationId
+      ? await TryOnGeneration.findOne({ userId: auth.user._id, outfitId: id, generationId: latest.generationId }).lean()
+      : await TryOnGeneration.findOne({ userId: auth.user._id, outfitId: id }).sort({ createdAt: -1 }).lean();
+    const job = generation?.generationId
+      ? await BackgroundJob.findOne({
+          userId: auth.user._id,
+          type: "avatar_preview_generation",
+          "payload.generationId": generation.generationId
+        }).sort({ createdAt: -1 }).lean()
+      : null;
 
     return apiSuccess({
       preview: serializeAvatarPreview(latest ? { ...latest, ...groundingPatch(loaded.items, latest) } : groundingPatch(loaded.items)),
-      avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
+      avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+      generation: serializeTryOnGeneration(generation),
+      job: job ? serializeJob(job) : undefined
     });
   } catch (error) {
     logSafeError("avatar-preview.get", error);

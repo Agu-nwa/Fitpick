@@ -22,6 +22,7 @@ pnpm-debug.log*
 # Local tooling and deployment state
 .vercel/
 .pm2/
+.superdesign/tmp/
 test-results/
 playwright-report/
 

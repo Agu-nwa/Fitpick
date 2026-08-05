@@ -2,39 +2,45 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync("components/outfit/LookPreviewClient.tsx", "utf8");
+const helperSource = readFileSync("lib/tryon/preview-ui-state.ts", "utf8");
+const routeSource = readFileSync("app/api/outfits/[id]/avatar-preview/route.ts", "utf8");
+const pageSource = readFileSync("app/outfit/[id]/preview/page.tsx", "utf8");
+const stylistSource = readFileSync("components/stylist/StylistChat.tsx", "utf8");
 const shellSource = readFileSync("components/layout/AppShell.tsx", "utf8");
+const notificationSource = readFileSync("lib/notifications/app-notifications.ts", "utf8");
 
-for (const removedCopy of [
-  "Why it works",
-  "Try another look",
-  "Regenerate try-on",
-  "Edit avatar",
-  "materialNote",
-  "silhouetteNote",
-  "visualizationWarnings",
-  "fitWarnings",
-  "Preview needs review",
-  "Grounded preview",
-  "Add missing shoes"
-]) {
-  assert.ok(!source.includes(removedCopy), `Full preview page must not expose ${removedCopy}.`);
+for (const state of ["idle", "queued", "processing", "delayed", "completed", "failed"]) {
+  assert.ok(helperSource.includes(`"${state}"`), `Preview lifecycle helper must support ${state}.`);
 }
 
-assert.ok(source.includes("isPreviewReady"), "Preview page must derive a completed state.");
-assert.ok(source.includes("isPreviewProcessing"), "Preview page must derive a processing state.");
-assert.ok(source.includes("isPreviewFailed"), "Preview page must derive a failed state.");
-assert.ok(source.includes("Save Look"), "Completed preview must offer Save Look.");
-assert.ok(source.includes("PreviewDownloadButton"), "Completed preview must offer Download Preview.");
-assert.ok(source.includes("buildOutfitPresentationItems(outfit)"), "Full look details must combine the uploaded anchor with closet pieces.");
-assert.ok(source.includes("Pieces in this look"), "Full look details must present the uploaded anchor as part of the complete look.");
-assert.ok(source.includes("Virtual Try-On couldn't be completed."), "Failed preview must show the approved failure copy.");
-assert.ok(source.includes("Retry Try-On"), "Failed preview must offer Retry Try-On.");
-assert.ok(source.includes("handleGenerate(true)"), "Retry must start a new generation.");
-assert.ok(source.includes('idempotencyKey: createClientIdempotencyKey("avatar-preview")'), "Retry must use a fresh client idempotency key.");
-assert.ok(source.includes("previewProcessing"), "Processing state must hide irrelevant actions.");
-assert.ok(source.includes("min-w-0"), "Preview layout must allow content to shrink within a mobile viewport.");
-assert.ok(!source.includes("min-h-[720px]"), "Preview media must not force a desktop-sized minimum height on mobile.");
-assert.ok(shellSource.includes("pb-[calc(11rem+var(--safe-bottom))]"), "Application content must reserve safe-area space above the fixed mobile navigation.");
-assert.ok(shellSource.includes("overflow-x-clip"), "Application shell must prevent horizontal viewport overflow without clipping vertical content.");
+assert.ok(source.includes("deriveTryOnPreviewUiState"), "Preview page must derive one explicit lifecycle state.");
+assert.ok(source.includes("shouldPollTryOnPreview"), "Preview page must poll only active lifecycle states.");
+assert.ok(source.includes("getAvatarPreview(outfitId)"), "Polling must refresh durable persisted preview state.");
+assert.ok(!source.includes("getJobStatus"), "Preview polling must not depend on a transient client-held job id.");
+assert.ok(source.includes("pollDelays"), "Preview polling must use backoff.");
+assert.ok(source.includes("You’ll see a notification in MyFitPick when it is ready."), "Waiting copy must accurately promise an in-app notification.");
+assert.ok(source.includes("You can safely leave this page and return later."), "Waiting state must tell users they can leave safely.");
+assert.ok(source.includes("Your preview is taking a little longer"), "Delayed jobs must remain a non-terminal state.");
+assert.ok(source.includes("Studio Model ready"), "Waiting summary must expose model readiness when confirmed.");
+assert.ok(source.includes("pieces selected"), "Waiting summary must expose selected-piece count.");
+assert.ok(source.includes("Regenerate Preview"), "Completed preview must offer regeneration.");
+assert.ok(source.includes("PreviewDownloadButton"), "Completed preview must offer download.");
+assert.ok(source.includes("Save Look"), "Completed preview must offer saving.");
+assert.ok(source.includes("Retry Try-On"), "Failed preview must offer retry.");
+assert.ok(source.includes("creditRestored ?"), "Failure copy must condition credit-restoration language on confirmed state.");
+assert.ok(source.includes('href="/support"'), "Failed preview must link to support.");
+assert.ok(source.includes("buildOutfitPresentationItems(outfit)"), "Selected-piece summary must combine reference and closet items.");
+assert.ok(source.includes("pb-[calc(1.5rem+var(--safe-bottom))]"), "Preview content must respect mobile safe-area padding.");
+assert.ok(!source.includes("min-h-[720px]"), "Preview media must not force an oversized mobile minimum height.");
+
+assert.ok(routeSource.includes("TryOnGeneration.findOne"), "GET must restore persisted generation state for return visits.");
+assert.ok(routeSource.includes("BackgroundJob.findOne"), "GET must restore persisted job state for return visits.");
+assert.ok(routeSource.includes('"payload.generationId"'), "GET job lookup must bind the job to the persisted generation.");
+assert.ok(pageSource.includes("initialOrigin={origin}"), "Preview page must preserve source-aware return navigation.");
+assert.ok(stylistSource.includes("preview?origin=${origin}"), "Create and Match links must declare their navigation origin.");
+assert.ok(notificationSource.includes("tryon-ready:${input.generationId}"), "Ready notifications must remain idempotent per generation.");
+assert.ok(!notificationSource.includes("Your Credits were not deducted."), "Failure notifications must not make an unverified credit claim.");
+assert.ok(shellSource.includes("pb-[calc(11rem+var(--safe-bottom))]"), "Application content must reserve space above fixed mobile navigation.");
+assert.ok(shellSource.includes("overflow-x-clip"), "Application shell must prevent horizontal overflow.");
 
 console.log("Try-on preview UI state check passed.");

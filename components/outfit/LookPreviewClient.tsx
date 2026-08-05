@@ -2,29 +2,36 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BellRing, CheckCircle2, Clock3, Layers3, RotateCcw, ShieldCheck, Sparkles, TriangleAlert } from "lucide-react";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
 import { LoadingCard } from "@/components/integration/LoadingCard";
+import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ImageFrame } from "@/components/ui/ImageFrame";
 import { ImagePreviewDialog, type ImagePreviewDialogImage } from "@/components/ui/ImagePreviewDialog";
 import { Toast } from "@/components/ui/Toast";
-import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
-import { generateAvatarPreview, getAvatarPreview, getJobStatus, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
+import { generateAvatarPreview, getAvatarPreview, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import { editorialLookCopy } from "@/lib/recommendation/editorial-look-copy";
 import { buildOutfitPresentationItems } from "@/lib/recommendation/outfit-presentation";
+import {
+  creditRestorationConfirmed,
+  deriveTryOnPreviewUiState,
+  resolveTryOnOrigin,
+  shouldPollTryOnPreview,
+  tryOnOriginDestination,
+  tryOnOriginLabel
+} from "@/lib/tryon/preview-ui-state";
 import { safeTryOnErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 import type { OutfitRecommendation, ReferenceFashionItemSummary } from "@/types/outfit";
 import type { WardrobeItem } from "@/types/wardrobe";
 
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
+const pollDelays = [2500, 4000, 6500, 10_000, 15_000];
 
 function isFootwear(item: WardrobeItem) {
   return item.category === "shoes" || /shoe|sneaker|loafer|sandal|boot|heel|slipper/i.test(`${item.name} ${item.subcategory}`);
@@ -38,16 +45,8 @@ function referenceLabel(item: ReferenceFashionItemSummary) {
   return [item.primaryColor, item.subcategory || item.category].filter(Boolean).join(" ").trim() || "Uploaded fashion item";
 }
 
-function isPreviewReady(preview: AvatarPreviewData["preview"] | null, imageUrl: string) {
-  return preview?.status === "ready" && Boolean(imageUrl);
-}
-
-function isPreviewProcessing(preview: AvatarPreviewData["preview"] | null, generating: boolean) {
-  return generating || preview?.status === "generating";
-}
-
-function isPreviewFailed(preview: AvatarPreviewData["preview"] | null, error: string) {
-  return Boolean(error) || preview?.status === "failed";
+function isAccessoryCategory(category?: string) {
+  return /accessor|jewelry|jewellery|watch|bracelet|bangle|necklace|earring|bag|handbag|belt/i.test(category || "");
 }
 
 function createClientIdempotencyKey(prefix: string) {
@@ -57,16 +56,23 @@ function createClientIdempotencyKey(prefix: string) {
   return `${prefix}:${randomPart}`.slice(0, 120);
 }
 
-export function LookPreviewClient({ outfitId }: { outfitId: string }) {
+export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: string; initialOrigin?: string }) {
   const session = useSession();
   const [outfit, setOutfit] = useState<OutfitRecommendation | null>(null);
   const [preview, setPreview] = useState<AvatarPreviewData["preview"] | null>(null);
+  const [generation, setGeneration] = useState<AvatarPreviewData["generation"]>(null);
+  const [job, setJob] = useState<AvatarPreviewData["job"] | null>(null);
+  const [avatarProfile, setAvatarProfile] = useState<AvatarPreviewData["avatarProfile"] | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "not-found" | "unavailable" | "error">("idle");
-  const [generating, setGenerating] = useState(false);
+  const [requestPending, setRequestPending] = useState(false);
   const [toast, setToast] = useState("");
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [pollWarning, setPollWarning] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const [viewingImage, setViewingImage] = useState<ImagePreviewDialogImage | null>(null);
   const previewStageRef = useRef<HTMLElement>(null);
+  const pollAttemptRef = useRef(0);
+  const previousPreviewStateRef = useRef<string>("");
   const revealContent = useRevealContent();
 
   const referenceItems = useMemo(() => outfit?.referenceItems?.filter((item) => item?.imageUrl) || [], [outfit]);
@@ -74,11 +80,32 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
   const referenceFootwear = useMemo(() => referenceItems.find(isReferenceFootwear) || null, [referenceItems]);
   const footwear = useMemo(() => outfit?.items.find(isFootwear) || null, [outfit]);
   const footwearLabel = footwear?.name || (referenceFootwear ? referenceLabel(referenceFootwear) : "");
-  const missingShoes = Boolean(outfit && !footwearLabel);
+  const accessoryCount = useMemo(() => presentationItems.filter((item) => isAccessoryCategory(item.category)).length, [presentationItems]);
+  const studioModelReady = Boolean(avatarProfile && (
+    avatarProfile.tryOnModelSource !== "none"
+    || avatarProfile.studioModelImageUrl
+    || avatarProfile.generatedModelImageUrl
+    || avatarProfile.uploadedModelImageUrl
+  ));
+
+  const imageUrl = preview?.imageUrl || preview?.previewUrl || outfit?.preview?.imageUrl || "";
+  const previewState = deriveTryOnPreviewUiState({
+    preview: preview || outfit?.preview || null,
+    generation,
+    job,
+    imageUrl,
+    requestPending,
+    localFailure: Boolean(localError),
+    now
+  });
+  const origin = resolveTryOnOrigin(initialOrigin, outfit);
+  const originHref = tryOnOriginDestination(origin);
+  const originLabel = tryOnOriginLabel(origin);
+  const creditRestored = creditRestorationConfirmed({ preview: preview || outfit?.preview || null, generation });
 
   const loadLook = useCallback(async () => {
     setStatus("loading");
-    setError("");
+    setLocalError("");
     const [outfitResult, previewResult] = await Promise.all([getOutfit(outfitId), getAvatarPreview(outfitId)]);
 
     if (!outfitResult.ok) {
@@ -89,6 +116,9 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     setOutfit(outfitResult.data.outfit);
     if (previewResult.ok) {
       setPreview(previewResult.data.preview);
+      setGeneration(previewResult.data.generation || null);
+      setJob(previewResult.data.job || null);
+      setAvatarProfile(previewResult.data.avatarProfile || null);
     }
     setStatus("ready");
   }, [outfitId]);
@@ -97,62 +127,88 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     if (session.status === "authenticated") void loadLook();
   }, [loadLook, session.status]);
 
+  useEffect(() => {
+    if (!shouldPollTryOnPreview(previewState)) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(interval);
+  }, [previewState]);
+
+  useEffect(() => {
+    if (!shouldPollTryOnPreview(previewState)) {
+      pollAttemptRef.current = 0;
+      return;
+    }
+
+    let cancelled = false;
+    let timer = 0;
+
+    const poll = async () => {
+      const result = await getAvatarPreview(outfitId);
+      if (cancelled) return;
+
+      if (result.ok) {
+        setPreview(result.data.preview);
+        setGeneration(result.data.generation || null);
+        setJob(result.data.job || null);
+        setAvatarProfile(result.data.avatarProfile || null);
+        setPollWarning("");
+      } else {
+        setPollWarning("We’re still checking your preview. It will continue processing while the connection recovers.");
+      }
+
+      pollAttemptRef.current += 1;
+      const delay = pollDelays[Math.min(pollAttemptRef.current, pollDelays.length - 1)];
+      timer = window.setTimeout(poll, delay);
+    };
+
+    const initialDelay = pollDelays[Math.min(pollAttemptRef.current, pollDelays.length - 1)];
+    timer = window.setTimeout(poll, initialDelay);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [outfitId, previewState]);
+
+  useEffect(() => {
+    const previous = previousPreviewStateRef.current;
+    if (previewState === "completed" && previous && previous !== "completed") {
+      setToast("Your Virtual Try-On is ready.");
+      revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
+    }
+    previousPreviewStateRef.current = previewState;
+  }, [previewState, revealContent]);
+
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(""), 1800);
-  }
-
-  async function pollPreviewJob(jobId: string) {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await wait(2500);
-      const result = await getJobStatus(jobId);
-      if (!result.ok) continue;
-
-      if (result.data.job.status === "completed") {
-        const refreshed = await getAvatarPreview(outfitId);
-        if (refreshed.ok) {
-          setPreview(refreshed.data.preview);
-          revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
-        }
-        showToast("Your preview is ready.");
-        return;
-      }
-
-      if (result.data.job.status === "failed" || result.data.job.status === "cancelled" || result.data.job.status === "dead_letter") {
-        const message = safeTryOnErrorMessage(result.data.job.errorMessage);
-        setError(message);
-        setPreview((current) => current ? { ...current, status: "failed", errorMessage: message } : current);
-        setGenerating(false);
-        return;
-      }
-    }
-    setError("This preview is still being prepared. Check back shortly.");
+    window.setTimeout(() => setToast(""), 2200);
   }
 
   async function handleGenerate(regenerate = false) {
-    setGenerating(true);
-    setError("");
+    setRequestPending(true);
+    setLocalError("");
+    setPollWarning("");
     revealContent(previewStageRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
     const result = await generateAvatarPreview(outfitId, {
       regenerate,
       idempotencyKey: createClientIdempotencyKey("avatar-preview")
     });
-    setGenerating(false);
+    setRequestPending(false);
 
     if (!result.ok) {
-      setError(safeUserMessage(result.error, "We couldn’t complete that right now. Please try again."));
+      setLocalError(safeUserMessage(result.error, "We couldn’t complete that right now. Please try again."));
       return;
     }
 
     setPreview(result.data.preview);
-    revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
-    const jobId = result.data.job?.id;
-    if (jobId && result.data.preview.status !== "ready") {
+    setGeneration(result.data.generation || null);
+    setJob(result.data.job || null);
+    setAvatarProfile(result.data.avatarProfile || null);
+    pollAttemptRef.current = 0;
+    if (result.data.preview.status === "ready" && (result.data.preview.imageUrl || result.data.preview.previewUrl)) {
+      showToast("Your Virtual Try-On is ready.");
+    } else {
       showToast("MyFitPick is preparing your look.");
-      void pollPreviewJob(jobId);
-      return;
     }
-    showToast("Your preview is ready.");
   }
 
   async function handleSave() {
@@ -183,45 +239,121 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
     );
   }
 
-  const imageUrl = preview?.imageUrl || preview?.previewUrl || outfit.preview?.imageUrl || "";
-  const previewReady = isPreviewReady(preview, imageUrl);
-  const previewProcessing = isPreviewProcessing(preview, generating);
-  const previewFailed = !previewProcessing && isPreviewFailed(preview, error);
-  const hasPreviewStarted = Boolean(preview && preview.status !== "not_started");
   const displayCopy = editorialLookCopy(outfit);
   const fidelityLevel = preview?.previewFidelityLevel || outfit.preview?.previewFidelityLevel || "partial";
   const fidelityLabel = fidelityLevel === "full" ? "Complete preview" : fidelityLevel === "core_only" ? "Core outfit preview" : "Accessory details may vary";
+  const failedMessage = safeTryOnErrorMessage(localError || preview?.errorMessage || generation?.failureMessage || job?.errorMessage || "Virtual Try-On couldn’t be completed.");
 
   return (
-    <div className="min-w-0 space-y-6 pb-8">
+    <div className="min-w-0 space-y-6 pb-[calc(1.5rem+var(--safe-bottom))] lg:pb-8">
       <div className="relative overflow-hidden rounded-xl4 border border-line/80 bg-surface/82 p-6 shadow-card backdrop-blur-xl sm:p-9">
         <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
         <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Preview this look</p>
-        <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{displayCopy.title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{displayCopy.supportingCopy}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Preview this look</p>
+          <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{displayCopy.title}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{displayCopy.supportingCopy}</p>
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
-        <section ref={previewStageRef} className="min-w-0 space-y-4">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:items-start">
+        <section ref={previewStageRef} tabIndex={-1} className="min-w-0 outline-none">
           <Card className="min-w-0 overflow-hidden p-0">
-            {imageUrl ? (
-              <ImageFrame
-                src={imageUrl}
-                alt={`${displayCopy.title} Virtual Try-On preview`}
-                aspect="fullBody"
-                fit="contain"
-                placeholder="Virtual Try-On preview"
-                className="min-w-0 w-full rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-2 sm:p-4"
-                imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
-              />
-            ) : (
-              <div className="flex min-h-[420px] flex-col items-center justify-center bg-canvas/60 px-6 text-center sm:min-h-[560px]">
-                <p className="text-lg font-semibold text-ink">Preview this look</p>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-                  See how this outfit comes together on your My Model.
+            {previewState === "completed" && imageUrl ? (
+              <div className="transition-opacity duration-200 motion-reduce:transition-none" aria-live="polite">
+                <ImageFrame
+                  src={imageUrl}
+                  alt={`${displayCopy.title} Virtual Try-On preview`}
+                  aspect="fullBody"
+                  fit="contain"
+                  placeholder="Virtual Try-On preview"
+                  className="min-w-0 w-full rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-2 sm:p-4"
+                  imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
+                />
+              </div>
+            ) : previewState === "failed" ? (
+              <div className="flex min-h-[460px] flex-col items-center justify-center bg-gradient-to-br from-danger/5 via-surface to-canvas px-6 py-12 text-center sm:min-h-[560px]" role="alert">
+                <span className="grid size-14 place-items-center rounded-full border border-danger/20 bg-danger/10 text-danger">
+                  <TriangleAlert size={24} aria-hidden="true" />
+                </span>
+                <h2 className="mt-6 text-2xl font-semibold text-ink">Virtual Try-On couldn’t be completed</h2>
+                <p className="mt-3 max-w-lg text-sm leading-6 text-muted">{failedMessage}</p>
+                <p className="mt-4 max-w-lg rounded-2xl border border-line bg-white/70 px-4 py-3 text-sm font-semibold text-ink">
+                  {creditRestored ? "Your reserved Credit was restored." : "Your Credit status is being checked. You can review your Credits before retrying."}
                 </p>
+                <div className="mt-7 grid w-full max-w-md gap-2 sm:grid-cols-2">
+                  <Button onClick={() => void handleGenerate(true)} disabled={requestPending}>
+                    <RotateCcw size={16} aria-hidden="true" />
+                    {requestPending ? "Retrying…" : "Retry Try-On"}
+                  </Button>
+                  <Link href={originHref}><Button variant="secondary" className="w-full">{originLabel}</Button></Link>
+                </div>
+                <Link href="/support" className="focus-ring mt-4 rounded-full px-4 py-2 text-sm font-semibold text-cocoa hover:text-espresso">Contact Support</Link>
+              </div>
+            ) : previewState === "queued" || previewState === "processing" || previewState === "delayed" ? (
+              <div className="relative flex min-h-[460px] flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-white/50 to-canvas/55 px-5 py-12 text-center sm:min-h-[560px] sm:px-10" role="status" aria-live="polite">
+                <div className="pointer-events-none absolute size-[22rem] rounded-full bg-cocoa/10 blur-3xl motion-safe:animate-pulse" aria-hidden="true" />
+                <div className="relative z-10 flex w-full max-w-2xl flex-col items-center">
+                  <span className="relative grid size-16 place-items-center rounded-full border border-cocoa/20 bg-white/80 text-cocoa shadow-glow">
+                    <span className="absolute inset-[-0.55rem] rounded-full border border-cocoa/20 motion-safe:animate-pulse" />
+                    {previewState === "delayed" ? <Clock3 size={25} aria-hidden="true" /> : <Sparkles size={25} aria-hidden="true" />}
+                  </span>
+                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-cocoa">
+                    {previewState === "queued" ? "Queued in MyFitPick Studio" : previewState === "delayed" ? "Still working" : "Studio processing"}
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold text-ink sm:text-3xl">
+                    {previewState === "queued" ? "Your look is queued" : previewState === "delayed" ? "Your preview is taking a little longer" : "We’re styling your selected pieces"}
+                  </h2>
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
+                    {previewState === "delayed"
+                      ? "Your selected pieces are still being prepared on your Studio Model. You do not need to restart the preview."
+                      : "We’re styling your selected pieces on your Studio Model. This can take a little time."}
+                  </p>
+                  <div className="mt-6 grid w-full gap-3 text-left sm:grid-cols-2">
+                    <div className="rounded-2xl border border-line bg-white/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <BellRing className="mt-0.5 shrink-0 text-cocoa" size={18} aria-hidden="true" />
+                        <p className="text-sm leading-6 text-ink">You’ll see a notification in MyFitPick when it is ready.</p>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-line bg-white/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <ShieldCheck className="mt-0.5 shrink-0 text-cocoa" size={18} aria-hidden="true" />
+                        <p className="text-sm leading-6 text-ink">You can safely leave this page and return later. Processing will continue.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                    <Badge tone="info">{presentationItems.length} pieces selected</Badge>
+                    {footwearLabel ? <Badge tone="success">Footwear included</Badge> : <Badge tone="warning">Footwear missing</Badge>}
+                    {accessoryCount ? <Badge tone="premium">{accessoryCount} {accessoryCount === 1 ? "accessory" : "accessories"} included</Badge> : null}
+                    {studioModelReady ? <Badge tone="success">Studio Model ready</Badge> : null}
+                  </div>
+                  <div className="mt-7 flex max-w-full justify-center -space-x-3" aria-label="Selected pieces">
+                    {presentationItems.slice(0, 5).map((item) => (
+                      <div key={item.key} className="size-16 overflow-hidden rounded-2xl border-2 border-white bg-canvas shadow-card sm:size-20">
+                        <ImageFrame src={item.imageUrl} alt="" aspect="square" fit={item.source === "reference-upload" ? "contain" : "cover"} placeholder={item.category} className="h-full rounded-none border-0" />
+                      </div>
+                    ))}
+                    {presentationItems.length > 5 ? (
+                      <div className="grid size-16 place-items-center rounded-2xl border-2 border-white bg-cocoa text-xs font-bold text-canvas shadow-card sm:size-20">+{presentationItems.length - 5}</div>
+                    ) : null}
+                  </div>
+                  {pollWarning ? <p className="mt-5 max-w-lg text-xs leading-5 text-muted">{pollWarning}</p> : null}
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-[460px] flex-col items-center justify-center bg-gradient-to-br from-canvas/80 via-surface to-cocoa/5 px-6 py-12 text-center sm:min-h-[560px]">
+                <span className="grid size-14 place-items-center rounded-full border border-cocoa/20 bg-cocoa/10 text-cocoa"><Layers3 size={23} aria-hidden="true" /></span>
+                <h2 className="mt-6 text-2xl font-semibold text-ink">See the complete look on your Studio Model</h2>
+                <p className="mt-3 max-w-md text-sm leading-6 text-muted">MyFitPick will prepare one preview using the pieces selected for this outfit.</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  <Badge tone="info">{presentationItems.length} pieces selected</Badge>
+                  {footwearLabel ? <Badge tone="success">Footwear included</Badge> : null}
+                </div>
+                <Button className="mt-7" onClick={() => void handleGenerate(false)} disabled={requestPending}>
+                  <Sparkles size={16} aria-hidden="true" />
+                  {requestPending ? "Starting…" : "Start Virtual Try-On"}
+                </Button>
               </div>
             )}
           </Card>
@@ -232,51 +364,37 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
             <div className="flex flex-wrap gap-2">
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
               {referenceItems.length ? <Badge tone="premium">Photo match</Badge> : null}
-              {previewReady ? <Badge tone="premium">{fidelityLabel}</Badge> : null}
+              {previewState === "completed" ? <Badge tone="premium">{fidelityLabel}</Badge> : null}
+              {previewState === "queued" || previewState === "processing" ? <Badge tone="info">Preparing preview</Badge> : null}
+              {previewState === "delayed" ? <Badge tone="warning">Taking longer</Badge> : null}
             </div>
-            <p className="text-sm leading-6 text-muted">
-              This is a preview, not a perfect fitting.
-            </p>
-            {previewReady && fidelityLevel !== "full" ? (
+            <p className="text-sm leading-6 text-muted">This is a preview, not a perfect fitting.</p>
+            {previewState === "completed" && fidelityLevel !== "full" ? (
               <p className="text-xs leading-5 text-muted">Your complete look includes all selected pieces. Some small accessories may not appear in the generated preview.</p>
             ) : null}
           </Card>
 
           <Card className="space-y-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Styled Look</p>
-              <p className="mt-1 text-sm font-semibold text-ink">Pieces in this look</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Styled Look</p>
+                <p className="mt-1 text-sm font-semibold text-ink">Pieces in this look</p>
+              </div>
+              <Badge tone="neutral">{presentationItems.length}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
               {presentationItems.map((item) => (
-                <article
-                  key={item.key}
-                  className={item.source === "reference-upload"
-                    ? "rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2"
-                    : "rounded-2xl border border-line bg-canvas/60 p-2"}
-                >
+                <article key={item.key} className={item.source === "reference-upload" ? "rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2" : "rounded-2xl border border-line bg-canvas/60 p-2"}>
                   <button
                     type="button"
                     className="focus-ring block w-full rounded-2xl text-left"
                     onClick={() => {
                       if (!item.imageUrl) return;
-                      setViewingImage({
-                        src: item.imageUrl,
-                        alt: item.source === "reference-upload" ? `Uploaded item: ${item.name}` : item.name,
-                        title: item.name,
-                        subtitle: [item.color, item.category].filter(Boolean).join(" · ")
-                      });
+                      setViewingImage({ src: item.imageUrl, alt: item.name, title: item.name, subtitle: [item.color, item.category].filter(Boolean).join(" · ") });
                     }}
                     aria-label={`View ${item.name}`}
                   >
-                    <ImageFrame
-                      src={item.imageUrl}
-                      alt={item.source === "reference-upload" ? `Uploaded item: ${item.name}` : item.name}
-                      aspect="square"
-                      fit={item.source === "reference-upload" ? "contain" : undefined}
-                      placeholder={item.category}
-                      className="mb-2"
-                    />
+                    <ImageFrame src={item.imageUrl} alt={item.name} aspect="square" fit={item.source === "reference-upload" ? "contain" : "cover"} placeholder={item.category} className="mb-2" />
                   </button>
                   {item.source === "reference-upload" ? <Badge tone="premium">Uploaded item</Badge> : null}
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
@@ -288,7 +406,7 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
 
           {footwearLabel ? (
             <Card className="space-y-2 border-success/20 bg-success/10">
-              <p className="text-sm font-semibold text-ink">Footwear included</p>
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink"><CheckCircle2 size={16} className="text-success" aria-hidden="true" />Footwear included</p>
               <p className="text-sm leading-6 text-muted">{footwearLabel}</p>
             </Card>
           ) : (
@@ -299,32 +417,23 @@ export function LookPreviewClient({ outfitId }: { outfitId: string }) {
           )}
 
           <Card className="space-y-3">
-            {previewReady ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            {previewState === "completed" ? (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <Button onClick={() => void handleSave()}>Save Look</Button>
                 <PreviewDownloadButton outfitId={outfit.id} />
+                <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={requestPending}>
+                  <RotateCcw size={16} aria-hidden="true" />
+                  {requestPending ? "Regenerating…" : "Regenerate Preview"}
+                </Button>
               </div>
             ) : null}
-
-            {previewProcessing ? (
-              <div className="rounded-2xl border border-line bg-canvas/70 px-4 py-5 text-center">
-                <div className="mx-auto size-8 animate-spin rounded-full border-2 border-cocoa/20 border-t-cocoa" aria-hidden="true" />
-                <p className="mt-3 text-sm font-semibold text-ink">MyFitPick is preparing your look.</p>
-              </div>
-            ) : null}
-
-            {previewFailed ? (
+            {shouldPollTryOnPreview(previewState) ? (
               <div className="space-y-3">
-                <p className="rounded-2xl bg-danger/10 px-3 py-3 text-sm font-semibold text-ink">
-                  {"Virtual Try-On couldn't be completed."}
-                </p>
-                {!generating ? <Button onClick={() => void handleGenerate(true)}>Retry Try-On</Button> : null}
+                <Link href={originHref}><Button variant="secondary" className="w-full">{originLabel}</Button></Link>
+                <p className="text-center text-xs leading-5 text-muted">Your preview will continue processing in MyFitPick.</p>
               </div>
             ) : null}
-
-            {!hasPreviewStarted && !previewProcessing && !previewFailed ? (
-              <Button onClick={() => void handleGenerate(false)}>Virtual Try-On</Button>
-            ) : null}
+            {previewState === "idle" ? <Link href={originHref}><Button variant="ghost" className="w-full">{originLabel}</Button></Link> : null}
           </Card>
         </aside>
       </div>

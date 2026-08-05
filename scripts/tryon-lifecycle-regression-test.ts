@@ -19,7 +19,10 @@ assert.ok(outfitResult.includes('job.status === "dead_letter"'), "Outfit page po
 
 const lookPreview = read("components/outfit/LookPreviewClient.tsx");
 assert.ok(lookPreview.includes('idempotencyKey: createClientIdempotencyKey("avatar-preview")'), "Full look preview must send a fresh client idempotency key per generate click.");
-assert.ok(lookPreview.includes('result.data.job.status === "dead_letter"'), "Full look polling must treat dead-letter as terminal.");
+assert.ok(lookPreview.includes("deriveTryOnPreviewUiState"), "Full look polling must use the shared lifecycle resolver.");
+const previewState = read("lib/tryon/preview-ui-state.ts");
+assert.ok(previewState.includes('"dead_letter"'), "Full look lifecycle resolver must treat dead-letter as terminal.");
+assert.ok(previewState.includes("shouldPollTryOnPreview"), "Full look lifecycle resolver must stop polling terminal states.");
 
 const generationService = read("lib/tryon/tryon-generation.ts");
 assert.ok(generationService.includes("activeTryOnGenerationStatuses"), "Generation service must define active blocking statuses.");

@@ -559,6 +559,7 @@ export function serializeAvatarPreview(preview: any) {
     providerSentItemIds: (preview?.providerSentItemIds || []).map(String),
     recommendationOnlyItemIds: (preview?.recommendationOnlyItemIds || []).map(String),
     generatedAt: preview?.generatedAt ? new Date(preview.generatedAt).toISOString() : null,
+    updatedAt: preview?.updatedAt ? new Date(preview.updatedAt).toISOString() : null,
     errorMessage: preview?.errorMessage ? safeTryOnErrorMessage(preview.errorMessage) : "",
     attempts: preview?.attempts || 0,
     cached: Boolean(preview?.cached),

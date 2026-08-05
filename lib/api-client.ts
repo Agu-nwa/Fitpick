@@ -500,6 +500,7 @@ export type AvatarPreviewData = {
     progressiveTrigger?: StylistAvatarPreview["progressiveTrigger"];
     setupPath?: string | null;
     generatedAt: string | null;
+    updatedAt?: string | null;
     errorMessage: string;
     attempts: number;
     cached: boolean;

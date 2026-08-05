@@ -563,6 +563,7 @@ function EditorialRecommendationCard({
   preview,
   assistantNote,
   reference,
+  origin,
   onRegenerate,
   showRegenerate,
   showRefinementChips
@@ -573,6 +574,7 @@ function EditorialRecommendationCard({
   preview?: StylistAvatarPreview;
   assistantNote?: string;
   reference?: ReferenceFashionItemSummary | null;
+  origin: "create_look" | "match";
   onRegenerate?: (refinement?: string) => void;
   showRegenerate?: boolean;
   showRefinementChips?: boolean;
@@ -611,7 +613,7 @@ function EditorialRecommendationCard({
               {loading ? "Regenerating..." : "Regenerate Look"}
             </Button>
           ) : null}
-          <Link href={`/outfit/${outfit.id}/preview`} className="block">
+          <Link href={`/outfit/${outfit.id}/preview?origin=${origin}`} className="block">
             <Button type="button" className="w-full">
               Virtual Try-On
             </Button>
@@ -676,6 +678,7 @@ function EditorialRecommendationStack({
           preview={index === 0 ? preview : undefined}
           assistantNote={index === 0 ? assistantNote : undefined}
           reference={index === 0 ? reference : null}
+          origin={mode === "match" ? "match" : "create_look"}
           onRegenerate={onRegenerate}
           showRegenerate={Boolean(onRegenerate) && index === 0}
           showRefinementChips={mode === "create"}

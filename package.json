@@ -40,6 +40,7 @@
     "test:stylist-ui": "tsx scripts/stylist-ui-redesign-test.ts",
     "test:looks-removal": "tsx scripts/looks-removal-test.ts",
     "test:tryon-preview-ui": "tsx scripts/tryon-preview-ui-test.ts",
+    "test:tryon-waiting-state": "tsx scripts/tryon-preview-state-test.ts",
     "test:tryon-billing": "tsx scripts/tryon-billing-integrity-test.ts",
     "test:tryon-lifecycle": "tsx scripts/tryon-lifecycle-regression-test.ts",
     "test:user-errors": "tsx scripts/user-facing-error-copy-test.ts",

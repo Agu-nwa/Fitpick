@@ -159,7 +159,7 @@ export async function createTryOnFailedNotification(input: {
     userId: input.userId,
     type: "virtual_tryon_failed",
     title: "Virtual Try-On could not be completed.",
-    body: "Your Credits were not deducted. You can try again when you are ready.",
+    body: "Your preview could not be completed. Open MyFitPick to review the status and try again.",
     actionLabel: "Try Again",
     actionUrl: `/outfit/${String(input.outfitId)}/preview`,
     entityType: "TryOnGeneration",
