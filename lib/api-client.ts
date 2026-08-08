@@ -496,7 +496,10 @@ export type AvatarPreviewData = {
     unsupportedRoles?: string[];
     previewFidelityLevel?: "full" | "partial" | "core_only";
     providerSentItemIds?: string[];
+    providerCompletedItemIds?: string[];
+    pendingItemIds?: string[];
     recommendationOnlyItemIds?: string[];
+    progressStage?: "not_started" | "core_ready" | "finishing" | "complete" | "fallback";
     progressiveTrigger?: StylistAvatarPreview["progressiveTrigger"];
     setupPath?: string | null;
     generatedAt: string | null;

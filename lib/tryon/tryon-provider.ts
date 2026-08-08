@@ -10,6 +10,7 @@ import { assertUsablePreviewRecord } from "@/lib/tryon/tryon-image-validation";
 import { createDedicatedVtonTryOnProvider } from "@/lib/tryon/providers/dedicated-vton-tryon";
 import { createFashnTryOnProvider } from "@/lib/tryon/providers/fashn-tryon";
 import { createOpenAiTryOnProvider } from "@/lib/tryon/providers/openai-tryon";
+import { TransientTryOnError } from "@/lib/tryon/reliability";
 import type { TryOnProvider, TryOnProviderOutput, TryOnProviderType, TryOnDesiredView } from "@/lib/tryon/types";
 import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
@@ -129,7 +130,10 @@ async function saveProviderPreview(input: {
         unsupportedRoles: output.unsupportedRoles || [],
         previewFidelityLevel: output.previewFidelityLevel || "partial",
         providerSentItemIds: output.providerSentItemIds || [],
+        providerCompletedItemIds: output.providerCompletedItemIds || [],
+        pendingItemIds: output.pendingItemIds || [],
         recommendationOnlyItemIds: output.recommendationOnlyItemIds || [],
+        progressStage: output.progressStage || (ready ? "complete" : "not_started"),
         generatedAt: ready ? new Date() : null,
         errorMessage: failed ? failureMessage : "",
         lastAttemptAt: new Date()
@@ -160,7 +164,10 @@ async function saveProviderPreview(input: {
         "preview.unsupportedRoles": output.unsupportedRoles || [],
         "preview.previewFidelityLevel": output.previewFidelityLevel || "partial",
         "preview.providerSentItemIds": output.providerSentItemIds || [],
+        "preview.providerCompletedItemIds": output.providerCompletedItemIds || [],
+        "preview.pendingItemIds": output.pendingItemIds || [],
         "preview.recommendationOnlyItemIds": output.recommendationOnlyItemIds || [],
+        "preview.progressStage": output.progressStage || (ready ? "complete" : "not_started"),
         "preview.generatedAt": ready ? new Date() : null,
         "preview.errorMessage": failed ? failureMessage : ""
       }
@@ -191,7 +198,10 @@ export async function runConfiguredVirtualTryOnJob(input: {
     visualizationStyle: input.visualizationStyle,
     posePreset: input.posePreset,
     accuracyLevelRequested: providerType === "custom" || providerType === "fashn" ? "true_3d_simulation" : "garment_referenced",
-    cacheKey: input.cacheKey
+    cacheKey: input.cacheKey,
+    onProgress: async (progressOutput) => {
+      await saveProviderPreview(input, progressOutput);
+    }
   });
 
   if (providerType === "internal_preview") {
@@ -211,6 +221,9 @@ export async function runConfiguredVirtualTryOnJob(input: {
   const saved = await saveProviderPreview(input, output);
   if (output.status === "failed" || output.status === "provider_unavailable") {
     throw errorWithProviderDiagnostics(safeTryOnErrorMessage(output.warnings[0]), output.providerDiagnostics);
+  }
+  if (output.status === "queued" || output.status === "processing") {
+    throw new TransientTryOnError("Virtual Try-On provider is still processing.", "provider_still_processing");
   }
   if (!saved || !assertUsablePreviewRecord(saved)) {
     throw errorWithProviderDiagnostics("Virtual Try-On couldn't be completed. Your credit was not deducted.", output.providerDiagnostics);

@@ -102,6 +102,15 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   const originHref = tryOnOriginDestination(origin);
   const originLabel = tryOnOriginLabel(origin);
   const creditRestored = creditRestorationConfirmed({ preview: preview || outfit?.preview || null, generation });
+  const progressStage = preview?.progressStage || outfit?.preview?.progressStage || "not_started";
+  const providerCompletedItemIds = new Set(preview?.providerCompletedItemIds || outfit?.preview?.providerCompletedItemIds || []);
+  const pendingItemIds = new Set(preview?.pendingItemIds || outfit?.preview?.pendingItemIds || []);
+  const recommendationOnlyItemIds = new Set(preview?.recommendationOnlyItemIds || outfit?.preview?.recommendationOnlyItemIds || []);
+  const progressiveCoreReady = Boolean(
+    imageUrl
+    && (previewState === "processing" || previewState === "delayed")
+    && (progressStage === "core_ready" || progressStage === "finishing")
+  );
 
   const loadLook = useCallback(async () => {
     setStatus("loading");
@@ -242,6 +251,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   const displayCopy = editorialLookCopy(outfit);
   const fidelityLevel = preview?.previewFidelityLevel || outfit.preview?.previewFidelityLevel || "partial";
   const fidelityLabel = fidelityLevel === "full" ? "Complete preview" : fidelityLevel === "core_only" ? "Core outfit preview" : "Accessory details may vary";
+  const fallbackOmittedCount = presentationItems.filter((item) => recommendationOnlyItemIds.has(item.id)).length;
   const failedMessage = safeTryOnErrorMessage(localError || preview?.errorMessage || generation?.failureMessage || job?.errorMessage || "Virtual Try-On couldn’t be completed.");
 
   return (
@@ -269,6 +279,30 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                   className="min-w-0 w-full rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-2 sm:p-4"
                   imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
                 />
+              </div>
+            ) : progressiveCoreReady ? (
+              <div className="relative overflow-hidden bg-gradient-to-br from-canvas via-surface to-olive/10" role="status" aria-live="polite">
+                <ImageFrame
+                  src={imageUrl}
+                  alt={`${displayCopy.title} core outfit preview`}
+                  aspect="fullBody"
+                  fit="contain"
+                  placeholder="Core outfit preview"
+                  className="min-w-0 w-full rounded-none border-0 bg-transparent p-2 sm:p-4"
+                  imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
+                />
+                <div className="absolute inset-x-3 bottom-3 rounded-3xl border border-cocoa/20 bg-white/92 p-4 text-left shadow-card backdrop-blur-xl sm:inset-x-5 sm:bottom-5 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-success/12 text-success">
+                      <CheckCircle2 size={20} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Core outfit ready</p>
+                      <h2 className="mt-1 text-lg font-semibold text-ink sm:text-xl">Adding selected finishers</h2>
+                      <p className="mt-1 text-sm leading-5 text-muted">Your garment preview is usable now. MyFitPick is adding footwear and selected accessories without hiding the result you already have.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : previewState === "failed" ? (
               <div className="flex min-h-[460px] flex-col items-center justify-center bg-gradient-to-br from-danger/5 via-surface to-canvas px-6 py-12 text-center sm:min-h-[560px]" role="alert">
@@ -365,12 +399,17 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
               <Badge tone={outfit.completenessStatus === "complete" ? "success" : "warning"}>{completenessLabel(outfit.completenessStatus)}</Badge>
               {referenceItems.length ? <Badge tone="premium">Photo match</Badge> : null}
               {previewState === "completed" ? <Badge tone="premium">{fidelityLabel}</Badge> : null}
+              {progressiveCoreReady ? <Badge tone="success">Core outfit ready</Badge> : null}
               {previewState === "queued" || previewState === "processing" ? <Badge tone="info">Preparing preview</Badge> : null}
               {previewState === "delayed" ? <Badge tone="warning">Taking longer</Badge> : null}
             </div>
             <p className="text-sm leading-6 text-muted">This is a preview, not a perfect fitting.</p>
-            {previewState === "completed" && fidelityLevel !== "full" ? (
-              <p className="text-xs leading-5 text-muted">Your complete look includes all selected pieces. Some small accessories may not appear in the generated preview.</p>
+            {previewState === "completed" && progressStage === "fallback" ? (
+              <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
+                Core preview preserved. {fallbackOmittedCount || "Some"} selected finishing {fallbackOmittedCount === 1 ? "piece was" : "pieces were"} not added by the preview provider.
+              </p>
+            ) : previewState === "completed" && fidelityLevel !== "full" ? (
+              <p className="text-xs leading-5 text-muted">The recommendation still includes every selected piece. Provider rendering of small accessories can vary.</p>
             ) : null}
           </Card>
 
@@ -397,6 +436,9 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                     <ImageFrame src={item.imageUrl} alt={item.name} aspect="square" fit={item.source === "reference-upload" ? "contain" : "cover"} placeholder={item.category} className="mb-2" />
                   </button>
                   {item.source === "reference-upload" ? <Badge tone="premium">Uploaded item</Badge> : null}
+                  {providerCompletedItemIds.has(item.id) ? <Badge tone="success">Provider pass complete</Badge> : null}
+                  {pendingItemIds.has(item.id) ? <Badge tone="info">Selected — finishing</Badge> : null}
+                  {previewState === "completed" && recommendationOnlyItemIds.has(item.id) ? <Badge tone="warning">Selected — not rendered</Badge> : null}
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
                   <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
                 </article>

@@ -39,11 +39,27 @@ const queue = read("lib/jobs/queue.ts");
 assert.ok(queue.includes('"dead_letter"'), "Queue must expose dead-letter state.");
 assert.ok(queue.includes("heartbeatJob"), "Queue must support worker heartbeats.");
 assert.ok(queue.includes("recoverStaleProcessingJobs"), "Queue must recover stale processing jobs.");
+assert.ok(queue.includes("excludeJobTypes"), "Queue claims must support isolating Try-On work from general jobs.");
 
 const worker = read("workers/fitpick-worker.ts");
 assert.ok(worker.includes("heartbeatJob"), "Worker must heartbeat claimed jobs.");
 assert.ok(worker.includes("recoverStaleProcessingJobs"), "Worker must recover stale processing jobs after restart.");
 assert.ok(worker.includes("handleTerminalBackgroundJobFailure"), "Worker must run terminal cleanup for dead-letter jobs.");
+assert.ok(worker.includes("WORKER_JOB_TYPES"), "Worker must accept an explicit job-type route.");
+assert.ok(worker.includes("WORKER_EXCLUDED_JOB_TYPES"), "General workers must be able to exclude Try-On jobs.");
+
+const ecosystem = read("ecosystem.config.js");
+assert.ok(ecosystem.includes('name: "fitpick-tryon-worker"'), "Production PM2 must run a dedicated Try-On worker.");
+assert.ok(ecosystem.includes('WORKER_JOB_TYPES: "avatar_preview_generation"'), "Dedicated Try-On worker must claim only avatar preview jobs.");
+assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation"'), "General worker must not compete for avatar preview jobs.");
+
+const fashnProvider = read("lib/tryon/providers/fashn-tryon.ts");
+assert.ok(fashnProvider.includes('coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6"'), "Core garments must default to the faster FASHN clothing model.");
+assert.ok(fashnProvider.includes("garment_image: payload.productImage"), "Core clothing requests must use the v1.6 garment_image contract.");
+assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finishing requests must use the Try-On Max product_image contract.");
+assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");
+assert.ok(fashnProvider.includes('progressStage: "fallback"'), "A finishing-pass failure must preserve a usable core preview.");
+assert.ok(fashnProvider.includes("FASHN_MAX_FINISHER_ITEMS"), "Finishing passes must have a bounded production budget.");
 
 const downloadRoute = read("app/api/outfits/[id]/avatar-preview/download/route.ts");
 assert.ok(downloadRoute.includes("requireUser"), "Preview downloads must require authentication.");

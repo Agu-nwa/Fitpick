@@ -110,6 +110,7 @@ OPENAI_API_KEY=
 
 ENABLE_BACKGROUND_JOBS=true
 WORKER_POLL_MS=5000
+# PM2 routes avatar_preview_generation to fitpick-tryon-worker.
 AI_CACHE_PROVIDER=memory
 RATE_LIMIT_PROVIDER=memory
 RATE_LIMIT_REDIS_URL=

@@ -78,6 +78,11 @@ Persists the PM2 process list so the worker restarts after reboot.
 ```env
 ENABLE_BACKGROUND_JOBS=true
 WORKER_POLL_MS=5000
+# ecosystem.config.js excludes avatar_preview_generation from the general worker
+# and routes it to fitpick-tryon-worker with a 1000 ms poll interval.
+WORKER_JOB_TYPES=
+WORKER_EXCLUDED_JOB_TYPES=
+WORKER_ENABLE_MAINTENANCE=true
 AI_CACHE_PROVIDER=memory
 RATE_LIMIT_PROVIDER=memory
 ```
@@ -115,15 +120,22 @@ TRYON_TIMEOUT_MS=90000
 # TRYON_PROVIDER=fashn
 FASHN_API_KEY=
 FASHN_BASE_URL=https://api.fashn.ai/v1
+FASHN_CORE_MODEL_NAME=tryon-v1.6
+FASHN_CORE_MODE=performance
 FASHN_MODEL_NAME=tryon-max
 FASHN_RESOLUTION=1k
-FASHN_GENERATION_MODE=balanced
+FASHN_GENERATION_MODE=fast
 FASHN_OUTPUT_FORMAT=png
 FASHN_RETURN_BASE64=true
 FASHN_MAX_OUTFIT_ITEMS=6
+FASHN_MAX_FINISHER_ITEMS=2
 FASHN_TIMEOUT_MS=90000
 FASHN_POLL_MS=3000
 ```
+
+The FASHN pipeline publishes the first durable core-garment image while finishers are still processing. It preserves that core image with a warning if a later footwear or accessory pass fails. `FASHN_MAX_FINISHER_ITEMS` bounds bag/watch/jewellery/accessory passes; outerwear and footwear remain independently eligible within `FASHN_MAX_OUTFIT_ITEMS`.
+
+Keep `FASHN_RETURN_BASE64=true` when privacy and provider-output retention are more important than response size. Setting it to `false` is an explicit performance/retention tradeoff and should be reviewed before production use.
 
 The custom endpoint receives a JSON payload with:
 

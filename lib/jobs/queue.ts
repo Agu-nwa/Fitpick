@@ -29,6 +29,8 @@ type EnqueueOptions = {
 type ClaimOptions = {
   workerId?: string;
   leaseMs?: number;
+  jobTypes?: BackgroundJobType[];
+  excludeJobTypes?: BackgroundJobType[];
 };
 
 type RetryOptions = {
@@ -96,10 +98,18 @@ export async function claimNextJob(options: ClaimOptions = {}) {
   const now = new Date();
   const leaseMs = Math.max(30_000, Math.min(options.leaseMs || 5 * 60_000, 30 * 60_000));
   const workerId = String(options.workerId || `worker:${process.pid}`);
+  const excludedTypes = new Set(options.excludeJobTypes || []);
+  const includedTypes = options.jobTypes?.filter((type) => !excludedTypes.has(type));
+  const typeFilter = includedTypes
+    ? { $in: includedTypes }
+    : options.excludeJobTypes?.length
+      ? { $nin: options.excludeJobTypes }
+      : null;
   const job = await BackgroundJob.findOneAndUpdate(
     {
       status: "queued",
       availableAt: { $lte: now },
+      ...(typeFilter ? { type: typeFilter } : {}),
       $expr: { $lt: ["$attempts", "$maxAttempts"] }
     },
     {

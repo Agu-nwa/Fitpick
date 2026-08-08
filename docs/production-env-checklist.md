@@ -94,6 +94,7 @@ WORKER_POLL_MS=5000
 Notes:
 
 - The PM2 worker loads `.env.local` before validating configuration.
+- `ecosystem.config.js` runs a dedicated `fitpick-tryon-worker` for `avatar_preview_generation`; deploy with `pm2 startOrRestart ecosystem.config.js --update-env` so it is created.
 - If background jobs should be disabled, set `ENABLE_BACKGROUND_JOBS=false`; the worker exits cleanly and PM2 should not restart it in a loop.
 - Worker logs may show missing variable names, but must not show secret values.
 

@@ -21,6 +21,11 @@ assert.ok(source.includes("pollDelays"), "Preview polling must use backoff.");
 assert.ok(source.includes("You’ll see a notification in MyFitPick when it is ready."), "Waiting copy must accurately promise an in-app notification.");
 assert.ok(source.includes("You can safely leave this page and return later."), "Waiting state must tell users they can leave safely.");
 assert.ok(source.includes("Your preview is taking a little longer"), "Delayed jobs must remain a non-terminal state.");
+assert.ok(source.includes("Core outfit ready"), "A durable core result must be displayed while finishers continue.");
+assert.ok(source.includes("Adding selected finishers"), "Progressive rendering must explain the accessory stage without an artificial percentage.");
+assert.ok(source.includes("Provider pass complete"), "Piece cards must distinguish completed provider passes.");
+assert.ok(source.includes("Selected — finishing"), "Piece cards must expose selected finishing pieces still in progress.");
+assert.ok(source.includes("Core preview preserved"), "A finishing-pass failure must retain and explain the usable core preview.");
 assert.ok(source.includes("Studio Model ready"), "Waiting summary must expose model readiness when confirmed.");
 assert.ok(source.includes("pieces selected"), "Waiting summary must expose selected-piece count.");
 assert.ok(source.includes("Regenerate Preview"), "Completed preview must offer regeneration.");
@@ -32,6 +37,7 @@ assert.ok(source.includes('href="/support"'), "Failed preview must link to suppo
 assert.ok(source.includes("buildOutfitPresentationItems(outfit)"), "Selected-piece summary must combine reference and closet items.");
 assert.ok(source.includes("pb-[calc(1.5rem+var(--safe-bottom))]"), "Preview content must respect mobile safe-area padding.");
 assert.ok(!source.includes("min-h-[720px]"), "Preview media must not force an oversized mobile minimum height.");
+assert.ok(!source.includes("% complete"), "Try-On progress must not invent provider percentages.");
 
 assert.ok(routeSource.includes("TryOnGeneration.findOne"), "GET must restore persisted generation state for return visits.");
 assert.ok(routeSource.includes("BackgroundJob.findOne"), "GET must restore persisted job state for return visits.");

@@ -1,9 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
+import type { BackgroundJobType } from "../lib/jobs/queue";
 
 let stopping = false;
-const workerId = `fitpick-worker:${process.pid}:${Date.now().toString(36)}`;
+const workerId = `${process.env.WORKER_NAME || "fitpick-worker"}:${process.pid}:${Date.now().toString(36)}`;
+
+const validJobTypes = new Set<string>([
+  "wardrobe_analysis",
+  "wardrobe_enrichment",
+  "label_ocr",
+  "outfit_preview_generation",
+  "avatar_preview_generation",
+  "garment_asset_generation",
+  "studio_model_asset_generation",
+  "fit_locked_preview_generation",
+  "true_3d_tryon_generation",
+  "style_profile_learning",
+  "memory_rollup",
+  "account_deletion"
+]);
+
+function parseJobTypes(value?: string): BackgroundJobType[] {
+  if (!value) return [];
+  return Array.from(new Set(value.split(",").map((entry) => entry.trim()).filter((entry): entry is BackgroundJobType => validJobTypes.has(entry))));
+}
 
 function loadWorkerEnv() {
   const mode = process.env.NODE_ENV || "development";
@@ -57,9 +78,14 @@ process.on("SIGTERM", () => {
   stopping = true;
 });
 
-async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>) {
+async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>, routing: { jobTypes: BackgroundJobType[]; excludeJobTypes: BackgroundJobType[] }) {
   const leaseMs = parseLeaseMs();
-  const job = await runtime.claimNextJob({ workerId, leaseMs });
+  const job = await runtime.claimNextJob({
+    workerId,
+    leaseMs,
+    jobTypes: routing.jobTypes.length ? routing.jobTypes : undefined,
+    excludeJobTypes: routing.excludeJobTypes.length ? routing.excludeJobTypes : undefined
+  });
   if (!job) return false;
 
   const heartbeat = setInterval(() => {
@@ -145,14 +171,28 @@ async function main() {
   }
 
   const pollMs = parsePollMs();
+  const routing = {
+    jobTypes: parseJobTypes(process.env.WORKER_JOB_TYPES),
+    excludeJobTypes: parseJobTypes(process.env.WORKER_EXCLUDED_JOB_TYPES)
+  };
+  const maintenanceEnabled = process.env.WORKER_ENABLE_MAINTENANCE !== "false";
   const runtime = await loadRuntime();
   await runtime.connectDB();
-  console.info("fitpick.worker", { status: "started", pollMs, workerId, leaseMs: parseLeaseMs(), timestamp: new Date().toISOString() });
+  console.info("fitpick.worker", {
+    status: "started",
+    pollMs,
+    workerId,
+    leaseMs: parseLeaseMs(),
+    jobTypes: routing.jobTypes,
+    excludeJobTypes: routing.excludeJobTypes,
+    maintenanceEnabled,
+    timestamp: new Date().toISOString()
+  });
 
   let lastMaintenanceAt = 0;
 
   while (!stopping) {
-    if (Date.now() - lastMaintenanceAt > 60_000) {
+    if (maintenanceEnabled && Date.now() - lastMaintenanceAt > 60_000) {
       lastMaintenanceAt = Date.now();
       const recovered = await runtime.recoverStaleProcessingJobs({ olderThanMs: parseLeaseMs(), limit: 25 });
       for (const job of recovered.deadLettered || []) {
@@ -171,7 +211,7 @@ async function main() {
         });
       }
     }
-    const worked = await processOneJob(runtime);
+    const worked = await processOneJob(runtime, routing);
     if (!worked) {
       await new Promise((resolve) => setTimeout(resolve, pollMs));
     }

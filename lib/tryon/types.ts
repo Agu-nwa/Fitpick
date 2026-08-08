@@ -13,6 +13,7 @@ export type TryOnProviderType =
   | "none";
 
 export type TryOnDesiredView = "front" | "back" | "side" | "walking" | "360";
+export type TryOnProgressStage = "not_started" | "core_ready" | "finishing" | "complete" | "fallback";
 
 export type TryOnPreviewInput = {
   userId: string;
@@ -28,6 +29,7 @@ export type TryOnPreviewInput = {
   posePreset?: PosePreset;
   accuracyLevelRequested?: PreviewAccuracyLevelId;
   cacheKey?: string;
+  onProgress?: (output: TryOnProviderOutput) => Promise<void>;
 };
 
 export type TryOnProviderOutput = {
@@ -48,7 +50,10 @@ export type TryOnProviderOutput = {
   unsupportedRoles?: TryOnVisualRole[];
   previewFidelityLevel?: PreviewFidelityLevel;
   providerSentItemIds?: string[];
+  providerCompletedItemIds?: string[];
+  pendingItemIds?: string[];
   recommendationOnlyItemIds?: string[];
+  progressStage?: TryOnProgressStage;
 };
 
 export interface TryOnProvider {

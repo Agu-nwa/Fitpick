@@ -5,7 +5,8 @@ import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
-import { prepareTryOnItems } from "@/lib/tryon/provider-capabilities";
+import { prepareTryOnItems, tryOnVisualRoleForItem, type TryOnVisualRole } from "@/lib/tryon/provider-capabilities";
+import { logTryOnMetric } from "@/lib/tryon/reliability";
 import { AvatarProfile } from "@/models/AvatarProfile";
 
 type FashnStatus = "starting" | "in_queue" | "processing" | "completed" | "failed" | string;
@@ -46,11 +47,14 @@ function config() {
     runEndpoint: process.env.FASHN_RUN_ENDPOINT || `${baseUrl}/run`,
     statusEndpoint: process.env.FASHN_STATUS_ENDPOINT || `${baseUrl}/status`,
     modelName: process.env.FASHN_MODEL_NAME || "tryon-max",
+    coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6",
+    coreMode: process.env.FASHN_CORE_MODE || "performance",
     resolution: process.env.FASHN_RESOLUTION || "1k",
-    generationMode: process.env.FASHN_GENERATION_MODE || "balanced",
+    generationMode: process.env.FASHN_GENERATION_MODE || "fast",
     outputFormat: process.env.FASHN_OUTPUT_FORMAT || "png",
     returnBase64: process.env.FASHN_RETURN_BASE64 !== "false",
     maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
+    maxFinisherItems: Math.max(0, Math.min(Number(process.env.FASHN_MAX_FINISHER_ITEMS || 2), 4)),
     timeoutMs: Math.max(15000, Math.min(Number(process.env.FASHN_TIMEOUT_MS || process.env.TRYON_TIMEOUT_MS || 90000), 180000)),
     pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 3000), 10000))
   };
@@ -174,7 +178,44 @@ function errorMessage(error: FashnStatusResponse["error"] | FashnRunResponse["er
 function rankedProductImages(items: any[]) {
   // prepareTryOnItems already applies the provider-aware, deterministic order.
   // Preserve it so a locked Match reference is always sent before supporting pieces.
-  return items.map((item) => ({ item, url: preferredVisualReferenceUrl(item) })).filter((entry) => entry.url);
+  return items.map((item) => ({
+    item,
+    id: String(item?._id || item?.id || ""),
+    role: tryOnVisualRoleForItem(item),
+    url: preferredVisualReferenceUrl(item)
+  })).filter((entry): entry is typeof entry & { url: string; role: TryOnVisualRole } => Boolean(entry.url && entry.role));
+}
+
+const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece"]);
+
+function coreCategory(role: TryOnVisualRole) {
+  if (role === "upperBody") return "tops";
+  if (role === "lowerBody") return "bottoms";
+  if (role === "onePiece") return "one-pieces";
+  return "auto";
+}
+
+async function publishProgress(input: TryOnPreviewInput, output: TryOnProviderOutput) {
+  if (!input.onProgress) return;
+  const startedAt = Date.now();
+  try {
+    await input.onProgress(output);
+    logTryOnMetric({
+      metric: "progress_persisted",
+      stage: output.progressStage,
+      status: "success",
+      durationMs: Date.now() - startedAt,
+      metadata: { completedItemCount: output.providerCompletedItemIds?.length || 0, pendingItemCount: output.pendingItemIds?.length || 0 }
+    });
+  } catch {
+    logTryOnMetric({
+      metric: "progress_persisted",
+      stage: output.progressStage,
+      status: "failed",
+      durationMs: Date.now() - startedAt,
+      errorCode: "progress_persistence_failed"
+    });
+  }
 }
 
 async function outputToPersistedImages(input: TryOnPreviewInput, output: string[] = []) {
@@ -216,8 +257,31 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
   modelImage: string;
   prompt: string;
   stepIndex: number;
+  role: TryOnVisualRole;
+  modelName: string;
+  mode: string;
 }) {
   const providerConfig = config();
+  const coreRequest = CORE_ROLES.has(payload.role) && payload.modelName === providerConfig.coreModelName;
+  const inputs = coreRequest
+    ? {
+        garment_image: payload.productImage,
+        model_image: payload.modelImage,
+        category: coreCategory(payload.role),
+        mode: payload.mode,
+        garment_photo_type: "auto",
+        output_format: providerConfig.outputFormat,
+        return_base64: providerConfig.returnBase64
+      }
+    : {
+        product_image: payload.productImage,
+        model_image: payload.modelImage,
+        prompt: payload.prompt,
+        resolution: providerConfig.resolution,
+        generation_mode: payload.mode,
+        output_format: providerConfig.outputFormat,
+        return_base64: providerConfig.returnBase64
+      };
   const response = await fetch(providerConfig.runEndpoint, {
     method: "POST",
     headers: {
@@ -225,16 +289,8 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
       authorization: `Bearer ${providerConfig.apiKey}`
     },
     body: JSON.stringify({
-      model_name: providerConfig.modelName,
-      inputs: {
-        product_image: payload.productImage,
-        model_image: payload.modelImage,
-        prompt: payload.prompt,
-        resolution: providerConfig.resolution,
-        generation_mode: providerConfig.generationMode,
-        output_format: providerConfig.outputFormat,
-        return_base64: providerConfig.returnBase64
-      }
+      model_name: payload.modelName,
+      inputs
     }),
     signal: AbortSignal.timeout(providerConfig.timeoutMs)
   });
@@ -243,7 +299,7 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
     const bodyText = await response.text().catch(() => "");
     const providerDiagnostics = diagnostics({
       stage: "run_request",
-      modelName: providerConfig.modelName,
+      modelName: payload.modelName,
       stepIndex: payload.stepIndex,
       httpStatus: response.status,
       safeReason: safeReasonFromStatus(response.status, bodyText),
@@ -258,7 +314,7 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
   if (!data.id) {
     const providerDiagnostics = diagnostics({
       stage: "run_response",
-      modelName: providerConfig.modelName,
+      modelName: payload.modelName,
       stepIndex: payload.stepIndex,
       httpStatus: response.status,
       safeReason: safeReasonFromProviderPayload(data),
@@ -271,7 +327,7 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
   }
   logFashnDiagnostic("run_accepted", diagnostics({
     stage: "run_response",
-    modelName: providerConfig.modelName,
+    modelName: payload.modelName,
     stepIndex: payload.stepIndex,
     httpStatus: response.status,
     safeReason: "accepted",
@@ -282,10 +338,10 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
   return pollUntilReady(data.id, {
     ...input,
     cacheKey: `${input.cacheKey || "fashn"}-step-${payload.stepIndex}`
-  });
+  }, payload.modelName);
 }
 
-async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnProviderOutput> {
+async function status(jobId: string, input?: TryOnPreviewInput, modelName = config().modelName): Promise<TryOnProviderOutput> {
   const providerConfig = config();
   if (!providerConfig.apiKey) return unavailable("Virtual Try-On is temporarily unavailable.");
   const response = await fetch(`${providerConfig.statusEndpoint.replace(/\/$/, "")}/${encodeURIComponent(jobId)}`, {
@@ -299,7 +355,7 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
     const bodyText = await response.text().catch(() => "");
     const providerDiagnostics = diagnostics({
       stage: "status_request",
-      modelName: providerConfig.modelName,
+      modelName,
       httpStatus: response.status,
       safeReason: safeReasonFromStatus(response.status, bodyText),
       providerReturnedJobId: Boolean(jobId)
@@ -312,7 +368,7 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
   const warnings = errorMessage(data.error) ? [errorMessage(data.error)] : [];
   const providerDiagnostics = diagnostics({
     stage: "status_response",
-    modelName: providerConfig.modelName,
+    modelName,
     httpStatus: response.status,
     safeReason: normalized === "failed" ? safeReasonFromProviderPayload(data) : "accepted",
     providerReturnedJobId: Boolean(data.id || jobId),
@@ -337,13 +393,13 @@ async function status(jobId: string, input?: TryOnPreviewInput): Promise<TryOnPr
   };
 }
 
-async function pollUntilReady(jobId: string, input: TryOnPreviewInput): Promise<TryOnProviderOutput> {
+async function pollUntilReady(jobId: string, input: TryOnPreviewInput, modelName: string): Promise<TryOnProviderOutput> {
   const providerConfig = config();
   const deadline = Date.now() + providerConfig.timeoutMs;
   let attempt = 0;
   while (Date.now() < deadline) {
     try {
-      const result = await status(jobId, input);
+      const result = await status(jobId, input, modelName);
       if (result.status === "ready" || result.status === "failed") return result;
     } catch {
       // Retry transient polling transport failures until the overall deadline.
@@ -362,7 +418,7 @@ async function pollUntilReady(jobId: string, input: TryOnPreviewInput): Promise<
     jobId,
     providerDiagnostics: diagnostics({
       stage: "poll_timeout",
-      modelName: providerConfig.modelName,
+      modelName,
       safeReason: "provider_timeout",
       providerReturnedJobId: Boolean(jobId)
     })
@@ -400,9 +456,13 @@ export function createFashnTryOnProvider(): TryOnProvider {
         provider: "fashn",
         items: loaded.items,
         referenceItemIds: loaded.referenceItemIds,
-        maximumItems: providerConfig.maxOutfitItems
+        maximumItems: providerConfig.maxOutfitItems,
+        maximumFinishers: providerConfig.maxFinisherItems
       });
       const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
+      const coreProducts = products.filter((product) => CORE_ROLES.has(product.role));
+      const finishingProducts = products.filter((product) => !CORE_ROLES.has(product.role));
+      const orderedProducts = [...coreProducts, ...finishingProducts];
       const referenceIds = new Set(loaded.referenceItemIds.map(String));
       const subjectItemIds = new Set(loaded.items.map((item: any) => String(item?._id || item?.id || "")).filter(Boolean));
       const providerProductIds = new Set(products.map((product) => String(product.item?._id || product.item?.id || "")).filter(Boolean));
@@ -431,6 +491,16 @@ export function createFashnTryOnProvider(): TryOnProvider {
       }
       if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };
 
+      console.info("fitpick.tryon.preparation", {
+        selectedItemCount: loaded.items.length,
+        scheduledItemCount: orderedProducts.length,
+        coreItemCount: coreProducts.length,
+        finishingItemCount: finishingProducts.length,
+        recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length,
+        scheduledRoles: orderedProducts.map((product) => product.role),
+        timestamp: new Date().toISOString()
+      });
+
       const startedAt = Date.now();
       const warnings = products.length > 1
         ? [`MyFitPick applied ${products.length} wardrobe references sequentially for a cleaner preview.`]
@@ -439,13 +509,29 @@ export function createFashnTryOnProvider(): TryOnProvider {
       try {
         let currentModelImage = modelImage;
         let result: TryOnProviderOutput | null = null;
+        let lastReadyResult: TryOnProviderOutput | null = null;
+        const completedItemIds: string[] = [];
 
-        for (let index = 0; index < products.length; index += 1) {
-          const product = products[index];
+        for (let index = 0; index < orderedProducts.length; index += 1) {
+          const product = orderedProducts[index];
+          const coreStep = CORE_ROLES.has(product.role);
+          const stepStage = coreStep ? "core" : "finisher";
+          const stepStartedAt = Date.now();
+          console.info("fitpick.tryon.stage", {
+            event: "step_started",
+            stage: stepStage,
+            stepIndex: index + 1,
+            role: product.role,
+            modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName,
+            timestamp: new Date().toISOString()
+          });
           result = await runFashnTryOnStep(input, {
             productImage: product.url,
             modelImage: currentModelImage,
             stepIndex: index + 1,
+            role: product.role,
+            modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName,
+            mode: coreStep ? providerConfig.coreMode : providerConfig.generationMode,
             prompt: [
               "Create a realistic virtual try-on image for MyFitPick.",
               "Preserve the current model identity, face, pose, body proportions, and already-applied outfit pieces from the model image.",
@@ -456,12 +542,93 @@ export function createFashnTryOnProvider(): TryOnProvider {
             ].join(" ")
           });
 
-          if (result.status === "failed" || result.status === "provider_unavailable") return result;
-          if (result.status !== "ready" || !result.previewUrls[0]) {
+          const stepReady = result.status === "ready" && Boolean(result.previewUrls[0] && result.previewStorageKeys?.[0]);
+          logTryOnMetric({
+            metric: "provider_step",
+            stage: stepStage,
+            status: stepReady ? "success" : "failed",
+            durationMs: Date.now() - stepStartedAt,
+            errorCode: stepReady ? "" : String(result.providerDiagnostics?.safeReason || result.status),
+            metadata: { stepIndex: index + 1, role: product.role, modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName }
+          });
+
+          if (!stepReady) {
+            if (!coreStep && coreProducts.length && lastReadyResult?.previewUrls[0] && lastReadyResult.previewStorageKeys?.[0]) {
+              const unfinishedItemIds = orderedProducts.slice(index).map((entry) => entry.id).filter(Boolean);
+              const recommendationOnlyItemIds = Array.from(new Set([
+                ...preparation.recommendationOnlyItemIds,
+                ...unfinishedItemIds
+              ]));
+              const fallbackWarning = "The core outfit is ready, but some selected finishing pieces could not be added to this preview.";
+              const fallback: TryOnProviderOutput = {
+                ...lastReadyResult,
+                status: "ready",
+                warnings: [...warnings, fallbackWarning, ...result.warnings].slice(0, 8),
+                requestedRoles: preparation.fidelity.requestedRoles,
+                providerSupportedRoles: preparation.fidelity.providerSupportedRoles,
+                partiallySupportedRoles: preparation.fidelity.partiallySupportedRoles,
+                unsupportedRoles: preparation.fidelity.unsupportedRoles,
+                previewFidelityLevel: completedItemIds.length > coreProducts.length ? "partial" : "core_only",
+                providerSentItemIds: completedItemIds,
+                providerCompletedItemIds: completedItemIds,
+                pendingItemIds: [],
+                recommendationOnlyItemIds,
+                progressStage: "fallback",
+                providerDiagnostics: {
+                  ...(result.providerDiagnostics || lastReadyResult.providerDiagnostics || {}),
+                  completedItemCount: completedItemIds.length,
+                  recommendationOnlyItemCount: recommendationOnlyItemIds.length,
+                  failedRole: product.role,
+                  progressStage: "fallback"
+                }
+              };
+              logTryOnMetric({
+                metric: "finisher_fallback",
+                stage: "fallback",
+                status: "success",
+                durationMs: Date.now() - startedAt,
+                metadata: { completedItemCount: completedItemIds.length, omittedFinisherCount: unfinishedItemIds.length }
+              });
+              return fallback;
+            }
+
             result.warnings = [...warnings, ...result.warnings].slice(0, 8);
+            result.requestedRoles = preparation.fidelity.requestedRoles;
+            result.providerSupportedRoles = preparation.fidelity.providerSupportedRoles;
+            result.partiallySupportedRoles = preparation.fidelity.partiallySupportedRoles;
+            result.unsupportedRoles = preparation.fidelity.unsupportedRoles;
+            result.previewFidelityLevel = preparation.fidelity.previewFidelityLevel;
+            result.providerSentItemIds = completedItemIds;
+            result.providerCompletedItemIds = completedItemIds;
+            result.pendingItemIds = orderedProducts.slice(index).map((entry) => entry.id).filter(Boolean);
+            result.recommendationOnlyItemIds = preparation.recommendationOnlyItemIds;
+            result.progressStage = "not_started";
             return result;
           }
+
           currentModelImage = result.previewUrls[0];
+          lastReadyResult = result;
+          if (product.id) completedItemIds.push(product.id);
+
+          const completedCore = index === coreProducts.length - 1 && coreProducts.length > 0;
+          if (completedCore && finishingProducts.length) {
+            const pendingItemIds = finishingProducts.map((entry) => entry.id).filter(Boolean);
+            await publishProgress(input, {
+              ...result,
+              status: "processing",
+              warnings: [...warnings, ...result.warnings].slice(0, 8),
+              requestedRoles: preparation.fidelity.requestedRoles,
+              providerSupportedRoles: preparation.fidelity.providerSupportedRoles,
+              partiallySupportedRoles: preparation.fidelity.partiallySupportedRoles,
+              unsupportedRoles: preparation.fidelity.unsupportedRoles,
+              previewFidelityLevel: "core_only",
+              providerSentItemIds: completedItemIds,
+              providerCompletedItemIds: completedItemIds,
+              pendingItemIds,
+              recommendationOnlyItemIds: preparation.recommendationOnlyItemIds,
+              progressStage: "finishing"
+            });
+          }
         }
 
         if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
@@ -471,13 +638,18 @@ export function createFashnTryOnProvider(): TryOnProvider {
         result.partiallySupportedRoles = preparation.fidelity.partiallySupportedRoles;
         result.unsupportedRoles = preparation.fidelity.unsupportedRoles;
         result.previewFidelityLevel = preparation.fidelity.previewFidelityLevel;
-        result.providerSentItemIds = preparation.sentItemIds;
+        result.providerSentItemIds = completedItemIds;
+        result.providerCompletedItemIds = completedItemIds;
+        result.pendingItemIds = [];
         result.recommendationOnlyItemIds = preparation.recommendationOnlyItemIds;
+        result.progressStage = "complete";
         result.providerDiagnostics = {
           ...(result.providerDiagnostics || {}),
-          sentItemCount: preparation.sentItemIds.length,
+          sentItemCount: completedItemIds.length,
+          completedItemCount: completedItemIds.length,
           recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length,
-          previewFidelityLevel: preparation.fidelity.previewFidelityLevel
+          previewFidelityLevel: preparation.fidelity.previewFidelityLevel,
+          progressStage: "complete"
         };
 
         logAiEvent({

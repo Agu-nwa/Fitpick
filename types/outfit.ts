@@ -133,7 +133,10 @@ export type OutfitRecommendation = {
     partiallySupportedRoles?: string[];
     unsupportedRoles?: string[];
     providerSentItemIds?: string[];
+    providerCompletedItemIds?: string[];
+    pendingItemIds?: string[];
     recommendationOnlyItemIds?: string[];
+    progressStage?: "not_started" | "core_ready" | "finishing" | "complete" | "fallback";
     generatedAt?: string | null;
     errorMessage?: string;
     attempts?: number;
