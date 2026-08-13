@@ -6,6 +6,7 @@ SOURCE_REPO="${FITPICK_SOURCE_REPO:-/home/ubuntu/Fitpick}"
 RELEASE_ROOT="${FITPICK_RELEASE_ROOT:-/home/ubuntu/fitpick-releases}"
 PUBLIC_HEALTH_URL="${FITPICK_PUBLIC_HEALTH_URL:-https://myfitpick.com/api/health}"
 LOCK_FILE="${FITPICK_DEPLOY_LOCK:-/tmp/myfitpick-production-deploy.lock}"
+PM2_APPS=(fitpick fitpick-worker fitpick-tryon-worker fitpick-realtime)
 
 if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "A full 40-character release SHA is required." >&2
@@ -52,15 +53,45 @@ if [[ -d "$CURRENT_DIR/.next/cache" ]]; then
   cp -a "$CURRENT_DIR/.next/cache" "$RELEASE_DIR/.next/cache"
 fi
 
+activate_release() {
+  local release_dir="$1"
+  cd "$release_dir"
+
+  # PM2's startOrRestart preserves the cwd of an existing process. Delete only
+  # MyFitPick's named processes so the ecosystem file is recreated from this
+  # exact release directory.
+  pm2 delete "${PM2_APPS[@]}" >/dev/null 2>&1 || true
+  pm2 start ecosystem.config.js --update-env
+  pm2 save
+}
+
+wait_for_local_release() {
+  local expected="$1"
+  local actual=""
+  for attempt in $(seq 1 30); do
+    actual="$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:3000/api/health 2>/dev/null \
+      | node -e 'let body=""; process.stdin.on("data", chunk => body += chunk); process.stdin.on("end", () => { try { const value = JSON.parse(body); process.stdout.write(value?.data?.deploymentId || value?.deploymentId || ""); } catch {} });' || true)"
+    if [[ "$actual" == "$expected" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "The new application did not become healthy on port 3000 within 60 seconds." >&2
+  return 1
+}
+
 SWITCHED=false
 rollback() {
   local exit_code=$?
   if [[ "$SWITCHED" == "true" && -f "$CURRENT_DIR/ecosystem.config.js" ]]; then
     echo "Release verification failed; restoring the previous PM2 release." >&2
-    cd "$CURRENT_DIR"
-    export NEXT_DEPLOYMENT_ID="$(git rev-parse --short=12 HEAD)"
-    pm2 startOrRestart ecosystem.config.js --update-env || true
-    pm2 save || true
+    export NEXT_DEPLOYMENT_ID="$(git -C "$CURRENT_DIR" rev-parse --short=12 HEAD)"
+    activate_release "$CURRENT_DIR" || true
+    wait_for_local_release "$NEXT_DEPLOYMENT_ID" || true
+  fi
+  if [[ -d "$RELEASE_DIR" && "$RELEASE_DIR" != "$CURRENT_DIR" ]]; then
+    git -C "$SOURCE_REPO" worktree remove --force "$RELEASE_DIR" || true
+    git -C "$SOURCE_REPO" worktree prune || true
   fi
   exit "$exit_code"
 }
@@ -79,9 +110,9 @@ npm run test:deployment-safety
 npm run build:ec2
 npm run deploy:verify-build
 
-pm2 startOrRestart ecosystem.config.js --update-env
 SWITCHED=true
-pm2 save
+activate_release "$RELEASE_DIR"
+wait_for_local_release "$SHORT_SHA"
 
 node scripts/verify-production-release.mjs \
   --runtime \

@@ -38,4 +38,10 @@ const nextConfigSource = readFileSync("next.config.mjs", "utf8");
 assert.match(nextConfigSource, /ignoreBuildErrors:\s*process\.env\.FITPICK_EC2_BUILD === "true"/, "only the EC2 build skips Next's duplicate type-check");
 assert.match(nextConfigSource, /webpackMemoryOptimizations:\s*true/, "low-memory webpack behavior remains enabled");
 
+const releaseScript = readFileSync("scripts/deploy-production-release.sh", "utf8");
+assert.match(releaseScript, /pm2 delete "\$\{PM2_APPS\[@\]\}"/, "release activation replaces stale PM2 process definitions");
+assert.doesNotMatch(releaseScript, /pm2 startOrRestart/, "release activation never preserves an old PM2 cwd");
+assert.match(releaseScript, /wait_for_local_release "\$SHORT_SHA"/, "release activation waits for the expected local health identity");
+assert.match(releaseScript, /worktree remove --force "\$RELEASE_DIR"/, "failed releases are removed to avoid filling the production disk");
+
 console.log("Deployment safety tests passed.");
