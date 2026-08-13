@@ -92,8 +92,14 @@ export async function verifyProductionRelease(options = {}) {
     const pm2Cwd = app?.pm2_env?.pm_cwd ? resolve(app.pm2_env.pm_cwd) : "";
     if (!app || app?.pm2_env?.status !== "online") failures.push(`PM2 process ${processName} is not online.`);
     if (pm2Cwd !== resolve(root)) failures.push(`PM2 cwd mismatch: expected ${resolve(root)}, received ${pm2Cwd || "unknown"}.`);
-    if (listeners.length !== 1) failures.push(`Expected exactly one listener on port ${port}; found ${listeners.length}.`);
-    else if (!pidBelongsToProcessTree(listeners[0], pm2Pid)) failures.push(`Port ${port} is not owned by the ${processName} PM2 process tree.`);
+    if (listeners.length === 0) {
+      failures.push(`Expected a listener on port ${port}; found none.`);
+    } else {
+      const foreignListeners = listeners.filter((pid) => !pidBelongsToProcessTree(pid, pm2Pid));
+      if (foreignListeners.length) {
+        failures.push(`Port ${port} has listener PIDs outside the ${processName} PM2 process tree: ${foreignListeners.join(", ")}.`);
+      }
+    }
 
     for (const url of [options.localUrl, options.publicUrl].filter(Boolean)) {
       try {

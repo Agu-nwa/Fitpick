@@ -17,6 +17,11 @@ assert.deepEqual(missingBuildArtifacts(validRoot), [], "a complete build artifac
 assert.deepEqual(parseListenerPids('users:(("next-server",pid=1234,fd=20))'), [1234]);
 assert.deepEqual(parseListenerPids('pid=1234,fd=20 pid=5678,fd=21'), [1234, 5678], "port conflicts retain both PIDs");
 
+const verifierSource = readFileSync("scripts/verify-production-release.mjs", "utf8");
+assert.match(verifierSource, /listeners\.length === 0/, "runtime verification requires the web port to have a listener");
+assert.match(verifierSource, /listeners\.filter\(\(pid\) => !pidBelongsToProcessTree\(pid, pm2Pid\)\)/, "all listener PIDs must belong to the PM2 web process tree");
+assert.doesNotMatch(verifierSource, /listeners\.length !== 1/, "runtime verification permits multiple PIDs sharing a socket within one PM2 process tree");
+
 const middlewareSource = readFileSync("middleware.ts", "utf8");
 assert.doesNotMatch(
   middlewareSource,
