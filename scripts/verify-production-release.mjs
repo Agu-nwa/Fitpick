@@ -16,7 +16,11 @@ export function missingBuildArtifacts(root = process.cwd()) {
 
 export function parseListenerPids(output = "") {
   const pids = new Set();
-  for (const match of output.matchAll(/(?:pid=|\s)(\d+)(?=,|\s|$)/g)) pids.add(Number(match[1]));
+  // This parser is used for `ss -ltnp` output. Fields such as Recv-Q and
+  // Send-Q are also bare numbers (for example `LISTEN 0 511 ...`) and must
+  // never be mistaken for process IDs. Only explicit `pid=` values identify
+  // listener owners.
+  for (const match of output.matchAll(/pid=(\d+)/g)) pids.add(Number(match[1]));
   return Array.from(pids).filter((pid) => Number.isInteger(pid) && pid > 0);
 }
 

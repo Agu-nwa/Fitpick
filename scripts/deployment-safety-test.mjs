@@ -16,6 +16,11 @@ for (const file of requiredNextArtifacts) {
 assert.deepEqual(missingBuildArtifacts(validRoot), [], "a complete build artifact set passes");
 assert.deepEqual(parseListenerPids('users:(("next-server",pid=1234,fd=20))'), [1234]);
 assert.deepEqual(parseListenerPids('pid=1234,fd=20 pid=5678,fd=21'), [1234, 5678], "port conflicts retain both PIDs");
+assert.deepEqual(
+  parseListenerPids('LISTEN 0 511 *:3000 *:* users:(("next-server",pid=759261,fd=18))'),
+  [759261],
+  "ss socket queue values are never interpreted as listener PIDs"
+);
 
 const verifierSource = readFileSync("scripts/verify-production-release.mjs", "utf8");
 assert.match(verifierSource, /listeners\.length === 0/, "runtime verification requires the web port to have a listener");
