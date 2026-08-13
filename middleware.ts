@@ -71,11 +71,6 @@ async function hasValidSessionToken(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/") {
-    const destination = (await hasValidSessionToken(request)) ? "/home" : "/login";
-    return NextResponse.redirect(new URL(destination, request.url));
-  }
-
   if (isProtectedPage(pathname) && !(await hasValidSessionToken(request))) {
     return loginRedirect(request);
   }
