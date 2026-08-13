@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
         if (persistedReferenceOutfit) persistedReferenceOutfits.push(persistedReferenceOutfit);
       }
       persistedOutfit = persistedReferenceOutfits[0] || null;
-    } else if (hasOutfit && wantsVisualization) {
+    } else if (hasOutfit) {
       persistedOutfit = await createOrReuseStylistOutfitRecommendation(
         String(auth.user._id),
         deterministicRecommendation,

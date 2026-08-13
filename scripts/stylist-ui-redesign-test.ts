@@ -14,6 +14,8 @@ assert.ok(!stylistPage.includes("Ask for the look. MyFitPick styles the closet."
 assert.ok(!stylistPage.includes("Tell the stylist the occasion, mood, weather, and dress code."), "Stylist page should not lead with a long chat-style intro.");
 
 const stylistChat = read("components/stylist/StylistChat.tsx");
+const stylistRoute = read("app/api/stylist/chat/route.ts");
+const stylistVisualization = read("lib/stylist/stylist-visualization.ts");
 assert.ok(stylistChat.includes('type StylistFlow = "home" | "create" | "match"'), "Stylist should have explicit product flow state.");
 assert.ok(stylistChat.includes('title="Create a Look"'), "Create a Look must be a primary product card.");
 assert.ok(stylistChat.includes('title="Match an Outfit"'), "Match an Outfit must be a primary product card.");
@@ -30,7 +32,11 @@ assert.ok(!stylistChat.includes("Avatar preview"), "Stylist UI should use Virtua
 assert.ok(stylistChat.includes("Describe it. I&apos;ll style it."), "Stylist chat should use the focused agent empty state.");
 assert.ok(stylistChat.includes("In this chat"), "Stylist chat should truthfully label the current in-memory prompt history.");
 assert.ok(!stylistChat.includes("window.location.reload()"), "Starting a new conversation must not reload the full page.");
-assert.ok(stylistChat.includes("Virtual Try-On") && stylistChat.includes('includeVisualization ? "On" : "Off"'), "Virtual Try-On must expose a visible on/off state.");
+assert.ok(stylistChat.includes("Try this outfit on · {virtualTryOnCreditCost} Credits"), "A completed recommendation must expose an explicit credit-labelled Try-On action.");
+assert.ok(!stylistChat.includes("setIncludeVisualization"), "Recommendation creation must not expose an auto Try-On toggle.");
+assert.ok(stylistChat.includes("includeVisualization: false"), "Recommendation regeneration must not automatically request Try-On.");
+assert.ok(stylistVisualization.includes("options.includeVisualization !== true"), "The server must require explicit Try-On consent.");
+assert.ok(stylistRoute.includes("} else if (hasOutfit) {"), "Outfits must still be persisted when automatic visualization is disabled.");
 assert.ok(stylistChat.includes("renderLookStudio(entry)"), "Generated looks should render with the assistant entry that produced them.");
 assert.ok(stylistChat.includes("Add image"), "The agent composer should expose image attachments.");
 assert.ok(!stylistChat.includes("occasionSuggestions"), "Stylist chat should not show initial occasion suggestions.");

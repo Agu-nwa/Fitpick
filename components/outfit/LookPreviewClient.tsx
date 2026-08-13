@@ -16,6 +16,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { generateAvatarPreview, getAvatarPreview, getOutfit, saveOutfit, type AvatarPreviewData } from "@/lib/api-client";
+import { getCreditCost } from "@/lib/credits/credit-costs";
 import { completenessLabel } from "@/lib/recommendation/completeness";
 import { editorialLookCopy } from "@/lib/recommendation/editorial-look-copy";
 import { buildOutfitPresentationItems } from "@/lib/recommendation/outfit-presentation";
@@ -32,6 +33,8 @@ import type { OutfitRecommendation, ReferenceFashionItemSummary } from "@/types/
 import type { WardrobeItem } from "@/types/wardrobe";
 
 const pollDelays = [2500, 4000, 6500, 10_000, 15_000];
+const virtualTryOnCreditCost = getCreditCost("virtual_try_on");
+const regenerateTryOnCreditCost = getCreditCost("regenerate_try_on");
 
 function isFootwear(item: WardrobeItem) {
   return item.category === "shoes" || /shoe|sneaker|loafer|sandal|boot|heel|slipper/i.test(`${item.name} ${item.subcategory}`);
@@ -317,7 +320,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                 <div className="mt-7 grid w-full max-w-md gap-2 sm:grid-cols-2">
                   <Button onClick={() => void handleGenerate(true)} disabled={requestPending}>
                     <RotateCcw size={16} aria-hidden="true" />
-                    {requestPending ? "Retrying…" : "Retry Try-On"}
+                    {requestPending ? "Retrying…" : `Retry Try-On · ${regenerateTryOnCreditCost} Credits`}
                   </Button>
                   <Link href={originHref}><Button variant="secondary" className="w-full">{originLabel}</Button></Link>
                 </div>
@@ -386,8 +389,9 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                 </div>
                 <Button className="mt-7" onClick={() => void handleGenerate(false)} disabled={requestPending}>
                   <Sparkles size={16} aria-hidden="true" />
-                  {requestPending ? "Starting…" : "Start Virtual Try-On"}
+                  {requestPending ? "Starting…" : `Try this outfit on · ${virtualTryOnCreditCost} Credits`}
                 </Button>
+                <p className="mt-3 max-w-md text-xs leading-5 text-muted">Credits are charged only after a preview is successfully created.</p>
               </div>
             )}
           </Card>
@@ -465,7 +469,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                 <PreviewDownloadButton outfitId={outfit.id} />
                 <Button variant="secondary" onClick={() => void handleGenerate(true)} disabled={requestPending}>
                   <RotateCcw size={16} aria-hidden="true" />
-                  {requestPending ? "Regenerating…" : "Regenerate Preview"}
+                  {requestPending ? "Regenerating…" : `Regenerate Preview · ${regenerateTryOnCreditCost} Credits`}
                 </Button>
               </div>
             ) : null}

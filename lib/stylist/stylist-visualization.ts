@@ -342,7 +342,9 @@ export function shouldGenerateVisualization(
   userMessage: string,
   options: StylistVisualizationOptions = {}
 ) {
-  if (options.includeVisualization === false || options.visualMode === "none") return false;
+  // Try-On is a paid, user-initiated action. Never infer consent from the
+  // styling intent or from a missing client option.
+  if (options.includeVisualization !== true || options.visualMode === "none") return false;
   if (!options.hasOutfit) return false;
 
   const allowedIntent =
@@ -356,7 +358,7 @@ export function shouldGenerateVisualization(
 
   const text = userMessage.toLowerCase();
   const stylingText = /(style me|what should i wear|build|look|outfit|wear|church|wedding|date|dinner|party|event|gala|business casual|vacation)/.test(text);
-  return allowedIntent || (options.includeVisualization === true && stylingText);
+  return allowedIntent || stylingText;
 }
 
 export async function createOrReuseStylistOutfitRecommendation(

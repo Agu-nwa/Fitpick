@@ -11,6 +11,7 @@ import { ImageFrame } from "@/components/ui/ImageFrame";
 import { ImagePreviewDialog, type ImagePreviewDialogImage } from "@/components/ui/ImagePreviewDialog";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { useRevealContent } from "@/hooks/use-reveal-content";
+import { getCreditCost } from "@/lib/credits/credit-costs";
 import {
   analyzeReferenceFashionItem,
   clearReferenceFashionItem,
@@ -62,6 +63,8 @@ const refinementChips = [
   "Keep jacket",
   "Avoid trainers"
 ];
+
+const virtualTryOnCreditCost = getCreditCost("virtual_try_on");
 
 function messageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -575,7 +578,7 @@ function EditorialRecommendationCard({
           ) : null}
           <Link href={`/outfit/${outfit.id}/preview?origin=${origin}`} className="block">
             <Button type="button" className="w-full">
-              Virtual Try-On
+              Try this outfit on · {virtualTryOnCreditCost} Credits
             </Button>
           </Link>
           {previewReady ? <PreviewDownloadButton outfitId={outfit.id} /> : null}
@@ -669,7 +672,6 @@ export function StylistChat({
   const [isRegeneratingLooks, setIsRegeneratingLooks] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [includeVisualization, setIncludeVisualization] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [filePickerSource, setFilePickerSource] = useState<"camera" | "upload">("upload");
   const [referenceBusy, setReferenceBusy] = useState(false);
@@ -997,9 +999,10 @@ export function StylistChat({
     setMessages(sessionMessages);
     revealContent(lookStudioRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
 
+    const shouldIncludeVisualization = options.includeVisualization === true;
     const response = await sendStylistMessage(promptText, {
-      includeVisualization: options.includeVisualization ?? includeVisualization,
-      visualMode: options.visualMode || "digital_human",
+      includeVisualization: shouldIncludeVisualization,
+      visualMode: shouldIncludeVisualization ? options.visualMode || "digital_human" : "none",
       referenceItemId: referenceForMessage?.id || null,
       recentMessages: recentMessages.map((entry) => ({ role: entry.role, content: entry.content })),
       regeneration: options.regeneration
@@ -1057,8 +1060,8 @@ export function StylistChat({
     setIsRegeneratingLooks(true);
     try {
       await submitStylistMessage(regenerationPrompt, {
-        includeVisualization,
-        visualMode: "digital_human",
+        includeVisualization: false,
+        visualMode: "none",
         isRegeneration: true,
         regeneration: previousItemIds.length ? {
           requestKind: "regenerate",
@@ -1308,12 +1311,6 @@ export function StylistChat({
                   <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
                     <Plus size={15} aria-hidden="true" /> <span>Add image</span>
                   </button>
-                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:text-ink focus-within:ring-2 focus-within:ring-cocoa focus-within:ring-offset-2 focus-within:ring-offset-canvas">
-                    <input type="checkbox" checked={includeVisualization} onChange={(event) => setIncludeVisualization(event.target.checked)} className="sr-only" />
-                    <span aria-hidden="true" className={cn("relative h-5 w-9 rounded-full transition-colors", includeVisualization ? "bg-cocoa" : "bg-line")}><span className={cn("absolute left-0 top-1 size-3 rounded-full bg-white transition-transform", includeVisualization ? "translate-x-5" : "translate-x-1")} /></span>
-                    <span>Virtual Try-On</span>
-                    <span className="text-xs text-muted">{includeVisualization ? "On" : "Off"}</span>
-                  </label>
                 </div>
                 <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-10 items-center justify-center rounded-full bg-ink text-white shadow-soft transition hover:bg-espresso disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
                   {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
