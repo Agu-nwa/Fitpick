@@ -1,10 +1,6 @@
-import OpenAI from "openai";
 import { getAiModel } from "@/lib/ai/models/registry";
+import { getOpenAIClient } from "@/lib/ai/openai";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 export async function generateAiOutfit({
   wardrobe,
@@ -30,7 +26,7 @@ export async function generateAiOutfit({
     .join("\n");
 
   const response =
-    await openai.responses.create({
+    await getOpenAIClient().responses.create({
       model: getAiModel("recommendationExplanation"),
 
       input: `

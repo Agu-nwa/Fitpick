@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
-import OpenAI from "openai";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { getOpenAIClient } from "@/lib/ai/openai";
 import { requireUser } from "@/lib/auth";
 import { getAiModel } from "@/lib/ai/models/registry";
 import { requestMeta } from "@/lib/audit";
@@ -11,10 +11,6 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 const visionStylistSchema = z.object({
   imageUrl: z.string().trim().url().max(600),
@@ -40,7 +36,7 @@ export async function POST(
     const question = sanitizeUserPrompt(parsed.data.question || "Analyze this clothing item.");
 
     const response =
-      await openai.responses.create({
+      await getOpenAIClient().responses.create({
         model: getAiModel("wardrobeVision"),
 
         input: [
