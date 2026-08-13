@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { CTABar } from "@/components/ui/CTABar";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Toast } from "@/components/ui/Toast";
 import { OutfitCard } from "@/components/cards/OutfitCard";
@@ -410,7 +411,7 @@ export function OutfitResult({
               className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-canvas via-surface to-olive/10"
               onClick={() => setPreviewOpen(true)}
             >
-              <img src={previewUrl} alt={`${outfit.title} outfit preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
+              <ImageFrame src={previewUrl} alt={`${outfit.title} outfit preview`} aspect="fullBody" fit="contain" context="outfit.generated_preview" className="max-h-[560px] w-full border-0 bg-transparent p-3" />
             </button>
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/60 px-5 text-center">

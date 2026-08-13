@@ -12,7 +12,9 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
     <article className="group h-full overflow-hidden rounded-xl3 border border-line bg-surface/90 p-3 shadow-card transition duration-500 hover:-translate-y-1 hover:border-olive/40 hover:shadow-soft">
       <ImageFrame
         src={imageUrl}
+        fallbackSrc={item.thumbnailUrl ? item.imageUrl : undefined}
         alt={item.name}
+        context="wardrobe.card"
         aspect="portrait"
         className={cn("mb-3 border-0", imageUrl ? "" : imageTone)}
         imageClassName="transition duration-700 group-hover:scale-105"

@@ -254,6 +254,55 @@ export async function uploadImageObject(input: { storageKey: string; mimeType: s
   };
 }
 
+export async function downloadImageObject(input: { storageKey: string; maxBytes?: number }) {
+  const storage = assertStorageConfigured();
+  if (!storage.ready) throw new Error("S3 image storage is not configured.");
+
+  const config = s3Config();
+  const credentials = await resolveAwsCredentials();
+  const storageKey = normalizeStorageKey(input.storageKey);
+  if (!storageKey) throw new Error("Stored image key is invalid.");
+
+  const host = objectHost(config.bucket, config.region);
+  const now = amzDate();
+  const stamp = dateStamp(now);
+  const payloadHash = hash("");
+  const canonicalUri = `/${storageKey.split("/").map(encodePathPart).join("/")}`;
+  const tokenHeader = credentials.sessionToken ? `x-amz-security-token:${credentials.sessionToken}\n` : "";
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${now}\n${tokenHeader}`;
+  const signedHeaders = credentials.sessionToken
+    ? "host;x-amz-content-sha256;x-amz-date;x-amz-security-token"
+    : "host;x-amz-content-sha256;x-amz-date";
+  const canonicalRequest = ["GET", canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+  const scope = `${stamp}/${config.region}/${service}/aws4_request`;
+  const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  const authorization = `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const headers: Record<string, string> = {
+    authorization,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": now
+  };
+  if (credentials.sessionToken) headers["x-amz-security-token"] = credentials.sessionToken;
+
+  const response = await fetch(`https://${host}${canonicalUri}`, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(15_000)
+  });
+  if (!response.ok) throw new Error(`S3 image download failed with status ${response.status}.`);
+
+  const maxBytes = input.maxBytes || MAX_IMAGE_UPLOAD_BYTES;
+  const declaredBytes = Number(response.headers.get("content-length") || 0);
+  if (declaredBytes > maxBytes) throw new Error("Stored image exceeds the processing limit.");
+  const contentType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  if (contentType && !contentType.startsWith("image/")) throw new Error("Stored object is not an image.");
+
+  const body = Buffer.from(await response.arrayBuffer());
+  if (!body.byteLength || body.byteLength > maxBytes) throw new Error("Stored image exceeds the processing limit.");
+  return { body, contentType, bytes: body.byteLength, storageKey };
+}
+
 export async function createSignedViewUrl(input: { storageKey: string }) {
   const storage = assertStorageConfigured();
 

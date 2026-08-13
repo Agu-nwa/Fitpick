@@ -41,6 +41,18 @@ function preferredWardrobeImage(images: any = {}, fallback = "") {
   );
 }
 
+function preferredOriginalWardrobeImage(images: any = {}, fallback = "") {
+  const front = images.front || {};
+  const back = images.back || {};
+  return (
+    imageVariantUrl(front, "original") ||
+    front.url ||
+    imageVariantUrl(back, "original") ||
+    back.url ||
+    fallback
+  );
+}
+
 function recognizedEntityFromItem(item: any) {
   return (
     item.verifiedMetadata?.recognizedEntity?.value ||
@@ -51,7 +63,7 @@ function recognizedEntityFromItem(item: any) {
 }
 
 export function serializeWardrobeItem(item: any) {
-  const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const imageUrl = preferredOriginalWardrobeImage(item.images || {}, item.imageUrl || "");
   const normalisedMetadata = normaliseWardrobeItemMetadata(item);
   const condition = inferCondition({
     category: item.category,
@@ -142,7 +154,7 @@ export function serializeWardrobeItem(item: any) {
  * consume.
  */
 export function serializeWardrobeListItem(item: any) {
-  const imageUrl = preferredWardrobeImage(item.images || {}, item.imageUrl || "");
+  const imageUrl = preferredOriginalWardrobeImage(item.images || {}, item.imageUrl || "");
   const condition = inferCondition({
     category: item.category,
     color: item.color,

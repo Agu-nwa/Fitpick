@@ -5,6 +5,7 @@ import { Eye, Sparkles, WandSparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 import { PreviewDownloadButton } from "@/components/outfit/PreviewDownloadButton";
 import { simpleFitStatus, simplePreviewType } from "@/lib/copy/simple-copy";
 import { completenessLabel } from "@/lib/recommendation/completeness";
@@ -85,7 +86,7 @@ export function DigitalHumanTryOnPanel({
             className="focus-ring block w-full overflow-hidden rounded-xl3 border border-line bg-gradient-to-br from-canvas via-surface to-olive/10"
             onClick={onOpenPreview}
           >
-            <img src={previewUrl} alt={`${outfit.title} Virtual Try-On preview`} className="aspect-[3/4] max-h-[560px] w-full object-contain p-3" />
+            <ImageFrame src={previewUrl} alt={`${outfit.title} Virtual Try-On preview`} aspect="fullBody" fit="contain" context="tryon.panel_preview" className="max-h-[560px] w-full border-0 bg-transparent p-3" />
           </button>
         ) : (
           <div className="flex aspect-square items-center justify-center rounded-xl3 border border-dashed border-line bg-canvas/70 px-5 text-center">
@@ -112,11 +113,15 @@ export function DigitalHumanTryOnPanel({
         <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1">
           {outfit.items.map((item) => (
             <div key={item.id} className="w-28 shrink-0 overflow-hidden rounded-xl border border-line bg-surface/80">
-              {item.thumbnailUrl || item.imageUrl ? (
-                <img src={item.thumbnailUrl || item.imageUrl} alt={item.name} className="aspect-square w-full object-cover" />
-              ) : (
-                <div className="flex aspect-square items-center justify-center bg-canvas px-2 text-center text-xs text-muted">{item.category}</div>
-              )}
+              <ImageFrame
+                src={item.thumbnailUrl || item.imageUrl}
+                fallbackSrc={item.thumbnailUrl ? item.imageUrl : undefined}
+                alt={item.name}
+                aspect="square"
+                context="tryon.outfit_item"
+                className="rounded-none border-0 bg-canvas"
+                placeholder={item.category}
+              />
               <div className="p-2">
                 <p className="truncate text-xs font-semibold text-ink">{item.name}</p>
                 <p className="truncate text-[11px] text-muted">{[item.taggedSize, item.garmentFit].filter(Boolean).join(" • ") || item.category}</p>

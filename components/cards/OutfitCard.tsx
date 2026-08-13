@@ -27,7 +27,9 @@ export function OutfitCard({ outfit }: { outfit: OutfitRecommendation }) {
             <ImageFrame
               key={item.id}
               src={item.thumbnailUrl || item.imageUrl}
+              fallbackSrc={item.thumbnailUrl ? item.imageUrl : undefined}
               alt={item.name}
+              context="outfit.card_item"
               fit={compact ? "contain" : "cover"}
               className={cn(
                 "border-0 bg-surface",

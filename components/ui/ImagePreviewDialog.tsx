@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { ImageFrame } from "@/components/ui/ImageFrame";
 
 export type ImagePreviewDialogImage = {
   src: string;
@@ -56,7 +57,15 @@ export function ImagePreviewDialog({
           </button>
         </div>
         <div className="flex max-h-[78vh] items-center justify-center bg-canvas/70 p-3 sm:p-5">
-          <img src={image.src} alt={image.alt} className="max-h-[72vh] w-full object-contain" />
+          <ImageFrame
+            src={image.src}
+            alt={image.alt}
+            aspect="fullBody"
+            fit="contain"
+            showRetry
+            context="image.preview_dialog"
+            className="max-h-[72vh] w-full border-0 bg-transparent"
+          />
         </div>
       </div>
     </div>

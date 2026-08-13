@@ -51,7 +51,9 @@ export function WardrobeImageSlots({
             <ImageFrame
               aspect="portrait"
               src={displayUrl}
+              fallbackSrc={displayUrl !== image?.url ? image?.url : undefined}
               alt={`${slot.label} photo`}
+              context={`wardrobe.upload_${slot.key}`}
               placeholder={
                 <span>
                   <Camera size={20} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />

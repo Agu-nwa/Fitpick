@@ -30,7 +30,9 @@ export function OutfitItemCard({ item }: { item: WardrobeItem }) {
         >
           <ImageFrame
             src={imageUrl}
+            fallbackSrc={item.thumbnailUrl ? item.imageUrl : undefined}
             alt={item.name}
+            context="outfit.item"
             className={cn("mb-3 border-line/70", imageUrl ? "" : item.imageTone || "from-stone-100 to-stone-300")}
             placeholder={item.category}
           />

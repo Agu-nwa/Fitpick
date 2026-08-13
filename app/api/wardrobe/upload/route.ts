@@ -12,6 +12,7 @@ import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { findIntakeCategory } from "@/lib/wardrobe/category-intelligence";
 import { profileForCategory } from "@/lib/wardrobe/category-attribute-profiles";
+import { createWardrobeThumbnailFromStorage } from "@/lib/image-processing/wardrobe-thumbnail";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { uploadMetadataSchema } from "@/schemas/wardrobe.schema";
 
@@ -20,7 +21,6 @@ function withOriginalVariant(asset: any, fallback: { width?: number; height?: nu
   return {
     ...asset,
     variants: {
-      ...(asset.variants || {}),
       original: {
         url: asset.url || "",
         storageKey: asset.storageKey || "",
@@ -75,6 +75,86 @@ function sanitizeImageAssets(images: any, userId: string, fallback: { width?: nu
   };
 }
 
+async function addStoredThumbnails(images: any) {
+  const warnings: string[] = [];
+
+  async function processAsset(asset: any) {
+    if (!asset?.storageKey) return asset;
+    try {
+      const thumbnail = await createWardrobeThumbnailFromStorage(asset.storageKey);
+      return {
+        ...asset,
+        variants: {
+          ...(asset.variants || {}),
+          thumbnail
+        }
+      };
+    } catch (error) {
+      logSafeError("wardrobe.upload.thumbnail", error, {
+        stage: "thumbnail_generation",
+        status: "failed"
+      });
+      warnings.push("A smaller preview could not be prepared. The original image remains available.");
+      return {
+        ...asset,
+        variants: {
+          ...(asset.variants || {}),
+          thumbnail: {
+            provider: "s3",
+            status: "failed",
+            processedAt: new Date().toISOString(),
+            errorMessage: "Thumbnail unavailable."
+          }
+        }
+      };
+    }
+  }
+
+  const entries = [
+    ["front", images?.front],
+    ["back", images?.back],
+    ["fabricCloseUp", images?.fabricCloseUp],
+    ["label", images?.label],
+    ...(images?.additional || []).map((asset: any, index: number) => [`additional:${index}`, asset])
+  ].filter((entry) => entry[1]);
+  const processed = new Map<string, any>();
+  let nextIndex = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(2, entries.length) }, async () => {
+      while (nextIndex < entries.length) {
+        const entry = entries[nextIndex++];
+        processed.set(entry[0], await processAsset(entry[1]));
+      }
+    })
+  );
+
+  const front = processed.get("front");
+  const back = processed.get("back");
+  const fabricCloseUp = processed.get("fabricCloseUp");
+  const label = processed.get("label");
+  const additional = (images?.additional || []).map((_: any, index: number) => processed.get(`additional:${index}`));
+
+  return {
+    images: {
+      ...(front ? { front } : {}),
+      ...(back ? { back } : {}),
+      ...(fabricCloseUp ? { fabricCloseUp } : {}),
+      ...(label ? { label } : {}),
+      additional
+    },
+    warning: warnings[0] || ""
+  };
+}
+
+function readyThumbnailUrl(images: any) {
+  for (const asset of [images?.front, images?.back, ...(images?.additional || [])]) {
+    if (asset?.variants?.thumbnail?.status === "ready" && asset.variants.thumbnail.url) {
+      return asset.variants.thumbnail.url;
+    }
+  }
+  return "";
+}
+
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
   const limited = rateLimitRequest({ key: `wardrobe-upload:${meta.ip}`, limit: 20, windowMs: 60 * 1000, operation: "wardrobe-upload" });
@@ -120,7 +200,6 @@ export async function POST(request: NextRequest) {
         filename: parsed.data.filename
       });
     const imageUrl = parsed.data.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
-    const thumbnailUrl = parsed.data.thumbnailUrl || imageUrl;
     const intakeCategory = findIntakeCategory(parsed.data.intakeCategoryId || "");
     const attributeProfile = profileForCategory(parsed.data.selectedCategory || intakeCategory?.backendCategory || "");
     const labelPhotoKinds = Array.from(new Set(parsed.data.labelPhotoKinds || [])).slice(0, 7);
@@ -164,7 +243,7 @@ export async function POST(request: NextRequest) {
         ...(intakeCategory?.visionFocus || [])
       ].filter(Boolean).map((value) => String(value).toLowerCase()))).slice(0, 50)
     };
-    const images = sanitizedImages.images || (imageUrl
+    const originalImages = sanitizedImages.images || (imageUrl
       ? {
           front: {
             url: imageUrl,
@@ -188,6 +267,9 @@ export async function POST(request: NextRequest) {
           additional: []
         }
       : { additional: [] });
+    const thumbnailResult = await addStoredThumbnails(originalImages);
+    const images = thumbnailResult.images;
+    const thumbnailUrl = readyThumbnailUrl(images) || imageUrl;
 
     const upload = await WardrobeUpload.create({
       userId: auth.user._id,
@@ -234,7 +316,8 @@ export async function POST(request: NextRequest) {
           ready: storage.ready,
           mode: "provider-ready"
         },
-        nextAction: "review-tags"
+        nextAction: "review-tags",
+        thumbnailWarning: thumbnailResult.warning || undefined
       },
       { message: "Wardrobe upload record created.", status: 201 }
     );
