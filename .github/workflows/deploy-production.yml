@@ -140,7 +140,10 @@ jobs:
         run: |
           EXPECTED="${RELEASE_SHA:0:12}"
           for attempt in 1 2 3 4 5; do
-            ACTUAL="$(curl --fail --silent --show-error https://myfitpick.com/api/health | jq -r '.data.deploymentId // .deploymentId // empty')" || true
+            ACTUAL="$(curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache, no-store, max-age=0' \
+              "https://myfitpick.com/api/health?deployment_check=${EXPECTED}" \
+              | jq -r '.data.deploymentId // .deploymentId // empty')" || true
             if [ "$ACTUAL" = "$EXPECTED" ]; then
               echo "Production is serving $EXPECTED"
               exit 0

@@ -64,7 +64,7 @@ export async function GET() {
   const now = new Date().toISOString();
   const status = database === "degraded" || jobs.worker === "degraded" || jobs.queue === "degraded" ? "degraded" : "ok";
 
-  return apiSuccess({
+  const response = apiSuccess({
     ok: true,
     service: "fitpick",
     version: packageJson.version || "0.0.0",
@@ -82,4 +82,8 @@ export async function GET() {
     },
     queue: jobs.summary,
   });
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+  return response;
 }

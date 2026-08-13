@@ -21,6 +21,12 @@ const verifierSource = readFileSync("scripts/verify-production-release.mjs", "ut
 assert.match(verifierSource, /listeners\.length === 0/, "runtime verification requires the web port to have a listener");
 assert.match(verifierSource, /listeners\.filter\(\(pid\) => !pidBelongsToProcessTree\(pid, pm2Pid\)\)/, "all listener PIDs must belong to the PM2 web process tree");
 assert.doesNotMatch(verifierSource, /listeners\.length !== 1/, "runtime verification permits multiple PIDs sharing a socket within one PM2 process tree");
+assert.match(verifierSource, /searchParams\.set\("deployment_check", expectedDeploymentId\)/, "deployment health checks use a release-specific cache key");
+assert.match(verifierSource, /cache:\s*"no-store"/, "deployment health checks bypass the fetch cache");
+
+const healthRouteSource = readFileSync("app/api/health/route.ts", "utf8");
+assert.match(healthRouteSource, /s-maxage=0/, "the health endpoint disables shared intermediary caching");
+assert.match(healthRouteSource, /Pragma", "no-cache"/, "the health endpoint disables legacy caches");
 
 const middlewareSource = readFileSync("middleware.ts", "utf8");
 assert.doesNotMatch(

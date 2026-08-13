@@ -62,7 +62,17 @@ export function pidBelongsToProcessTree(pid, rootPid) {
 }
 
 async function health(url, expectedDeploymentId) {
-  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(8_000) });
+  const target = new URL(url);
+  if (expectedDeploymentId) target.searchParams.set("deployment_check", expectedDeploymentId);
+  const response = await fetch(target, {
+    redirect: "error",
+    cache: "no-store",
+    headers: {
+      "cache-control": "no-cache, no-store, max-age=0",
+      pragma: "no-cache"
+    },
+    signal: AbortSignal.timeout(8_000)
+  });
   if (!response.ok) throw new Error(`Health endpoint returned HTTP ${response.status}.`);
   const payload = await response.json();
   const data = payload?.data || payload;
