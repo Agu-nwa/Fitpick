@@ -343,7 +343,10 @@ export function buildRecommendation(input: EngineInput) {
     ? rankedCombinations.filter((candidate) => evaluateRegenerationCandidate([...candidate.items, ...lockedFinisherItems], regenerationPolicy).valid)
     : rankedCombinations;
   const strictRegenerationUnavailable = regenerationPolicy.enabled && regenerationEligibleCombinations.length === 0;
-  const selectionCandidates = regenerationEligibleCombinations.length ? regenerationEligibleCombinations : rankedCombinations;
+  const strictAnchorUnavailable = regenerationPolicy.requestKind === "anchor" && regenerationEligibleCombinations.length === 0;
+  const selectionCandidates = regenerationEligibleCombinations.length
+    ? regenerationEligibleCombinations
+    : strictAnchorUnavailable ? [] : rankedCombinations;
 
   const diverseOutfits = diversifyOutfits(selectionCandidates, {
     limit: 3,
@@ -353,7 +356,7 @@ export function buildRecommendation(input: EngineInput) {
     maximumLastOutfitOverlap: regenerationPolicy.enabled ? regenerationPolicy.maximumOverlap : 0.5
   });
 
-  const bestOutfit = diverseOutfits[0] || rankedCombinations[0] || combinations[0];
+  const bestOutfit = strictAnchorUnavailable ? undefined : diverseOutfits[0] || rankedCombinations[0] || combinations[0];
   const candidateDecision = buildCandidateDecisionEvidence(diverseOutfits.length ? diverseOutfits : rankedCombinations.slice(0, 3), internalStyleProfile);
 
   const outfitSanitization = sanitizeOutfitItems(bestOutfit?.items || []);

@@ -1,4 +1,4 @@
-import { CreditCard, Home, Settings, Shirt, Sparkles, UserRound, type LucideIcon } from "lucide-react";
+import { CreditCard, Heart, Home, Settings, Shirt, Sparkles, UserRound, type LucideIcon } from "lucide-react";
 
 export type NavigationItem = {
   label: string;
@@ -11,6 +11,7 @@ export const primaryNavItems: NavigationItem[] = [
   { label: "Home", href: "/home", icon: Home, activePaths: ["/"] },
   { label: "Closet", href: "/wardrobe", icon: Shirt },
   { label: "Stylist", href: "/stylist", icon: Sparkles },
+  { label: "Looks", href: "/looks", icon: Heart },
   { label: "Profile", href: "/profile", icon: UserRound }
 ];
 

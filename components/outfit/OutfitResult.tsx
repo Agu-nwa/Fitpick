@@ -121,6 +121,7 @@ export function OutfitResult({
   const [rating, setRating] = useState(4);
   const [selectedFeedbackTags, setSelectedFeedbackTags] = useState<string[]>([]);
   const [toast, setToast] = useState("");
+  const [isSaved, setIsSaved] = useState(Boolean(outfit.savedAt));
   const [actionFailed, setActionFailed] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(outfit.preview?.imageUrl || "");
@@ -138,6 +139,10 @@ export function OutfitResult({
   const [avatarFitWarnings, setAvatarFitWarnings] = useState<string[]>([]);
   const [avatarVisualizationWarnings, setAvatarVisualizationWarnings] = useState<string[]>([]);
   const outfitItemIds = outfit.items.map((item) => item.id).filter(Boolean);
+
+  useEffect(() => {
+    setIsSaved(Boolean(outfit.savedAt));
+  }, [outfit.id, outfit.savedAt]);
 
   function applyAvatarPreview(preview: any, profile?: AvatarProfileData["profile"] | null) {
     setAvatarPreviewStatus(preview.status || "not_started");
@@ -204,7 +209,8 @@ export function OutfitResult({
     const result = await saveOutfit(outfit.id, { title: outfit.title, favorite });
     if (result.ok) {
       await remember(favorite ? "item_favorited" : "outfit_saved", favorite ? 5 : 4, favorite ? "Favorited from outfit UI" : "Saved from outfit UI");
-      setToast(favorite ? "Refined your style" : "Save this look");
+      setIsSaved(true);
+      setToast(favorite ? "Added to favorites" : "Saved to My Looks");
       window.setTimeout(() => setToast(""), 1800);
       return;
     }
@@ -516,7 +522,9 @@ export function OutfitResult({
       <CTABar className="mt-6 grid grid-cols-2 gap-2">
         {canSwap ? <Button onClick={() => void handleQuickMemory("outfit_liked")}>Refine my style</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
         {canSwap ? <Button variant="secondary" onClick={() => setSwapOpen(true)}>Swap item</Button> : <Link href={`/outfit/${outfit.id}`}><Button variant="secondary" className="w-full">Open detail</Button></Link>}
-        {canSwap ? <Button variant="secondary" onClick={() => void handleSave(false)}>Save this look</Button> : null}
+        {canSwap ? isSaved ? (
+          <Link href="/looks"><Button variant="secondary" className="w-full">View saved looks</Button></Link>
+        ) : <Button variant="secondary" onClick={() => void handleSave(false)}>Save this look</Button> : null}
         {canSwap ? <Link href={`/outfit/${outfit.id}/preview`}><Button variant="secondary" className="w-full">View full look</Button></Link> : null}
         {canSwap ? <Button variant="secondary" onClick={() => void handleWear()}>Mark as worn</Button> : null}
         {canSwap ? <Button variant="ghost" onClick={() => void handleQuickMemory("outfit_rejected")}>Not my style</Button> : null}

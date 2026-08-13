@@ -16,15 +16,16 @@ export async function resolveOwnedRegenerationContext(input: {
   request?: RecommendationRegenerationContext;
   wardrobeItems: any[];
 }): Promise<RecommendationRegenerationContext | undefined> {
-  if (input.request?.requestKind !== "regenerate") return undefined;
+  const request = input.request;
+  if (!["regenerate", "anchor"].includes(request?.requestKind || "") || !request) return undefined;
 
   const ownedIds = new Set(input.wardrobeItems.map(itemId).filter(Boolean));
   let previousRecommendationId: string | null = null;
-  let previousItemIds = uniqueOwnedIds(input.request.previousItemIds || [], ownedIds);
+  let previousItemIds = uniqueOwnedIds(request.previousItemIds || [], ownedIds);
 
-  if (input.request.previousRecommendationId) {
+  if (request.previousRecommendationId) {
     const previous = await OutfitRecommendation.findOne({
-      _id: input.request.previousRecommendationId,
+      _id: request.previousRecommendationId,
       userId: input.userId
     })
       .select({ _id: 1, itemIds: 1 })
@@ -39,12 +40,12 @@ export async function resolveOwnedRegenerationContext(input: {
   if (!previousItemIds.length) return undefined;
 
   return {
-    requestKind: "regenerate",
+    requestKind: request.requestKind,
     previousRecommendationId,
     previousItemIds,
-    lockedItemIds: uniqueOwnedIds(input.request.lockedItemIds || [], ownedIds),
-    excludedItemIds: uniqueOwnedIds(input.request.excludedItemIds || [], ownedIds),
-    minimumCoreChanges: input.request.minimumCoreChanges,
-    maximumOverlap: input.request.maximumOverlap
+    lockedItemIds: uniqueOwnedIds(request.lockedItemIds || [], ownedIds),
+    excludedItemIds: uniqueOwnedIds(request.excludedItemIds || [], ownedIds),
+    minimumCoreChanges: request.minimumCoreChanges,
+    maximumOverlap: request.maximumOverlap
   };
 }

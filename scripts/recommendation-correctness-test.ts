@@ -193,6 +193,23 @@ assert.ok(
 );
 assert.equal(evaluateRegenerationCandidate([dress, item("dress-shoe", "shoes", "Silver pumps")], structurePolicy).valid, true, "42 regeneration accepts the complete alternative architecture");
 
+const anchorPolicy = resolveRegenerationPolicy({
+  requestKind: "anchor",
+  previousItemIds: ["top"],
+  lockedItemIds: ["top"]
+}, regenerationWardrobe, { allowedStructures: ["top_bottom"] });
+assert.equal(anchorPolicy.minimumCoreChanges, 0, "42a an anchored Style this item request does not require replacing its selected garment");
+assert.equal(anchorPolicy.requestKind, "anchor", "42aa an anchored request remains distinguishable from an ordinary regeneration");
+assert.equal(
+  evaluateRegenerationCandidate([top, bottom, shoe], anchorPolicy).valid,
+  true,
+  "42b an anchored Style this item request accepts a complete look that preserves the selected garment"
+);
+assert.ok(
+  evaluateRegenerationCandidate([bottom, shoe], anchorPolicy).rejectionReasons.includes("locked_item_missing"),
+  "42c an anchored Style this item request rejects a look that drops the selected garment"
+);
+
 const repeatedBlazerScore = wardrobeRotationScore(
   [regenerationWardrobe.find((entry) => entry._id === "blazer")],
   { eventCount: 3, lastRecommendationItemIds: ["blazer"], recentRecommendedItemIds: ["blazer"], recentItemRecommendationCounts: { blazer: 3 } }

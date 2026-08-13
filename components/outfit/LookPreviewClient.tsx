@@ -69,6 +69,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "not-found" | "unavailable" | "error">("idle");
   const [requestPending, setRequestPending] = useState(false);
   const [toast, setToast] = useState("");
+  const [saved, setSaved] = useState(false);
   const [localError, setLocalError] = useState("");
   const [pollWarning, setPollWarning] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -126,6 +127,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
     }
 
     setOutfit(outfitResult.data.outfit);
+    setSaved(Boolean(outfitResult.data.outfit.savedAt));
     if (previewResult.ok) {
       setPreview(previewResult.data.preview);
       setGeneration(previewResult.data.generation || null);
@@ -226,7 +228,12 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   async function handleSave() {
     if (!outfit) return;
     const result = await saveOutfit(outfit.id, { title: outfit.title, favorite: false });
-    showToast(result.ok ? "Look saved." : "Unable to save look right now.");
+    if (result.ok) {
+      setSaved(true);
+      showToast("Look saved.");
+      return;
+    }
+    showToast("Unable to save look right now.");
   }
 
   if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) return <LoadingCard title="Loading full look" />;
@@ -459,7 +466,14 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
           )}
 
           <Card className="space-y-3">
-            {previewState === "completed" ? (
+            {previewState === "completed" ? saved ? (
+              <div className="space-y-3 rounded-2xl border border-success/25 bg-success/10 p-4" role="status">
+                <p className="text-sm font-semibold text-ink">Saved to My Looks</p>
+                <p className="text-sm leading-6 text-muted">You can open this outfit again or create a new version later.</p>
+                <Link href="/looks"><Button className="w-full">View Saved Looks</Button></Link>
+                <Link href={originHref}><Button variant="secondary" className="w-full">Style another occasion</Button></Link>
+              </div>
+            ) : (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <Button onClick={() => void handleSave()}>Save Look</Button>
                 <PreviewDownloadButton outfitId={outfit.id} />

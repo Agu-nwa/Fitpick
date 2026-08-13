@@ -3,7 +3,7 @@ import { evaluateOutfitCompleteness } from "@/lib/recommendation/completeness";
 import { type OutfitStructure } from "@/lib/recommendation/outfit-templates";
 
 export type RecommendationRegenerationContext = {
-  requestKind?: "initial" | "regenerate";
+  requestKind?: "initial" | "regenerate" | "anchor";
   previousRecommendationId?: string | null;
   previousItemIds?: string[];
   lockedItemIds?: string[];
@@ -14,6 +14,7 @@ export type RecommendationRegenerationContext = {
 
 export type ResolvedRegenerationPolicy = {
   enabled: boolean;
+  requestKind: "initial" | "regenerate" | "anchor";
   previousRecommendationId: string | null;
   previousItemIds: string[];
   previousCoreItemIds: string[];
@@ -116,13 +117,14 @@ export function resolveRegenerationPolicy(
   const requireStructureChange = Boolean(
     previousStructure && allowedStructures?.length && hasDistinctAlternativeStructure(wardrobeItems, previousStructure, allowedStructures)
   );
-  const enabled = context?.requestKind === "regenerate" && previousItemIds.length > 0;
+  const enabled = ["regenerate", "anchor"].includes(context?.requestKind || "") && previousItemIds.length > 0;
   const requestedMinimum = Math.max(1, Math.min(4, Math.round(Number(context?.minimumCoreChanges ?? 2))));
   const lockedPreviousCoreCount = previousCoreItemIds.filter((id) => lockedItemIds.includes(id)).length;
   const changeableCoreCount = Math.max(0, previousCoreItemIds.length - lockedPreviousCoreCount);
 
   return {
     enabled,
+    requestKind: context?.requestKind || "initial",
     previousRecommendationId: context?.previousRecommendationId || null,
     previousItemIds,
     previousCoreItemIds,
@@ -133,8 +135,8 @@ export function resolveRegenerationPolicy(
     allowedStructures: allowedStructures || [],
     lockedItemIds,
     excludedItemIds,
-    minimumCoreChanges: enabled ? Math.min(requestedMinimum, changeableCoreCount) : 0,
-    maximumOverlap: Math.max(0, Math.min(0.8, Number(context?.maximumOverlap ?? 0.4)))
+    minimumCoreChanges: context?.requestKind === "anchor" ? 0 : enabled ? Math.min(requestedMinimum, changeableCoreCount) : 0,
+    maximumOverlap: context?.requestKind === "anchor" ? 1 : Math.max(0, Math.min(0.8, Number(context?.maximumOverlap ?? 0.4)))
   };
 }
 
@@ -173,8 +175,8 @@ export function evaluateRegenerationCandidate(
     if (overlap > policy.maximumOverlap) rejectionReasons.push("maximum_overlap_exceeded");
     if (missingLockedItemIds.length) rejectionReasons.push("locked_item_missing");
     if (includedExcludedItemIds.length) rejectionReasons.push("excluded_item_present");
-    if (sharedProminentItemIds.length) rejectionReasons.push("prominent_item_repeated");
-    if (policy.requireStructureChange && !structureChanged) rejectionReasons.push("outfit_structure_repeated");
+    if (policy.minimumCoreChanges > 0 && sharedProminentItemIds.length) rejectionReasons.push("prominent_item_repeated");
+    if (policy.minimumCoreChanges > 0 && policy.requireStructureChange && !structureChanged) rejectionReasons.push("outfit_structure_repeated");
   }
 
   return {

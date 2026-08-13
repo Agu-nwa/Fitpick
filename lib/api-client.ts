@@ -3,7 +3,7 @@ import type { AiSuggestedWardrobeTags, WardrobeImageAsset } from "@/types/ai-tag
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeApiFailure } from "@/lib/user-facing-errors";
 import type { Occasion } from "@/types/occasion";
-import type { FitLockSummary, OutfitRecommendation, PreviewAccuracySummary, ReferenceFashionItemSummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
+import type { FitLockSummary, OutfitRecommendation, PreviewAccuracySummary, ReferenceFashionItemSummary, SavedOutfits, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
 import type { WardrobeItem, WardrobeSummary } from "@/types/wardrobe";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -570,7 +570,7 @@ export type SendStylistMessageOptions = {
 };
 
 export type RecommendationRegenerationRequest = {
-  requestKind: "regenerate";
+  requestKind: "regenerate" | "anchor";
   previousRecommendationId?: string | null;
   previousItemIds: string[];
   lockedItemIds?: string[];
@@ -932,6 +932,7 @@ export const confirmWardrobeUploadTags = (uploadId: string, body: unknown) =>
   apiRequest<WardrobeUploadReviewData>(`/api/wardrobe/upload/${uploadId}/confirm-tags`, { method: "POST", body });
 export const createRecommendation = (body: unknown) => apiRequest<OutfitData>("/api/outfits/recommend", { method: "POST", body });
 export const getOutfit = (id: string) => apiRequest<OutfitData>(`/api/outfits/${id}`, { cache: "no-store" });
+export const getSavedOutfits = () => apiRequest<SavedOutfits>("/api/outfits?saved=true", { cache: "no-store" });
 export const swapOutfitItem = (id: string, body: unknown) => apiRequest<OutfitData>(`/api/outfits/${id}/swap`, { method: "POST", body });
 export const getOutfitPreview = (id: string) => apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { cache: "no-store" });
 export const generateOutfitPreview = (id: string, options: unknown = {}) =>

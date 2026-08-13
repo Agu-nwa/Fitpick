@@ -254,16 +254,21 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
   }
 
   if (createdItem) {
+    const styleHref = `/stylist/create-look?wardrobeItemId=${encodeURIComponent(createdItem.id)}`;
     return (
       <div ref={successRef} className="mt-7 space-y-5">
         <WardrobeSaveSuccessState
           title="Verified wardrobe item saved."
           body={`${createdItem.name} is saved and ready for outfit planning.`}
-          href={`/wardrobe/${createdItem.id}`}
         />
-        <Button type="button" className="w-full" onClick={() => router.push(`/wardrobe/${createdItem.id}`)}>
-          View details
-        </Button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" className="w-full" onClick={() => router.push(styleHref)}>
+            Style this item
+          </Button>
+          <Button type="button" variant="secondary" className="w-full" onClick={() => router.push(`/wardrobe/${createdItem.id}`)}>
+            View details
+          </Button>
+        </div>
       </div>
     );
   }

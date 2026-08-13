@@ -67,12 +67,6 @@ const smartFilters: Array<{ id: Exclude<SmartPanel, null>; label: string }> = [
 ];
 
 const taxonomyQuickFilters: Array<{ label: string; patch: Partial<WardrobeFilterState> }> = [
-  { label: "Unresolved jewelry", patch: { reviewType: "unresolved_jewelry" } },
-  { label: "Conflicting taxonomy", patch: { reviewType: "conflicting" } },
-  { label: "Missing neckline", patch: { reviewType: "missing_neckline" } },
-  { label: "Missing belt details", patch: { reviewType: "missing_belt_compatibility" } },
-  { label: "Missing cuff type", patch: { reviewType: "missing_cuff_type" } },
-  { label: "Missing footwear details", patch: { reviewType: "missing_footwear_attributes" } },
   { label: "Watches", patch: { canonicalSubtype: "watch" } },
   { label: "Belts", patch: { canonicalSubtype: "belt" } },
   { label: "Necklaces", patch: { canonicalSubtype: "necklace" } },
@@ -80,8 +74,7 @@ const taxonomyQuickFilters: Array<{ label: string; patch: Partial<WardrobeFilter
   { label: "Formal shoes", patch: { category: "shoes", formalityLevel: "formal" } },
   { label: "Sneakers", patch: { canonicalSubtype: "sneakers" } },
   { label: "Sets", patch: { structureRole: "set" } },
-  { label: "One-piece", patch: { structureRole: "one_piece" } },
-  { label: "Primary bags", patch: { visibilityRole: "primary_carry" } }
+  { label: "One-piece", patch: { structureRole: "one_piece" } }
 ];
 
 function chipClass(active?: boolean) {

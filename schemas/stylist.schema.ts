@@ -4,7 +4,7 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 
 export const recommendationRegenerationSchema = z
   .object({
-    requestKind: z.literal("regenerate"),
+    requestKind: z.enum(["regenerate", "anchor"]),
     previousRecommendationId: objectId.nullable().optional(),
     previousItemIds: z.array(objectId).min(1).max(12),
     lockedItemIds: z.array(objectId).max(6).optional(),

@@ -152,6 +152,10 @@ export type WornLook = OutfitRecommendation & {
   wornOn: string;
 };
 
+export type SavedOutfits = {
+  outfits: OutfitRecommendation[];
+};
+
 export type OutfitRating = "Perfect" | "Good" | "Okay" | "Not today" | "Not my style";
 
 export type StylistIntent =

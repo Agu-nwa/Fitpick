@@ -328,11 +328,14 @@ export function WardrobeDetailClient({ id }: { id: string }) {
         </Card>
       </section> : null}
 
-      {isEditable ? <CTABar className="mt-6 grid grid-cols-2 gap-2">
-        <Button variant="danger" onClick={() => void handleArchive()} disabled={isSaving}>Delete item</Button>
+      {isEditable ? <CTABar className="mt-6 grid gap-2 sm:grid-cols-2">
+        <Link href={`/stylist/create-look?wardrobeItemId=${encodeURIComponent(item.id)}`}>
+          <Button className="w-full">Style this item</Button>
+        </Link>
         <Link href="/wardrobe/add">
           <Button variant="secondary" className="w-full">Add another</Button>
         </Link>
+        <Button variant="ghost" className="sm:col-span-2" onClick={() => void handleArchive()} disabled={isSaving}>Delete item</Button>
       </CTABar> : null}
     </>
   );

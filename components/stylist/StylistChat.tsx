@@ -30,6 +30,9 @@ import { buildOutfitPresentationItems } from "@/lib/recommendation/outfit-presen
 import { safeTryOnErrorMessage, safeUploadErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { cn } from "@/lib/utils";
 import type { OutfitRecommendation, ReferenceFashionItemSummary, StylistAvatarPreview, StylistResponse, StylistVisualMode } from "@/types/outfit";
+import type { WardrobeItem } from "@/types/wardrobe";
+
+type StylistWardrobeAnchor = Pick<WardrobeItem, "id" | "name" | "category" | "imageUrl" | "thumbnailUrl">;
 
 type ChatMessage = {
   id: string;
@@ -653,10 +656,12 @@ function EditorialRecommendationStack({
 
 export function StylistChat({
   initialFlow = "home",
-  productMode = "hub"
+  productMode = "hub",
+  initialWardrobeItem = null
 }: {
   initialFlow?: StylistFlow;
   productMode?: StylistProductMode;
+  initialWardrobeItem?: StylistWardrobeAnchor | null;
 } = {}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -666,7 +671,10 @@ export function StylistChat({
   const conversationIdRef = useRef(`stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const revealContent = useRevealContent();
   const [activeFlow, setActiveFlow] = useState<StylistFlow>(initialFlow);
-  const [message, setMessage] = useState("");
+  const anchoredItemId = initialWardrobeItem?.id || "";
+  const initialAnchorPrompt = initialWardrobeItem ? `Build a complete outfit around my ${initialWardrobeItem.name}.` : "";
+  const workspaceStorageKey = `fitpick:stylist-workspace:${productMode}`;
+  const [message, setMessage] = useState(initialAnchorPrompt);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRegeneratingLooks, setIsRegeneratingLooks] = useState(false);
@@ -680,6 +688,7 @@ export function StylistChat({
   const [activeReference, setActiveReference] = useState<ReferenceFashionItemSummary | null>(null);
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const [lastCreateBrief, setLastCreateBrief] = useState("");
+  const [workspaceReady, setWorkspaceReady] = useState(false);
   const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
   const latestLook = useMemo(
@@ -696,6 +705,49 @@ export function StylistChat({
       if (referencePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(referencePreviewUrl);
     };
   }, [referencePreviewUrl]);
+
+  useEffect(() => {
+    if (initialWardrobeItem || typeof window === "undefined") {
+      setWorkspaceReady(true);
+      return;
+    }
+    try {
+      const stored = window.sessionStorage.getItem(workspaceStorageKey);
+      if (stored) {
+        const workspace = JSON.parse(stored) as {
+          activeFlow?: StylistFlow;
+          message?: string;
+          messages?: ChatMessage[];
+          activeReference?: ReferenceFashionItemSummary | null;
+          lastCreateBrief?: string;
+        };
+        if (workspace.activeFlow) setActiveFlow(workspace.activeFlow);
+        if (typeof workspace.message === "string") setMessage(workspace.message);
+        if (Array.isArray(workspace.messages)) setMessages(workspace.messages.slice(-12));
+        if (workspace.activeReference) setActiveReference(workspace.activeReference);
+        if (typeof workspace.lastCreateBrief === "string") setLastCreateBrief(workspace.lastCreateBrief);
+      }
+    } catch {
+      window.sessionStorage.removeItem(workspaceStorageKey);
+    }
+    setWorkspaceReady(true);
+  }, [initialWardrobeItem, workspaceStorageKey]);
+
+  useEffect(() => {
+    if (!workspaceReady || typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(workspaceStorageKey, JSON.stringify({
+        activeFlow,
+        message,
+        messages: messages.slice(-12),
+        activeReference,
+        lastCreateBrief
+      }));
+    } catch {
+      // A full recommendation can exceed browser storage limits. The active
+      // in-memory workspace remains usable even when persistence is unavailable.
+    }
+  }, [activeFlow, activeReference, lastCreateBrief, message, messages, workspaceReady, workspaceStorageKey]);
 
   function focusWorkspace() {
     revealContent(workspaceRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
@@ -880,6 +932,7 @@ export function StylistChat({
     setToast("");
     setLastCreateBrief("");
     setActiveFlow(initialFlow);
+    if (typeof window !== "undefined") window.sessionStorage.removeItem(workspaceStorageKey);
     window.requestAnimationFrame(() => document.getElementById("stylist-agent-prompt")?.focus());
   }
 
@@ -1005,7 +1058,13 @@ export function StylistChat({
       visualMode: shouldIncludeVisualization ? options.visualMode || "digital_human" : "none",
       referenceItemId: referenceForMessage?.id || null,
       recentMessages: recentMessages.map((entry) => ({ role: entry.role, content: entry.content })),
-      regeneration: options.regeneration
+      regeneration: options.regeneration || (anchoredItemId ? {
+        requestKind: "anchor",
+        previousItemIds: [anchoredItemId],
+        lockedItemIds: [anchoredItemId],
+        minimumCoreChanges: 1,
+        maximumOverlap: 0.8
+      } : undefined)
     });
 
     setLoading(false);
@@ -1267,6 +1326,22 @@ export function StylistChat({
           </header>
 
           <div className="flex-1 px-1 pb-8">
+            {initialWardrobeItem ? (
+              <Card className="mb-6 flex max-w-3xl items-center gap-4 border-cocoa/25 bg-cocoa/10 p-3">
+                <ImageFrame
+                  src={initialWardrobeItem.thumbnailUrl || initialWardrobeItem.imageUrl}
+                  alt={initialWardrobeItem.name}
+                  placeholder={initialWardrobeItem.category}
+                  className="size-20 shrink-0 rounded-xl"
+                  fit="contain"
+                />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa">Styling around</p>
+                  <p className="mt-1 truncate text-base font-semibold text-ink">{initialWardrobeItem.name}</p>
+                  <p className="mt-1 text-sm text-muted">This closet item will stay in the recommended look.</p>
+                </div>
+              </Card>
+            ) : null}
             {messages.length === 0 && !activeReference && !referencePreviewUrl ? (
               <div className="flex min-h-[34svh] max-w-2xl flex-col justify-center border-y border-line/70 py-12">
                 <span className="mb-5 inline-flex size-12 items-center justify-center rounded-xl bg-white text-cocoa"><Sparkles size={20} aria-hidden="true" /></span>
