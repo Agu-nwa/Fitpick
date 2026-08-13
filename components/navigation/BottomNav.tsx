@@ -32,7 +32,7 @@ export function BottomNav() {
               aria-label={`${item.label}${active ? ", current tab" : ""}`}
             >
               <Icon size={featured ? 20 : 18} strokeWidth={active ? 2.4 : 1.7} aria-hidden="true" />
-              <span className="block w-full truncate whitespace-nowrap text-center text-[11px] font-bold leading-none">{item.label}</span>
+              <span className="block w-full truncate whitespace-nowrap text-center text-xs font-bold leading-none">{item.label}</span>
             </Link>
           );
         })}

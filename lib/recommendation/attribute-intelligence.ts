@@ -71,7 +71,9 @@ function neckline(item: any) {
 
 function accessoryRole(item: any) {
   const explicit = known(value(item, "stylingRole") || value(item, "role"));
-  if (explicit) return explicit;
+  const recognizedRoles = new Set(["waist", "watch", "wrist", "wrist_jewelry", "neck", "neck_jewelry", "neckwear", "ear", "ear_jewelry", "hand", "hand_jewelry", "ankle", "ankle_jewelry", "carry", "eyewear", "head", "headwear", "formal_detail", "formal-detail", "weather_accessory", "hair_accessory"]);
+  if (recognizedRoles.has(explicit)) return explicit;
+  if (!["accessories", "bags"].includes(String(item?.category || ""))) return "";
   const text = itemText(item);
   if (/necklace|pendant|chain/.test(text)) return "neck_jewelry";
   if (/earring/.test(text)) return "ear_jewelry";
@@ -126,13 +128,14 @@ export function footwearAttributeScore(item: any, selectedItems: any[], context:
   const hot = /hot|warm|summer|humid|beach|resort/.test(target);
   const athletic = /sport|athletic|training|running|gym/.test(`${activity} ${text}`);
   const reasons: string[] = [];
+  const hardConflicts: string[] = [];
   let score = 0;
 
   if (formal && toe === "closed") { score += 8; reasons.push("closed_toe_formality"); }
-  if (formal && ["open", "peep"].includes(toe)) { score -= 10; reasons.push("open_toe_formality_conflict"); }
-  if (formal && athletic) { score -= 20; reasons.push("athletic_formality_conflict"); }
-  if (rain && ["open", "peep"].includes(toe)) { score -= 24; reasons.push("open_toe_weather_conflict"); }
-  if (cold && ["open", "peep"].includes(toe)) { score -= 18; reasons.push("open_toe_cold_conflict"); }
+  if (formal && ["open", "peep"].includes(toe)) { score -= 10; reasons.push("open_toe_formality_tradeoff"); }
+  if (formal && athletic) { score -= 20; reasons.push("athletic_formality_conflict"); hardConflicts.push("athletic_formality_conflict"); }
+  if (rain && ["open", "peep"].includes(toe)) { score -= 24; reasons.push("open_toe_weather_conflict"); hardConflicts.push("open_toe_weather_conflict"); }
+  if (cold && ["open", "peep"].includes(toe)) { score -= 18; reasons.push("open_toe_cold_conflict"); hardConflicts.push("open_toe_cold_conflict"); }
   if (rain && /rain|wet|water_resistant|waterproof/.test(weather)) { score += 12; reasons.push("rain_suitable"); }
   if (rain && /suede/.test(text)) { score -= 9; reasons.push("suede_rain_conflict"); }
   if (hot && ["open", "peep"].includes(toe)) { score += 8; reasons.push("warm_weather_toe"); }
@@ -147,7 +150,7 @@ export function footwearAttributeScore(item: any, selectedItems: any[], context:
     reasons.push("garment_compatibility");
   }
 
-  return { score: Math.max(-32, Math.min(22, score)), reasons };
+  return { score: Math.max(-32, Math.min(22, score)), reasons, hardConflicts };
 }
 
 export function accessoryAttributeScore(item: any, selectedItems: any[], context: AttributeContext) {

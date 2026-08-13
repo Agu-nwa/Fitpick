@@ -8,7 +8,7 @@ export default async function MatchOutfitPage() {
   if (!auth.ok) redirect("/login");
 
   return (
-    <StylistStudioShell className="gap-0 lg:px-5 lg:pb-5 lg:pt-5 xl:px-6">
+    <StylistStudioShell className="gap-0 lg:px-8 lg:pb-0 lg:pt-0 xl:px-10">
       <StylistChat initialFlow="match" productMode="match" />
     </StylistStudioShell>
   );

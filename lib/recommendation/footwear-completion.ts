@@ -75,9 +75,8 @@ export function completeFootwear(input: {
       weatherContext: input.weather,
       styleProfile: input.stylePreferences
     });
-    metadataAdjustment += attributeResult.score;
     positiveSignals.push(...attributeResult.reasons.filter((reason) => !reason.includes("conflict")));
-    penalties.push(...attributeResult.reasons.filter((reason) => reason.includes("conflict")));
+    penalties.push(...attributeResult.hardConflicts);
     const base = scoreOutfit([...sanitized.items, shoe], { ...(input.scoringInput || {}), occasionName: input.occasion, formality: input.formality, weatherContext: input.weather });
     const color = colorCompatibilityScore([...sanitized.items, shoe]);
     const recent = shoe.lastWornAt ? new Date(shoe.lastWornAt).getTime() : 0;

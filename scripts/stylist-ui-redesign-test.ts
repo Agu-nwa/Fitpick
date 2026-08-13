@@ -28,7 +28,10 @@ assert.ok(!stylistChat.includes("Match photo"), "Old Match photo chip copy shoul
 assert.ok(!stylistChat.includes("Improve size details"), "Try-on setup should not expose removed measurement language.");
 assert.ok(!stylistChat.includes("Avatar preview"), "Stylist UI should use Virtual Try-On language instead of chatbot-era avatar preview copy.");
 assert.ok(stylistChat.includes("Describe it. I&apos;ll style it."), "Stylist chat should use the focused agent empty state.");
-assert.ok(stylistChat.includes("No conversations yet"), "Stylist chat should include a quiet conversation-history state.");
+assert.ok(stylistChat.includes("In this chat"), "Stylist chat should truthfully label the current in-memory prompt history.");
+assert.ok(!stylistChat.includes("window.location.reload()"), "Starting a new conversation must not reload the full page.");
+assert.ok(stylistChat.includes("Virtual Try-On") && stylistChat.includes('includeVisualization ? "On" : "Off"'), "Virtual Try-On must expose a visible on/off state.");
+assert.ok(stylistChat.includes("renderLookStudio(entry)"), "Generated looks should render with the assistant entry that produced them.");
 assert.ok(stylistChat.includes("Add image"), "The agent composer should expose image attachments.");
 assert.ok(!stylistChat.includes("occasionSuggestions"), "Stylist chat should not show initial occasion suggestions.");
 assert.ok(!stylistChat.includes("promptSuggestions"), "Stylist chat should not show initial prompt suggestions.");

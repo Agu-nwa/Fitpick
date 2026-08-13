@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowUpRight, Camera, ImagePlus, Layers3, MessageSquare, Plus, RefreshCw, Settings2, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Camera, ImagePlus, MessageSquare, Plus, RefreshCw, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,20 +53,6 @@ type ChatMessage = {
 
 type StylistFlow = "home" | "create" | "match";
 type StylistProductMode = "hub" | "create" | "match";
-
-const createLoadingSteps = [
-  "MyFitPick is styling your look.",
-  "Balancing colour and silhouette",
-  "Selecting the strongest outfit",
-  "Preparing your preview"
-];
-
-const matchLoadingSteps = [
-  "MyFitPick is finding closet matches.",
-  "Reading your inspiration",
-  "Styling around your closet",
-  "Preparing your preview"
-];
 
 const refinementChips = [
   "More relaxed",
@@ -693,12 +679,7 @@ export function StylistChat({
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const [lastCreateBrief, setLastCreateBrief] = useState("");
   const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
-  const flowLoadingSteps = currentFlow === "match" ? matchLoadingSteps : createLoadingSteps;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
-  const latestAssistant = useMemo(
-    () => [...messages].reverse().find((entry) => entry.role === "assistant"),
-    [messages]
-  );
   const latestLook = useMemo(
     () => [...messages].reverse().find((entry) => entry.role === "assistant" && (entry.outfit || entry.outfitRecommendationId)),
     [messages]
@@ -887,6 +868,19 @@ export function StylistChat({
     if (referenceId) void clearReferenceFashionItem(referenceId);
   }
 
+  function startNewConversation() {
+    if (loading || referenceBusy || isRegeneratingLooks) return;
+    void clearActiveReference();
+    conversationIdRef.current = `stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setMessages([]);
+    setMessage("");
+    setError("");
+    setToast("");
+    setLastCreateBrief("");
+    setActiveFlow(initialFlow);
+    window.requestAnimationFrame(() => document.getElementById("stylist-agent-prompt")?.focus());
+  }
+
   async function chooseDetectedReference(detectedItemId: string) {
     if (!activeReference?.id) return;
     setReferenceBusy(true);
@@ -992,7 +986,7 @@ export function StylistChat({
     const assistantEntry: ChatMessage = {
       id: assistantId,
       role: "assistant",
-      content: "Your stylist is putting the look together."
+      content: flowForRequest === "match" ? "MyFitPick is finding closet matches." : "MyFitPick is styling your look."
     };
     const sessionMessages = [...messages, userEntry, assistantEntry];
 
@@ -1162,7 +1156,7 @@ export function StylistChat({
   }
 
   return (
-    <section className="space-y-5 pb-4 pt-6">
+    <section className="pb-4 pt-3 lg:pt-5">
       <input
         ref={fileInputRef}
         type="file"
@@ -1205,7 +1199,7 @@ export function StylistChat({
       ) : null}
 
       {productMode === "hub" ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
           <StylistProductCard
             title="Create a Look"
             body="Start with an occasion, mood, weather, or favourite piece."
@@ -1228,84 +1222,97 @@ export function StylistChat({
         </div>
       ) : null}
 
-      <div ref={workspaceRef} className="scroll-mt-6 overflow-hidden rounded-[1.75rem] border border-line/80 bg-white/70 shadow-soft backdrop-blur-xl lg:grid lg:min-h-[690px] lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-line/80 bg-white/45 p-5 lg:flex lg:flex-col">
+      <div ref={workspaceRef} className="scroll-mt-6 lg:grid lg:min-h-[calc(100svh-2.5rem)] lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8">
+        <aside className="hidden border-r border-line/80 px-2 py-5 pr-7 lg:flex lg:flex-col">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-editorial text-xl font-semibold text-ink">Chats</h2>
-            <button type="button" className="focus-ring inline-flex size-9 items-center justify-center rounded-full border border-line bg-white text-muted transition hover:text-ink" aria-label="New conversation" onClick={() => window.location.reload()}>
-              <MessageSquare size={15} aria-hidden="true" />
+            <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted">In this chat</h2>
+            <button type="button" className="focus-ring inline-flex size-10 items-center justify-center rounded-xl text-muted transition hover:bg-white hover:text-ink" aria-label="Start a new conversation" onClick={startNewConversation} disabled={loading || referenceBusy || isRegeneratingLooks}>
+              <Plus size={17} aria-hidden="true" />
             </button>
           </div>
-          <div className="mt-8 flex flex-1 flex-col">
+          <div className="mt-6 flex flex-1 flex-col">
             {requestHistory.length ? (
-              <div className="space-y-2">
+              <ol className="space-y-1 border-l border-line pl-4">
                 {requestHistory.map((request) => (
-                  <div key={request.id} className="rounded-xl border border-line/70 bg-white/75 px-3 py-3">
-                    <p className="line-clamp-2 text-xs font-medium leading-5 text-ink">{request.content}</p>
-                  </div>
+                  <li key={request.id} className="relative py-2 before:absolute before:-left-[1.22rem] before:top-4 before:size-2 before:rounded-full before:bg-cocoa">
+                    <p className="line-clamp-2 text-sm font-medium leading-5 text-ink">{request.content}</p>
+                  </li>
                 ))}
-              </div>
+              </ol>
             ) : (
               <div className="my-auto text-center">
-                <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-line bg-white text-muted"><MessageSquare size={16} aria-hidden="true" /></div>
-                <p className="mt-4 text-sm font-semibold text-ink">No conversations yet</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Your styling history will appear here.</p>
+                <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-white text-muted"><MessageSquare size={16} aria-hidden="true" /></div>
+                <p className="mt-4 text-sm font-semibold text-ink">Start your first request</p>
+                <p className="mt-1 text-sm leading-5 text-muted">Your prompts in this chat will appear here.</p>
               </div>
             )}
           </div>
         </aside>
 
-        <div className="relative flex min-h-[620px] min-w-0 flex-col bg-[radial-gradient(circle_at_50%_44%,rgba(85,124,120,0.10),transparent_30rem),radial-gradient(circle_at_75%_15%,rgba(232,183,172,0.10),transparent_24rem)]">
-          <div className="flex items-center justify-between border-b border-line/70 px-5 py-4 lg:hidden">
-            <p className="font-editorial text-lg font-semibold text-ink">MyFitPick AI</p>
-            <span className="rounded-full border border-line bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">New chat</span>
-          </div>
+        <div className="relative flex min-h-[calc(100svh-9rem)] min-w-0 flex-col lg:min-h-[calc(100svh-2.5rem)]">
+          <header className="mb-8 flex items-start justify-between gap-5 px-1 sm:mb-10">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">MyFitPick AI stylist</p>
+              <h1 className="font-editorial mt-2 text-4xl font-medium tracking-[-0.035em] text-ink sm:text-5xl">Describe it. I&apos;ll style it.</h1>
+              <p className="mt-3 max-w-xl text-base leading-7 text-muted">Share an occasion, mood, or weather. MyFitPick will build looks using your saved wardrobe.</p>
+            </div>
+            {messages.length ? (
+              <button type="button" className="focus-ring hidden min-h-11 shrink-0 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-ink sm:inline-flex sm:items-center" onClick={startNewConversation} disabled={loading || referenceBusy || isRegeneratingLooks}>
+                New chat
+              </button>
+            ) : null}
+          </header>
 
-          <div className="mobile-scrollbar flex-1 overflow-y-auto px-5 pb-40 pt-8 sm:px-8 lg:px-12">
+          <div className="flex-1 px-1 pb-8">
             {messages.length === 0 && !activeReference && !referencePreviewUrl ? (
-              <div className="mx-auto flex min-h-[330px] max-w-2xl flex-col items-center justify-center text-center lg:min-h-[430px]">
-                <span className="mb-6 inline-flex size-12 items-center justify-center rounded-2xl border border-cocoa/15 bg-white/75 text-cocoa shadow-soft"><Sparkles size={19} aria-hidden="true" /></span>
-                <h1 className="font-editorial text-4xl font-medium tracking-[-0.035em] text-ink sm:text-5xl">Describe it. I&apos;ll style it.</h1>
-                <p className="mt-3 max-w-md text-sm leading-6 text-muted sm:text-base">Tell MyFitPick what you&apos;re dressing for, or add an image to style around.</p>
+              <div className="flex min-h-[34svh] max-w-2xl flex-col justify-center border-y border-line/70 py-12">
+                <span className="mb-5 inline-flex size-12 items-center justify-center rounded-xl bg-white text-cocoa"><Sparkles size={20} aria-hidden="true" /></span>
+                <h2 className="text-2xl font-semibold tracking-tight text-ink">What are you dressing for?</h2>
+                <p className="mt-2 max-w-lg text-base leading-7 text-muted">Tell me where you&apos;re going, how you want to feel, and any piece you&apos;d like to wear—or add an inspiration image.</p>
               </div>
             ) : (
-              <div className="mx-auto max-w-3xl space-y-6">
+              <div className="max-w-4xl space-y-10">
                 {messages.map((entry) => (
-                  <div key={entry.id} className={cn("flex", entry.role === "user" ? "justify-end" : "justify-start")}>
-                    <div className={cn("max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[75%]", entry.role === "user" ? "bg-espresso text-white" : "border border-line/80 bg-white/82 text-ink shadow-soft")}>
-                      <p className="whitespace-pre-wrap">{entry.content}</p>
+                  <article key={entry.id} className="grid gap-4 border-b border-line/70 pb-10 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                    <p className={cn("text-xs font-bold uppercase tracking-[0.14em]", entry.role === "user" ? "text-muted" : "text-cocoa")}>{entry.role === "user" ? "You" : "MyFitPick"}</p>
+                    <div className="min-w-0">
+                      <p className={cn("whitespace-pre-wrap text-base leading-7", entry.role === "user" ? "font-medium text-ink" : "text-ink")}>{entry.content}</p>
+                      {entry.role === "assistant" && (entry.outfit || entry.outfitRecommendationId || entry.referenceRecommendations?.length) ? (
+                        <div ref={entry.id === latestLook?.id ? lookStudioRef : undefined} className="mt-7">{renderLookStudio(entry)}</div>
+                      ) : null}
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
 
             {activeReference ? (
-              <div className="mx-auto mt-6 max-w-3xl space-y-3" aria-live="polite">
+              <div className="mt-8 max-w-3xl space-y-3" aria-live="polite">
                 <ReferenceImageCard reference={activeReference} onClear={() => void clearActiveReference()} busy={referenceBusy} />
                 {activeReference.status === "needs-selection" ? <ReferenceSelectionCard reference={activeReference} onSelect={(detectedItemId) => void chooseDetectedReference(detectedItemId)} busy={referenceBusy} /> : null}
               </div>
             ) : referencePreviewUrl ? (
-              <div className="mx-auto mt-6 flex max-w-3xl items-center gap-3 rounded-2xl border border-line bg-white/80 p-3" aria-live="polite">
+              <div className="mt-8 flex max-w-3xl items-center gap-3 rounded-xl border border-line bg-white p-3" aria-live="polite">
                 <ImageFrame src={referencePreviewUrl} alt="Selected fashion photo preview" placeholder="Photo" className="h-16 w-16 shrink-0 rounded-xl" />
                 <div><p className="text-sm font-semibold text-ink">Photo selected</p><p className="mt-1 text-xs text-muted">{referenceMessage || "Reading your inspiration..."}</p></div>
               </div>
             ) : null}
           </div>
 
-          <form className="absolute inset-x-0 bottom-0 z-10 px-4 pb-4 sm:px-7 sm:pb-6 lg:px-12" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
-            <div className="mx-auto max-w-3xl rounded-[1.45rem] border border-line bg-white/95 p-3 shadow-[0_18px_60px_rgba(23,21,20,0.12)] backdrop-blur-xl transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
+          <form className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 mt-auto px-1 pb-3 pt-4 lg:bottom-4" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
+            <div className="glass-panel mx-auto max-w-3xl rounded-2xl p-3 shadow-card transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
               <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
               <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
-              <div className="mt-1 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-10 items-center gap-2 rounded-full border border-line bg-white px-3 text-xs font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
                     <Plus size={15} aria-hidden="true" /> <span>Add image</span>
                   </button>
-                  <label className="focus-ring inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-canvas hover:text-ink" title="Include Virtual Try-On">
+                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:text-ink focus-within:ring-2 focus-within:ring-cocoa focus-within:ring-offset-2 focus-within:ring-offset-canvas">
                     <input type="checkbox" checked={includeVisualization} onChange={(event) => setIncludeVisualization(event.target.checked)} className="sr-only" />
-                    <Settings2 size={16} aria-hidden="true" />
-                    <span className="sr-only">Include Virtual Try-On</span>
+                    <span aria-hidden="true" className={cn("relative h-5 w-9 rounded-full transition-colors", includeVisualization ? "bg-cocoa" : "bg-line")}><span className={cn("absolute left-0 top-1 size-3 rounded-full bg-white transition-transform", includeVisualization ? "translate-x-5" : "translate-x-1")} /></span>
+                    <span>Virtual Try-On</span>
+                    <span className="text-xs text-muted">{includeVisualization ? "On" : "Off"}</span>
                   </label>
                 </div>
                 <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-10 items-center justify-center rounded-full bg-ink text-white shadow-soft transition hover:bg-espresso disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
@@ -1313,51 +1320,13 @@ export function StylistChat({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-center text-[10px] text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
+            <p className="mt-2 text-center text-xs text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
           </form>
         </div>
       </div>
 
-      {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
-      {toast ? <p className="rounded-2xl border border-success/25 bg-success/10 px-3 py-2 text-xs font-semibold text-success">{toast}</p> : null}
-
-      {latestLook || loading || latestAssistant ? (
-        <div ref={lookStudioRef} className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                <Layers3 size={14} aria-hidden="true" />
-                {currentFlow === "match" ? "Your look is ready" : "Your look is ready"}
-              </p>
-              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink sm:text-5xl">
-                {currentFlow === "match" ? "Here is how you can wear this with your closet." : "Built from pieces already in your closet."}
-              </h2>
-            </div>
-          </div>
-
-          {latestLook ? (
-            renderLookStudio(latestLook)
-          ) : loading ? (
-            <Card className="flex min-h-80 items-center justify-center border-dashed border-line bg-canvas/60 px-5 text-center">
-              <div className="space-y-2">
-                {flowLoadingSteps.map((step) => (
-                  <p key={step} className="text-sm font-semibold text-muted">{step}</p>
-                ))}
-              </div>
-            </Card>
-          ) : latestAssistant ? (
-            <Card className="rounded-2xl border border-line bg-canvas/60 p-4">
-              <details>
-                <summary className="focus-ring inline-flex cursor-pointer rounded-full text-xs font-bold uppercase tracking-[0.16em] text-cocoa">
-                  View stylist note
-                </summary>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Stylist note</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-ink">{latestAssistant.content}</p>
-              </details>
-            </Card>
-          ) : null}
-        </div>
-      ) : null}
+      {error ? <p className="mt-4 rounded-xl border border-danger/25 bg-danger/10 px-4 py-3 text-sm font-semibold text-ink" role="alert">{error}</p> : null}
+      {toast ? <p className="mt-4 rounded-xl border border-success/25 bg-success/10 px-4 py-3 text-sm font-semibold text-success" role="status">{toast}</p> : null}
     </section>
   );
 }
