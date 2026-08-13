@@ -23,7 +23,7 @@
     "test:wardrobe-review-queue": "tsx scripts/wardrobe-review-queue-test.ts",
     "dev": "next dev",
     "build": "next build",
-    "build:ec2": "NODE_OPTIONS=--max-old-space-size=2048 next build",
+    "build:ec2": "NODE_OPTIONS=--max-old-space-size=2048 next build --no-lint",
     "start": "next start",
     "support:realtime": "tsx server/support-realtime.ts",
     "support:realtime:dev": "tsx watch server/support-realtime.ts",

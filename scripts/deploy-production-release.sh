@@ -44,6 +44,14 @@ git worktree add --detach "$RELEASE_DIR" "$RELEASE_SHA"
 cp "$CURRENT_DIR/.env.local" "$RELEASE_DIR/.env.local"
 chmod 600 "$RELEASE_DIR/.env.local"
 
+# Worktrees intentionally start without build output. Reusing only Next's
+# disposable compiler cache keeps the active release isolated while avoiding
+# a full cold webpack rebuild on the production host.
+if [[ -d "$CURRENT_DIR/.next/cache" ]]; then
+  mkdir -p "$RELEASE_DIR/.next"
+  cp -a "$CURRENT_DIR/.next/cache" "$RELEASE_DIR/.next/cache"
+fi
+
 SWITCHED=false
 rollback() {
   local exit_code=$?
