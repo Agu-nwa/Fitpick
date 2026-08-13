@@ -3,7 +3,10 @@ module.exports = {
     {
       name: "fitpick",
       cwd: __dirname,
-      script: "npm",
+      // Run Next directly so PM2 owns the actual server process. An npm
+      // wrapper can exit before its spawned next-server child, leaving a
+      // stale listener on port 3000 during an atomic release switch.
+      script: "node_modules/next/dist/bin/next",
       args: "start",
       env: {
         NODE_ENV: "production"

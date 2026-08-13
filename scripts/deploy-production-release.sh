@@ -110,8 +110,34 @@ activate_release() {
   # MyFitPick's named processes so the ecosystem file is recreated from this
   # exact release directory.
   pm2 delete "${PM2_APPS[@]}" >/dev/null 2>&1 || true
+  wait_for_web_port_to_clear
   pm2 start ecosystem.config.js --update-env
   pm2 save
+}
+
+web_listener_pids() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:3000 -sTCP:LISTEN -t 2>/dev/null | sort -u
+    return
+  fi
+
+  ss -ltnp 'sport = :3000' 2>/dev/null \
+    | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' \
+    | sort -u
+}
+
+wait_for_web_port_to_clear() {
+  local listeners=""
+  for attempt in $(seq 1 30); do
+    listeners="$(web_listener_pids || true)"
+    if [[ -z "$listeners" ]]; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Port 3000 is still owned after stopping the managed MyFitPick processes (PIDs: $(echo "$listeners" | tr '\n' ' '))." >&2
+  return 1
 }
 
 wait_for_local_release() {
