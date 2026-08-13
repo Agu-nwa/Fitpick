@@ -31,9 +31,12 @@ function friendlyFeature(feature: string) {
     .join(" ");
 }
 
-function signedCredits(value: number) {
-  const formatted = formatCredits(value);
-  if (value > 0) return `+${formatted}`;
+function signedCredits(value: number, status: string) {
+  const debit = ["spent", "processing"].includes(status);
+  const credit = ["credited", "refunded", "reversed"].includes(status);
+  if (debit && value !== 0) return `-${formatCredits(Math.abs(value))}`;
+  if (credit && value !== 0) return `+${formatCredits(Math.abs(value))}`;
+  if (value > 0) return `+${formatCredits(value)}`;
   if (value < 0) return `-${formatCredits(Math.abs(value))}`;
   return "0";
 }
@@ -398,7 +401,7 @@ export function WalletClient() {
                   </span>
                   <span className="flex items-center gap-2">
                     <Badge tone={statusTone(transaction.status)}>{transaction.status}</Badge>
-                    <span className="text-sm font-bold text-ink">{signedCredits(transaction.credits)}</span>
+                    <span className="text-sm font-bold text-ink">{signedCredits(transaction.credits, transaction.status)}</span>
                   </span>
                 </div>
               ))}

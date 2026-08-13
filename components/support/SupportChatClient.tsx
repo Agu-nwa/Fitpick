@@ -259,9 +259,10 @@ export function SupportChatClient({ userName }: { userName: string }) {
             <label className="focus-ring inline-flex min-h-12 cursor-pointer items-center justify-center rounded-2xl border border-line bg-white px-4 text-muted transition hover:text-cocoa">
               <ImagePlus size={18} aria-hidden="true" />
               <span className="sr-only">Attach image</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading || disabled} onChange={(event) => void uploadAttachment(event.target.files?.[0] || null)} />
+              <input aria-label="Attach image" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading || disabled} onChange={(event) => void uploadAttachment(event.target.files?.[0] || null)} />
             </label>
             <textarea
+              aria-label="Support message"
               value={body}
               onChange={(event) => {
                 setBody(event.target.value);

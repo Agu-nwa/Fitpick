@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
         weatherAvailability,
         preferences: {},
         styleDirection: requestIntent.styleDirections[0],
+        requestText: sanitizedMessage,
         styleProfile: activeStyleProfile,
         memorySummary: serializedMemorySummary,
         outfitHistorySummary,

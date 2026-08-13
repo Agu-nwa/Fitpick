@@ -117,6 +117,7 @@ const copy = buildVerifiedRecommendationCopy({
   items: optionalLossItems,
   optionalLosses: optionalLifecycle.losses
 });
+assert.ok(copy.whyItWorks.includes("sets the upper-body colour") && copy.whyItWorks.includes("grounds the outfit"), "verified recommendation copy preserves a concrete reason for each selected item");
 assert.ok(copy.warnings[0]?.includes("optional finishing item"));
 assert.equal(copy.summary.includes("Gold watch"), false, "reconciled text never names an omitted item");
 assert.ok(optionalLossItems.every((entry: any) => copy.summary.includes(entry.name)), "reconciled summary names only verified items");

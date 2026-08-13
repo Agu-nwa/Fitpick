@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
 
       styleDirection:
         parsed.data.styleDirection,
+      requestText: [parsed.data.styleDirection, occasionName].filter(Boolean).join(". "),
 
       preferences,
       styleProfile: activeStyleProfile,

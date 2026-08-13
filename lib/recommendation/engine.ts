@@ -38,6 +38,7 @@ import {
   resolveRegenerationPolicy,
   type RecommendationRegenerationContext
 } from "@/lib/recommendation/regeneration";
+import { resolveExplicitItemExclusions } from "@/lib/recommendation/explicit-exclusions";
 
 export function repeatWindowDays(preference?: string) {
   if (preference === "high") return 30;
@@ -179,13 +180,27 @@ function buildFashionExplanation(input: {
     .filter(Boolean);
   const eventReady = hasEventSignal(input.items);
   const missingText = input.missing.length ? ` Missing ${input.missing.join(", ")} keeps this from being fully complete.` : "";
+  const itemReasons = input.items.map((item) => {
+    const label = itemLabel(item);
+    const taxonomy = resolveCanonicalTaxonomy(item);
+    const color = metadataValue(item, "primaryColor") || item.color;
+    const material = metadataValue(item, "fabricComposition") || metadataValue(item, "fabricEstimate") || item.fabric;
+    const detail = [color, material].filter(Boolean).join(" ");
+    if (taxonomy.structureRole === "top") return `${label} establishes the upper-body colour and formality${detail ? ` through its ${detail} finish` : ""}.`;
+    if (taxonomy.structureRole === "bottom") return `${label} anchors the proportions and gives the upper piece a clean base.`;
+    if (taxonomy.structureRole === "one_piece") return `${label} carries the main silhouette and sets the occasion tone.`;
+    if (taxonomy.structureRole === "outer_layer") return `${label} adds structure and a practical finishing layer for the setting.`;
+    if (taxonomy.structureRole === "footwear") return `${label} grounds the outfit at the right level of polish.`;
+    if (taxonomy.structureRole === "carry") return `${label} adds a practical carry piece without competing with the clothes.`;
+    return `${label} adds a controlled finishing accent to the look.`;
+  });
 
   return {
     occasionFit:
       input.occasionGroup === "event" || eventReady
         ? "Built from owned wardrobe pieces that can hold up for the event."
         : `Built from owned wardrobe pieces for ${input.occasion}.`,
-    whyItWorks: `${itemNames.join(", ")} create a wearable ${input.occasion.toLowerCase()} look from actual wardrobe items.${missingText}`,
+    whyItWorks: `${itemReasons.join(" ")} Together, these owned pieces create a wearable ${input.occasion.toLowerCase()} look.${missingText}`,
     materialNote: fabrics.length
       ? `Material read: ${fabrics.slice(0, 3).join(", ")}. These textures work together for the occasion.`
       : "Fabric detail is limited, so MyFitPick matched the look by category, color, and occasion.",
@@ -214,6 +229,7 @@ export type EngineInput = {
   weatherAvailability?: "available" | "unavailable" | "not_requested";
   allowNeedsCare?: boolean;
   styleDirection?: string;
+  requestText?: string;
   preferences?: any;
   styleProfile?: any;
   memorySummary?: any;
@@ -245,8 +261,11 @@ export function buildRecommendation(input: EngineInput) {
   });
   const { occasionGroup, occasionProfile, outfitTemplate, desiredStructure } = architecture;
 
+  const explicitExclusions = resolveExplicitItemExclusions(input.requestText, input.wardrobeItems);
+  const explicitlyExcludedIds = new Set(explicitExclusions.excludedItemIds);
   const available = input.wardrobeItems.filter((item) => {
     if (item.archivedAt) return false;
+    if (explicitlyExcludedIds.has(String(item?._id || item?.id || ""))) return false;
     if (!recommendationEligible(item)) return false;
 
     if (

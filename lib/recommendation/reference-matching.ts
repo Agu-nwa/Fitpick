@@ -36,6 +36,7 @@ import {
   resolveRegenerationPolicy,
   type RecommendationRegenerationContext
 } from "@/lib/recommendation/regeneration";
+import { resolveExplicitItemExclusions } from "@/lib/recommendation/explicit-exclusions";
 
 type ReferenceMatchInput = {
   referenceItem: any;
@@ -327,8 +328,11 @@ export function buildReferenceOutfitRecommendations(input: ReferenceMatchInput) 
   const referenceItem = input.referenceItem;
   const anchor = referenceItemToPseudoWardrobeItem(referenceItem);
   const occasion = cleanText(input.occasionName || input.message || referenceItem.occasions?.[0] || "Today", 120) || "Today";
+  const explicitExclusions = resolveExplicitItemExclusions(input.message, input.wardrobeItems);
+  const explicitlyExcludedIds = new Set(explicitExclusions.excludedItemIds);
   const available = input.wardrobeItems.filter((item) => {
     if (item.archivedAt) return false;
+    if (explicitlyExcludedIds.has(itemId(item))) return false;
     if (!recommendationEligible(item)) return false;
     if (item.condition === "needs-care" && !input.allowNeedsCare) return false;
     return true;

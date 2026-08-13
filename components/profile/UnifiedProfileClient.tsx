@@ -39,7 +39,15 @@ const sections: Array<{ id: SectionId; label: string; helper: string; icon: Luci
 ];
 
 function normalizeSection(value: string | null): SectionId {
+  if (value === "privacy") return "account";
+  if (value === "account" || !value) return "personal";
   return sections.some((section) => section.id === value) ? (value as SectionId) : "personal";
+}
+
+function sectionQueryValue(section: SectionId) {
+  if (section === "personal") return "account";
+  if (section === "account") return "privacy";
+  return section;
 }
 
 const inputClass =
@@ -60,8 +68,7 @@ export function UnifiedProfileClient() {
 
   function chooseSection(next: SectionId) {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "personal") params.delete("section");
-    else params.set("section", next);
+    params.set("section", sectionQueryValue(next));
 
     const query = params.toString();
     router.replace(`/profile${query ? `?${query}` : ""}`, { scroll: false });

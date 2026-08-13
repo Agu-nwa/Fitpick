@@ -30,6 +30,8 @@ for (const integration of ["AvatarStudioClient", "StyleProfileForm", "LocationSe
 }
 assert.ok(!unifiedClient.includes("getNotificationPreferences"), "Unified Profile should not expose unused notification toggles.");
 assert.ok(!unifiedClient.includes("updateNotificationPreferences"), "Unified Profile should not edit unused notification toggles.");
+assert.ok(unifiedClient.includes('if (value === "privacy") return "account"'), "Privacy should have a reload-safe URL section.");
+assert.ok(unifiedClient.includes('if (section === "account") return "privacy"'), "Selecting Privacy should synchronize the URL to section=privacy.");
 
 const avatarRedirect = read("app/avatar/page.tsx");
 assert.ok(avatarRedirect.includes('redirect("/profile?section=appearance")'), "/avatar should redirect to Profile Appearance.");

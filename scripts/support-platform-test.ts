@@ -8,6 +8,7 @@ import {
   supportSocketJoinSchema,
   supportStatusPatchSchema
 } from "../schemas/support.schema";
+import { readFileSync } from "node:fs";
 
 const objectId = "66a1017c73695e254a0811e9";
 
@@ -44,5 +45,9 @@ assert.equal(supportInternalNoteSchema.safeParse({ body: "Customer reported uplo
 assert.equal(supportInternalNoteSchema.safeParse({ body: "" }).success, false, "blank internal note should fail");
 assert.equal(supportSocketJoinSchema.safeParse({ conversationId: objectId }).success, true, "socket join payload should pass");
 assert.equal(supportSocketJoinSchema.safeParse({ conversationId: "not-an-id" }).success, false, "socket join must reject invalid conversation ids");
+
+const supportClient = readFileSync("components/support/SupportChatClient.tsx", "utf8");
+assert.ok(supportClient.includes('aria-label="Attach image"'), "support attachment control must have an accessible name");
+assert.ok(supportClient.includes('aria-label="Support message"'), "support message field must have an accessible name");
 
 console.log("Support platform validation checks passed.");

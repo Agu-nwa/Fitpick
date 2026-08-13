@@ -12,6 +12,7 @@ import { evaluateRegenerationCandidate, resolveRegenerationPolicy } from "../lib
 import { wardrobeRotationScore } from "../lib/recommendation/rotation";
 import { scoreOutfitDetailed } from "../lib/recommendation/scoring";
 import { accessoryAttributeScore, footwearAttributeScore } from "../lib/recommendation/attribute-intelligence";
+import { resolveExplicitItemExclusions } from "../lib/recommendation/explicit-exclusions";
 
 const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", ...extra });
 const top = item("top", "tops", "White shirt", { canonicalSubtype: "shirt", taxonomyNeedsReview: false });
@@ -44,6 +45,12 @@ assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: 
 assert.ok(!evaluateOutfitCompleteness([top, bottom], { footwearState: "footwear_available_but_incompatible" }).completenessWarnings.join(" ").includes("No shoes found"), "8 warning never claims owned shoes do not exist");
 const formalPump = item("formal-pump", "shoes", "Black closed-toe pump", { canonicalSubtype: "pumps", taxonomyNeedsReview: false, footwearAttributes: { toeStyle: "closed", activity: ["formal"], comfortLevel: "medium" } });
 const athleticTrainer = item("athletic-trainer", "shoes", "Black athletic trainer", { canonicalSubtype: "sneakers", taxonomyNeedsReview: false, footwearAttributes: { toeStyle: "closed", activity: ["training", "sports"], comfortLevel: "high" } });
+const redSuit = item("red-suit", "outerwear", "Red Suit", { color: "Red", canonicalSubtype: "blazer", taxonomyNeedsReview: false });
+const plaidBlazer = item("plaid-blazer", "outerwear", "Plaid Blazer", { color: "Brown", canonicalSubtype: "blazer", taxonomyNeedsReview: false });
+const exclusionResult = resolveExplicitItemExclusions("Style me for a wedding. Avoid the red suit/blazer and avoid trainers.", [redSuit, plaidBlazer, athleticTrainer]);
+assert.ok(exclusionResult.excludedItemIds.includes("red-suit"), "explicit named garment exclusions are enforced before recommendation scoring");
+assert.ok(!exclusionResult.excludedItemIds.includes("plaid-blazer"), "a colour-qualified exclusion does not remove other garments of the same type");
+assert.ok(exclusionResult.excludedItemIds.includes("athletic-trainer"), "explicit subtype exclusions apply across owned matching items");
 const weddingFootwear = completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [athleticTrainer, formalPump], occasion: "Wedding guest", formality: "formal" });
 assert.ok(weddingFootwear.items.some((entry) => entry._id === "formal-pump"), "45 footwear attributes make formal construction outrank athletic footwear for a wedding");
 assert.ok(footwearAttributeScore(item("rain-sandal", "shoes", "Suede open sandal", { footwearAttributes: { toeStyle: "open" } }), [dress], { weatherContext: "heavy rain" }).score < 0, "46 open suede footwear receives a direct rain penalty");

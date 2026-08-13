@@ -223,10 +223,21 @@ export function buildVerifiedRecommendationCopy(input: {
   const warnings = optionalLossCount
     ? [`${optionalLossCount} optional finishing item${optionalLossCount === 1 ? " was" : "s were"} omitted because it was no longer available.`]
     : [];
+  const itemReasons = input.items.map((item) => {
+    const name = String(item?.name || item?.subcategory || item?.category || "Closet item").trim();
+    const slot = normalizeOutfitSlot(item);
+    if (slot === "top") return `${name} sets the upper-body colour and level of polish.`;
+    if (slot === "bottom") return `${name} anchors the silhouette and balances the top.`;
+    if (slot === "onePiece") return `${name} carries the main silhouette and occasion tone.`;
+    if (slot === "outerwear") return `${name} adds structure and a practical finishing layer.`;
+    if (slot === "shoes") return `${name} grounds the outfit at the intended formality.`;
+    if (slot === "bag") return `${name} provides a practical carry piece without competing with the clothes.`;
+    return `${name} adds a controlled finishing accent.`;
+  });
 
   return {
     summary: `${names.join(", ")} form the verified ${occasion.toLowerCase()} outfit from your closet.`,
-    whyItWorks: `${names.join(", ")} are the owned, available pieces in this look.`,
+    whyItWorks: `${itemReasons.join(" ")} Together, these are the owned, available pieces in this look.`,
     stylingTips: [
       shoes ? `Finish the look with ${String(shoes.name || "the selected footwear")}.` : "",
       finishers.length

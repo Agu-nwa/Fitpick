@@ -55,6 +55,8 @@ assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generat
 
 const fashnProvider = read("lib/tryon/providers/fashn-tryon.ts");
 assert.ok(fashnProvider.includes('coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6"'), "Core garments must default to the faster FASHN clothing model.");
+assert.ok(fashnProvider.includes('["upperBody", "lowerBody", "onePiece", "outerwear"]'), "Outerwear must use the fast core-garment pass instead of an unnecessary finisher pass.");
+assert.ok(fashnProvider.includes('process.env.FASHN_POLL_MS || 2000'), "Provider polling should use the lower-latency safe default.");
 assert.ok(fashnProvider.includes("garment_image: payload.productImage"), "Core clothing requests must use the v1.6 garment_image contract.");
 assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finishing requests must use the Try-On Max product_image contract.");
 assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");

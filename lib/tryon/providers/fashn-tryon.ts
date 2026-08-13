@@ -56,7 +56,7 @@ function config() {
     maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
     maxFinisherItems: Math.max(0, Math.min(Number(process.env.FASHN_MAX_FINISHER_ITEMS || 2), 4)),
     timeoutMs: Math.max(15000, Math.min(Number(process.env.FASHN_TIMEOUT_MS || process.env.TRYON_TIMEOUT_MS || 90000), 180000)),
-    pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 3000), 10000))
+    pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 2000), 10000))
   };
 }
 
@@ -186,12 +186,16 @@ function rankedProductImages(items: any[]) {
   })).filter((entry): entry is typeof entry & { url: string; role: TryOnVisualRole } => Boolean(entry.url && entry.role));
 }
 
-const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece"]);
+// Outerwear is a core garment, not a decorative finisher. Applying it with the
+// faster clothing model avoids an unnecessary Try-On Max pass and makes the
+// first progressive preview representative of the actual outfit.
+const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece", "outerwear"]);
 
 function coreCategory(role: TryOnVisualRole) {
   if (role === "upperBody") return "tops";
   if (role === "lowerBody") return "bottoms";
   if (role === "onePiece") return "one-pieces";
+  if (role === "outerwear") return "outerwear";
   return "auto";
 }
 
