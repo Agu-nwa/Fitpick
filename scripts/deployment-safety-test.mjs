@@ -43,5 +43,9 @@ assert.match(releaseScript, /pm2 delete "\$\{PM2_APPS\[@\]\}"/, "release activat
 assert.doesNotMatch(releaseScript, /pm2 startOrRestart/, "release activation never preserves an old PM2 cwd");
 assert.match(releaseScript, /wait_for_local_release "\$SHORT_SHA"/, "release activation waits for the expected local health identity");
 assert.match(releaseScript, /worktree remove --force "\$RELEASE_DIR"/, "failed releases are removed to avoid filling the production disk");
+assert.match(releaseScript, /cleanup_inactive_releases/, "deployment removes inactive Git-managed releases before installation");
+assert.match(releaseScript, /MIN_FREE_KB/, "deployment enforces a minimum free-space threshold");
+assert.match(releaseScript, /npm cache clean --force/, "deployment may clear only the disposable npm cache when capacity is low");
+assert.doesNotMatch(releaseScript, /rm\s+-rf/, "deployment cleanup never recursively deletes arbitrary paths");
 
 console.log("Deployment safety tests passed.");

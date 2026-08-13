@@ -7,6 +7,7 @@ RELEASE_ROOT="${FITPICK_RELEASE_ROOT:-/home/ubuntu/fitpick-releases}"
 PUBLIC_HEALTH_URL="${FITPICK_PUBLIC_HEALTH_URL:-https://myfitpick.com/api/health}"
 LOCK_FILE="${FITPICK_DEPLOY_LOCK:-/tmp/myfitpick-production-deploy.lock}"
 PM2_APPS=(fitpick fitpick-worker fitpick-tryon-worker fitpick-realtime)
+MIN_FREE_KB="${FITPICK_MIN_FREE_KB:-5242880}"
 
 if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "A full 40-character release SHA is required." >&2
@@ -39,8 +40,56 @@ if [[ ! -f "$CURRENT_DIR/.env.local" ]]; then
   exit 4
 fi
 
-RELEASE_DIR="${RELEASE_ROOT}/${SHORT_SHA}-$(date -u +%Y%m%d%H%M%S)"
 mkdir -p "$RELEASE_ROOT"
+
+cleanup_inactive_releases() {
+  local worktree_path=""
+  local resolved_path=""
+
+  # Only remove paths registered by Git as worktrees beneath the dedicated
+  # release root. The source checkout and currently running release are never
+  # candidates, so one verified rollback target is always preserved.
+  while IFS= read -r worktree_path; do
+    [[ "$worktree_path" == "$RELEASE_ROOT"/* ]] || continue
+    resolved_path="$(readlink -f "$worktree_path" 2>/dev/null || true)"
+    [[ -n "$resolved_path" ]] || continue
+    [[ "$resolved_path" == "$CURRENT_DIR" ]] && continue
+    echo "Removing inactive release worktree: $resolved_path"
+    git -C "$SOURCE_REPO" worktree remove --force "$resolved_path"
+  done < <(git -C "$SOURCE_REPO" worktree list --porcelain | sed -n 's/^worktree //p')
+
+  git -C "$SOURCE_REPO" worktree prune
+}
+
+available_kb() {
+  df -Pk "$RELEASE_ROOT" | awk 'NR == 2 { print $4 }'
+}
+
+ensure_deployment_capacity() {
+  local free_kb="$(available_kb)"
+  if [[ ! "$free_kb" =~ ^[0-9]+$ ]]; then
+    echo "Unable to determine free disk capacity for $RELEASE_ROOT." >&2
+    exit 5
+  fi
+
+  if (( free_kb < MIN_FREE_KB )); then
+    echo "Only $((free_kb / 1024)) MiB is free; clearing the ubuntu npm download cache." >&2
+    npm cache clean --force
+    free_kb="$(available_kb)"
+  fi
+
+  if [[ ! "$free_kb" =~ ^[0-9]+$ ]] || (( free_kb < MIN_FREE_KB )); then
+    echo "Deployment requires at least $((MIN_FREE_KB / 1024)) MiB free under $RELEASE_ROOT; only $((free_kb / 1024)) MiB is available." >&2
+    exit 5
+  fi
+
+  echo "Deployment capacity check passed: $((free_kb / 1024)) MiB free."
+}
+
+cleanup_inactive_releases
+ensure_deployment_capacity
+
+RELEASE_DIR="${RELEASE_ROOT}/${SHORT_SHA}-$(date -u +%Y%m%d%H%M%S)"
 git worktree add --detach "$RELEASE_DIR" "$RELEASE_SHA"
 cp "$CURRENT_DIR/.env.local" "$RELEASE_DIR/.env.local"
 chmod 600 "$RELEASE_DIR/.env.local"
