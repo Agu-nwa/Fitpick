@@ -30,6 +30,7 @@ import { getOrCreateStyleProfile, serializeStyleProfile } from "@/lib/style-prof
 import { getMemorySummary, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { buildRecommendationPieces, logRecommendationIntegrity, recommendationIntegrityDiagnostics } from "@/lib/recommendation/integrity";
+import { applySituationToStyleProfile, normalizeSituationContext } from "@/lib/recommendation/situation-context";
 
 import { outfitRecommendationRequestSchema }
   from "@/schemas/outfit.schema";
@@ -143,6 +144,14 @@ export async function POST(request: NextRequest) {
       occasion?.name ||
       "Today";
     const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
+    const serializedStyleProfile = serializeStyleProfile(styleProfile);
+    const situation = normalizeSituationContext({
+      message: occasionName,
+      explicit: parsed.data.situation,
+      profile: serializedStyleProfile,
+      weatherAvailable: Boolean(weatherForecast || parsed.data.weatherContext)
+    });
+    const activeStyleProfile = applySituationToStyleProfile(serializedStyleProfile, situation);
     const compatibilityEdges = await getCompatibilityEdgesForItems({
       userId: String(auth.user._id),
       itemIds: wardrobeItems.map((item: any) => String(item._id)),
@@ -178,7 +187,7 @@ export async function POST(request: NextRequest) {
         parsed.data.styleDirection,
 
       preferences,
-      styleProfile: serializeStyleProfile(styleProfile),
+      styleProfile: activeStyleProfile,
       memorySummary: serializeMemorySummary(memorySummary),
       outfitHistorySummary,
       recommendationMode: parsed.data.recommendationMode,
@@ -287,7 +296,8 @@ export async function POST(request: NextRequest) {
           accessoryDecision:
             built.scoreBreakdown?.accessoryCompletion ||
             built.similarityMetadata?.accessoryDecision ||
-            null
+            null,
+          candidateDecision: built.scoreBreakdown?.candidateDecision || null
         },
 
         source: "outfit_page"
@@ -327,6 +337,7 @@ export async function POST(request: NextRequest) {
             weatherContext: built.weatherContext || "",
             formality: parsed.data.formality || parsed.data.customOccasion?.formality || occasion?.formality || preferences?.formality || "",
             wardrobeItemCount: wardrobeItems.length
+            , situation
           },
           scoreBreakdown: built.scoreBreakdown,
           similarityMetadata: built.similarityMetadata

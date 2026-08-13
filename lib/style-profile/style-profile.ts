@@ -18,6 +18,30 @@ type StyleProfilePatch = Partial<{
   luxuryPreference: "low" | "medium" | "high";
   notes: string[];
   inferredFrom: string[];
+  lifestyle: {
+    workEnvironment?: string;
+    weeklyActivities?: string[];
+    commonDressCodes?: string[];
+    walkingPriority?: "low" | "medium" | "high";
+    transportModes?: string[];
+  };
+  stylingConstraints: {
+    modestyPreferences?: string[];
+    coveragePreferences?: string[];
+    fabricSensitivities?: string[];
+    heelHeightPreference?: "none" | "low" | "medium" | "high" | "any";
+    carryNeeds?: string[];
+    garmentAvoidances?: string[];
+  };
+  stylingGoals: string[];
+  contextualPreferences: Array<{
+    occasion: string;
+    preferredFits?: string[];
+    preferredColors?: string[];
+    preferredFormality?: string;
+    accessoryLevel?: "minimal" | "balanced" | "expressive" | "";
+    comfortPriority?: "low" | "medium" | "high" | "";
+  }>;
 }>;
 
 function cleanList(values?: string[]) {
@@ -64,6 +88,7 @@ export async function updateStyleProfile(userId: string | Types.ObjectId, patch:
     "avoidedCategories",
     "notes",
     "inferredFrom"
+    , "stylingGoals"
   ];
 
   for (const key of listKeys) {
@@ -76,6 +101,9 @@ export async function updateStyleProfile(userId: string | Types.ObjectId, patch:
   if (patch.fashionRiskLevel) cleaned.fashionRiskLevel = patch.fashionRiskLevel;
   if (patch.comfortPriority) cleaned.comfortPriority = patch.comfortPriority;
   if (patch.luxuryPreference) cleaned.luxuryPreference = patch.luxuryPreference;
+  if (patch.lifestyle) cleaned.lifestyle = patch.lifestyle;
+  if (patch.stylingConstraints) cleaned.stylingConstraints = patch.stylingConstraints;
+  if (patch.contextualPreferences) cleaned.contextualPreferences = patch.contextualPreferences.slice(0, 12);
 
   return StyleProfile.findOneAndUpdate({ userId }, { $set: cleaned }, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
@@ -169,6 +197,10 @@ export function serializeStyleProfile(profile: any) {
     luxuryPreference: profile.luxuryPreference || "medium",
     notes: profile.notes || [],
     inferredFrom: profile.inferredFrom || [],
+    lifestyle: profile.lifestyle || {},
+    stylingConstraints: profile.stylingConstraints || {},
+    stylingGoals: profile.stylingGoals || [],
+    contextualPreferences: profile.contextualPreferences || [],
     createdAt: profile.createdAt ? new Date(profile.createdAt).toISOString() : null,
     updatedAt: profile.updatedAt ? new Date(profile.updatedAt).toISOString() : null
   };

@@ -32,6 +32,19 @@ type MemoryEventInput = {
   occasion?: string | null;
   feedbackText?: string | null;
   rating?: number | null;
+  feedbackTags?: string[];
+  sentiment?: "positive" | "negative" | "neutral";
+  scope?: "outfit" | "item" | "attribute";
+  attribute?: string;
+  attributeValue?: string;
+  confidence?: number;
+  context?: {
+    occasion?: string;
+    formality?: string;
+    weather?: string[];
+    activityLevel?: string;
+    timeOfDay?: string;
+  };
   source: FashionMemorySource;
 };
 
@@ -121,6 +134,13 @@ export async function recordFashionMemory(userId: string | Types.ObjectId, event
     : [];
 
   const safeItemIds = items.map((item) => item._id);
+  const inferredSentiment = positiveTypes.has(event.type)
+    ? "positive"
+    : negativeTypes.has(event.type)
+      ? "negative"
+      : "neutral";
+  const scope = event.scope || (inputItemIds.length === 1 ? "item" : "outfit");
+  const confidence = Math.max(0, Math.min(1, event.confidence ?? (scope === "item" ? 0.9 : 0.55)));
   const memory = await FashionMemory.create({
     userId,
     type: event.type,
@@ -129,6 +149,20 @@ export async function recordFashionMemory(userId: string | Types.ObjectId, event
     recommendationId: outfit?._id || (event.recommendationId ? event.recommendationId : null),
     occasion: cleanString(event.occasion || outfit?.occasion || "", 120) || null,
     feedbackText: cleanString(event.feedbackText, 500) || null,
+    feedbackTags: cleanList(event.feedbackTags || [], 12),
+    sentiment: event.sentiment || inferredSentiment,
+    scope,
+    attribute: cleanString(event.attribute, 80),
+    attributeValue: cleanString(event.attributeValue, 120),
+    confidence,
+    evidenceWeight: scope === "item" ? 1.5 : scope === "attribute" ? 2 : 0.75,
+    context: {
+      occasion: cleanString(event.context?.occasion || event.occasion || outfit?.occasion || "", 120),
+      formality: cleanString(event.context?.formality, 40),
+      weather: cleanList(event.context?.weather || [], 8),
+      activityLevel: cleanString(event.context?.activityLevel, 40),
+      timeOfDay: cleanString(event.context?.timeOfDay, 40)
+    },
     rating: typeof event.rating === "number" ? Math.max(1, Math.min(5, event.rating)) : null,
     metadata: itemMetadata(items),
     source: event.source
@@ -142,7 +176,7 @@ export async function recordFashionMemory(userId: string | Types.ObjectId, event
 }
 
 export async function getRecentFashionMemory(userId: string | Types.ObjectId, limit = 50) {
-  return FashionMemory.find({ userId })
+  return FashionMemory.find({ userId, revokedAt: null, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] })
     .sort({ createdAt: -1 })
     .limit(Math.max(1, Math.min(limit, 100)))
     .lean();
@@ -161,14 +195,18 @@ export async function getMemorySummary(userId: string | Types.ObjectId) {
 
   for (const event of events) {
     const ageDays = event.createdAt ? (Date.now() - new Date(event.createdAt).getTime()) / 86_400_000 : 0;
-    const recencyWeight = ageDays < 7 ? 3 : ageDays < 30 ? 2 : 1;
+    const decay = Math.max(0.2, Math.exp(-ageDays / 120));
+    const recencyWeight = decay * Number(event.confidence ?? 0.5) * Number(event.evidenceWeight ?? 1);
     const target = positiveTypes.has(event.type as FashionMemoryType)
       ? liked
       : negativeTypes.has(event.type as FashionMemoryType)
         ? disliked
         : null;
 
-    if (target) {
+    // Outfit-level feedback is evidence for the combination, not proof that every
+    // constituent item or attribute is liked/disliked. Only item/attribute scoped
+    // events update those durable preference buckets.
+    if (target && event.scope !== "outfit") {
       for (const itemId of event.itemIds || []) addCount(target.items, String(itemId), recencyWeight);
       for (const color of event.metadata?.colors || []) addCount(target.colors, color, recencyWeight);
       for (const category of event.metadata?.categories || []) addCount(target.categories, category, recencyWeight);
@@ -214,6 +252,11 @@ export async function getMemorySummary(userId: string | Types.ObjectId) {
     weather: topValues(weather),
     lastEventAt: events[0]?.createdAt ? new Date(events[0].createdAt).toISOString() : null
   };
+}
+
+export async function revokeFashionMemory(userId: string | Types.ObjectId, memoryId?: string) {
+  const filter = memoryId ? { _id: memoryId, userId, revokedAt: null } : { userId, revokedAt: null };
+  return FashionMemory.updateMany(filter, { $set: { revokedAt: new Date() } });
 }
 
 export async function inferPreferenceSignalsFromMemory(userId: string | Types.ObjectId) {

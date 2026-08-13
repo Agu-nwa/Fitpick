@@ -33,6 +33,14 @@ const OutfitHistorySchema = new Schema(
     virtualTryOnGeneratedAt: { type: Date, default: null },
     feedbackReason: { type: String, default: "", trim: true, maxlength: 500 },
     feedbackRating: { type: Number, default: null, min: 1, max: 5 },
+    itemFeedback: {
+      type: [{
+        itemId: { type: Schema.Types.ObjectId, ref: "WardrobeItem", required: true },
+        liked: { type: Boolean, required: true },
+        reason: { type: String, default: "", trim: true, maxlength: 120 }
+      }],
+      default: []
+    },
     ignored: { type: Boolean, default: false }
   },
   { timestamps: true }

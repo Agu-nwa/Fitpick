@@ -105,6 +105,7 @@ export async function askStylist({
   weatherContext,
   deterministicRecommendation,
   referenceContext,
+  situationContext,
   timeoutMs
 }: {
   message: string;
@@ -119,6 +120,7 @@ export async function askStylist({
   weatherContext?: string;
   deterministicRecommendation?: unknown;
   referenceContext?: unknown;
+  situationContext?: unknown;
   timeoutMs?: number;
 }) {
   const model = getAiModel("stylistChat");
@@ -172,6 +174,7 @@ export async function askStylist({
     memorySummary,
     weatherContext,
     referenceContext,
+    situationContext,
     deterministicItemIds: (deterministicRecommendation as any)?.items?.map((item: any) => String(item._id || item.id)) || []
   });
   const cached = await aiCache.get<StylistResponse>(cacheKey);
@@ -200,6 +203,7 @@ export async function askStylist({
         weatherContext,
         deterministicRecommendation,
         referenceContext
+        , situationContext
       })
     }, { timeout: providerTimeoutMs });
 

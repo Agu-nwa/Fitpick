@@ -34,6 +34,7 @@ export function buildLearningSignals(input: {
   const positiveItemIds = Array.from(new Set([
     ...(history.savedItemIds || []),
     ...(history.wornItemIds || []),
+    ...(history.explicitlyLikedItemIds || []),
     ...(memory.positive?.itemIds || [])
   ].map(String)));
   const negativeItemIds = Array.from(new Set([

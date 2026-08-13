@@ -18,7 +18,34 @@ const StyleProfileSchema = new Schema(
     comfortPriority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
     luxuryPreference: { type: String, enum: ["low", "medium", "high"], default: "medium" },
     notes: { type: [String], default: [] },
-    inferredFrom: { type: [String], default: [] }
+    inferredFrom: { type: [String], default: [] },
+    lifestyle: {
+      workEnvironment: { type: String, default: "", maxlength: 120 },
+      weeklyActivities: { type: [String], default: [] },
+      commonDressCodes: { type: [String], default: [] },
+      walkingPriority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
+      transportModes: { type: [String], default: [] }
+    },
+    stylingConstraints: {
+      modestyPreferences: { type: [String], default: [] },
+      coveragePreferences: { type: [String], default: [] },
+      fabricSensitivities: { type: [String], default: [] },
+      heelHeightPreference: { type: String, enum: ["none", "low", "medium", "high", "any"], default: "any" },
+      carryNeeds: { type: [String], default: [] },
+      garmentAvoidances: { type: [String], default: [] }
+    },
+    stylingGoals: { type: [String], default: [] },
+    contextualPreferences: {
+      type: [{
+        occasion: { type: String, required: true, maxlength: 80 },
+        preferredFits: { type: [String], default: [] },
+        preferredColors: { type: [String], default: [] },
+        preferredFormality: { type: String, default: "", maxlength: 40 },
+        accessoryLevel: { type: String, enum: ["minimal", "balanced", "expressive", ""], default: "" },
+        comfortPriority: { type: String, enum: ["low", "medium", "high", ""], default: "" }
+      }],
+      default: []
+    }
   },
   { timestamps: true }
 );

@@ -11,6 +11,12 @@ export function buildOutfitHistorySummary(history: any[] = []) {
     counts[id] = (counts[id] || 0) + 1;
     return counts;
   }, {});
+  const explicitRejectedItemIds = Array.from(new Set<string>(rejected.flatMap((entry) =>
+    (entry.itemFeedback || []).filter((feedback: any) => feedback.liked === false).map((feedback: any) => String(feedback.itemId))
+  ))).slice(0, 80);
+  const explicitlyLikedItemIds = Array.from(new Set<string>(history.flatMap((entry) =>
+    (entry.itemFeedback || []).filter((feedback: any) => feedback.liked === true).map((feedback: any) => String(feedback.itemId))
+  ))).slice(0, 80);
 
   return {
     eventCount: history.length,
@@ -23,7 +29,8 @@ export function buildOutfitHistorySummary(history: any[] = []) {
     savedSignatures: saved.map((entry) => entry.itemSignature).filter(Boolean),
     recentRecommendedItemIds: Array.from(new Set(recentRecommendations.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
     recentlyWornItemIds: Array.from(new Set(recentlyWorn.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
-    rejectedItemIds: Array.from(new Set(rejected.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
+    rejectedItemIds: explicitRejectedItemIds,
+    explicitlyLikedItemIds,
     savedItemIds: Array.from(new Set(saved.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
     wornItemIds: Array.from(new Set(recentlyWorn.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),
     regeneratedItemIds: Array.from(new Set(regenerated.flatMap((entry) => (entry.itemIds || []).map(String)))).slice(0, 80),

@@ -40,7 +40,19 @@ export const outfitRecommendationRequestSchema = z.object({
       "warm_weather",
       "cold_weather"
     ])
-    .optional()
+    .optional(),
+  situation: z.object({
+    occasion: z.string().trim().max(120).optional(),
+    dressCode: z.enum(["unknown", "casual", "smart_casual", "cocktail", "formal", "black_tie", "traditional"]).optional(),
+    venue: z.enum(["unknown", "indoor", "outdoor", "mixed"]).optional(),
+    activityLevel: z.enum(["unknown", "low", "moderate", "high"]).optional(),
+    walkingRequirement: z.enum(["unknown", "low", "medium", "high"]).optional(),
+    timeOfDay: z.enum(["unknown", "morning", "afternoon", "evening", "all_day"]).optional(),
+    desiredImpression: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
+    comfortPriority: z.enum(["low", "medium", "high"]).optional(),
+    carryRequirement: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+    weatherSensitive: z.boolean().optional()
+  }).strict().optional()
 });
 
 export const outfitIdSchema = z.object({

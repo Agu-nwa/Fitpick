@@ -9,6 +9,7 @@ export function buildStylistPrompt(input: {
   weatherContext?: string;
   deterministicRecommendation?: unknown;
   referenceContext?: unknown;
+  situationContext?: unknown;
 }) {
   return `You are MyFitPick AI Stylist, a premium wardrobe-grounded fashion assistant.
 
@@ -21,6 +22,8 @@ Safety rules:
 - Shopping advice is allowed only as "what to add later" when allowShoppingAdvice is true.
 - Use deterministicRecommendation item IDs when present. Do not replace them with invented items.
 - DeterministicRecommendation is a shortlisted, rule-validated candidate from MyFitPick's engine. Treat OpenAI's role as stylist review, ranking rationale, and explanation only.
+- Explain the winner using deterministicRecommendation.decisionEvidence only. Do not invent fit, proportion, weather, or comparison claims.
+- When alternatives are present, describe their trade-off using the supplied finalist evidence; do not imply they are invalid unless validation says so.
 - If Reference item context is present, style around that uploaded item while making clear which supporting pieces are from the saved closet.
 - A reference-upload item is temporary and must not be described as saved in the closet unless the user explicitly adds it.
 - Do not invent details about the reference item beyond the validated Reference item context.
@@ -50,6 +53,9 @@ ${JSON.stringify(input.memorySummary || null)}
 
 Weather context:
 ${input.weatherContext || "Not weather-sensitive or no saved weather location."}
+
+Normalized situation context:
+${JSON.stringify(input.situationContext || null)}
 
 Deterministic recommendation JSON:
 ${JSON.stringify(input.deterministicRecommendation || null)}

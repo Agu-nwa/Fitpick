@@ -33,6 +33,7 @@ type RecordOutfitHistoryInput = {
   similarityMetadata?: Record<string, unknown>;
   feedbackReason?: string;
   feedbackRating?: number | null;
+  itemFeedback?: Array<{ itemId: string | Types.ObjectId; liked: boolean; reason?: string }>;
 };
 
 function cleanText(value?: string | null, max = 160) {
@@ -96,7 +97,14 @@ export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
           // `$setOnInsert`, because MongoDB rejects conflicting update paths.
           ...eventPatch(input.eventType, now),
           ...(input.feedbackReason !== undefined ? { feedbackReason: cleanText(input.feedbackReason, 500) } : {}),
-          ...(typeof input.feedbackRating === "number" ? { feedbackRating: Math.max(1, Math.min(5, input.feedbackRating)) } : {})
+          ...(typeof input.feedbackRating === "number" ? { feedbackRating: Math.max(1, Math.min(5, input.feedbackRating)) } : {}),
+          ...(input.itemFeedback ? {
+            itemFeedback: input.itemFeedback.map((entry) => ({
+              itemId: entry.itemId,
+              liked: entry.liked,
+              reason: cleanText(entry.reason, 120)
+            }))
+          } : {})
         }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }

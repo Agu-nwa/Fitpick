@@ -36,6 +36,30 @@ const styleProfilePatchSchema = z
     comfortPriority: z.enum(["low", "medium", "high"]).optional(),
     luxuryPreference: z.enum(["low", "medium", "high"]).optional(),
     notes: z.array(z.string().trim().min(1).max(180)).max(20).optional()
+    , stylingGoals: tagList.optional(),
+    lifestyle: z.object({
+      workEnvironment: z.string().trim().max(120).optional(),
+      weeklyActivities: tagList.optional(),
+      commonDressCodes: tagList.optional(),
+      walkingPriority: z.enum(["low", "medium", "high"]).optional(),
+      transportModes: tagList.optional()
+    }).strict().optional(),
+    stylingConstraints: z.object({
+      modestyPreferences: tagList.optional(),
+      coveragePreferences: tagList.optional(),
+      fabricSensitivities: tagList.optional(),
+      heelHeightPreference: z.enum(["none", "low", "medium", "high", "any"]).optional(),
+      carryNeeds: tagList.optional(),
+      garmentAvoidances: tagList.optional()
+    }).strict().optional(),
+    contextualPreferences: z.array(z.object({
+      occasion: z.string().trim().min(1).max(80),
+      preferredFits: tagList.optional(),
+      preferredColors: tagList.optional(),
+      preferredFormality: z.string().trim().max(40).optional(),
+      accessoryLevel: z.enum(["minimal", "balanced", "expressive", ""]).optional(),
+      comfortPriority: z.enum(["low", "medium", "high", ""]).optional()
+    }).strict()).max(12).optional()
   })
   .strict();
 

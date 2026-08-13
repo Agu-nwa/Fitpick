@@ -7,6 +7,7 @@ import { collectionFamilyFor } from "@/lib/recommendation/collections";
 import { diversifyOutfits, noveltyScore } from "@/lib/recommendation/diversity";
 import { rankCandidatesForEditorialReview } from "@/lib/recommendation/editorial-ranking";
 import { buildExplainabilityBreakdown } from "@/lib/recommendation/explainability";
+import { buildCandidateDecisionEvidence, evaluateFitAndProportion } from "@/lib/recommendation/candidate-decision";
 import { fashionKnowledgeScore, marketplaceExtensionPoints } from "@/lib/recommendation/fashion-knowledge";
 import { wardrobeGapInsights, wardrobeReadiness } from "@/lib/recommendation/gaps";
 import { buildLearningSignals, learningSignalScore } from "@/lib/recommendation/learning-engine";
@@ -353,6 +354,7 @@ export function buildRecommendation(input: EngineInput) {
   });
 
   const bestOutfit = diverseOutfits[0] || rankedCombinations[0] || combinations[0];
+  const candidateDecision = buildCandidateDecisionEvidence(diverseOutfits.length ? diverseOutfits : rankedCombinations.slice(0, 3), internalStyleProfile);
 
   const outfitSanitization = sanitizeOutfitItems(bestOutfit?.items || []);
   const sanitizedItems: any[] = outfitSanitization.items;
@@ -506,13 +508,15 @@ export function buildRecommendation(input: EngineInput) {
       weatherContext: input.weatherContext,
       occasionProfile
     });
+  const fitAndProportion = evaluateFitAndProportion(completedItems, internalStyleProfile);
   const confidenceEngine = computeRecommendationConfidence({
     score,
     candidateCount: combinations.length,
     validation: finalValidation,
     wardrobeReadiness: readiness,
     completenessStatus: completeness.completenessStatus,
-    weatherContext: input.weatherContext
+    weatherContext: input.weatherContext,
+    fitConfidence: fitAndProportion.confidence
   });
   const collectionFamily = collectionFamilyFor({
     occasionName: input.occasionName,
@@ -580,7 +584,7 @@ export function buildRecommendation(input: EngineInput) {
     missing: completenessMissing,
     score
   });
-  const allCompletenessWarnings = [...completeness.completenessWarnings, ...regenerationWarnings];
+  const allCompletenessWarnings = [...completeness.completenessWarnings, ...regenerationWarnings, ...fitAndProportion.warnings];
   const completenessSummary = allCompletenessWarnings.length ? ` ${allCompletenessWarnings.join(" ")}` : "";
   const addLater = completeness.completenessStatus === "missing_footwear"
     ? "Add black shoes, loafers, sneakers, or sandals to complete this look."
@@ -627,6 +631,7 @@ export function buildRecommendation(input: EngineInput) {
     ...explanation,
     stylingTips: [
       accessoryCompletion.decision.status === "included" ? accessoryCompletion.decision.reason : "",
+      ...candidateDecision.selectionReasons.slice(0, 2),
       ...(explanation.stylingTips || [])
     ].filter(Boolean),
     addLater,
@@ -658,6 +663,10 @@ export function buildRecommendation(input: EngineInput) {
       wardrobeRotation: rotationIntelligenceScore,
       fashionKnowledge: knowledgeScore,
       confidenceEngine,
+      candidateDecision: {
+        ...candidateDecision,
+        fitAndProportion
+      },
       explainability: buildExplainabilityBreakdown({
         scoreBreakdown: bestOutfit.scoreBreakdown || {},
         confidence: confidenceEngine,
@@ -687,12 +696,20 @@ export function buildRecommendation(input: EngineInput) {
         structure: finalValidation.structure
       },
       regeneration: regenerationEvaluation
+      , candidateDecision: {
+        winnerReason: candidateDecision.selectionReasons,
+        runnerUpTradeoff: candidateDecision.runnerUpTradeoff,
+        fitConfidence: fitAndProportion.confidence
+      }
     },
     candidateCount: combinations.length,
     diverseCandidateCount: diverseOutfits.length,
     alternatives: diverseOutfits.slice(1).map((outfit) => ({
       title: `${modeTitle} alternative`,
       itemIds: sanitizeOutfitItems(outfit.items).items.map((item: any) => String(item._id || item.id)),
+      score: outfit.score,
+      fitAndProportion: evaluateFitAndProportion(outfit.items, internalStyleProfile),
+      scoreBreakdown: outfit.scoreBreakdown || {},
       similarityMetadata: {
         ...(outfit.similarityMetadata || {}),
         outfitStructure: outfitTemplate.stylingFamily,

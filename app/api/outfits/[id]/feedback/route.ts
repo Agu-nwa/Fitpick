@@ -11,13 +11,21 @@ import { StylePreference } from "@/models/StylePreference";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { learnFromFeedback } from "@/lib/recommendation/learning";
 import { recordOutfitHistory } from "@/lib/recommendation/history";
+import { logRecommendationOutcome } from "@/lib/recommendation/quality";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { z } from "zod";
 
 const schema = z.object({
   liked: z.boolean(),
-  reason: z.string().trim().max(240).optional()
+  reason: z.string().trim().max(240).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+  feedbackTags: z.array(z.enum(["great-combination", "wrong-item", "wrong-color", "wrong-fit", "too-casual", "too-formal", "uncomfortable", "weather-issue", "already-worn", "not-my-style", "tryon-inaccurate"])).max(10).optional(),
+  itemFeedback: z.array(z.object({
+    itemId: z.string().regex(/^[a-f\d]{24}$/i),
+    liked: z.boolean(),
+    reason: z.string().trim().max(120).optional()
+  })).max(12).optional()
 });
 
 type RouteContext = {
@@ -76,17 +84,26 @@ export async function POST(
         userId: auth.user._id
       });
 
+    const ownedIds = new Set(items.map((item) => String(item._id)));
+    if ((parsed.data.itemFeedback || []).some((entry) => !ownedIds.has(entry.itemId))) {
+      return apiError("BAD_REQUEST", "Feedback contains an item outside this outfit.");
+    }
+
     const preferences =
       await StylePreference.findOne({
         userId: auth.user._id
       });
 
-    if (preferences) {
+    // Legacy preference promotion is intentionally limited to explicit positive
+    // item feedback. Whole-outfit approval alone must not mark every attribute as
+    // a permanent favorite.
+    const explicitlyLikedIds = new Set((parsed.data.itemFeedback || []).filter((entry) => entry.liked).map((entry) => entry.itemId));
+    if (preferences && explicitlyLikedIds.size) {
       const updated =
         learnFromFeedback({
-          liked: parsed.data.liked,
+          liked: true,
           reason: parsed.data.reason,
-          outfitItems: items,
+          outfitItems: items.filter((item) => explicitlyLikedIds.has(String(item._id))),
           preferences: preferences?.toObject?.() ?? JSON.parse(JSON.stringify(preferences))
         });
 
@@ -113,8 +130,18 @@ export async function POST(
       source: outfit.source === "stylist_chat" ? "stylist_chat" : "outfit_page",
       recommendationMode: (outfit as any).recommendationMode || (outfit as any).reasoningMetadata?.recommendationMode || "todays_best",
       occasion: outfit.occasion,
-      feedbackReason: parsed.data.reason || "",
-      feedbackRating: parsed.data.liked ? 5 : 1
+      feedbackReason: parsed.data.reason || (parsed.data.feedbackTags || []).join(", "),
+      feedbackRating: parsed.data.rating || (parsed.data.liked ? 5 : 1),
+      itemFeedback: parsed.data.itemFeedback
+    });
+
+    logRecommendationOutcome({
+      recommendationId: String(outfit._id),
+      event: parsed.data.liked ? "accepted" : "rejected",
+      confidenceScore: outfit.confidenceScore,
+      completenessStatus: outfit.completenessStatus,
+      footwearIncluded: outfit.footwearIncluded,
+      explicitItemFeedbackCount: parsed.data.itemFeedback?.length || 0
     });
 
     return apiSuccess({

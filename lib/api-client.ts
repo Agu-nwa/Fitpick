@@ -410,6 +410,30 @@ export type StyleProfileData = {
     luxuryPreference: "low" | "medium" | "high";
     notes: string[];
     inferredFrom: string[];
+    lifestyle: {
+      workEnvironment?: string;
+      weeklyActivities?: string[];
+      commonDressCodes?: string[];
+      walkingPriority?: "low" | "medium" | "high";
+      transportModes?: string[];
+    };
+    stylingConstraints: {
+      modestyPreferences?: string[];
+      coveragePreferences?: string[];
+      fabricSensitivities?: string[];
+      heelHeightPreference?: "none" | "low" | "medium" | "high" | "any";
+      carryNeeds?: string[];
+      garmentAvoidances?: string[];
+    };
+    stylingGoals: string[];
+    contextualPreferences: Array<{
+      occasion: string;
+      preferredFits?: string[];
+      preferredColors?: string[];
+      preferredFormality?: string;
+      accessoryLevel?: "minimal" | "balanced" | "expressive" | "";
+      comfortPriority?: "low" | "medium" | "high" | "";
+    }>;
     createdAt: string | null;
     updatedAt: string | null;
   };
@@ -735,6 +759,49 @@ export type WeatherForecastData = {
   safeMessage: string;
 };
 
+export type StylistPlanSummary = {
+  id: string;
+  type: "weekly" | "capsule" | "packing";
+  title: string;
+  status: "ready" | "incomplete";
+  startDate: string | null;
+  endDate: string | null;
+  context: Record<string, unknown>;
+  looks: Array<{
+    slot: number;
+    occasion: string;
+    title: string;
+    itemIds: string[];
+    items: Array<{ id: string; name: string; category: string; condition: string }>;
+    confidence: string;
+    completenessStatus: string;
+    missingCategories: string[];
+  }>;
+  itemIds: string[];
+  packingList: Array<{ itemId: string; name: string; category: string; plannedWearCount: number }>;
+  underusedItemIds: string[];
+  unavailableItems: Array<{ itemId: string; name: string; reason: "archived" | "needs_care" }>;
+  gapInsights: Array<{ category: string; message: string; unlockPotential: number }>;
+  warnings: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type StylistPlanCreateRequest = {
+  type: "weekly" | "capsule" | "packing";
+  title?: string;
+  days?: number;
+  occasions?: string[];
+  startDate?: string;
+  endDate?: string;
+  destination?: string;
+  weatherContext?: string;
+  formality?: "relaxed" | "balanced" | "polished" | "formal";
+  styleDirection?: "simple" | "polished" | "bold" | "statement" | "weather-safe" | "comfortable";
+  allowNeedsCare?: boolean;
+  situation?: Record<string, unknown>;
+};
+
 export type LocationCountry = {
   code: string;
   name: string;
@@ -1005,6 +1072,14 @@ export const addReferenceFashionItemToCloset = (id: string) =>
   apiRequest<ReferenceAddToClosetData>(`/api/stylist/reference-items/${id}/add-to-closet`, { method: "POST" });
 export const clearReferenceFashionItem = (id: string) =>
   apiRequest<{ cleared: boolean }>(`/api/stylist/reference-items/${id}`, { method: "DELETE" });
+export const listStylistPlans = () =>
+  apiRequest<{ plans: StylistPlanSummary[] }>("/api/stylist/plans", { cache: "no-store" });
+export const createStylistPlan = (body: StylistPlanCreateRequest) =>
+  apiRequest<{ plan: StylistPlanSummary; wardrobeReadiness: Record<string, unknown> }>("/api/stylist/plans", { method: "POST", body });
+export const getStylistPlan = (id: string) =>
+  apiRequest<{ plan: StylistPlanSummary }>(`/api/stylist/plans/${id}`, { cache: "no-store" });
+export const deleteStylistPlan = (id: string) =>
+  apiRequest<{ deleted: boolean }>(`/api/stylist/plans/${id}`, { method: "DELETE" });
 export const pollStylistVisualization = (input: { jobId?: string | null; outfitRecommendationId?: string | null }) => {
   if (input.jobId) return getJobStatus(input.jobId);
   if (input.outfitRecommendationId) return getAvatarPreview(input.outfitRecommendationId);

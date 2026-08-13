@@ -26,6 +26,8 @@ export type AuditAction =
   | "outfit.save"
   | "outfit.wear"
   | "outfit.feedback"
+  | "fashion-memory.revoke"
+  | "fashion-memory.clear"
   | "stylist.reference_item.create"
   | "stylist.reference_item.analyze"
   | "stylist.reference_item.select"

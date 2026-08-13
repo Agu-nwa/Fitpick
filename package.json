@@ -2,6 +2,9 @@
   "name": "fitpick-frontend-phase4d",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:studio-model-taxonomy": "tsx scripts/studio-model-taxonomy-test.ts",

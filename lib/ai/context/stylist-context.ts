@@ -19,6 +19,10 @@ function compactStyleProfile(profile?: any) {
     comfortPriority: profile.comfortPriority || "medium",
     luxuryPreference: profile.luxuryPreference || "medium",
     notes: (profile.notes || []).slice(0, 8)
+    , lifestyle: profile.lifestyle || {},
+    stylingConstraints: profile.stylingConstraints || {},
+    stylingGoals: (profile.stylingGoals || []).slice(0, 12),
+    contextualPreferences: (profile.contextualPreferences || []).slice(0, 12)
   };
 }
 

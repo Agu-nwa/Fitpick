@@ -12,6 +12,7 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WornLook } from "@/models/WornLook";
 import { recordOutfitHistory } from "@/lib/recommendation/history";
+import { logRecommendationOutcome } from "@/lib/recommendation/quality";
 import { wearOutfitSchema } from "@/schemas/outfit.schema";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -69,6 +70,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       occasion: outfit.occasion,
       feedbackReason: parsed.data.rating || "",
       feedbackRating: parsed.data.rating === "Perfect" ? 5 : parsed.data.rating === "Good" ? 4 : parsed.data.rating === "Okay" ? 3 : parsed.data.rating ? 2 : null
+    });
+
+    logRecommendationOutcome({
+      recommendationId: String(outfit._id),
+      event: "worn",
+      confidenceScore: outfit.confidenceScore,
+      completenessStatus: outfit.completenessStatus,
+      footwearIncluded: outfit.footwearIncluded
     });
 
     await recordAuditEvent({

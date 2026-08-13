@@ -12,6 +12,7 @@ import { buildRecentConversationContext, buildStylistContext } from "@/lib/ai/co
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildRecommendation } from "@/lib/recommendation/engine";
 import { parseStylistRequestIntent } from "@/lib/recommendation/occasion-intent";
+import { applySituationToStyleProfile, normalizeSituationContext } from "@/lib/recommendation/situation-context";
 import { constrainStylistToFinalizedRecommendation } from "@/lib/recommendation/integrity";
 import { RecommendationPersistenceIntegrityError } from "@/lib/recommendation/persistence-integrity";
 import { buildReferenceOutfitRecommendations } from "@/lib/recommendation/reference-matching";
@@ -46,6 +47,18 @@ const stylistChatSchema = z.object({
   visualMode: z.enum(["digital_human", "premium_preview", "none"]).optional(),
   referenceItemId: objectId.nullable().optional(),
   regeneration: recommendationRegenerationSchema.optional(),
+  situation: z.object({
+    occasion: z.string().trim().max(120).optional(),
+    dressCode: z.enum(["unknown", "casual", "smart_casual", "cocktail", "formal", "black_tie", "traditional"]).optional(),
+    venue: z.enum(["unknown", "indoor", "outdoor", "mixed"]).optional(),
+    activityLevel: z.enum(["unknown", "low", "moderate", "high"]).optional(),
+    walkingRequirement: z.enum(["unknown", "low", "medium", "high"]).optional(),
+    timeOfDay: z.enum(["unknown", "morning", "afternoon", "evening", "all_day"]).optional(),
+    desiredImpression: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
+    comfortPriority: z.enum(["low", "medium", "high"]).optional(),
+    carryRequirement: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+    weatherSensitive: z.boolean().optional()
+  }).strict().optional(),
   recentMessages: z
     .array(
       z.object({
@@ -81,6 +94,8 @@ function compactRecommendationForStylist(recommendation: any) {
     candidateCount: recommendation.candidateCount || 0,
     diverseCandidateCount: recommendation.diverseCandidateCount || 0,
     stylingTips: recommendation.stylingTips || [],
+    decisionEvidence: recommendation.scoreBreakdown?.candidateDecision || null,
+    alternatives: recommendation.alternatives || [],
     outfitPieces: recommendation.outfitPieces || [],
     referenceItems: recommendation.referenceItems || [],
     items: (recommendation.items || []).map((item: any) => ({
@@ -177,7 +192,6 @@ export async function POST(request: NextRequest) {
     const serializedStyleProfile = serializeStyleProfile(styleProfile);
     const serializedMemorySummary = serializeMemorySummary(memorySummary);
     const outfitHistorySummary = buildOutfitHistorySummary(outfitHistory);
-    const stylistContext = buildStylistContext(wardrobe, serializedStyleProfile, serializedMemorySummary);
     const regeneration = await resolveOwnedRegenerationContext({
       userId: String(auth.user._id),
       request: parsed.data.regeneration,
@@ -187,8 +201,35 @@ export async function POST(request: NextRequest) {
     const sanitizedMessage = sanitizeUserPrompt(parsed.data.message);
     const requestIntent = parseStylistRequestIntent(sanitizedMessage);
     const occasionIntent = requestIntent.occasion;
+    const hasSavedWeatherLocation = Boolean(auth.user.weatherLocationName || (typeof auth.user.weatherLatitude === "number" && typeof auth.user.weatherLongitude === "number"));
+    const situation = normalizeSituationContext({
+      message: sanitizedMessage,
+      explicit: parsed.data.situation,
+      profile: serializedStyleProfile,
+      weatherAvailable: hasSavedWeatherLocation
+    });
+    const activeStyleProfile = applySituationToStyleProfile(serializedStyleProfile, situation);
+    const stylistContext = buildStylistContext(wardrobe, activeStyleProfile, serializedMemorySummary);
+    if (situation.clarificationQuestion && !referenceItem) {
+      const visualization = serializeStylistVisualization();
+      return apiSuccess({
+        reply: situation.clarificationQuestion,
+        stylist: {
+          message: situation.clarificationQuestion,
+          intent: requestIntent.styleDirections.length ? "outfit_request" : "unclear",
+          recommendedOutfitIds: [], recommendedItemIds: [], alternativeItemIds: [], missingWardrobeCategories: [],
+          occasionDetected: situation.occasion, confidenceScore: 0, stylingTips: [], followUpQuestions: [situation.clarificationQuestion],
+          addLaterSuggestions: [], safetyWarnings: [], visualMode: "none", outfitRecommendationId: null,
+          avatarPreview: visualization.avatarPreview, visualizationDisclaimer: visualization.visualizationDisclaimer
+        },
+        situation,
+        referenceItem: null, referenceRecommendations: [], referenceSelectionRequired: false,
+        outfitRecommendationId: null, avatarPreview: visualization.avatarPreview, visualization,
+        outfit: null, redirectTo: null, groundedItemCount: wardrobe.length
+      });
+    }
     let weatherContext = "";
-    const weatherRequested = isWeatherSensitiveMessage(sanitizedMessage);
+    const weatherRequested = situation.weatherSensitive || isWeatherSensitiveMessage(sanitizedMessage);
     let weatherAvailability = resolveRecommendationWeatherAvailability({ requested: weatherRequested });
     if (weatherRequested) {
       try {
@@ -227,7 +268,7 @@ export async function POST(request: NextRequest) {
           occasionName: occasionIntent.label,
           weatherContext,
           weatherAvailability,
-          styleProfile: serializedStyleProfile,
+          styleProfile: activeStyleProfile,
           memorySummary: serializedMemorySummary,
           outfitHistorySummary,
           compatibilityEdges,
@@ -243,12 +284,13 @@ export async function POST(request: NextRequest) {
       }
     } else {
       deterministicRecommendation = buildRecommendation({
-        occasionName: occasionIntent.label,
+        occasionName: situation.occasion,
+        formality: situation.dressCode === "unknown" ? undefined : situation.dressCode,
         weatherContext,
         weatherAvailability,
         preferences: {},
         styleDirection: requestIntent.styleDirections[0],
-        styleProfile: serializedStyleProfile,
+        styleProfile: activeStyleProfile,
         memorySummary: serializedMemorySummary,
         outfitHistorySummary,
         compatibilityEdges,
@@ -306,6 +348,7 @@ export async function POST(request: NextRequest) {
       weatherContext,
       deterministicRecommendation: stylistRecommendation,
       referenceContext: referenceItem ? serializeReferenceFashionItem(referenceItem) : null
+      , situationContext: situation
     });
 
     let chatCreditCharge: Awaited<ReturnType<typeof spendCreditsAfterSuccess>>;
@@ -388,6 +431,7 @@ export async function POST(request: NextRequest) {
             weatherContext,
             wardrobeItemCount: wardrobe.length,
             referenceItemId: referenceItem ? String(referenceItem._id) : ""
+            , situation
           },
           scoreBreakdown: deterministicRecommendation.scoreBreakdown,
           similarityMetadata: deterministicRecommendation.similarityMetadata
@@ -523,6 +567,7 @@ export async function POST(request: NextRequest) {
         balance: chatCreditCharge.wallet.balance
       },
       groundedItemCount: wardrobe.length
+      , situation
     });
   } catch (error) {
     logSafeError("stylist.chat", error);

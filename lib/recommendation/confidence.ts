@@ -5,6 +5,7 @@ export function computeRecommendationConfidence(input: {
   wardrobeReadiness?: any;
   completenessStatus?: string;
   weatherContext?: string;
+  fitConfidence?: number;
 }) {
   let confidence = Math.max(0, Math.min(100, Math.round((input.score / 260) * 100)));
   if (input.candidateCount >= 30) confidence += 6;
@@ -14,6 +15,7 @@ export function computeRecommendationConfidence(input: {
   if (input.completenessStatus && input.completenessStatus !== "complete") confidence -= 14;
   if (input.wardrobeReadiness?.isSmallWardrobe) confidence -= 8;
   if (input.weatherContext) confidence += 3;
+  if (typeof input.fitConfidence === "number") confidence += Math.round((input.fitConfidence - 0.5) * 12);
 
   const overallConfidence = Math.max(0, Math.min(100, confidence));
   return {
@@ -25,6 +27,7 @@ export function computeRecommendationConfidence(input: {
       validation: input.validation?.valid ? 92 : 48,
       wardrobeCompleteness: input.wardrobeReadiness?.strengthScore ?? null,
       weatherCertainty: input.weatherContext ? 82 : 55
+      , fitConfidence: typeof input.fitConfidence === "number" ? Math.round(input.fitConfidence * 100) : null
     }
   };
 }

@@ -14,6 +14,17 @@ const FashionMemoryMetadataSchema = new Schema(
   { _id: false }
 );
 
+const FashionMemoryContextSchema = new Schema(
+  {
+    occasion: { type: String, default: "", trim: true, maxlength: 120 },
+    formality: { type: String, default: "", trim: true, maxlength: 40 },
+    weather: { type: [String], default: [] },
+    activityLevel: { type: String, default: "", trim: true, maxlength: 40 },
+    timeOfDay: { type: String, default: "", trim: true, maxlength: 40 }
+  },
+  { _id: false }
+);
+
 const FashionMemorySchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -39,6 +50,16 @@ const FashionMemorySchema = new Schema(
     recommendationId: { type: Schema.Types.ObjectId, ref: "OutfitRecommendation", default: null },
     occasion: { type: String, default: null, trim: true, maxlength: 120 },
     feedbackText: { type: String, default: null, trim: true, maxlength: 500 },
+    feedbackTags: { type: [String], default: [] },
+    sentiment: { type: String, enum: ["positive", "negative", "neutral"], default: "neutral" },
+    scope: { type: String, enum: ["outfit", "item", "attribute"], default: "outfit" },
+    attribute: { type: String, default: "", trim: true, maxlength: 80 },
+    attributeValue: { type: String, default: "", trim: true, maxlength: 120 },
+    confidence: { type: Number, default: 0.5, min: 0, max: 1 },
+    evidenceWeight: { type: Number, default: 1, min: 0, max: 5 },
+    context: { type: FashionMemoryContextSchema, default: () => ({}) },
+    expiresAt: { type: Date, default: null },
+    revokedAt: { type: Date, default: null },
     rating: { type: Number, default: null, min: 1, max: 5 },
     metadata: { type: FashionMemoryMetadataSchema, default: () => ({}) },
     source: {
@@ -52,6 +73,7 @@ const FashionMemorySchema = new Schema(
 
 FashionMemorySchema.index({ userId: 1, type: 1 });
 FashionMemorySchema.index({ userId: 1, createdAt: -1 });
+FashionMemorySchema.index({ userId: 1, revokedAt: 1, createdAt: -1 });
 
 export type FashionMemoryDocument = InferSchemaType<typeof FashionMemorySchema> & {
   _id: mongoose.Types.ObjectId;

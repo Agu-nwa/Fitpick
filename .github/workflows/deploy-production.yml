@@ -1,0 +1,118 @@
+name: Deploy MyFitPick Production
+
+on:
+  workflow_run:
+    workflows: ["MyFitPick CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA from main to deploy; leave empty for current main
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: myfitpick-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Atomic EC2 release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+
+    steps:
+      - name: Resolve deployment revision
+        id: revision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_SHA: ${{ inputs.commit_sha }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEFAULT_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            RELEASE_SHA="$VERIFIED_SHA"
+          elif [ -n "$MANUAL_SHA" ]; then
+            RELEASE_SHA="$MANUAL_SHA"
+          else
+            RELEASE_SHA="$DEFAULT_SHA"
+          fi
+          if ! printf '%s' "$RELEASE_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "A full 40-character Git commit SHA is required." >&2
+            exit 1
+          fi
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Start deployment through Systems Manager
+        id: deploy
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          RELEASE_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          test -n "$INSTANCE_ID"
+          COMMAND="$(printf '%s' "set -eu
+          sudo -iu ubuntu git -C /home/ubuntu/Fitpick fetch --prune origin main
+          sudo -iu ubuntu git -C /home/ubuntu/Fitpick cat-file -e ${RELEASE_SHA}^{commit}
+          sudo -iu ubuntu git -C /home/ubuntu/Fitpick show ${RELEASE_SHA}:scripts/deploy-production-release.sh > /tmp/myfitpick-deploy-${RELEASE_SHA}.sh
+          chown ubuntu:ubuntu /tmp/myfitpick-deploy-${RELEASE_SHA}.sh
+          chmod 700 /tmp/myfitpick-deploy-${RELEASE_SHA}.sh
+          sudo -iu ubuntu bash /tmp/myfitpick-deploy-${RELEASE_SHA}.sh ${RELEASE_SHA}")"
+          PARAMETERS="$(jq -n --arg command "$COMMAND" '{commands: [$command], executionTimeout: ["1800"]}')"
+          COMMAND_ID="$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "MyFitPick ${RELEASE_SHA}" \
+            --parameters "$PARAMETERS" \
+            --timeout-seconds 1800 \
+            --query 'Command.CommandId' \
+            --output text)"
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment result
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          COMMAND_ID: ${{ steps.deploy.outputs.command_id }}
+        run: |
+          if ! aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID"; then
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query '{Status:Status,Details:StatusDetails,Output:StandardOutputContent,Error:StandardErrorContent}'
+            exit 1
+          fi
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}'
+
+      - name: Verify public deployment identity
+        env:
+          RELEASE_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          EXPECTED="${RELEASE_SHA:0:12}"
+          for attempt in 1 2 3 4 5; do
+            ACTUAL="$(curl --fail --silent --show-error https://myfitpick.com/api/health | jq -r '.data.deploymentId // .deploymentId // empty')" || true
+            if [ "$ACTUAL" = "$EXPECTED" ]; then
+              echo "Production is serving $EXPECTED"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production did not report deployment $EXPECTED." >&2
+          exit 1

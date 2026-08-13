@@ -3,6 +3,11 @@ import { execFileSync } from "node:child_process";
 
 const requiredFiles = [
   "package.json",
+  ".nvmrc",
+  ".github/workflows/ci.yml",
+  ".github/workflows/deploy-production.yml",
+  "scripts/deploy-production-release.sh",
+  "docs/deployment/github-actions-pipeline.md",
   ".env.example",
   "docs/deployment-phase-8.md",
   "docs/production-env-checklist.md",

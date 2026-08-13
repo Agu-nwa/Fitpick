@@ -5,7 +5,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
-import { getMemorySummary, recordFashionMemory, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
+import { getMemorySummary, recordFashionMemory, revokeFashionMemory, serializeMemorySummary } from "@/lib/fashion-memory/fashion-memory";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
@@ -31,6 +31,19 @@ const memoryEventSchema = z.object({
   occasion: z.string().trim().max(120).nullable().optional(),
   feedbackText: z.string().trim().max(500).nullable().optional(),
   rating: z.number().min(1).max(5).nullable().optional(),
+  feedbackTags: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
+  sentiment: z.enum(["positive", "negative", "neutral"]).optional(),
+  scope: z.enum(["outfit", "item", "attribute"]).optional(),
+  attribute: z.string().trim().max(80).optional(),
+  attributeValue: z.string().trim().max(120).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  context: z.object({
+    occasion: z.string().trim().max(120).optional(),
+    formality: z.string().trim().max(40).optional(),
+    weather: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+    activityLevel: z.string().trim().max(40).optional(),
+    timeOfDay: z.string().trim().max(40).optional()
+  }).strict().optional(),
   source: z.enum(["outfit_ui", "stylist_chat", "wardrobe_detail", "recommendation_engine", "style_profile"])
 });
 
@@ -113,5 +126,22 @@ export async function POST(request: NextRequest) {
     );
   } catch {
     return apiError("INTERNAL_ERROR", "Unable to save your style history right now.");
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const meta = requestMeta(request);
+  const limited = rateLimitRequest({ key: `fashion-memory:delete:${meta.ip}`, limit: 10, windowMs: 60 * 1000, operation: "fashion-memory-delete" });
+  if (limited) return limited;
+  try {
+    const auth = await requireUser();
+    if (!auth.ok) return auth.response;
+    const memoryId = request.nextUrl.searchParams.get("id") || undefined;
+    if (memoryId && !isObjectId(memoryId)) return apiError("BAD_REQUEST", "Style memory reference is invalid.");
+    const result = await revokeFashionMemory(auth.user._id, memoryId);
+    await recordAuditEvent({ request, userId: String(auth.user._id), action: memoryId ? "fashion-memory.revoke" : "fashion-memory.clear", entityType: "FashionMemory", entityId: memoryId || "all" });
+    return apiSuccess({ revokedCount: result.modifiedCount, summary: serializeMemorySummary(await getMemorySummary(auth.user._id)) }, { message: "Style memory updated." });
+  } catch {
+    return apiError("INTERNAL_ERROR", "Unable to update your style memory right now.");
   }
 }
