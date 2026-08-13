@@ -36,7 +36,8 @@ export function SupportLauncher() {
     };
   }, [pathname]);
 
-  if (!enabled || pathname === "/support" || pathname.startsWith("/admin")) return null;
+  const hasPrimaryComposer = pathname === "/stylist/create-look" || pathname === "/stylist/match";
+  if (!enabled || hasPrimaryComposer || pathname === "/support" || pathname.startsWith("/admin")) return null;
 
   return (
     <Link

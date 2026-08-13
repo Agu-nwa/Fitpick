@@ -354,6 +354,17 @@ export type TryOnGenerationSummary = {
   updatedAt: string | null;
 };
 
+export type TryOnHistoryItem = {
+  generationId: string;
+  outfitId: string;
+  previewUrl: string;
+  completedAt: string | null;
+};
+
+export type TryOnHistoryData = {
+  tryOns: TryOnHistoryItem[];
+};
+
 export type PreferencesData = {
   preferences: Record<string, any>;
   privacy?: Record<string, any>;
@@ -933,6 +944,7 @@ export const confirmWardrobeUploadTags = (uploadId: string, body: unknown) =>
 export const createRecommendation = (body: unknown) => apiRequest<OutfitData>("/api/outfits/recommend", { method: "POST", body });
 export const getOutfit = (id: string) => apiRequest<OutfitData>(`/api/outfits/${id}`, { cache: "no-store" });
 export const getSavedOutfits = () => apiRequest<SavedOutfits>("/api/outfits?saved=true", { cache: "no-store" });
+export const getTryOnHistory = () => apiRequest<TryOnHistoryData>("/api/tryon-history", { cache: "no-store" });
 export const swapOutfitItem = (id: string, body: unknown) => apiRequest<OutfitData>(`/api/outfits/${id}/swap`, { method: "POST", body });
 export const getOutfitPreview = (id: string) => apiRequest<OutfitPreviewData>(`/api/outfits/${id}/preview`, { cache: "no-store" });
 export const generateOutfitPreview = (id: string, options: unknown = {}) =>

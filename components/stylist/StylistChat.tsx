@@ -1325,6 +1325,24 @@ export function StylistChat({
             ) : null}
           </header>
 
+          <form className="relative z-10 mb-8 px-1" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
+            <div className="mx-auto max-w-3xl rounded-2xl border border-line bg-surfaceWarm p-3 shadow-soft transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
+              <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
+              <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
+                    <Plus size={15} aria-hidden="true" /> <span>Add image</span>
+                  </button>
+                </div>
+                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
+                  {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-center text-xs text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
+          </form>
+
           <div className="flex-1 px-1 pb-8">
             {initialWardrobeItem ? (
               <Card className="mb-6 flex max-w-3xl items-center gap-4 border-cocoa/25 bg-cocoa/10 p-3">
@@ -1377,23 +1395,6 @@ export function StylistChat({
             ) : null}
           </div>
 
-          <form className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 mt-auto px-1 pb-3 pt-4 lg:bottom-4" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
-            <div className="mx-auto max-w-3xl rounded-2xl border border-line bg-surfaceWarm p-3 shadow-soft transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
-              <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
-              <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
-              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
-                    <Plus size={15} aria-hidden="true" /> <span>Add image</span>
-                  </button>
-                </div>
-                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
-                  {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
-                </button>
-              </div>
-            </div>
-            <p className="mt-2 text-center text-xs text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
-          </form>
         </div>
       </div>
 
