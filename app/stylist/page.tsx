@@ -12,17 +12,17 @@ export default function StylistPage() {
       badge="Closet-first"
     >
 
-      <section className="grid w-full min-w-0 gap-5 overflow-hidden pb-6 lg:grid-cols-2">
-        <Link href="/stylist/create-look" className="focus-ring group block min-w-0 max-w-full rounded-xl3">
-          <div className="min-h-[22rem] w-full min-w-0 overflow-hidden rounded-xl3 border border-cocoa bg-cocoa p-6 text-canvas shadow-glow transition duration-300 group-hover:-translate-y-1 sm:min-h-[24rem] sm:p-7">
-            <div className="flex h-full min-w-0 flex-col justify-between gap-8 sm:gap-10">
+      <section className="grid w-full min-w-0 gap-4 overflow-hidden pb-6 lg:grid-cols-2">
+        <Link href="/stylist/create-look" className="focus-ring group block min-w-0 max-w-full rounded-2xl">
+          <div className="min-h-72 w-full min-w-0 overflow-hidden rounded-2xl border border-cocoa bg-cocoa p-6 text-white shadow-soft transition duration-200 group-hover:-translate-y-0.5 sm:p-7">
+            <div className="flex h-full min-w-0 flex-col justify-between gap-8">
               <div className="min-w-0">
-                <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-canvas/12 text-canvas shadow-soft ring-1 ring-canvas/25">
+                <span className="inline-flex size-11 items-center justify-center rounded-xl bg-white/12 text-white ring-1 ring-white/20">
                   <WandSparkles size={20} aria-hidden="true" />
                 </span>
-                <p className="mt-8 max-w-full text-[10px] font-bold uppercase tracking-[0.18em] text-canvas/70 sm:tracking-[0.24em]">Create a Look</p>
-                <h2 className="font-editorial mt-3 max-w-full break-words text-4xl font-semibold leading-[0.95] text-canvas sm:text-5xl">Create from your closet.</h2>
-                <p className="mt-4 max-w-full text-[15px] leading-6 text-canvas/72 sm:max-w-md sm:text-sm">
+                <p className="mt-6 max-w-full text-xs font-bold uppercase tracking-[0.16em] text-white/70">Create a Look</p>
+                <h2 className="font-editorial mt-3 max-w-full break-words text-3xl font-semibold leading-none text-white sm:text-4xl">Create from your closet.</h2>
+                <p className="mt-4 max-w-full text-sm leading-6 text-white/75 sm:max-w-md">
                   Start with an occasion, mood, weather, or favourite piece.
                 </p>
               </div>
@@ -34,16 +34,16 @@ export default function StylistPage() {
           </div>
         </Link>
 
-        <Link href="/stylist/match" className="focus-ring group block min-w-0 max-w-full rounded-xl3">
-          <Card className="min-h-[22rem] w-full min-w-0 overflow-hidden border-cocoa/25 bg-[#FBF3EC] p-6 shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:border-cocoa/40 sm:min-h-[24rem] sm:p-7">
-            <div className="flex h-full min-w-0 flex-col justify-between gap-8 sm:gap-10">
+        <Link href="/stylist/match" className="focus-ring group block min-w-0 max-w-full rounded-2xl">
+          <Card className="min-h-72 w-full min-w-0 overflow-hidden bg-surfaceWarm p-6 transition duration-200 group-hover:-translate-y-0.5 group-hover:border-cocoa/40 sm:p-7">
+            <div className="flex h-full min-w-0 flex-col justify-between gap-8">
               <div className="min-w-0">
-                <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-espresso text-canvas shadow-soft">
+                <span className="inline-flex size-11 items-center justify-center rounded-xl bg-canvasSubtle text-cocoa">
                   <ImagePlus size={20} aria-hidden="true" />
                 </span>
-                <p className="mt-8 max-w-full text-[10px] font-bold uppercase tracking-[0.18em] text-espresso sm:tracking-[0.24em]">Match an Outfit</p>
-                <h2 className="font-editorial mt-3 max-w-full break-words text-4xl font-semibold leading-[0.95] text-ink sm:text-5xl">Style a look you admire.</h2>
-                <p className="mt-4 max-w-full text-[15px] leading-6 text-muted sm:max-w-md sm:text-sm">
+                <p className="mt-6 max-w-full text-xs font-bold uppercase tracking-[0.16em] text-cocoa">Match an Outfit</p>
+                <h2 className="font-editorial mt-3 max-w-full break-words text-3xl font-semibold leading-none text-ink sm:text-4xl">Style a look you admire.</h2>
+                <p className="mt-4 max-w-full text-sm leading-6 text-muted sm:max-w-md">
                   Upload a photo or screenshot and build a closet-led look around it.
                 </p>
               </div>

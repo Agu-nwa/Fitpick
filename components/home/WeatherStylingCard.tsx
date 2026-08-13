@@ -73,7 +73,7 @@ export function WeatherStylingCard() {
 
   return (
     <>
-      <Card className="border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10 p-4 sm:p-5">
+      <Card className="bg-surfaceWarm p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">
@@ -126,15 +126,15 @@ export function WeatherStylingCard() {
                 {loading ? "Checking..." : "Retry weather"}
               </Button>
             ) : (
-              <Link href="/stylist">
-                <Button className="w-full rounded-full">Style me for today</Button>
+                <Link href="/stylist/create-look">
+                <Button className="w-full">Style me for today</Button>
               </Link>
             )}
             <Button
               ref={chooseButtonRef}
               type="button"
               variant="secondary"
-              className="w-full rounded-full"
+              className="w-full"
               onClick={() => setSelectorOpen(true)}
             >
               <MapPin size={16} aria-hidden="true" />

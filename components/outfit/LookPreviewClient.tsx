@@ -259,14 +259,13 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
 
   return (
     <div className="min-w-0 space-y-6 pb-[calc(1.5rem+var(--safe-bottom))] lg:pb-8">
-      <div className="relative overflow-hidden rounded-xl4 border border-line/80 bg-surface/82 p-6 shadow-card backdrop-blur-xl sm:p-9">
-        <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
-        <div className="relative">
+      <header className="border-b border-line pb-7 pt-2 sm:pb-9">
+        <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cocoa">Preview this look</p>
-          <h1 className="mt-2 font-editorial text-4xl font-semibold leading-[0.95] tracking-editorial text-ink sm:text-5xl lg:text-6xl">{displayCopy.title}</h1>
+          <h1 className="mt-2 max-w-4xl font-editorial text-4xl font-semibold leading-[1.02] tracking-editorial text-ink sm:text-5xl">{displayCopy.title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{displayCopy.supportingCopy}</p>
         </div>
-      </div>
+      </header>
 
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:items-start">
         <section ref={previewStageRef} tabIndex={-1} className="min-w-0 outline-none">
@@ -279,12 +278,11 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                   aspect="fullBody"
                   fit="contain"
                   placeholder="Virtual Try-On preview"
-                  className="min-w-0 w-full rounded-none border-0 bg-gradient-to-br from-canvas via-surface to-olive/10 p-2 sm:p-4"
-                  imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
+                  className="min-w-0 w-full rounded-none border-0 bg-canvasSubtle p-2 sm:p-4"
                 />
               </div>
             ) : progressiveCoreReady ? (
-              <div className="relative overflow-hidden bg-gradient-to-br from-canvas via-surface to-olive/10" role="status" aria-live="polite">
+              <div className="relative overflow-hidden bg-canvasSubtle" role="status" aria-live="polite">
                 <ImageFrame
                   src={imageUrl}
                   alt={`${displayCopy.title} core outfit preview`}
@@ -292,9 +290,8 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                   fit="contain"
                   placeholder="Core outfit preview"
                   className="min-w-0 w-full rounded-none border-0 bg-transparent p-2 sm:p-4"
-                  imageClassName="drop-shadow-[0_24px_48px_rgba(74,46,34,0.14)]"
                 />
-                <div className="absolute inset-x-3 bottom-3 rounded-3xl border border-cocoa/20 bg-white/92 p-4 text-left shadow-card backdrop-blur-xl sm:inset-x-5 sm:bottom-5 sm:p-5">
+                <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-cocoa/20 bg-surfaceWarm/95 p-4 text-left shadow-card sm:inset-x-5 sm:bottom-5 sm:p-5">
                   <div className="flex items-start gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-full bg-success/12 text-success">
                       <CheckCircle2 size={20} aria-hidden="true" />
@@ -327,10 +324,9 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                 <Link href="/support" className="focus-ring mt-4 rounded-full px-4 py-2 text-sm font-semibold text-cocoa hover:text-espresso">Contact Support</Link>
               </div>
             ) : previewState === "queued" || previewState === "processing" || previewState === "delayed" ? (
-              <div className="relative flex min-h-[460px] flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-white/50 to-canvas/55 px-5 py-12 text-center sm:min-h-[560px] sm:px-10" role="status" aria-live="polite">
-                <div className="pointer-events-none absolute size-[22rem] rounded-full bg-cocoa/10 blur-3xl motion-safe:animate-pulse" aria-hidden="true" />
+              <div className="relative flex min-h-[460px] flex-col items-center justify-center overflow-hidden bg-canvasSubtle px-5 py-12 text-center sm:min-h-[560px] sm:px-10" role="status" aria-live="polite">
                 <div className="relative z-10 flex w-full max-w-2xl flex-col items-center">
-                  <span className="relative grid size-16 place-items-center rounded-full border border-cocoa/20 bg-white/80 text-cocoa shadow-glow">
+                  <span className="relative grid size-16 place-items-center rounded-full border border-cocoa/20 bg-surfaceWarm text-cocoa">
                     <span className="absolute inset-[-0.55rem] rounded-full border border-cocoa/20 motion-safe:animate-pulse" />
                     {previewState === "delayed" ? <Clock3 size={25} aria-hidden="true" /> : <Sparkles size={25} aria-hidden="true" />}
                   </span>
@@ -346,13 +342,13 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                       : "We’re styling your selected pieces on your Studio Model. This can take a little time."}
                   </p>
                   <div className="mt-6 grid w-full gap-3 text-left sm:grid-cols-2">
-                    <div className="rounded-2xl border border-line bg-white/70 p-4">
+                    <div className="rounded-xl border border-line bg-surfaceWarm p-4">
                       <div className="flex items-start gap-3">
                         <BellRing className="mt-0.5 shrink-0 text-cocoa" size={18} aria-hidden="true" />
                         <p className="text-sm leading-6 text-ink">You’ll see a notification in MyFitPick when it is ready.</p>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-line bg-white/70 p-4">
+                    <div className="rounded-xl border border-line bg-surfaceWarm p-4">
                       <div className="flex items-start gap-3">
                         <ShieldCheck className="mt-0.5 shrink-0 text-cocoa" size={18} aria-hidden="true" />
                         <p className="text-sm leading-6 text-ink">You can safely leave this page and return later. Processing will continue.</p>
@@ -379,8 +375,8 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-[460px] flex-col items-center justify-center bg-gradient-to-br from-canvas/80 via-surface to-cocoa/5 px-6 py-12 text-center sm:min-h-[560px]">
-                <span className="grid size-14 place-items-center rounded-full border border-cocoa/20 bg-cocoa/10 text-cocoa"><Layers3 size={23} aria-hidden="true" /></span>
+              <div className="flex min-h-[460px] flex-col items-center justify-center bg-canvasSubtle px-6 py-12 text-center sm:min-h-[560px]">
+                <span className="grid size-14 place-items-center rounded-xl bg-cocoa/10 text-cocoa"><Layers3 size={23} aria-hidden="true" /></span>
                 <h2 className="mt-6 text-2xl font-semibold text-ink">See the complete look on your Studio Model</h2>
                 <p className="mt-3 max-w-md text-sm leading-6 text-muted">MyFitPick will prepare one preview using the pieces selected for this outfit.</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">

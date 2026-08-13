@@ -9,7 +9,7 @@ const tones: Record<BadgeTone, string> = {
   warning: "border-warning/25 bg-warning/10 text-warning",
   danger: "border-danger/25 bg-danger/10 text-danger",
   premium: "border-cocoa/25 bg-cocoa/10 text-cocoa",
-  info: "border-olive/25 bg-olive/10 text-olive"
+  info: "border-info/25 bg-info/10 text-info"
 };
 
 export function Badge({

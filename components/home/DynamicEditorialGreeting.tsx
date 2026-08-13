@@ -37,7 +37,7 @@ export function DynamicEditorialGreeting() {
     <>
       <h1
         suppressHydrationWarning
-        className="font-editorial text-balance text-4xl font-semibold leading-[0.98] tracking-editorial text-ink sm:text-5xl lg:text-6xl"
+        className="font-editorial text-balance text-4xl font-semibold leading-[1.02] tracking-editorial text-ink sm:text-5xl"
       >
         {greeting.greeting}
       </h1>

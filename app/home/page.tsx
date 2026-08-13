@@ -14,15 +14,15 @@ export default async function HomePage() {
 
   return (
     <AppShell>
-      <header className="relative overflow-hidden rounded-xl4 border border-line bg-white/76 p-6 shadow-card backdrop-blur-xl sm:p-8">
+      <header className="border-b border-line pb-8 pt-2 sm:pb-10">
         <div className="max-w-4xl">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Home</p>
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Today in your wardrobe</p>
           <DynamicEditorialGreeting />
         </div>
       </header>
-      <div className="mt-6 flex flex-col gap-6">
-        <WeatherStylingCard />
+      <div className="mt-8 flex flex-col gap-8">
         <SimpleHomeActions />
+        <WeatherStylingCard />
         <GettingStartedChecklist initialState={onboarding} />
       </div>
     </AppShell>

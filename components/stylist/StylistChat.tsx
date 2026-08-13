@@ -157,16 +157,16 @@ function StylistProductCard({
     <button
       type="button"
       className={cn(
-        "focus-ring group min-h-56 w-full min-w-0 overflow-hidden rounded-xl3 border p-5 text-left shadow-card transition hover:-translate-y-0.5",
+        "focus-ring group min-h-52 w-full min-w-0 overflow-hidden rounded-2xl border p-5 text-left transition hover:-translate-y-0.5",
         featured
-          ? "border-cocoa/30 bg-gradient-to-br from-cocoa/12 via-surface to-olive/10"
-          : "border-line bg-surface/90",
+          ? "border-cocoa/30 bg-cocoa/10"
+          : "border-line bg-surfaceWarm",
         active ? "ring-2 ring-cocoa/30" : "hover:border-cocoa/35"
       )}
       onClick={onClick}
       aria-pressed={active}
     >
-      <span className={cn("inline-flex size-11 items-center justify-center rounded-2xl border", featured ? "border-cocoa/25 bg-cocoa text-canvas" : "border-line bg-canvas text-cocoa")}>
+      <span className={cn("inline-flex size-11 items-center justify-center rounded-xl", featured ? "bg-cocoa text-white" : "bg-canvasSubtle text-cocoa")}>
         <Icon size={18} aria-hidden="true" />
       </span>
       <span className="mt-5 block max-w-full break-words font-editorial text-3xl font-semibold leading-none text-ink">{title}</span>
@@ -549,13 +549,13 @@ function EditorialRecommendationCard({
   return (
     <article
       className={cn(
-        "w-full overflow-hidden rounded-[2rem] border bg-surface/90 p-3 shadow-card transition sm:p-5",
+        "w-full overflow-hidden rounded-2xl border bg-surfaceWarm p-3 transition sm:p-5",
         featured ? "border-cocoa/25" : "border-line"
       )}
     >
       <div className="relative">
         {featured ? (
-          <p className="absolute left-4 top-4 z-10 rounded-full border border-white/70 bg-surface/85 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cocoa shadow-soft backdrop-blur">
+          <p className="absolute left-4 top-4 z-10 rounded-full border border-line bg-surfaceWarm/95 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-cocoa">
             {reference ? "Best Match" : "Editor's Pick"}
           </p>
         ) : null}
@@ -564,7 +564,7 @@ function EditorialRecommendationCard({
       <div className="grid gap-5 px-1 py-5 sm:px-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
           {reference ? <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Styled Around Your Item</p> : null}
-          <h4 className={cn("font-editorial font-semibold leading-none text-ink", featured ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl")}>
+          <h4 className={cn("font-editorial font-semibold leading-[1.02] text-ink", featured ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl")}>
             {outfit.title}
           </h4>
           {outfit.summary ? <p className="mt-3 max-w-xl truncate text-sm leading-6 text-muted">{outfit.summary}</p> : null}
@@ -1225,7 +1225,7 @@ export function StylistChat({
         </div>
       ) : null}
 
-      <div ref={workspaceRef} className="scroll-mt-6 lg:grid lg:min-h-[calc(100svh-2.5rem)] lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8">
+      <div ref={workspaceRef} className="scroll-mt-6 lg:grid lg:min-h-[calc(100svh-2.5rem)] lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8">
         <aside className="hidden border-r border-line/80 px-2 py-5 pr-7 lg:flex lg:flex-col">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted">In this chat</h2>
@@ -1256,7 +1256,7 @@ export function StylistChat({
           <header className="mb-8 flex items-start justify-between gap-5 px-1 sm:mb-10">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-cocoa">MyFitPick AI stylist</p>
-              <h1 className="font-editorial mt-2 text-4xl font-medium tracking-[-0.035em] text-ink sm:text-5xl">Describe it. I&apos;ll style it.</h1>
+              <h1 className="font-editorial mt-2 text-4xl font-medium leading-[1.02] tracking-[-0.025em] text-ink sm:text-5xl">Describe it. I&apos;ll style it.</h1>
               <p className="mt-3 max-w-xl text-base leading-7 text-muted">Share an occasion, mood, or weather. MyFitPick will build looks using your saved wardrobe.</p>
             </div>
             {messages.length ? (
@@ -1303,7 +1303,7 @@ export function StylistChat({
           </div>
 
           <form className="sticky bottom-[calc(5.5rem+var(--safe-bottom))] z-10 mt-auto px-1 pb-3 pt-4 lg:bottom-4" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
-            <div className="glass-panel mx-auto max-w-3xl rounded-2xl p-3 shadow-card transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
+            <div className="mx-auto max-w-3xl rounded-2xl border border-line bg-surfaceWarm p-3 shadow-soft transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
               <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
               <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
               <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
@@ -1312,7 +1312,7 @@ export function StylistChat({
                     <Plus size={15} aria-hidden="true" /> <span>Add image</span>
                   </button>
                 </div>
-                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-10 items-center justify-center rounded-full bg-ink text-white shadow-soft transition hover:bg-espresso disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
+                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
                   {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
                 </button>
               </div>

@@ -47,12 +47,12 @@ function ContextPageHeader({ config }: { config: HeaderConfig }) {
   const router = useRouter();
 
   return (
-    <header className="sticky top-[var(--safe-top)] z-30 mb-5 rounded-[1.45rem] border border-line/75 bg-canvas/88 px-2 py-2 shadow-soft backdrop-blur-xl">
+    <header className="sticky top-[var(--safe-top)] z-30 mb-6 border-b border-line bg-canvas/95 px-1 py-2 backdrop-blur-xl">
       <div className={config.dismissible ? "grid min-h-12 grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] items-center gap-2" : "grid min-h-12 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-2 pr-[3.25rem]"}>
         <button
           type="button"
           onClick={() => router.back()}
-          className="focus-ring inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface/90 text-muted shadow-card transition hover:text-ink active:scale-[0.97]"
+          className="focus-ring inline-flex size-11 items-center justify-center rounded-xl text-muted transition hover:bg-canvasSubtle hover:text-ink active:scale-[0.97]"
           aria-label="Go back"
         >
           <ArrowLeft size={18} aria-hidden="true" />
@@ -61,7 +61,7 @@ function ContextPageHeader({ config }: { config: HeaderConfig }) {
         {config.dismissible ? (
           <Link
             href={config.closeHref}
-            className="focus-ring inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface/90 text-muted shadow-card transition hover:text-ink active:scale-[0.97]"
+            className="focus-ring inline-flex size-11 items-center justify-center rounded-xl text-muted transition hover:bg-canvasSubtle hover:text-ink active:scale-[0.97]"
             aria-label={config.closeLabel}
           >
             <X size={18} aria-hidden="true" />

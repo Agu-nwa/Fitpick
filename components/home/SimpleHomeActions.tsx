@@ -1,30 +1,37 @@
 import Link from "next/link";
-import { ArrowUpRight, Shirt, Sparkles } from "lucide-react";
+import { ArrowUpRight, ImagePlus, Shirt, Sparkles } from "lucide-react";
 
 const actions = [
-  { title: "Add a piece", body: "Add your first piece to begin styling your closet.", href: "/wardrobe/add", icon: Shirt, primary: true, number: "01", cta: "Add a piece" },
-  { title: "Create a Look", body: "Start with an occasion, mood, weather, or favourite piece.", href: "/stylist/create-look", icon: Sparkles, number: "02", cta: "Create a Look" }
+  { title: "Create a Look", body: "Tell your stylist the occasion, mood, or weather and get a complete closet-led outfit.", href: "/stylist/create-look", icon: Sparkles, primary: true, cta: "Start styling" },
+  { title: "Match an Outfit", body: "Upload a piece or inspiration image and style around it with what you own.", href: "/stylist/match", icon: ImagePlus, cta: "Match inspiration" },
+  { title: "Add to Closet", body: "Add another garment, shoe, bag, or accessory to improve future looks.", href: "/wardrobe/add", icon: Shirt, cta: "Add an item" }
 ];
 
 export function SimpleHomeActions() {
   return (
-    <section className="grid gap-3 md:grid-cols-2">
+    <section aria-labelledby="home-actions-title">
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">Your stylist</p>
+          <h2 id="home-actions-title" className="font-editorial mt-2 text-3xl font-semibold text-ink sm:text-4xl">What would you like to do?</h2>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {actions.map((action) => {
         const Icon = action.icon;
         return (
           <Link
             key={action.title}
             href={action.href}
-            className={`focus-ring group flex min-h-64 flex-col rounded-xl3 border p-5 transition duration-500 hover:-translate-y-1 ${
-              action.primary ? "border-cocoa bg-cocoa text-canvas shadow-glow" : "border-line bg-surface text-ink hover:border-olive/50"
+            className={`focus-ring group flex min-h-52 flex-col rounded-2xl border p-5 transition duration-200 hover:-translate-y-0.5 ${
+              action.primary ? "border-cocoa bg-cocoa text-white shadow-soft" : "border-line bg-surfaceWarm text-ink hover:border-cocoa/35"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-bold tracking-[0.22em] ${action.primary ? "text-canvas/60" : "text-muted"}`}>{action.number}</span>
-              <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
+              <span className={`grid size-11 place-items-center rounded-xl ${action.primary ? "bg-white/12" : "bg-canvasSubtle text-cocoa"}`}><Icon size={19} strokeWidth={1.7} aria-hidden="true" /></span>
             </div>
             <div className="mt-auto">
-              <h2 className="font-editorial text-3xl font-semibold leading-[0.95] tracking-tight sm:text-4xl">{action.title}</h2>
+              <h3 className="font-editorial text-3xl font-semibold leading-none tracking-tight">{action.title}</h3>
               <p className={`mt-3 text-sm leading-6 ${action.primary ? "text-canvas/70" : "text-muted"}`}>{action.body}</p>
               <span className="mt-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em]">
                 {action.cta}
@@ -34,6 +41,7 @@ export function SimpleHomeActions() {
           </Link>
         );
       })}
+      </div>
     </section>
   );
 }

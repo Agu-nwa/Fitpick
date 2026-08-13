@@ -31,7 +31,7 @@ export function GettingStartedChecklist({ initialState }: { initialState: Onboar
   if (!state.shouldShowChecklist) return null;
 
   return (
-    <section className="rounded-[28px] border border-line bg-surface/86 p-5 shadow-card backdrop-blur-xl sm:p-6" aria-labelledby="getting-started-title">
+    <section className="border-t border-line py-6" aria-labelledby="getting-started-title">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-cocoa">First steps</p>
@@ -51,12 +51,12 @@ export function GettingStartedChecklist({ initialState }: { initialState: Onboar
         </button>
       </div>
 
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-line/70" aria-hidden="true">
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-line/70" aria-hidden="true">
         <div className="h-full rounded-full bg-olive transition-all duration-500" style={{ width: `${progressPercent}%` }} />
       </div>
 
       {state.allComplete ? (
-        <div className="mt-5 rounded-3xl border border-olive/25 bg-olive/8 px-4 py-4 text-sm leading-6 text-ink">
+        <div className="mt-5 rounded-xl border border-success/25 bg-success/10 px-4 py-4 text-sm leading-6 text-ink">
           Beautiful. MyFitPick now has enough signal to style with more confidence.
         </div>
       ) : null}
