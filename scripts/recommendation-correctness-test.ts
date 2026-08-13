@@ -10,6 +10,8 @@ import { outfitTemplates } from "../lib/recommendation/outfit-templates";
 import { diversifyOutfits } from "../lib/recommendation/diversity";
 import { evaluateRegenerationCandidate, resolveRegenerationPolicy } from "../lib/recommendation/regeneration";
 import { wardrobeRotationScore } from "../lib/recommendation/rotation";
+import { scoreOutfitDetailed } from "../lib/recommendation/scoring";
+import { accessoryAttributeScore, footwearAttributeScore } from "../lib/recommendation/attribute-intelligence";
 
 const item = (id: string, category: string, name: string, extra: Record<string, any> = {}) => ({ _id: id, category, name, condition: "ready", ...extra });
 const top = item("top", "tops", "White shirt", { canonicalSubtype: "shirt", taxonomyNeedsReview: false });
@@ -40,6 +42,11 @@ assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: 
 const incompatible = item("rain-only", "shoes", "Rain boot", { weather: ["rain"] });
 assert.equal(completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [incompatible], weather: "hot dry" }).state, "footwear_available_but_incompatible", "7 explicit incompatibility is reported");
 assert.ok(!evaluateOutfitCompleteness([top, bottom], { footwearState: "footwear_available_but_incompatible" }).completenessWarnings.join(" ").includes("No shoes found"), "8 warning never claims owned shoes do not exist");
+const formalPump = item("formal-pump", "shoes", "Black closed-toe pump", { canonicalSubtype: "pumps", taxonomyNeedsReview: false, footwearAttributes: { toeStyle: "closed", activity: ["formal"], comfortLevel: "medium" } });
+const athleticTrainer = item("athletic-trainer", "shoes", "Black athletic trainer", { canonicalSubtype: "sneakers", taxonomyNeedsReview: false, footwearAttributes: { toeStyle: "closed", activity: ["training", "sports"], comfortLevel: "high" } });
+const weddingFootwear = completeFootwear({ selectedItems: [top, bottom], allWardrobeItems: [athleticTrainer, formalPump], occasion: "Wedding guest", formality: "formal" });
+assert.ok(weddingFootwear.items.some((entry) => entry._id === "formal-pump"), "45 footwear attributes make formal construction outrank athletic footwear for a wedding");
+assert.ok(footwearAttributeScore(item("rain-sandal", "shoes", "Suede open sandal", { footwearAttributes: { toeStyle: "open" } }), [dress], { weatherContext: "heavy rain" }).score < 0, "46 open suede footwear receives a direct rain penalty");
 
 const necklace = item("necklace", "accessories", "Necklace", { canonicalSubtype: "necklace", stylingRole: "neck_jewelry", taxonomyNeedsReview: false });
 const earrings = item("earrings", "accessories", "Earrings", { canonicalSubtype: "earrings", stylingRole: "ear_jewelry", taxonomyNeedsReview: false });
@@ -69,6 +76,26 @@ assert.ok(!/score|points?|\d+\.\d+/.test(businessFinish.decision.reason.toLowerC
 assert.notEqual(accessoryRoleFor(item("cap", "accessories", "Street cap")), "other", "28 streetwear cap is recognized");
 assert.equal(accessoryRoleFor(item("native-cap", "native", "Traditional cap", { canonicalSubtype: "traditional_cap", taxonomyNeedsReview: false })), "headwear", "29 native headwear is recognized");
 assert.notEqual(accessoryRoleFor(earrings), accessoryRoleFor(necklace), "27 dress finishers can occupy distinct alternatives");
+const openNeckTop = item("open-neck", "tops", "Square-neck top", { neckline: "square" });
+const collaredTop = item("collared", "tops", "Collared shirt", { neckline: "collared" });
+const statementNecklace = item("statement-necklace", "accessories", "Chunky gold necklace", { stylingRole: "neck_jewelry", accessoryScale: "statement" });
+assert.ok(accessoryAttributeScore(statementNecklace, [openNeckTop], { occasionName: "Dinner" }).score > accessoryAttributeScore(statementNecklace, [collaredTop], { occasionName: "Dinner" }).score, "47 neckline geometry directly changes necklace compatibility");
+const formalClutch = item("formal-clutch", "bags", "Small structured evening clutch", { stylingRole: "carry" });
+const gymBackpack = item("gym-backpack", "bags", "Large gym backpack", { stylingRole: "carry" });
+assert.ok(accessoryAttributeScore(formalClutch, [dress], { occasionName: "Formal wedding" }).score > accessoryAttributeScore(gymBackpack, [dress], { occasionName: "Formal wedding" }).score, "48 bag construction directly affects formal-occasion suitability");
+
+const balancedProportion = scoreOutfitDetailed([
+  item("structured-top", "tops", "Tailored top", { garmentFit: "tailored", fabricDrape: "structured" }),
+  item("flowing-bottom", "bottoms", "Flowing trousers", { garmentFit: "flowing", fabricDrape: "soft" }),
+  formalPump
+], { repeatDays: 14, occasionName: "Dinner", desiredCategories: ["tops", "bottoms", "shoes"] });
+const uncontrolledVolume = scoreOutfitDetailed([
+  item("oversized-top", "tops", "Oversized top", { garmentFit: "oversized", fabricDrape: "flowing" }),
+  item("wide-bottom", "bottoms", "Wide flowing trousers", { garmentFit: "flowing", fabricDrape: "flowing" }),
+  formalPump
+], { repeatDays: 14, occasionName: "Dinner", desiredCategories: ["tops", "bottoms", "shoes"] });
+assert.ok(balancedProportion.breakdown.attributeCompatibility > uncontrolledVolume.breakdown.attributeCompatibility, "49 fabric drape and fit directly reward controlled proportion");
+assert.ok(balancedProportion.breakdown.attributeCompatibilityReasons.includes("proportion_balanced"), "50 attribute scoring remains explainable in the persisted breakdown");
 
 const weddingProfile = occasionProfiles.find((profile) => profile.id === "wedding")!;
 const weddingShorts = item("wedding-shorts", "bottoms", "Denim shorts", { canonicalSubtype: "shorts", taxonomyNeedsReview: false });

@@ -27,5 +27,11 @@ assert.ok(stylistChat.includes("Uploaded item"), "The uploaded reference must be
 assert.ok(!stylistChat.includes("Match photo"), "Old Match photo chip copy should be removed.");
 assert.ok(!stylistChat.includes("Improve size details"), "Try-on setup should not expose removed measurement language.");
 assert.ok(!stylistChat.includes("Avatar preview"), "Stylist UI should use Virtual Try-On language instead of chatbot-era avatar preview copy.");
+assert.ok(stylistChat.includes("Describe it. I&apos;ll style it."), "Stylist chat should use the focused agent empty state.");
+assert.ok(stylistChat.includes("No conversations yet"), "Stylist chat should include a quiet conversation-history state.");
+assert.ok(stylistChat.includes("Add image"), "The agent composer should expose image attachments.");
+assert.ok(!stylistChat.includes("occasionSuggestions"), "Stylist chat should not show initial occasion suggestions.");
+assert.ok(!stylistChat.includes("promptSuggestions"), "Stylist chat should not show initial prompt suggestions.");
+assert.ok(!stylistChat.includes("createLookExamples"), "Stylist chat should not rotate initial prompt examples.");
 
 console.log("Stylist UI redesign checks passed.");

@@ -15,6 +15,7 @@ import {
   styleProfileScore,
   weatherScore
 } from "@/lib/recommendation/scoring";
+import { accessoryAttributeScore } from "@/lib/recommendation/attribute-intelligence";
 
 export type AccessoryRole =
   | "waist"
@@ -354,6 +355,15 @@ function scoreAccessoryCandidate(input: {
     else if (input.selectedItems.some((item) => inferredBeltCompatibility(item) === true) || selectedWaistband === "belt_loops") { compatibilityAdjustment += 20; positiveSignals.push("belt_compatible"); }
     else missingSignals.push("belt_compatibility");
   }
+  const attributeResult = accessoryAttributeScore(input.item, input.selectedItems, {
+    occasionName: input.occasionName,
+    formality: input.formality,
+    weatherContext: input.weatherContext,
+    styleProfile: input.styleProfile
+  });
+  compatibilityAdjustment += attributeResult.score;
+  positiveSignals.push(...attributeResult.reasons.filter((reason) => !reason.includes("conflict")));
+  penalties.push(...attributeResult.reasons.filter((reason) => reason.includes("conflict")));
   // Missing data is deliberately neutral. Only explicit evidence and contextual conflicts move the score materially.
   const score =
     occasionScore(input.item, input.occasionName || "") +

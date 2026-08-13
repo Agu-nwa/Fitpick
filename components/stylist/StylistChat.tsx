@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Camera, ImagePlus, Layers3, RefreshCw, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Camera, ImagePlus, Layers3, MessageSquare, Plus, RefreshCw, Settings2, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,32 +53,6 @@ type ChatMessage = {
 
 type StylistFlow = "home" | "create" | "match";
 type StylistProductMode = "hub" | "create" | "match";
-
-const occasionSuggestions = [
-  { label: "Work", prompt: "Style me for work today" },
-  { label: "Date night", prompt: "Create a clean date night look" },
-  { label: "Wedding", prompt: "Create a wedding guest look" },
-  { label: "Casual", prompt: "Create an easy casual look" },
-  { label: "Travel", prompt: "Create a travel outfit" },
-  { label: "Dinner", prompt: "Create a clean dinner look" },
-  { label: "Weekend", prompt: "Create a weekend look" },
-  { label: "Weather", prompt: "What should I wear in this weather?" }
-];
-
-const promptSuggestions = [
-  "Style me for work today",
-  "Create a clean dinner look",
-  "Match this outfit with my closet",
-  "What should I wear in this weather?"
-];
-
-const createLookExamples = [
-  "Style me for dinner.",
-  "Create something relaxed but polished.",
-  "I need an outfit for a wedding.",
-  "Help me dress for a first date.",
-  "Build a smart casual look."
-];
 
 const createLoadingSteps = [
   "MyFitPick is styling your look.",
@@ -718,7 +692,6 @@ export function StylistChat({
   const [activeReference, setActiveReference] = useState<ReferenceFashionItemSummary | null>(null);
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const [lastCreateBrief, setLastCreateBrief] = useState("");
-  const [exampleIndex, setExampleIndex] = useState(0);
   const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
   const flowLoadingSteps = currentFlow === "match" ? matchLoadingSteps : createLoadingSteps;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
@@ -740,14 +713,6 @@ export function StylistChat({
       if (referencePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(referencePreviewUrl);
     };
   }, [referencePreviewUrl]);
-
-  useEffect(() => {
-    if (currentFlow !== "create") return;
-    const timer = window.setInterval(() => {
-      setExampleIndex((current) => (current + 1) % createLookExamples.length);
-    }, 3200);
-    return () => window.clearInterval(timer);
-  }, [currentFlow]);
 
   function focusWorkspace() {
     revealContent(workspaceRef, { delayMs: 40, topOffset: 24, bottomOffset: 136 });
@@ -1263,208 +1228,94 @@ export function StylistChat({
         </div>
       ) : null}
 
-      <div ref={workspaceRef} className="scroll-mt-6 space-y-5">
-        {currentFlow === "create" ? (
-          <Card className="space-y-4 border-olive/20 bg-surface/88 p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                  <WandSparkles size={14} aria-hidden="true" />
-                  Create a Look
-                </p>
-                <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Create from your closet.</h2>
-              </div>
-              <Badge tone="premium">Closet-led</Badge>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {occasionSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion.label}
-                  type="button"
-                  className={cn(
-                    "focus-ring min-h-12 rounded-2xl border px-3 py-2 text-sm font-semibold transition hover:border-cocoa/40",
-                    message === suggestion.prompt ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-line bg-canvas/70 text-ink"
-                  )}
-                  onClick={() => setMessage(suggestion.prompt)}
-                  aria-pressed={message === suggestion.prompt}
-                  disabled={loading}
-                >
-                  {suggestion.label}
-                </button>
-              ))}
-            </div>
-
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitStylistMessage();
-              }}
-            >
-              <div className="flex flex-wrap gap-2">
-                {promptSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className="focus-ring rounded-full border border-line bg-white/70 px-3 py-2 text-xs font-semibold text-muted transition hover:border-cocoa/30 hover:text-ink"
-                    onClick={() => setMessage(suggestion)}
-                    disabled={loading}
-                  >
-                    {suggestion}
-                  </button>
+      <div ref={workspaceRef} className="scroll-mt-6 overflow-hidden rounded-[1.75rem] border border-line/80 bg-white/70 shadow-soft backdrop-blur-xl lg:grid lg:min-h-[690px] lg:grid-cols-[248px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-line/80 bg-white/45 p-5 lg:flex lg:flex-col">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-editorial text-xl font-semibold text-ink">Chats</h2>
+            <button type="button" className="focus-ring inline-flex size-9 items-center justify-center rounded-full border border-line bg-white text-muted transition hover:text-ink" aria-label="New conversation" onClick={() => window.location.reload()}>
+              <MessageSquare size={15} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="mt-8 flex flex-1 flex-col">
+            {requestHistory.length ? (
+              <div className="space-y-2">
+                {requestHistory.map((request) => (
+                  <div key={request.id} className="rounded-xl border border-line/70 bg-white/75 px-3 py-3">
+                    <p className="line-clamp-2 text-xs font-medium leading-5 text-ink">{request.content}</p>
+                  </div>
                 ))}
               </div>
-              <button
-                type="button"
-                className="focus-ring rounded-full border border-line bg-white/70 px-3 py-2 text-xs font-semibold text-cocoa transition hover:border-cocoa/40"
-                onClick={() => setMessage(createLookExamples[exampleIndex])}
-                disabled={loading}
-              >
-                {createLookExamples[exampleIndex]}
-              </button>
-              <label className="sr-only" htmlFor="stylist-create-prompt">Tell your stylist what you need</label>
-              <textarea
-                id="stylist-create-prompt"
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                placeholder="Dinner, work, date night, errands, church, travel..."
-                className="focus-ring min-h-24 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-4 text-sm leading-6 text-ink outline-none placeholder:text-muted"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
-                  <input
-                    type="checkbox"
-                    checked={includeVisualization}
-                    onChange={(event) => setIncludeVisualization(event.target.checked)}
-                    className="h-4 w-4 rounded border-line accent-cocoa"
-                  />
-                  Virtual Try-On
-                </label>
-                <Button type="submit" disabled={loading || referenceBusy || !message.trim()}>
-                  <Sparkles size={16} aria-hidden="true" />
-                  {loading ? "Your stylist is putting the look together." : "Create a Look"}
-                </Button>
+            ) : (
+              <div className="my-auto text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-line bg-white text-muted"><MessageSquare size={16} aria-hidden="true" /></div>
+                <p className="mt-4 text-sm font-semibold text-ink">No conversations yet</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Your styling history will appear here.</p>
               </div>
-            </form>
-          </Card>
-        ) : null}
+            )}
+          </div>
+        </aside>
 
-        {currentFlow === "match" ? (
-          <Card className="min-w-0 space-y-4 overflow-hidden border-cocoa/25 bg-surface/88 p-4 sm:p-6">
-            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <div className="min-w-0 space-y-4">
-                <div>
-                  <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                    <ImagePlus size={14} aria-hidden="true" />
-                    Match an Outfit
-                  </p>
-                  <h2 className="font-editorial mt-2 text-3xl font-semibold leading-none text-ink">Style around inspiration.</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">Upload a product photo, screenshot, or outfit reference and build a look from your closet.</p>
-                </div>
-                <MatchFlowVisual />
-                <div className="grid min-w-0 gap-2 sm:grid-cols-2">
-                  <Button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy}>
-                    <UploadCloud size={16} aria-hidden="true" />
-                    Upload inspiration
-                  </Button>
-                  {activeReference || referencePreviewUrl ? (
-                    <Button type="button" variant="secondary" onClick={() => void clearActiveReference()} disabled={referenceBusy}>
-                      Start another match
-                    </Button>
-                  ) : null}
-                </div>
+        <div className="relative flex min-h-[620px] min-w-0 flex-col bg-[radial-gradient(circle_at_50%_44%,rgba(85,124,120,0.10),transparent_30rem),radial-gradient(circle_at_75%_15%,rgba(232,183,172,0.10),transparent_24rem)]">
+          <div className="flex items-center justify-between border-b border-line/70 px-5 py-4 lg:hidden">
+            <p className="font-editorial text-lg font-semibold text-ink">MyFitPick AI</p>
+            <span className="rounded-full border border-line bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">New chat</span>
+          </div>
+
+          <div className="mobile-scrollbar flex-1 overflow-y-auto px-5 pb-40 pt-8 sm:px-8 lg:px-12">
+            {messages.length === 0 && !activeReference && !referencePreviewUrl ? (
+              <div className="mx-auto flex min-h-[330px] max-w-2xl flex-col items-center justify-center text-center lg:min-h-[430px]">
+                <span className="mb-6 inline-flex size-12 items-center justify-center rounded-2xl border border-cocoa/15 bg-white/75 text-cocoa shadow-soft"><Sparkles size={19} aria-hidden="true" /></span>
+                <h1 className="font-editorial text-4xl font-medium tracking-[-0.035em] text-ink sm:text-5xl">Describe it. I&apos;ll style it.</h1>
+                <p className="mt-3 max-w-md text-sm leading-6 text-muted sm:text-base">Tell MyFitPick what you&apos;re dressing for, or add an image to style around.</p>
               </div>
-
-              <div className="min-w-0 space-y-3">
-                {activeReference ? (
-                  <div className="min-w-0 space-y-3" aria-live="polite">
-                    <ReferenceImageCard
-                      reference={activeReference}
-                      onClear={() => void clearActiveReference()}
-                      busy={referenceBusy}
-                    />
-                    {activeReference.status === "needs-selection" ? (
-                      <ReferenceSelectionCard
-                        reference={activeReference}
-                        onSelect={(detectedItemId) => void chooseDetectedReference(detectedItemId)}
-                        busy={referenceBusy}
-                      />
-                    ) : null}
-                    <DetectedPiecesPanel reference={activeReference} busy={referenceBusy} />
-                  </div>
-                ) : referencePreviewUrl ? (
-                  <div className="min-w-0 rounded-2xl border border-line bg-canvas/70 p-3" aria-live="polite">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ImageFrame
-                        src={referencePreviewUrl}
-                        alt="Selected fashion photo preview"
-                        placeholder="Photo"
-                        className="h-20 w-20 shrink-0 rounded-xl"
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-ink">Photo selected</p>
-                        <p className="mt-1 text-xs leading-5 text-muted">{referenceMessage || "Reading your inspiration..."}</p>
-                      </div>
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-6">
+                {messages.map((entry) => (
+                  <div key={entry.id} className={cn("flex", entry.role === "user" ? "justify-end" : "justify-start")}>
+                    <div className={cn("max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[75%]", entry.role === "user" ? "bg-espresso text-white" : "border border-line/80 bg-white/82 text-ink shadow-soft")}>
+                      <p className="whitespace-pre-wrap">{entry.content}</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line bg-canvas/70 px-5 text-center">
-                    <div>
-                      <ImagePlus size={26} className="mx-auto mb-3 text-cocoa" aria-hidden="true" />
-                    <p className="font-editorial text-3xl font-semibold leading-none text-ink">Add a look you love.</p>
-                    <p className="mt-2 text-sm leading-6 text-muted">A photo or screenshot is enough.</p>
-                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeReference ? (
+              <div className="mx-auto mt-6 max-w-3xl space-y-3" aria-live="polite">
+                <ReferenceImageCard reference={activeReference} onClear={() => void clearActiveReference()} busy={referenceBusy} />
+                {activeReference.status === "needs-selection" ? <ReferenceSelectionCard reference={activeReference} onSelect={(detectedItemId) => void chooseDetectedReference(detectedItemId)} busy={referenceBusy} /> : null}
+              </div>
+            ) : referencePreviewUrl ? (
+              <div className="mx-auto mt-6 flex max-w-3xl items-center gap-3 rounded-2xl border border-line bg-white/80 p-3" aria-live="polite">
+                <ImageFrame src={referencePreviewUrl} alt="Selected fashion photo preview" placeholder="Photo" className="h-16 w-16 shrink-0 rounded-xl" />
+                <div><p className="text-sm font-semibold text-ink">Photo selected</p><p className="mt-1 text-xs text-muted">{referenceMessage || "Reading your inspiration..."}</p></div>
+              </div>
+            ) : null}
+          </div>
+
+          <form className="absolute inset-x-0 bottom-0 z-10 px-4 pb-4 sm:px-7 sm:pb-6 lg:px-12" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
+            <div className="mx-auto max-w-3xl rounded-[1.45rem] border border-line bg-white/95 p-3 shadow-[0_18px_60px_rgba(23,21,20,0.12)] backdrop-blur-xl transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
+              <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
+              <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-10 items-center gap-2 rounded-full border border-line bg-white px-3 text-xs font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
+                    <Plus size={15} aria-hidden="true" /> <span>Add image</span>
+                  </button>
+                  <label className="focus-ring inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-canvas hover:text-ink" title="Include Virtual Try-On">
+                    <input type="checkbox" checked={includeVisualization} onChange={(event) => setIncludeVisualization(event.target.checked)} className="sr-only" />
+                    <Settings2 size={16} aria-hidden="true" />
+                    <span className="sr-only">Include Virtual Try-On</span>
+                  </label>
                 </div>
-              )}
-
-                {referenceMessage ? (
-                  <div className="rounded-2xl border border-line bg-canvas/60 px-3 py-2" aria-live="polite">
-                    <p className="text-xs font-semibold text-muted">{referenceMessage}</p>
-                    {canRetryReferenceUpload && !activeReference ? (
-                      <Button type="button" variant="secondary" className="mt-2 w-full" onClick={() => void retryReferenceUpload()} disabled={referenceBusy}>
-                        Retry upload
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <form
-                  className="min-w-0 space-y-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void submitStylistMessage();
-                  }}
-                >
-                  <p className="text-sm font-semibold text-ink">Ask your stylist</p>
-                  <label className="sr-only" htmlFor="stylist-match-prompt">Add optional direction for this match</label>
-                  <textarea
-                    id="stylist-match-prompt"
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Ask your stylist..."
-                    className="focus-ring min-h-20 w-full resize-none rounded-2xl border border-line bg-canvas/80 px-4 py-3 text-sm leading-6 text-ink outline-none placeholder:text-muted"
-                  />
-                  <div className="grid min-w-0 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-                    <label className="inline-flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted sm:tracking-[0.14em]">
-                      <input
-                        type="checkbox"
-                        checked={includeVisualization}
-                        onChange={(event) => setIncludeVisualization(event.target.checked)}
-                        className="h-4 w-4 rounded border-line accent-cocoa"
-                      />
-                      Virtual Try-On
-                    </label>
-                    <Button type="submit" className="w-full sm:w-auto" disabled={loading || referenceBusy || activeReference?.status !== "ready"}>
-                      <Sparkles size={16} aria-hidden="true" />
-                      {loading ? "MyFitPick is finding closet matches." : "Match an Outfit"}
-                    </Button>
-                  </div>
-                </form>
+                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-10 items-center justify-center rounded-full bg-ink text-white shadow-soft transition hover:bg-espresso disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
+                  {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
+                </button>
               </div>
             </div>
-          </Card>
-        ) : null}
+            <p className="mt-2 text-center text-[10px] text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
+          </form>
+        </div>
       </div>
 
       {error ? <p className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}

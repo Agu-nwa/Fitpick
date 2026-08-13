@@ -1,4 +1,4 @@
-export const RECOMMENDATION_SCORING_VERSION = "stylist-score-v6";
+export const RECOMMENDATION_SCORING_VERSION = "stylist-score-v7";
 
 export type RecommendationMode =
   | "todays_best"
@@ -26,6 +26,7 @@ export type ScoringWeights = {
   colorHarmony: number;
   silhouetteBalance: number;
   materialCompatibility: number;
+  attributeCompatibility: number;
   styleProfile: number;
   memoryPreference: number;
   rotation: number;
@@ -42,6 +43,7 @@ const baseWeights: ScoringWeights = {
   colorHarmony: 1,
   silhouetteBalance: 1,
   materialCompatibility: 1,
+  attributeCompatibility: 1,
   styleProfile: 1,
   memoryPreference: 1,
   rotation: 1,
@@ -55,16 +57,16 @@ const modeWeights: Partial<Record<RecommendationMode, Partial<ScoringWeights>>> 
   something_different: { novelty: 1.8, rotation: 1.6, styleProfile: 0.85 },
   most_comfortable: { comfort: 1.8, silhouetteBalance: 1.25, luxury: 0.8 },
   luxury_edit: { luxury: 1.8, colorHarmony: 1.25, occasionFit: 1.2 },
-  business_ready: { occasionFit: 1.35, luxury: 1.2, colorHarmony: 1.15 },
+  business_ready: { occasionFit: 1.35, luxury: 1.2, colorHarmony: 1.15, attributeCompatibility: 1.2 },
   smart_casual: { occasionFit: 1.2, comfort: 1.15, silhouetteBalance: 1.15 },
   date_night: { occasionFit: 1.35, novelty: 1.15, luxury: 1.15 },
   weekend: { comfort: 1.35, rotation: 1.25 },
   travel_ready: { comfort: 1.25, weatherFit: 1.25, materialCompatibility: 1.2 },
-  rain_ready: { weatherFit: 1.8, materialCompatibility: 1.15 },
+  rain_ready: { weatherFit: 1.8, materialCompatibility: 1.15, attributeCompatibility: 1.3 },
   minimal: { colorHarmony: 1.35, silhouetteBalance: 1.2, novelty: 0.8 },
   statement_look: { novelty: 1.55, luxury: 1.25, styleProfile: 0.9 },
-  wedding_guest: { occasionFit: 1.7, luxury: 1.25, completeness: 1.2 },
-  interview: { occasionFit: 1.7, colorHarmony: 1.25, luxury: 1.15 },
+  wedding_guest: { occasionFit: 1.7, luxury: 1.25, completeness: 1.2, attributeCompatibility: 1.3 },
+  interview: { occasionFit: 1.7, colorHarmony: 1.25, luxury: 1.15, attributeCompatibility: 1.25 },
   dinner: { occasionFit: 1.3, luxury: 1.15 },
   warm_weather: { weatherFit: 1.6, comfort: 1.2, materialCompatibility: 1.2 },
   cold_weather: { weatherFit: 1.6, materialCompatibility: 1.25, completeness: 1.15 }

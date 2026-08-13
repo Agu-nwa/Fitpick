@@ -1,4 +1,3 @@
-import { ContextualTip } from "@/components/onboarding/ContextualTip";
 import { StylistChat } from "@/components/stylist/StylistChat";
 import { StylistStudioShell } from "@/components/stylist/StylistStudioShell";
 import { requireUser } from "@/lib/auth";
@@ -9,15 +8,7 @@ export default async function MatchOutfitPage() {
   if (!auth.ok) redirect("/login");
 
   return (
-    <StylistStudioShell
-      eyebrow="Match an Outfit"
-      title="Style around inspiration."
-      description="Upload a product photo, screenshot, or outfit reference and build a look from your closet."
-      badge="Photo or screenshot"
-    >
-      <ContextualTip tipId="match-outfit" dismissedTips={auth.user.onboardingTipsDismissed}>
-        Upload a shopping screenshot or product photo and MyFitPick will match it with your closet.
-      </ContextualTip>
+    <StylistStudioShell className="gap-0 lg:px-5 lg:pb-5 lg:pt-5 xl:px-6">
       <StylistChat initialFlow="match" productMode="match" />
     </StylistStudioShell>
   );

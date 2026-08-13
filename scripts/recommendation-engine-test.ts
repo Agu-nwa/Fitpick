@@ -189,7 +189,8 @@ const businessLook = buildRecommendation({
 assert.equal(businessLook.recommendationMode, "business_ready");
 assert.ok(businessLook.items.length >= 3, "business casual recommendation should include owned core items");
 assert.ok(businessLook.items.every((entry: any) => wardrobe.some((owned) => String(owned._id) === String(entry.id || entry._id))), "recommendation must only use fixture-owned items");
-assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v6");
+assert.equal(businessLook.scoreBreakdown?.version, "stylist-score-v7");
+assert.equal(typeof businessLook.scoreBreakdown?.attributeCompatibility, "number", "recommendation includes normalized attribute compatibility");
 assert.equal(businessLook.similarityMetadata?.outfitTemplateId, "business_casual");
 assert.equal(businessLook.similarityMetadata?.occasionProfileId, "business");
 assert.equal(businessLook.scoreBreakdown?.stylingValidation?.valid, true);

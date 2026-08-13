@@ -2,6 +2,7 @@ import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { outfitItemSignature } from "@/lib/recommendation/signature";
 import { RECOMMENDATION_SCORING_VERSION, scoringWeightsForMode } from "@/lib/recommendation/policy";
 import { scoreCompatibilityGraph } from "@/lib/wardrobe/compatibility/compatibility-score";
+import { outfitAttributeCompatibilityScore } from "@/lib/recommendation/attribute-intelligence";
 
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
@@ -366,6 +367,7 @@ type ScoreInput = {
 
 export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
   const weights = scoringWeightsForMode(input.recommendationMode);
+  const attributeCompatibility = outfitAttributeCompatibilityScore(items, input);
   const itemBreakdown = items.reduce(
     (acc, item) => {
       acc.occasionFit += occasionScore(item, input.occasionName);
@@ -390,6 +392,8 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     colorHarmony: colorCompatibilityScore(items),
     silhouetteBalance: silhouetteBalanceScore(items),
     materialCompatibility: fabricCompatibilityScore(items) + materialWeatherScore(items, input.weatherContext),
+    attributeCompatibility: attributeCompatibility.score,
+    attributeCompatibilityReasons: attributeCompatibility.reasons,
     styleProfile: styleProfileScore(items, input.styleProfile),
     memoryPreference: memoryPreferenceScore(items, input.memorySummary, input.allowRecentRepeat),
     rotation: itemBreakdown.rotation,
@@ -411,6 +415,7 @@ export function scoreOutfitDetailed(items: any[], input: ScoreInput) {
     breakdown.colorHarmony * weights.colorHarmony +
     breakdown.silhouetteBalance * weights.silhouetteBalance +
     breakdown.materialCompatibility * weights.materialCompatibility +
+    breakdown.attributeCompatibility * weights.attributeCompatibility +
     breakdown.styleProfile * weights.styleProfile +
     breakdown.memoryPreference * weights.memoryPreference +
     breakdown.rotation * weights.rotation +

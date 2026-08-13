@@ -2,6 +2,7 @@ import { colorCompatibilityScore } from "@/lib/recommendation/color";
 import { isFootwear } from "@/lib/recommendation/completeness";
 import { outfitSlotsForItem, sanitizeOutfitItems } from "@/lib/recommendation/outfit-slots";
 import { metadataList, scoreOutfit } from "@/lib/recommendation/scoring";
+import { footwearAttributeScore } from "@/lib/recommendation/attribute-intelligence";
 
 export type FootwearCompletionState =
   | "footwear_selected"
@@ -68,6 +69,15 @@ export function completeFootwear(input: {
     if (input.stylePreferences?.comfortPriority === "high" && footwear.comfortLevel === "high") { metadataAdjustment += 9; positiveSignals.push("comfort_preference"); }
     if (!footwear.toeStyle || footwear.toeStyle === "unknown") missingSignals.push("toe_style");
     if (!footwear.comfortLevel || footwear.comfortLevel === "unknown") missingSignals.push("comfort");
+    const attributeResult = footwearAttributeScore(shoe, sanitized.items, {
+      occasionName: input.occasion,
+      formality: input.formality,
+      weatherContext: input.weather,
+      styleProfile: input.stylePreferences
+    });
+    metadataAdjustment += attributeResult.score;
+    positiveSignals.push(...attributeResult.reasons.filter((reason) => !reason.includes("conflict")));
+    penalties.push(...attributeResult.reasons.filter((reason) => reason.includes("conflict")));
     const base = scoreOutfit([...sanitized.items, shoe], { ...(input.scoringInput || {}), occasionName: input.occasion, formality: input.formality, weatherContext: input.weather });
     const color = colorCompatibilityScore([...sanitized.items, shoe]);
     const recent = shoe.lastWornAt ? new Date(shoe.lastWornAt).getTime() : 0;
