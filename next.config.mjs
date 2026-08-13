@@ -2,6 +2,17 @@ import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   deploymentId: process.env.NEXT_DEPLOYMENT_ID,
+  // The EC2 release script runs `tsc --noEmit` immediately before this build.
+  // Avoid a second memory-heavy type-check on the constrained production host.
+  typescript: {
+    ignoreBuildErrors: process.env.FITPICK_EC2_BUILD === "true",
+  },
+  experimental: {
+    webpackMemoryOptimizations: true,
+    webpackBuildWorker: true,
+    staticGenerationMaxConcurrency: 1,
+    staticGenerationMinPagesPerWorker: 100,
+  },
 };
 
 export default withSentryConfig(nextConfig, {

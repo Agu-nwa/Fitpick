@@ -30,4 +30,12 @@ for (const authPage of ["app/login/page.tsx", "app/register/page.tsx"]) {
   assert.doesNotMatch(source, /getSessionUser\(\)/, `${authPage} does not redirect from a stale signed cookie`);
 }
 
+const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+assert.match(packageJson.scripts["build:ec2"], /FITPICK_EC2_BUILD=true/, "EC2 build uses its constrained-host configuration");
+assert.match(packageJson.scripts["build:ec2"], /--no-lint/, "EC2 build does not repeat the CI lint gate");
+
+const nextConfigSource = readFileSync("next.config.mjs", "utf8");
+assert.match(nextConfigSource, /ignoreBuildErrors:\s*process\.env\.FITPICK_EC2_BUILD === "true"/, "only the EC2 build skips Next's duplicate type-check");
+assert.match(nextConfigSource, /webpackMemoryOptimizations:\s*true/, "low-memory webpack behavior remains enabled");
+
 console.log("Deployment safety tests passed.");
