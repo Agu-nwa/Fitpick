@@ -33,6 +33,8 @@ const StudioModelAssetSchema = new Schema({
   originalWidth: { type: Number, default: 0 }, originalHeight: { type: Number, default: 0 }, originalBytes: { type: Number, default: 0 }, originalFormat: { type: String, default: "" },
   thumbnailWidth: { type: Number, default: 0 }, thumbnailHeight: { type: Number, default: 0 }, thumbnailBytes: { type: Number, default: 0 }, thumbnailFormat: { type: String, default: "" },
   providerModel: { type: String, default: "", maxlength: 80 }, appearanceVersion: { type: String, default: "studio-model-v1", maxlength: 40 }, validationVersion: { type: String, default: "studio-model-validation-v1", maxlength: 80 }, sourceType: { type: String, enum: ["generated", "legacy_import", "manual_upload"], default: "generated" }, generatedAt: { type: Date, default: null },
+  identityReferenceId: { type: String, default: "", maxlength: 80 },
+  identityReferenceVersion: { type: String, default: "", maxlength: 80 },
   deprecatedAt: { type: Date, default: null },
   extensions: { type: Schema.Types.Mixed, default: {} }
 }, { timestamps: true });

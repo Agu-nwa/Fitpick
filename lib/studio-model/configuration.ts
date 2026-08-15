@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { studioModelAppearanceSchema, type StudioModelAppearance } from "./appearance-taxonomy";
+import type { StudioModelIdentityReference } from "./identity-references";
 
 export function parseStudioModelAppearance(value: unknown) {
   const plain = value && typeof (value as { toObject?: unknown }).toObject === "function"
@@ -26,15 +27,20 @@ export function studioModelAppearanceKey(value: StudioModelAppearance) {
   return `sm_${crypto.createHash("sha256").update(canonical).digest("hex").slice(0, 24)}`;
 }
 
-export function buildStudioModelPrompt(value: StudioModelAppearance) {
+export function buildStudioModelPrompt(value: StudioModelAppearance, identity?: StudioModelIdentityReference | null) {
   const a = parseStudioModelAppearance(value);
   return [
-    "Create a fictional adult fashion studio model, full body, front-facing, neutral standing pose.",
+    identity
+      ? `Create an adult fashion Studio Model using the attached approved ${identity.id} identity reference. Preserve its recognizable facial geometry and identity across catalogue images.`
+      : "Create a fictional adult fashion studio model, full body, front-facing, neutral standing pose.",
     `Presentation: ${a.gender}; body type: ${a.bodyType.replaceAll("_", " ")}; skin tone reference: ${a.skinTone.replace("_", " ")}${a.undertone ? ` with ${a.undertone} undertone` : ""}.`,
     `Hair: ${a.hairColor.replaceAll("_", " ")} ${a.hairStyle.replaceAll("_", " ")}, ${a.hairTexture.replaceAll("_", " ")} texture, ${a.hairLength} length.`,
     a.heightBand ? `Height presentation: ${a.heightBand}.` : "",
     "Ordinary fitted crew-neck shirt, full-length neutral trousers, plain trainers; no underwear, swimwear, logos, text, jewelry, or sexualized styling.",
-    "Even studio lighting, plain warm-white background, realistic proportions, entire body and footwear visible. Do not imitate a real person or infer identity attributes beyond the supplied appearance controls."
+    identity
+      ? "The attached image controls facial identity only. Apply the selected skin, hair, body, and height controls independently. Do not infer race, ethnicity, or any other sensitive attribute."
+      : "Do not imitate a real person or infer identity attributes beyond the supplied appearance controls.",
+    "Even studio lighting, plain warm-white background, realistic proportions, entire body and footwear visible."
   ].filter(Boolean).join(" ");
 }
 

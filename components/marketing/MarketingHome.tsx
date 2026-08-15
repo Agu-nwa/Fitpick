@@ -37,7 +37,7 @@ function HeroDemo() {
       <div className="relative aspect-[4/5] overflow-hidden rounded-[32px] border border-line bg-white p-3 shadow-lift sm:rounded-[40px] sm:p-4">
         <div className="relative h-full overflow-hidden rounded-[24px] bg-canvasSubtle sm:rounded-[30px]">
           <Image
-            src="/fashion/editorial-blue-blouse.webp"
+            src="/fashion/editorial-blue-blouse-canonical-v1.png"
             alt="A complete outfit styled by MyFitPick"
             fill
             priority
@@ -156,7 +156,7 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
             </div>
             <div className="mt-12 grid gap-5 lg:grid-cols-2">
               <article className="relative min-h-[420px] overflow-hidden rounded-[32px] bg-espresso p-7 text-white shadow-card sm:p-10">
-                <Image src="/fashion/editorial-male-teal.webp" alt="A smart outfit for an occasion" fill sizes="(max-width: 1023px) 92vw, 610px" className="object-cover opacity-48" />
+                <Image src="/fashion/editorial-male-teal-canonical-v1.png" alt="A smart outfit for an occasion" fill sizes="(max-width: 1023px) 92vw, 610px" className="object-cover opacity-48" />
                 <div className="absolute inset-0 bg-gradient-to-t from-espresso via-espresso/55 to-transparent" />
                 <div className="relative flex h-full min-h-[350px] flex-col justify-between">
                   <span className="flex size-12 items-center justify-center rounded-2xl bg-white/14 backdrop-blur"><CalendarDays size={23} aria-hidden="true" /></span>

@@ -14,6 +14,22 @@ Production objects use `studio-model-assets/<catalogue-version>/<appearance-key>
 
 Assets record provider, provider model, prompt version, appearance version, catalogue version, validation version, generation time, and source type without storing prompts or secrets. Increment catalogue version when provider, base clothing, framing, prompt semantics, or material validation policy changes. Increment appearance version when taxonomy semantics change. Previous versions remain auditable and are not returned as current unless explicitly requested.
 
+## Canonical identity references
+
+Generated shared Studio Models use a reviewed canonical face reference selected by `genderPresentation`. Reference portraits live under `assets/studio-model/identity-references/`, outside the public web root. They are server-side generation inputs and must not be exposed as public profile images.
+
+The reference controls recognizable facial geometry only. Explicit appearance controls continue to govern body type, skin tone, undertone, hairstyle, hair texture, hair length, hair color, and height presentation. Personal digital twins and user-uploaded photos never receive a canonical identity reference.
+
+Generation uses the image-edit path with high input fidelity. Validation compares the generated asset with its mapped reference and adds `identityFidelity` to the normal technical and visual checks. Every generated record stores `identityReferenceId` and `identityReferenceVersion` for auditability. Keep human approval enabled because automated identity comparison is a quality gate, not a guarantee.
+
+When replacing a canonical identity:
+
+1. Add a new versioned file; do not overwrite an existing reference.
+2. Add the new reference ID and mapping in `lib/studio-model/identity-references.ts`.
+3. Increment the identity and generation prompt versions.
+4. Generate and review a bounded sample across body, skin, and hair controls.
+5. Deprecate superseded catalogue assets rather than mutating their provenance.
+
 ## Integration safeguards
 
 Integration requires all of:
