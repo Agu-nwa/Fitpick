@@ -9,20 +9,20 @@ export const metadata: Metadata = {
   title: {
     absolute: "MyFitPick | AI Personal Stylist for Your Wardrobe"
   },
-  description: "Turn the clothes you already own into complete outfits with AI styling, Match an Outfit, and optional Virtual Try-On previews.",
+  description: "Know what to wear using what you already own. MyFitPick creates complete outfits for the occasion, weather and way you want to feel.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     url: "/",
     siteName: "MyFitPick",
-    title: "Your closet. Styled intelligently.",
-    description: "An AI-powered personal stylist that turns the clothes you already own into complete outfits.",
+    title: "Know what to wear, using what you already own.",
+    description: "MyFitPick creates complete outfits from your wardrobe—including shoes and accessories.",
     images: [{ url: "/marketing/myfitpick-wardrobe-could-think-ad.png", width: 1092, height: 1440, alt: "MyFitPick AI personal stylist" }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Your closet. Styled intelligently.",
-    description: "An AI-powered personal stylist that turns the clothes you already own into complete outfits.",
+    title: "Know what to wear, using what you already own.",
+    description: "MyFitPick creates complete outfits from your wardrobe—including shoes and accessories.",
     images: ["/marketing/myfitpick-wardrobe-could-think-ad.png"]
   }
 };

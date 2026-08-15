@@ -7,15 +7,15 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const navigationItems = [
   { href: "#how-it-works", label: "How It Works" },
-  { href: "#features", label: "Features" },
-  { href: "#virtual-try-on", label: "Virtual Try-On" },
+  { href: "#ways-to-start", label: "Ways to Start" },
+  { href: "#complete-look", label: "See a Look" },
   { href: "#faq", label: "FAQ" }
 ];
 
 export function PublicNavigation({ signedIn }: { signedIn: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const primaryHref = signedIn ? "/home" : "/register";
-  const primaryLabel = signedIn ? "Open MyFitPick" : "Get Started";
+  const primaryLabel = signedIn ? "Open MyFitPick" : "Style my closet";
 
   useEffect(() => {
     if (!menuOpen) return;
