@@ -7,9 +7,9 @@ import {
   ImagePlus,
   LockKeyhole,
   Mic,
-  MessageSquareText,
-  Shirt,
-  Sparkles
+  Plus,
+  SendHorizontal,
+  Shirt
 } from "lucide-react";
 import { PublicNavigation } from "@/components/marketing/PublicNavigation";
 
@@ -37,11 +37,34 @@ function StoryNumber({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProductScreen({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[30px] border border-cocoa/20 bg-canvas shadow-lift">
+      <div className="flex min-h-16 items-center justify-between border-b border-line bg-white/90 px-4 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-cocoa text-white">
+            <Shirt size={17} aria-hidden="true" />
+          </span>
+          <span className="text-sm font-bold">MyFitPick</span>
+        </div>
+        <p className="text-sm font-bold text-ink">{title}</p>
+        <span className="size-9 rounded-full border border-line bg-canvasSubtle" aria-hidden="true" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export function MarketingHome({ signedIn }: { signedIn: boolean }) {
   const primaryHref = signedIn ? "/home" : "/register";
   const primaryLabel = signedIn ? "Open MyFitPick" : "Style my closet";
   const createHref = signedIn ? "/stylist/create-look" : "/register";
-  const matchHref = signedIn ? "/stylist/match" : "/register";
 
   return (
     <div className="min-h-screen overflow-x-clip bg-canvas text-ink">
@@ -96,50 +119,63 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
               <li className="grid items-center gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-20">
                 <div className="max-w-xl">
                   <StoryNumber>01</StoryNumber>
-                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Begin with your wardrobe.</h3>
+                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Add the pieces you want styled.</h3>
                   <p className="mt-5 text-base leading-7 text-muted sm:text-lg sm:leading-8">
-                    Save the garments, shoes, bags and accessories you want MyFitPick to style. Start small and add more over time.
+                    Photograph the garments, shoes, bags and accessories in your closet. MyFitPick keeps them together as a wardrobe it can style.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-line bg-white p-3 shadow-lift sm:gap-4 sm:p-4">
-                  {[
-                    ["/fashion/product-blush-bag.png", "Blue blouse in a saved wardrobe", "Blue blouse"],
-                    ["/fashion/product-espresso-boots.png", "Blush handbag in a saved wardrobe", "Blush bag"],
-                    ["/fashion/product-male-overshirt.png", "Teal overshirt in a saved wardrobe", "Teal overshirt"]
-                  ].map(([src, alt, label], index) => (
-                    <figure key={src} className={`overflow-hidden rounded-[24px] bg-canvasSubtle ${index === 0 ? "row-span-2" : ""}`}>
-                      <div className={`relative ${index === 0 ? "h-full min-h-[420px]" : "aspect-[4/3]"}`}>
-                        <Image src={src} alt={alt} fill sizes="(max-width: 1023px) 46vw, 360px" className="object-cover" />
-                        <figcaption className="absolute inset-x-3 bottom-3 rounded-xl bg-espresso/90 px-3 py-2 text-xs font-bold text-white backdrop-blur">{label}</figcaption>
-                      </div>
-                    </figure>
-                  ))}
-                </div>
+                <ProductScreen title="Closet">
+                  <div className="p-4 sm:p-6">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div><p className="text-lg font-bold">Your wardrobe</p><p className="mt-1 text-xs text-muted">Pieces ready for styling</p></div>
+                      <span className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cocoa px-4 text-xs font-bold text-white"><Plus size={15} aria-hidden="true" /> Add item</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {[
+                        ["/fashion/product-blush-bag.png", "Blue satin blouse saved in the MyFitPick closet", "Blue satin blouse", "TOPS"],
+                        ["/fashion/product-espresso-boots.png", "Blush handbag saved in the MyFitPick closet", "Blush handbag", "BAGS"],
+                        ["/fashion/product-male-overshirt.png", "Teal overshirt saved in the MyFitPick closet", "Teal overshirt", "OUTERWEAR"]
+                      ].map(([src, alt, label, category]) => (
+                        <figure key={src} className="overflow-hidden rounded-[20px] border border-line bg-white">
+                          <div className="relative aspect-[4/5] bg-canvasSubtle"><Image src={src} alt={alt} fill sizes="(max-width: 639px) 42vw, 220px" className="object-cover" /></div>
+                          <figcaption className="p-3"><p className="text-[9px] font-bold tracking-[0.2em] text-cocoa">{category}</p><p className="mt-1 text-xs font-bold text-ink">{label}</p></figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-cocoa/8 px-3 py-2.5 text-xs font-bold text-cocoa"><Check size={15} aria-hidden="true" /> Upload complete — ready to style</div>
+                  </div>
+                </ProductScreen>
               </li>
 
               <li className="grid items-center gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:gap-20">
-                <div className="order-2 rounded-[32px] border border-line bg-white p-5 shadow-lift sm:p-8 lg:order-1">
-                  <div className="flex items-center gap-3 border-b border-line pb-5">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-cocoa text-white"><Sparkles size={19} aria-hidden="true" /></span>
-                    <div><p className="font-bold">Ask MyFitPick</p><p className="text-xs text-muted">Create a Look</p></div>
-                  </div>
-                  <blockquote className="mt-7 font-editorial text-2xl font-semibold leading-snug sm:text-3xl">
-                    “I’m going to dinner after work on a warm evening. Style me in something polished, relaxed and comfortable.”
-                  </blockquote>
-                  <div className="mt-8 flex flex-wrap gap-2">
-                    {["Dinner", "Warm evening", "Polished"].map((item) => <span key={item} className="rounded-full border border-line bg-canvas px-3 py-2 text-xs font-bold text-muted">{item}</span>)}
-                  </div>
-                  <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                    <Link href={createHref} className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl bg-cocoa px-4 text-sm font-bold text-white hover:bg-espresso"><MessageSquareText size={17} aria-hidden="true" /> Type</Link>
-                    <Link href={createHref} className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-4 text-sm font-bold text-ink hover:border-cocoa/40"><Mic size={17} aria-hidden="true" /> Speak</Link>
-                    <Link href={matchHref} className="focus-ring flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-4 text-sm font-bold text-ink hover:border-cocoa/40"><ImagePlus size={17} aria-hidden="true" /> Add image</Link>
-                  </div>
+                <div className="order-2 lg:order-1">
+                  <ProductScreen title="Create a Look">
+                    <div className="p-4 sm:p-7">
+                      <div className="mb-5"><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">MyFitPick AI Stylist</p><p className="mt-2 font-editorial text-2xl font-semibold">What are you dressing for?</p></div>
+                      <div className="rounded-[22px] border border-cocoa/20 bg-white p-5 shadow-soft">
+                        <blockquote className="min-h-28 text-base font-semibold leading-7 text-ink sm:text-lg">
+                          “I’m going to dinner after work on a warm evening. Style me in something polished, relaxed and comfortable.”
+                        </blockquote>
+                        <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+                          <div className="flex gap-2">
+                            <span className="flex size-10 items-center justify-center rounded-xl border border-line bg-canvas"><Mic size={17} aria-hidden="true" /></span>
+                            <span className="flex size-10 items-center justify-center rounded-xl border border-line bg-canvas"><ImagePlus size={17} aria-hidden="true" /></span>
+                          </div>
+                          <span className="flex size-11 items-center justify-center rounded-xl bg-cocoa text-white"><SendHorizontal size={18} aria-hidden="true" /></span>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {["Occasion · Dinner", "Weather · Warm evening", "Mood · Polished + relaxed"].map((item) => <span key={item} className="rounded-full border border-line bg-white px-3 py-2 text-[11px] font-bold text-muted">{item}</span>)}
+                      </div>
+                      <p className="mt-4 text-xs leading-5 text-muted">MyFitPick will build this look from your saved wardrobe.</p>
+                    </div>
+                  </ProductScreen>
                 </div>
                 <div className="order-1 max-w-xl lg:order-2">
                   <StoryNumber>02</StoryNumber>
-                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Tell your stylist what the moment needs.</h3>
+                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Tell MyFitPick what you need.</h3>
                   <p className="mt-5 text-base leading-7 text-muted sm:text-lg sm:leading-8">
-                    Type it, say it, or add an inspiration image. MyFitPick uses your request, preferences and available context to understand the assignment.
+                    Describe the occasion, mood and weather in one natural sentence. Type it, speak it, or add an inspiration image.
                   </p>
                 </div>
               </li>
@@ -147,38 +183,45 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
               <li className="grid items-center gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-20">
                 <div className="max-w-xl">
                   <StoryNumber>03</StoryNumber>
-                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">A complete outfit comes together.</h3>
+                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Review the complete recommendation.</h3>
                   <p className="mt-5 text-base leading-7 text-muted sm:text-lg sm:leading-8">
-                    MyFitPick coordinates the main garments, footwear, handbag and suitable finishing pieces available in your wardrobe.
+                    See the exact wardrobe pieces selected for the moment, including footwear and the finishing details that make the outfit feel complete.
                   </p>
                 </div>
-                <div className="overflow-hidden rounded-[32px] border border-line bg-white p-3 shadow-lift sm:p-4">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] bg-canvasSubtle sm:aspect-[16/11]">
-                    <Image src="/fashion/editorial-blue-blouse.png" alt="A complete outfit assembled by MyFitPick" fill sizes="(max-width: 1023px) 92vw, 760px" className="object-cover" />
+                <ProductScreen title="Your Look">
+                  <div className="grid gap-4 p-4 sm:grid-cols-[1.15fr_0.85fr] sm:p-6">
+                    <div className="relative min-h-[430px] overflow-hidden rounded-[22px] bg-canvasSubtle sm:min-h-[560px]">
+                      <Image src="/fashion/editorial-blue-blouse.png" alt="MyFitPick dinner recommendation with a blue blouse, ivory skirt, white sandals and gold cuff" fill sizes="(max-width: 639px) 86vw, 410px" className="object-cover" />
+                      <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-cocoa shadow-soft">Complete look</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Dinner after work</p><h4 className="mt-2 font-editorial text-2xl font-semibold">Polished evening ease</h4></div>
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        {[
+                          ["Blue satin blouse", "TOP"],
+                          ["Ivory midi skirt", "BOTTOM"],
+                          ["White strap sandals", "SHOES"],
+                          ["Gold cuff", "ACCESSORY"]
+                        ].map(([name, role], index) => (
+                          <div key={name} className="overflow-hidden rounded-xl border border-line bg-white">
+                            <div className="relative aspect-square overflow-hidden bg-canvasSubtle">
+                              <Image
+                                src={index === 0 ? "/fashion/product-blush-bag.png" : "/fashion/editorial-blue-blouse.png"}
+                                alt={name}
+                                fill
+                                sizes="130px"
+                                className={`object-cover ${index === 1 ? "scale-[1.8] object-[50%_68%]" : index === 2 ? "scale-[1.9] object-[50%_100%]" : index === 3 ? "scale-[2.7] object-[68%_43%]" : ""}`}
+                              />
+                            </div>
+                            <div className="p-2"><p className="text-[8px] font-bold tracking-[0.16em] text-cocoa">{role}</p><p className="mt-1 text-[10px] font-bold leading-tight">{name}</p></div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-4 text-xs leading-5 text-muted">The blue blouse keeps the look polished; the ivory skirt, white sandals and gold cuff soften it for a warm evening.</p>
+                      <Link href={createHref} className="focus-ring mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-cocoa px-4 text-xs font-bold text-white hover:bg-espresso">Try this outfit on</Link>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-2 pt-4 text-xs font-bold text-muted sm:grid-cols-5">
-                    {["Blue blouse", "Ivory skirt", "White sandals", "Blush bag", "Gold cuff"].map((item) => <span key={item} className="rounded-xl bg-canvas px-3 py-2 text-center">{item}</span>)}
-                  </div>
-                </div>
-              </li>
-
-              <li className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
-                <div className="order-2 rounded-[32px] bg-espresso p-7 text-white shadow-lift sm:p-10 lg:order-1">
-                  <Eyebrow tone="light">Your stylist explains</Eyebrow>
-                  <p className="mt-6 font-editorial text-2xl font-semibold leading-snug sm:text-3xl">
-                    “The cool blue blouse keeps the look polished, while the fluid ivory skirt softens it for evening. Light footwear and restrained finishing pieces complete the outfit without competing for attention.”
-                  </p>
-                  <div className="mt-8 flex flex-wrap gap-2">
-                    {["Occasion considered", "Preferences considered", "Weather when available"].map((item) => <span key={item} className="rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white/75">{item}</span>)}
-                  </div>
-                </div>
-                <div className="order-1 max-w-xl lg:order-2">
-                  <StoryNumber>04</StoryNumber>
-                  <h3 className="mt-6 font-editorial text-4xl font-semibold leading-[1.04] tracking-editorial sm:text-5xl">Understand why it works.</h3>
-                  <p className="mt-5 text-base leading-7 text-muted sm:text-lg sm:leading-8">
-                    The recommendation arrives with a concise styling rationale, so the result feels deliberate rather than random.
-                  </p>
-                </div>
+                </ProductScreen>
               </li>
 
               <li id="virtual-try-on" className="scroll-mt-24 overflow-hidden rounded-[36px] border border-cocoa/20 bg-white shadow-lift">
@@ -187,12 +230,15 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
                     <Image src="/fashion/editorial-blue-blouse-canonical-v1.png" alt="Virtual Try-On preview of the complete outfit on a Studio Model" fill sizes="(max-width: 1023px) 92vw, 720px" className="object-cover" />
                   </div>
                   <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
-                    <StoryNumber>05</StoryNumber>
+                    <StoryNumber>04</StoryNumber>
                     <Eyebrow>Virtual Try-On</Eyebrow>
-                    <h3 className="mt-5 font-editorial text-4xl font-semibold leading-[1.02] tracking-editorial sm:text-5xl">See the complete look on your Studio Model.</h3>
+                    <h3 className="mt-5 font-editorial text-4xl font-semibold leading-[1.02] tracking-editorial sm:text-5xl">See the same outfit on your Studio Model.</h3>
                     <p className="mt-5 text-base leading-7 text-muted sm:text-lg sm:leading-8">
-                      Once the recommendation is ready, start Virtual Try-On to preview how the coordinated outfit comes together on your selected model.
+                      The blue blouse, ivory skirt, white sandals and gold cuff from the recommendation remain the complete Try-On look.
                     </p>
+                    <div className="mt-6 grid grid-cols-2 gap-2 text-xs font-bold text-muted">
+                      {["Blue satin blouse", "Ivory midi skirt", "White strap sandals", "Gold cuff"].map((item) => <span key={item} className="flex items-center gap-2 rounded-xl bg-canvas px-3 py-2.5"><Check size={14} className="text-cocoa" aria-hidden="true" />{item}</span>)}
+                    </div>
                     <Link href={createHref} className="focus-ring mt-8 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-cocoa px-7 text-base font-bold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-espresso sm:w-auto">
                       Try this outfit on
                     </Link>
