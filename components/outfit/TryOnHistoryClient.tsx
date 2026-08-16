@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Images, Sparkles } from "lucide-react";
+import { ChevronDown, Folder, Images, Sparkles } from "lucide-react";
 import { ApiErrorState } from "@/components/integration/ApiErrorState";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
 import { BackendUnavailableState } from "@/components/integration/BackendUnavailableState";
@@ -138,14 +138,18 @@ export function TryOnHistoryClient() {
   return (
     <section className="mt-7" aria-labelledby="tryon-gallery-title">
       <h2 id="tryon-gallery-title" className="sr-only">Previous Try-On results</h2>
-      <div className="space-y-10">
+      <div className="space-y-4">
         {weeklyTryOns.map((week) => (
-          <section key={week.key} aria-labelledby={`tryon-week-${week.key}`}>
-            <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-line pb-3">
-              <h3 id={`tryon-week-${week.key}`} className="font-editorial text-2xl font-semibold text-ink sm:text-3xl">{week.label}</h3>
-              <p className="shrink-0 text-xs font-semibold text-muted">{week.tryOns.length} {week.tryOns.length === 1 ? "look" : "looks"}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          <details key={week.key} className="group overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
+            <summary className="focus-ring flex min-h-16 cursor-pointer list-none items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-canvasSubtle active:bg-canvas [&::-webkit-details-marker]:hidden sm:px-5">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-cocoa/10 text-cocoa">
+                <Folder size={20} aria-hidden="true" />
+              </span>
+              <h3 className="min-w-0 flex-1 font-editorial text-xl font-semibold text-ink sm:text-2xl">{week.label}</h3>
+              <span className="shrink-0 text-xs font-semibold text-muted">{week.tryOns.length} {week.tryOns.length === 1 ? "look" : "looks"}</span>
+              <ChevronDown size={19} className="shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="grid grid-cols-2 gap-3 border-t border-line p-4 sm:grid-cols-3 sm:gap-4 sm:p-5 lg:grid-cols-4">
               {week.tryOns.map((tryOn) => {
                 const date = formatTryOnDate(tryOn.completedAt);
                 return (
@@ -174,7 +178,7 @@ export function TryOnHistoryClient() {
                 );
               })}
             </div>
-          </section>
+          </details>
         ))}
       </div>
       <ImagePreviewDialog image={viewingImage} onClose={() => setViewingImage(null)} />
