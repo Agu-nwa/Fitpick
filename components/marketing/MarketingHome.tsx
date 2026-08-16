@@ -104,8 +104,7 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
       <main id="main-content">
         <section className="px-4 pb-24 pt-20 text-center sm:px-6 sm:pt-24 lg:px-8 lg:pb-36 lg:pt-32">
           <div className="mx-auto max-w-5xl">
-            <Eyebrow>Your personal stylist</Eyebrow>
-            <h1 className="mx-auto mt-7 max-w-5xl font-editorial text-5xl font-semibold leading-[0.98] tracking-editorial sm:text-7xl lg:text-[88px]">
+            <h1 className="mx-auto max-w-5xl font-editorial text-5xl font-semibold leading-[0.98] tracking-editorial sm:text-7xl lg:text-[88px]">
               Know what to wear, <span className="italic text-cocoa">using what you already own.</span>
             </h1>
             <p className="mx-auto mt-8 max-w-2xl text-base leading-7 text-muted sm:text-xl sm:leading-8">
@@ -115,30 +114,17 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
               <Link href={primaryHref} className="focus-ring inline-flex min-h-14 items-center justify-center rounded-xl bg-cocoa px-9 text-base font-bold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-espresso">
                 {primaryLabel}
               </Link>
-              <Link href="#problem" className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-line bg-white px-8 text-base font-bold text-ink transition hover:border-cocoa/35">
-                Why MyFitPick <ArrowDown size={17} aria-hidden="true" />
+              <Link href="#how-it-works" className="focus-ring inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-line bg-white px-8 text-base font-bold text-ink transition hover:border-cocoa/35">
+                How it works <ArrowDown size={17} aria-hidden="true" />
               </Link>
             </div>
-          </div>
-        </section>
-
-        <section id="problem" className="scroll-mt-24 border-y border-line bg-white px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-24">
-          <div className="mx-auto max-w-4xl">
-            <Eyebrow>The daily problem</Eyebrow>
-            <h2 className="mt-6 font-editorial text-3xl font-semibold leading-[1.12] tracking-editorial sm:text-5xl">
-              A full wardrobe can still leave you wondering what to wear.
-            </h2>
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg">
-              MyFitPick helps you use the pieces you already own, without rebuilding the same outfit or shopping for an answer every time.
-            </p>
           </div>
         </section>
 
         <section id="how-it-works" className="scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8 lg:py-32">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-4xl text-center">
-              <Eyebrow>How it works</Eyebrow>
-              <h2 className="mt-6 font-editorial text-4xl font-semibold leading-[1.02] tracking-editorial sm:text-6xl lg:text-7xl">
+              <h2 className="font-editorial text-4xl font-semibold leading-[1.02] tracking-editorial sm:text-6xl lg:text-7xl">
                 From your closet to seeing the whole look.
               </h2>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
