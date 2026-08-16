@@ -17,13 +17,18 @@ export const metadata: Metadata = {
     siteName: "MyFitPick",
     title: "Know what to wear, using what you already own.",
     description: "MyFitPick creates complete outfits from your wardrobe—including shoes and accessories.",
-    images: [{ url: "/marketing/myfitpick-wardrobe-could-think-ad.png", width: 1092, height: 1440, alt: "MyFitPick AI personal stylist" }]
+    images: [{
+      url: "/marketing/myfitpick-social-share-v1.png",
+      width: 1200,
+      height: 630,
+      alt: "MyFitPick — If Your Wardrobe Could Think"
+    }]
   },
   twitter: {
     card: "summary_large_image",
     title: "Know what to wear, using what you already own.",
     description: "MyFitPick creates complete outfits from your wardrobe—including shoes and accessories.",
-    images: ["/marketing/myfitpick-wardrobe-could-think-ad.png"]
+    images: ["/marketing/myfitpick-social-share-v1.png"]
   }
 };
 
