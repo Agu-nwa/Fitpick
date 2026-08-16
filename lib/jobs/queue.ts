@@ -90,7 +90,7 @@ export async function updateJobStatus(jobId: string, status: BackgroundJobStatus
   }
 
   const job = await BackgroundJob.findByIdAndUpdate(jobId, { $set: set }, { new: true });
-  if (job) logJobEvent({ event: `job_${status}`, jobId: String(job._id), type: job.type, status });
+  if (job) logJobEvent({ event: `job_${status}`, jobId: String(job._id), type: job.type, status, attempts: Number(job.attempts || 0) });
   return job;
 }
 
@@ -170,7 +170,6 @@ export async function heartbeatJob(jobId: string, workerId: string, leaseMs = 5 
 }
 
 export async function markJobDeadLetter(job: any, errorMessage: string, patch: Record<string, unknown> = {}) {
-  logJobEvent({ event: "job_dead_letter", jobId: String(job._id), type: job.type, status: "dead_letter", attempts: Number(job.attempts || 0) });
   return updateJobStatus(String(job._id), "dead_letter", {
     ...patch,
     errorMessage,

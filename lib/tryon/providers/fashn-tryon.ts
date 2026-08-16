@@ -38,6 +38,8 @@ type FashnDiagnostics = {
   productImageHost?: string;
   outputCount?: number;
   providerStatus?: string;
+  retryCount?: number;
+  providerJobId?: string;
 };
 
 function config() {
@@ -119,6 +121,8 @@ function diagnostics(input: {
   productImage?: string;
   outputCount?: number;
   providerStatus?: string;
+  retryCount?: number;
+  providerJobId?: string;
 }): FashnDiagnostics {
   return {
     provider: "fashn",
@@ -133,7 +137,9 @@ function diagnostics(input: {
     modelImageHost: safeImageHost(input.modelImage),
     productImageHost: safeImageHost(input.productImage),
     outputCount: input.outputCount,
-    providerStatus: input.providerStatus
+    providerStatus: input.providerStatus,
+    retryCount: input.retryCount,
+    providerJobId: input.providerJobId ? input.providerJobId.slice(0, 160) : undefined
   };
 }
 
@@ -184,6 +190,41 @@ function rankedProductImages(items: any[]) {
     role: tryOnVisualRoleForItem(item),
     url: preferredVisualReferenceUrl(item)
   })).filter((entry): entry is typeof entry & { url: string; role: TryOnVisualRole } => Boolean(entry.url && entry.role));
+}
+
+function isProviderImage(value: string) {
+  return /^https:\/\//i.test(value) || /^data:image\//i.test(value) || /^[A-Za-z0-9+/]+=*$/i.test(value.slice(0, 80));
+}
+
+async function preflightImage(value: string, source: "model" | "product") {
+  if (!/^https:\/\//i.test(value)) return isProviderImage(value);
+  try {
+    const response = await fetch(value, {
+      method: "GET",
+      headers: { range: "bytes=0-0" },
+      signal: AbortSignal.timeout(8000)
+    });
+    const contentType = response.headers.get("content-type") || "";
+    await response.body?.cancel().catch(() => undefined);
+    const ready = response.ok && /^image\/(png|jpe?g|webp)/i.test(contentType);
+    console.info("fitpick.tryon.preflight", {
+      source,
+      host: safeImageHost(value),
+      status: ready ? "ready" : "failed",
+      httpStatus: response.status,
+      timestamp: new Date().toISOString()
+    });
+    return ready;
+  } catch {
+    console.info("fitpick.tryon.preflight", {
+      source,
+      host: safeImageHost(value),
+      status: "failed",
+      httpStatus: 0,
+      timestamp: new Date().toISOString()
+    });
+    return false;
+  }
 }
 
 // Outerwear is a core garment, not a decorative finisher. Applying it with the
@@ -377,7 +418,8 @@ async function status(jobId: string, input?: TryOnPreviewInput, modelName = conf
     safeReason: normalized === "failed" ? safeReasonFromProviderPayload(data) : "accepted",
     providerReturnedJobId: Boolean(data.id || jobId),
     outputCount: data.output?.length || 0,
-    providerStatus: data.status
+    providerStatus: data.status,
+    providerJobId: data.id || jobId
   });
   if (normalized === "failed") logFashnDiagnostic("status_failed", providerDiagnostics);
   const persisted = normalized === "ready"
@@ -393,8 +435,30 @@ async function status(jobId: string, input?: TryOnPreviewInput, modelName = conf
     accuracyLevel: getPreviewAccuracyLevel("garment_referenced"),
     warnings,
     jobId: data.id || jobId,
-    providerDiagnostics
+    providerDiagnostics,
+    providerIntermediateImage: normalized === "ready"
+      ? (data.output || []).find((value) => Boolean(value && isProviderImage(value)))
+      : undefined
   };
+}
+
+async function runFashnTryOnStepWithRetry(input: TryOnPreviewInput, payload: Parameters<typeof runFashnTryOnStep>[1]) {
+  let result = await runFashnTryOnStep(input, payload);
+  const safeReason = String(result.providerDiagnostics?.safeReason || "");
+  if (result.status !== "failed" || safeReason !== "invalid_or_unreachable_image") return result;
+
+  logTryOnMetric({
+    metric: "provider_step_retry",
+    stage: CORE_ROLES.has(payload.role) ? "core" : "finisher",
+    status: "retry",
+    attempt: 1,
+    errorCode: safeReason,
+    metadata: { stepIndex: payload.stepIndex, role: payload.role, modelName: payload.modelName }
+  });
+  await wait(1200);
+  result = await runFashnTryOnStep(input, payload);
+  result.providerDiagnostics = { ...(result.providerDiagnostics || {}), retryCount: 1 };
+  return result;
 }
 
 async function pollUntilReady(jobId: string, input: TryOnPreviewInput, modelName: string): Promise<TryOnProviderOutput> {
@@ -495,6 +559,27 @@ export function createFashnTryOnProvider(): TryOnProvider {
       }
       if (!products.length) return { ...unavailableWithDiagnostics("Virtual Try-On needs at least one closet item with a usable image.", diagnostics({ stage: "input_validation", modelName: providerConfig.modelName, safeReason: "missing_product_image", providerReturnedJobId: false, modelImage })), status: "failed" };
 
+      const [modelImageReady, productImageReadiness] = await Promise.all([
+        preflightImage(modelImage, "model"),
+        Promise.all(products.map((product) => preflightImage(product.url, "product")))
+      ]);
+      const firstUnavailableProduct = productImageReadiness.findIndex((ready) => !ready);
+      if (!modelImageReady || firstUnavailableProduct >= 0) {
+        const unavailableProduct = firstUnavailableProduct >= 0 ? products[firstUnavailableProduct] : null;
+        return {
+          ...unavailableWithDiagnostics("Virtual Try-On needs accessible images before it can begin.", diagnostics({
+            stage: "input_preflight",
+            modelName: providerConfig.modelName,
+            safeReason: modelImageReady ? "unreachable_product_image" : "unreachable_model_image",
+            providerReturnedJobId: false,
+            modelImage,
+            productImage: unavailableProduct?.url,
+            stepIndex: firstUnavailableProduct >= 0 ? firstUnavailableProduct + 1 : undefined
+          })),
+          status: "failed"
+        };
+      }
+
       console.info("fitpick.tryon.preparation", {
         selectedItemCount: loaded.items.length,
         scheduledItemCount: orderedProducts.length,
@@ -529,7 +614,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
             modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName,
             timestamp: new Date().toISOString()
           });
-          result = await runFashnTryOnStep(input, {
+          result = await runFashnTryOnStepWithRetry(input, {
             productImage: product.url,
             modelImage: currentModelImage,
             stepIndex: index + 1,
@@ -557,13 +642,13 @@ export function createFashnTryOnProvider(): TryOnProvider {
           });
 
           if (!stepReady) {
-            if (!coreStep && coreProducts.length && lastReadyResult?.previewUrls[0] && lastReadyResult.previewStorageKeys?.[0]) {
+            if (lastReadyResult?.previewUrls[0] && lastReadyResult.previewStorageKeys?.[0]) {
               const unfinishedItemIds = orderedProducts.slice(index).map((entry) => entry.id).filter(Boolean);
               const recommendationOnlyItemIds = Array.from(new Set([
                 ...preparation.recommendationOnlyItemIds,
                 ...unfinishedItemIds
               ]));
-              const fallbackWarning = "The core outfit is ready, but some selected finishing pieces could not be added to this preview.";
+              const fallbackWarning = `The preview is ready through the last successful step, but ${product.item.name || "a selected item"} and later pieces could not be added.`;
               const fallback: TryOnProviderOutput = {
                 ...lastReadyResult,
                 status: "ready",
@@ -583,6 +668,8 @@ export function createFashnTryOnProvider(): TryOnProvider {
                   completedItemCount: completedItemIds.length,
                   recommendationOnlyItemCount: recommendationOnlyItemIds.length,
                   failedRole: product.role,
+                  failedStepIndex: index + 1,
+                  failedStage: stepStage,
                   progressStage: "fallback"
                 }
               };
@@ -610,7 +697,10 @@ export function createFashnTryOnProvider(): TryOnProvider {
             return result;
           }
 
-          currentModelImage = result.previewUrls[0];
+          // Chain the provider's direct output into the next step. The persisted
+          // S3 URL remains the durable recovery/display copy, but is not used as
+          // an immediate provider input because CDN propagation may lag.
+          currentModelImage = result.providerIntermediateImage || result.previewUrls[0];
           lastReadyResult = result;
           if (product.id) completedItemIds.push(product.id);
 

@@ -365,6 +365,7 @@ export async function failTryOnGeneration(input: {
 }) {
   const generation = input.generation;
   if (!generation) return null;
+  const providerDiagnostics = providerDiagnosticsFromError(input.error);
   if (generation.creditsCommitted) {
     await refundTryOnGenerationIfCharged({ generation, reason: input.code || "generation_failed_after_commit" });
   } else {
@@ -375,8 +376,9 @@ export async function failTryOnGeneration(input: {
     failureStage: input.stage,
     failureCode: input.code || errorCategory(input.error),
     failureMessage,
+    providerJobId: typeof providerDiagnostics.providerJobId === "string" ? providerDiagnostics.providerJobId.slice(0, 160) : generation.providerJobId,
     providerDiagnostics: sanitizeTryOnMetadata({
-      ...providerDiagnosticsFromError(input.error),
+      ...providerDiagnostics,
       errorCategory: errorCategory(input.error)
     })
   });

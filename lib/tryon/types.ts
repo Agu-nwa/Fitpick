@@ -54,6 +54,8 @@ export type TryOnProviderOutput = {
   pendingItemIds?: string[];
   recommendationOnlyItemIds?: string[];
   progressStage?: TryOnProgressStage;
+  /** Provider-only image reference used to chain multi-step generation without CDN propagation races. */
+  providerIntermediateImage?: string;
 };
 
 export interface TryOnProvider {
