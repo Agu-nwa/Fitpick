@@ -6,9 +6,9 @@ import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const navigationItems = [
-  { href: "#how-it-works", label: "How It Works" },
+  { href: "#the-demo", label: "See the Solution" },
   { href: "#ways-to-start", label: "Ways to Start" },
-  { href: "#complete-look", label: "See a Look" },
+  { href: "#how-it-works", label: "How It Works" },
   { href: "#faq", label: "FAQ" }
 ];
 
