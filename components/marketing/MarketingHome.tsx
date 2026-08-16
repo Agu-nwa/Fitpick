@@ -61,6 +61,37 @@ function ProductScreen({
   );
 }
 
+const recommendationItems = [
+  {
+    name: "Blue satin blouse",
+    metadata: "Light blue · tops",
+    src: "/fashion/product-blue-blouse.png",
+    alt: "Light blue satin blouse selected from the MyFitPick closet",
+    imageClassName: "object-cover"
+  },
+  {
+    name: "Ivory midi skirt",
+    metadata: "Ivory · bottoms",
+    src: "/fashion/product-ivory-midi-skirt-v1.png",
+    alt: "Ivory midi skirt selected from the MyFitPick closet",
+    imageClassName: "object-cover"
+  },
+  {
+    name: "White strap sandals",
+    metadata: "White · shoes",
+    src: "/fashion/product-white-strap-sandals-v1.png",
+    alt: "White strap sandals selected from the MyFitPick closet",
+    imageClassName: "object-cover"
+  },
+  {
+    name: "Gold cuff",
+    metadata: "Gold-tone · accessories",
+    src: "/fashion/product-gold-cuff-v1.png",
+    alt: "Gold cuff selected from the MyFitPick closet",
+    imageClassName: "object-cover"
+  }
+] as const;
+
 export function MarketingHome({ signedIn }: { signedIn: boolean }) {
   const primaryHref = signedIn ? "/home" : "/register";
   const primaryLabel = signedIn ? "Open MyFitPick" : "Style my closet";
@@ -189,37 +220,43 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
                   </p>
                 </div>
                 <ProductScreen title="Your Look">
-                  <div className="grid gap-4 p-4 sm:grid-cols-[1.15fr_0.85fr] sm:p-6">
-                    <div className="relative min-h-[430px] overflow-hidden rounded-[22px] bg-canvasSubtle sm:min-h-[560px]">
-                      <Image src="/fashion/editorial-blue-blouse.png" alt="MyFitPick dinner recommendation with a blue blouse, ivory skirt, white sandals and gold cuff" fill sizes="(max-width: 639px) 86vw, 410px" className="object-cover" />
-                      <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-cocoa shadow-soft">Complete look</span>
+                  <div className="p-4 sm:p-6">
+                    <div className="border-b border-line pb-5">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Dinner after work</p>
+                      <h4 className="mt-2 font-editorial text-2xl font-semibold sm:text-3xl">Polished evening ease</h4>
+                      <p className="mt-2 max-w-xl text-xs leading-5 text-muted sm:text-sm">
+                        Four pieces selected from your closet for a polished, relaxed warm-evening look.
+                      </p>
                     </div>
-                    <div className="flex flex-col">
-                      <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cocoa">Dinner after work</p><h4 className="mt-2 font-editorial text-2xl font-semibold">Polished evening ease</h4></div>
-                      <div className="mt-5 grid grid-cols-2 gap-2">
-                        {[
-                          ["Blue satin blouse", "TOP"],
-                          ["Ivory midi skirt", "BOTTOM"],
-                          ["White strap sandals", "SHOES"],
-                          ["Gold cuff", "ACCESSORY"]
-                        ].map(([name, role], index) => (
-                          <div key={name} className="overflow-hidden rounded-xl border border-line bg-white">
-                            <div className="relative aspect-square overflow-hidden bg-canvasSubtle">
-                              <Image
-                                src={index === 0 ? "/fashion/product-blush-bag.png" : "/fashion/editorial-blue-blouse.png"}
-                                alt={name}
-                                fill
-                                sizes="130px"
-                                className={`object-cover ${index === 1 ? "scale-[1.8] object-[50%_68%]" : index === 2 ? "scale-[1.9] object-[50%_100%]" : index === 3 ? "scale-[2.7] object-[68%_43%]" : ""}`}
-                              />
-                            </div>
-                            <div className="p-2"><p className="text-[8px] font-bold tracking-[0.16em] text-cocoa">{role}</p><p className="mt-1 text-[10px] font-bold leading-tight">{name}</p></div>
+
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
+                      {recommendationItems.map((item) => (
+                        <article key={item.name} className="overflow-hidden rounded-[20px] border border-line bg-white shadow-soft">
+                          <div className="relative aspect-square overflow-hidden bg-canvasSubtle">
+                            <Image
+                              src={item.src}
+                              alt={item.alt}
+                              fill
+                              sizes="(max-width: 639px) 40vw, 230px"
+                              className={item.imageClassName}
+                            />
                           </div>
-                        ))}
-                      </div>
-                      <p className="mt-4 text-xs leading-5 text-muted">The blue blouse keeps the look polished; the ivory skirt, white sandals and gold cuff soften it for a warm evening.</p>
-                      <Link href={createHref} className="focus-ring mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-cocoa px-4 text-xs font-bold text-white hover:bg-espresso">Try this outfit on</Link>
+                          <div className="p-3 sm:p-4">
+                            <span className="inline-flex max-w-full items-center rounded-full border border-cocoa/25 bg-cocoa/8 px-2.5 py-1 text-[9px] font-bold text-cocoa sm:text-[10px]">
+                              <Check size={12} className="mr-1.5 shrink-0" aria-hidden="true" />
+                              <span className="truncate">Selected for this look</span>
+                            </span>
+                            <h5 className="mt-2 text-sm font-bold leading-tight text-ink sm:text-base">{item.name}</h5>
+                            <p className="mt-1 text-[11px] leading-4 text-muted sm:text-xs">{item.metadata}</p>
+                          </div>
+                        </article>
+                      ))}
                     </div>
+
+                    <p className="mt-5 text-xs leading-5 text-muted sm:text-sm sm:leading-6">
+                      The blue blouse keeps the look polished; the ivory skirt, white sandals and gold cuff soften it for a warm evening.
+                    </p>
+                    <Link href={createHref} className="focus-ring mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-cocoa px-4 text-xs font-bold text-white hover:bg-espresso sm:w-auto sm:px-6 sm:text-sm">Try this outfit on</Link>
                   </div>
                 </ProductScreen>
               </li>
