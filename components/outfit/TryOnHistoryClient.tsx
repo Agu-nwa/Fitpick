@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Images, Sparkles } from "lucide-react";
 import { ApiErrorState } from "@/components/integration/ApiErrorState";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
@@ -16,6 +16,45 @@ function formatTryOnDate(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+}
+
+function startOfWeek(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - daysSinceMonday);
+  return date;
+}
+
+function weekKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatWeekLabel(weekStart: Date) {
+  const currentWeek = startOfWeek(new Date());
+  const previousWeek = new Date(currentWeek);
+  previousWeek.setDate(previousWeek.getDate() - 7);
+
+  if (weekStart.getTime() === currentWeek.getTime()) return "This week";
+  if (weekStart.getTime() === previousWeek.getTime()) return "Last week";
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const startMonth = new Intl.DateTimeFormat(undefined, { month: "short" }).format(weekStart);
+  const endMonth = new Intl.DateTimeFormat(undefined, { month: "short" }).format(weekEnd);
+  const startYear = weekStart.getFullYear();
+  const endYear = weekEnd.getFullYear();
+
+  if (startYear !== endYear) {
+    return `${startMonth} ${weekStart.getDate()}, ${startYear} – ${endMonth} ${weekEnd.getDate()}, ${endYear}`;
+  }
+  if (weekStart.getMonth() !== weekEnd.getMonth()) {
+    return `${startMonth} ${weekStart.getDate()} – ${endMonth} ${weekEnd.getDate()}, ${endYear}`;
+  }
+  return `${startMonth} ${weekStart.getDate()}–${weekEnd.getDate()}, ${endYear}`;
 }
 
 function TryOnHistoryLoading() {
@@ -49,6 +88,29 @@ export function TryOnHistoryClient() {
     if (session.status === "authenticated") void loadHistory();
   }, [loadHistory, session.status]);
 
+  const weeklyTryOns = useMemo(() => {
+    const groups = new Map<string, { label: string; tryOns: TryOnHistoryItem[] }>();
+
+    for (const tryOn of tryOns) {
+      const completedAt = tryOn.completedAt ? new Date(tryOn.completedAt) : null;
+      const hasValidDate = completedAt && !Number.isNaN(completedAt.getTime());
+      const start = hasValidDate ? startOfWeek(completedAt) : null;
+      const key = start ? weekKey(start) : "date-unavailable";
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.tryOns.push(tryOn);
+      } else {
+        groups.set(key, {
+          label: start ? formatWeekLabel(start) : "Date unavailable",
+          tryOns: [tryOn]
+        });
+      }
+    }
+
+    return Array.from(groups.entries()).map(([key, group]) => ({ key, ...group }));
+  }, [tryOns]);
+
   if (session.status === "loading" || status === "loading" || (session.status === "authenticated" && status === "idle")) {
     return <TryOnHistoryLoading />;
   }
@@ -76,34 +138,44 @@ export function TryOnHistoryClient() {
   return (
     <section className="mt-7" aria-labelledby="tryon-gallery-title">
       <h2 id="tryon-gallery-title" className="sr-only">Previous Try-On results</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-        {tryOns.map((tryOn) => {
-          const date = formatTryOnDate(tryOn.completedAt);
-          return (
-            <button
-              key={tryOn.generationId}
-              type="button"
-              onClick={() => setViewingImage({
-                src: tryOn.previewUrl,
-                alt: date ? `Virtual Try-On result from ${date}` : "Virtual Try-On result",
-                title: "Virtual Try-On",
-                subtitle: date
+      <div className="space-y-10">
+        {weeklyTryOns.map((week) => (
+          <section key={week.key} aria-labelledby={`tryon-week-${week.key}`}>
+            <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-line pb-3">
+              <h3 id={`tryon-week-${week.key}`} className="font-editorial text-2xl font-semibold text-ink sm:text-3xl">{week.label}</h3>
+              <p className="shrink-0 text-xs font-semibold text-muted">{week.tryOns.length} {week.tryOns.length === 1 ? "look" : "looks"}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {week.tryOns.map((tryOn) => {
+                const date = formatTryOnDate(tryOn.completedAt);
+                return (
+                  <button
+                    key={tryOn.generationId}
+                    type="button"
+                    onClick={() => setViewingImage({
+                      src: tryOn.previewUrl,
+                      alt: date ? `Virtual Try-On result from ${date}` : "Virtual Try-On result",
+                      title: "Virtual Try-On",
+                      subtitle: date
+                    })}
+                    className="focus-ring group min-w-0 rounded-2xl text-left"
+                    aria-label={date ? `Open Virtual Try-On from ${date}` : "Open Virtual Try-On"}
+                  >
+                    <ImageFrame
+                      src={tryOn.previewUrl}
+                      alt={date ? `Virtual Try-On result from ${date}` : "Virtual Try-On result"}
+                      aspect="fullBody"
+                      fit="contain"
+                      context="looks.tryon_history"
+                      className="w-full bg-surface transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-soft"
+                    />
+                    {date ? <time dateTime={tryOn.completedAt || undefined} className="mt-2 block truncate px-1 text-xs font-medium text-muted">{date}</time> : null}
+                  </button>
+                );
               })}
-              className="focus-ring group min-w-0 rounded-2xl text-left"
-              aria-label={date ? `Open Virtual Try-On from ${date}` : "Open Virtual Try-On"}
-            >
-              <ImageFrame
-                src={tryOn.previewUrl}
-                alt={date ? `Virtual Try-On result from ${date}` : "Virtual Try-On result"}
-                aspect="fullBody"
-                fit="contain"
-                context="looks.tryon_history"
-                className="w-full bg-surface transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-soft"
-              />
-              {date ? <time dateTime={tryOn.completedAt || undefined} className="mt-2 block truncate px-1 text-xs font-medium text-muted">{date}</time> : null}
-            </button>
-          );
-        })}
+            </div>
+          </section>
+        ))}
       </div>
       <ImagePreviewDialog image={viewingImage} onClose={() => setViewingImage(null)} />
     </section>
