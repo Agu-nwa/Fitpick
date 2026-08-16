@@ -1014,6 +1014,34 @@ export async function uploadImageViaServer(input: { file: File; purpose: string 
     return backendUnavailable;
   }
 }
+
+export type StylistVoiceTranscriptionData = {
+  text: string;
+  truncated: boolean;
+};
+
+export async function transcribeStylistVoiceNote(audio: Blob): Promise<ApiResponse<StylistVoiceTranscriptionData>> {
+  try {
+    const formData = new FormData();
+    formData.set("audio", audio, "stylist-voice-note");
+
+    const response = await fetch("/api/stylist/transcribe", {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    });
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) return invalidResponse;
+
+    const payload = (await response.json()) as ApiResponse<StylistVoiceTranscriptionData>;
+    if (payload && typeof payload === "object" && "ok" in payload) {
+      return payload.ok ? payload : safeApiFailure(payload);
+    }
+    return invalidResponse;
+  } catch {
+    return backendUnavailable;
+  }
+}
 export const getStyleProfile = () => apiRequest<StyleProfileData>("/api/style-profile", { cache: "no-store" });
 export const updateStyleProfile = (body: unknown) => apiRequest<StyleProfileData>("/api/style-profile", { method: "PATCH", body });
 export const getAvatarProfile = () => apiRequest<AvatarProfileData>("/api/avatar-profile", { cache: "no-store" });

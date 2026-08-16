@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, ArrowUpRight, Camera, ImagePlus, MessageSquare, Plus, RefreshCw, Sparkles, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Camera, ImagePlus, MessageSquare, Mic, Plus, RefreshCw, Sparkles, Square, UploadCloud, WandSparkles, X, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,6 +21,7 @@ import {
   requestSignedUploadUrl,
   selectReferenceFashionItem,
   sendStylistMessage,
+  transcribeStylistVoiceNote,
   uploadImageViaServer,
   type RecommendationRegenerationRequest
 } from "@/lib/api-client";
@@ -68,6 +69,9 @@ const refinementChips = [
 ];
 
 const virtualTryOnCreditCost = getCreditCost("virtual_try_on");
+const maxVoiceNoteSeconds = 60;
+
+type VoiceNoteState = "idle" | "recording" | "transcribing";
 
 function messageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -668,6 +672,11 @@ export function StylistChat({
   const workspaceRef = useRef<HTMLDivElement>(null);
   const lookStudioRef = useRef<HTMLDivElement>(null);
   const lastReferenceFileRef = useRef<{ file: File; source: "camera" | "upload" } | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+  const voiceTimerRef = useRef<number | null>(null);
+  const discardVoiceNoteRef = useRef(false);
   const conversationIdRef = useRef(`stylist-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const revealContent = useRevealContent();
   const [activeFlow, setActiveFlow] = useState<StylistFlow>(initialFlow);
@@ -689,6 +698,10 @@ export function StylistChat({
   const [canRetryReferenceUpload, setCanRetryReferenceUpload] = useState(false);
   const [lastCreateBrief, setLastCreateBrief] = useState("");
   const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceNoteState>("idle");
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const [voiceError, setVoiceError] = useState("");
   const currentFlow = productMode === "create" || productMode === "match" ? productMode : activeFlow;
   const recentMessages = useMemo(() => messages.slice(-8), [messages]);
   const latestLook = useMemo(
@@ -705,6 +718,31 @@ export function StylistChat({
       if (referencePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(referencePreviewUrl);
     };
   }, [referencePreviewUrl]);
+
+  useEffect(() => {
+    setVoiceSupported(Boolean(
+      typeof window !== "undefined"
+      && window.MediaRecorder
+      && navigator.mediaDevices?.getUserMedia
+    ));
+
+    return () => {
+      if (voiceTimerRef.current !== null) window.clearInterval(voiceTimerRef.current);
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        recorder.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (voiceState === "recording" && voiceSeconds >= maxVoiceNoteSeconds) {
+      stopVoiceRecording();
+    }
+  }, [voiceSeconds, voiceState]);
 
   useEffect(() => {
     if (initialWardrobeItem || typeof window === "undefined") {
@@ -772,6 +810,120 @@ export function StylistChat({
   function showToast(text: string) {
     setToast(text);
     window.setTimeout(() => setToast(""), 1800);
+  }
+
+  function clearVoiceTimer() {
+    if (voiceTimerRef.current !== null) {
+      window.clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
+    }
+  }
+
+  function stopVoiceStream() {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }
+
+  function preferredRecordingMimeType() {
+    const formats = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+    return formats.find((format) => MediaRecorder.isTypeSupported(format)) || "";
+  }
+
+  async function finishVoiceTranscription(audio: Blob) {
+    setVoiceState("transcribing");
+    const result = await transcribeStylistVoiceNote(audio);
+    if (!result.ok) {
+      setVoiceError(result.error.message || "I couldn't transcribe that voice note. Try again or type your request.");
+      setVoiceState("idle");
+      return;
+    }
+
+    setMessage((current) => {
+      const existing = current.trim();
+      const combined = existing ? `${existing} ${result.data.text}` : result.data.text;
+      return combined.slice(0, 800);
+    });
+    setVoiceState("idle");
+    showToast(result.data.truncated ? "Voice note added. Review the shortened transcript before sending." : "Voice note added. Review it before sending.");
+  }
+
+  async function startVoiceRecording() {
+    setVoiceError("");
+    if (!voiceSupported) {
+      setVoiceError("Voice recording is not available in this browser. You can still type your request.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      mediaStreamRef.current = stream;
+      const mimeType = preferredRecordingMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      voiceChunksRef.current = [];
+      discardVoiceNoteRef.current = false;
+      setVoiceSeconds(0);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) voiceChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        clearVoiceTimer();
+        stopVoiceStream();
+        setVoiceState("idle");
+        setVoiceError("The recording stopped unexpectedly. Try again or type your request.");
+      };
+      recorder.onstop = () => {
+        clearVoiceTimer();
+        stopVoiceStream();
+        mediaRecorderRef.current = null;
+        if (discardVoiceNoteRef.current) {
+          voiceChunksRef.current = [];
+          setVoiceState("idle");
+          setVoiceSeconds(0);
+          return;
+        }
+        const recordingType = recorder.mimeType || voiceChunksRef.current[0]?.type || "audio/webm";
+        const audio = new Blob(voiceChunksRef.current, { type: recordingType });
+        voiceChunksRef.current = [];
+        if (audio.size < 512) {
+          setVoiceState("idle");
+          setVoiceError("That voice note was too short. Try recording again.");
+          return;
+        }
+        void finishVoiceTranscription(audio);
+      };
+
+      recorder.start(250);
+      setVoiceState("recording");
+      voiceTimerRef.current = window.setInterval(() => {
+        setVoiceSeconds((current) => Math.min(current + 1, maxVoiceNoteSeconds));
+      }, 1000);
+    } catch (recordingError) {
+      stopVoiceStream();
+      setVoiceState("idle");
+      const permissionDenied = recordingError instanceof DOMException
+        && (recordingError.name === "NotAllowedError" || recordingError.name === "SecurityError");
+      setVoiceError(permissionDenied
+        ? "Microphone access was blocked. Allow microphone access in your browser settings, then try again."
+        : "I couldn't start the microphone. Try again or type your request.");
+    }
+  }
+
+  function stopVoiceRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === "recording") recorder.stop();
+  }
+
+  function cancelVoiceRecording() {
+    discardVoiceNoteRef.current = true;
+    stopVoiceRecording();
+  }
+
+  function formattedVoiceTime(seconds: number) {
+    return `0:${String(seconds).padStart(2, "0")}`;
   }
 
   async function uploadReferenceImage(normalized: NormalizedImageUpload, source: "camera" | "upload") {
@@ -1328,19 +1480,42 @@ export function StylistChat({
           <form className="relative z-10 mb-8 px-1" onSubmit={(event) => { event.preventDefault(); void submitStylistMessage(); }}>
             <div className="mx-auto max-w-3xl rounded-2xl border border-line bg-surfaceWarm p-3 shadow-soft transition focus-within:border-cocoa/45 focus-within:ring-4 focus-within:ring-cocoa/5">
               <label className="sr-only" htmlFor="stylist-agent-prompt">Ask MyFitPick</label>
-              <textarea id="stylist-agent-prompt" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
+              <textarea id="stylist-agent-prompt" maxLength={800} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && voiceState === "idle") { event.preventDefault(); void submitStylistMessage(); } }} placeholder="Ask MyFitPick to style a look..." rows={2} className="min-h-[54px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted/80" />
+              {voiceState === "recording" ? (
+                <div className="mb-2 flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2" aria-live="polite">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <span className="size-2.5 animate-pulse rounded-full bg-danger" aria-hidden="true" />
+                    Recording {formattedVoiceTime(voiceSeconds)} / 1:00
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button type="button" onClick={cancelVoiceRecording} className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-muted transition hover:bg-white hover:text-ink" aria-label="Cancel voice note">
+                      <X size={15} aria-hidden="true" /> Cancel
+                    </button>
+                    <button type="button" onClick={stopVoiceRecording} className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-semibold text-white transition hover:bg-cocoa" aria-label="Stop and transcribe voice note">
+                      <Square size={13} fill="currentColor" aria-hidden="true" /> Stop
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
+                  <button type="button" onClick={() => setPickerOpen(true)} disabled={loading || referenceBusy || voiceState !== "idle"} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50">
                     <Plus size={15} aria-hidden="true" /> <span>Add image</span>
                   </button>
+                  {voiceSupported || voiceState !== "idle" ? (
+                    <button type="button" onClick={() => void startVoiceRecording()} disabled={loading || referenceBusy || voiceState !== "idle"} className="focus-ring inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-muted transition hover:border-cocoa/35 hover:text-ink disabled:opacity-50" aria-label={voiceState === "transcribing" ? "Transcribing voice note" : "Record a voice note"}>
+                      {voiceState === "transcribing" ? <RefreshCw size={15} className="animate-spin" aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
+                      <span>{voiceState === "transcribing" ? "Transcribing" : "Voice"}</span>
+                    </button>
+                  ) : null}
                 </div>
-                <button type="submit" disabled={loading || referenceBusy || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
+                <button type="submit" disabled={loading || referenceBusy || voiceState !== "idle" || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
                   {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-center text-xs text-muted">MyFitPick styles with the wardrobe details you&apos;ve saved.</p>
+            {voiceError ? <p className="mx-auto mt-2 max-w-3xl text-sm font-medium text-danger" role="alert">{voiceError}</p> : null}
+            <p className="mt-2 text-center text-xs text-muted" aria-live="polite">{voiceState === "transcribing" ? "Turning your voice note into editable text…" : "MyFitPick styles with the wardrobe details you've saved."}</p>
           </form>
 
           <div className="flex-1 px-1 pb-8">
