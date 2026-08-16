@@ -124,7 +124,7 @@ export function MarketingHome({ signedIn }: { signedIn: boolean }) {
                     <div><p className="font-bold">Ask MyFitPick</p><p className="text-xs text-muted">Create a Look</p></div>
                   </div>
                   <blockquote className="mt-7 font-editorial text-2xl font-semibold leading-snug sm:text-3xl">
-                    “Dinner after work. Polished, relaxed and comfortable.”
+                    “I’m going to dinner after work on a warm evening. Style me in something polished, relaxed and comfortable.”
                   </blockquote>
                   <div className="mt-8 flex flex-wrap gap-2">
                     {["Dinner", "Warm evening", "Polished"].map((item) => <span key={item} className="rounded-full border border-line bg-canvas px-3 py-2 text-xs font-bold text-muted">{item}</span>)}
