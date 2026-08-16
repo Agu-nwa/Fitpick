@@ -65,7 +65,7 @@ const recommendationItems = [
   {
     name: "Blue satin blouse",
     metadata: "Light blue · tops",
-    src: "/fashion/product-blue-blouse.png",
+    src: "/fashion/product-blue-satin-blouse-v1.png",
     alt: "Light blue satin blouse selected from the MyFitPick closet",
     imageClassName: "object-cover"
   },
