@@ -149,6 +149,9 @@ export type WardrobeUploadRecord = {
   sizeBytes: number;
   width: number;
   height: number;
+  sourceImageHash?: string;
+  batchId?: string | null;
+  batchPosition?: number | null;
   uploadStatus: string;
   aiTagStatus: string;
   aiProvider?: string;
@@ -222,6 +225,7 @@ export type ServerUploadData = {
     sizeBytes?: number;
     width?: number;
     height?: number;
+    contentHash?: string;
     normalized?: {
       originalMimeType?: string;
       detectedMimeType?: string;
@@ -259,6 +263,19 @@ export type WardrobeUploadDetailData = {
 export type WardrobeUploadReviewData = {
   item: WardrobeItem;
   upload: WardrobeUploadRecord;
+  nextAction?: string;
+};
+
+export type WardrobeUploadBatchData = {
+  batch: {
+    id: string;
+    status: "processing" | "review" | "completed" | string;
+    itemCount: number;
+    completedCount?: number;
+    reviewableCount?: number;
+    uploads: WardrobeUploadRecord[];
+  };
+  jobs?: JobStatusData["job"][];
   nextAction?: string;
 };
 
@@ -933,6 +950,12 @@ export const updateWardrobeTags = (id: string, body: unknown) =>
 export const archiveWardrobeItem = (id: string) =>
   apiRequest<WardrobeArchiveData>(`/api/wardrobe/${id}`, { method: "DELETE" });
 export const uploadWardrobeMetadata = (body: unknown) => apiRequest<WardrobeUploadData>("/api/wardrobe/upload", { method: "POST", body });
+export const createWardrobeUploadBatch = (uploadIds: string[]) =>
+  apiRequest<WardrobeUploadBatchData>("/api/wardrobe/upload/batches", { method: "POST", body: { uploadIds } });
+export const getWardrobeUploadBatch = (batchId: string) =>
+  apiRequest<WardrobeUploadBatchData>(`/api/wardrobe/upload/batches/${batchId}`, { cache: "no-store" });
+export const removeWardrobeUploadBatchItem = (batchId: string, uploadId: string) =>
+  apiRequest<{ removed: boolean; uploadId: string }>(`/api/wardrobe/upload/batches/${batchId}/items/${uploadId}`, { method: "DELETE" });
 export const getWardrobeUpload = (uploadId: string) =>
   apiRequest<WardrobeUploadDetailData>(`/api/wardrobe/upload/${uploadId}`, { cache: "no-store" });
 export const reviewWardrobeUploadTags = (uploadId: string, body: unknown) =>

@@ -132,6 +132,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (upload.createdItemId) {
       return apiError("CONFLICT", "This upload has already been added to your wardrobe.");
     }
+    const multipleGarmentStatus = upload.aiAnalysis?.uploadIntelligence?.multipleGarments?.status;
+    if (multipleGarmentStatus === "multiple" || multipleGarmentStatus === "accessories_mixed") {
+      return apiError("CONFLICT", "This photo appears to contain more than one item. Use one clear item per photo.");
+    }
 
     const verifiedFields = {
       ...(parsed.data.verifiedFields || {}),
@@ -193,6 +197,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       condition,
       userId: auth.user._id,
       storageKey: upload.storageKey,
+      sourceImageHash: upload.sourceImageHash || "",
       imageUrl: upload.imageUrl || "",
       thumbnailUrl: upload.thumbnailUrl || "",
       images: upload.images || {},

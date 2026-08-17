@@ -11,6 +11,7 @@ import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
 import { reportBackgroundRemovalDisabled } from "@/lib/image-processing/background-removal-state";
+import { createHash } from "node:crypto";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       purpose: parsedPurpose.data
     });
     const uploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    const contentHash = createHash("sha256").update(normalized.buffer).digest("hex");
     const backgroundRemovalState = reportBackgroundRemovalDisabled();
 
     await recordAuditEvent({
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
           sizeBytes: normalized.sizeBytes,
           width: normalized.width,
           height: normalized.height,
+          contentHash,
           normalized: {
             originalMimeType: normalized.original.mimeType,
             detectedMimeType: normalized.original.detectedMimeType,

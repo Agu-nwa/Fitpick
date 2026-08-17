@@ -279,6 +279,7 @@ export async function POST(request: NextRequest) {
       sizeBytes: parsed.data.sizeBytes,
       width: parsed.data.width || 0,
       height: parsed.data.height || 0,
+      sourceImageHash: parsed.data.sourceImageHash || "",
       provider: parsed.data.provider || storage.provider,
       imageUrl,
       thumbnailUrl,

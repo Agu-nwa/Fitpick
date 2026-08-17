@@ -269,6 +269,7 @@ export const uploadMetadataSchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_IMAGE_UPLOAD_BYTES, imageUploadRequirementText()),
   width: z.number().int().positive().max(12000).optional(),
   height: z.number().int().positive().max(12000).optional(),
+  sourceImageHash: z.string().regex(/^[a-f\d]{64}$/i).optional(),
   provider: z.literal("s3").optional(),
   storageKey: z.string().trim().max(260).optional(),
   publicId: z.string().trim().max(260).optional(),
@@ -289,6 +290,10 @@ export const uploadMetadataSchema = z.object({
   virtualTryOnMetadata: safeMetadataSchema.optional(),
   searchMetadata: safeMetadataSchema.optional(),
   suggestedTags: z.record(z.unknown()).optional()
+});
+
+export const wardrobeUploadBatchSchema = z.object({
+  uploadIds: z.array(objectId).min(2, "Choose at least two items.").max(5, "Upload up to five items at once.")
 });
 
 export const uploadTagReviewSchema = withCategoryAwareGarmentMeasurements(

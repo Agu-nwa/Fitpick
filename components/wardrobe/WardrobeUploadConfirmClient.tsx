@@ -106,7 +106,7 @@ function selectedDefaultsFromUpload(upload: WardrobeUploadRecord | null): AITagC
   };
 }
 
-export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) {
+export function WardrobeUploadConfirmClient({ uploadId, batchId = "" }: { uploadId: string; batchId?: string }) {
   const session = useSession();
   const router = useRouter();
   const [upload, setUpload] = useState<WardrobeUploadRecord | null>(null);
@@ -262,6 +262,7 @@ export function WardrobeUploadConfirmClient({ uploadId }: { uploadId: string }) 
           body={`${createdItem.name} is saved and ready for outfit planning.`}
         />
         <div className="grid gap-2 sm:grid-cols-2">
+          {batchId ? <Button type="button" className="w-full" onClick={() => router.push(`/wardrobe/bulk-upload/${batchId}`)}>Review remaining items</Button> : null}
           <Button type="button" className="w-full" onClick={() => router.push(styleHref)}>
             Style this item
           </Button>
