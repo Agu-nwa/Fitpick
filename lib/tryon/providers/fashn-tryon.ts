@@ -7,6 +7,7 @@ import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
 import { prepareTryOnItems, tryOnVisualRoleForItem, type TryOnVisualRole } from "@/lib/tryon/provider-capabilities";
 import { logTryOnMetric } from "@/lib/tryon/reliability";
+import { validateTryOnVisualIntegrity, type TryOnIntegrityItem } from "@/lib/tryon/visual-integrity";
 import { AvatarProfile } from "@/models/AvatarProfile";
 
 type FashnStatus = "starting" | "in_queue" | "processing" | "completed" | "failed" | string;
@@ -57,6 +58,7 @@ function config() {
     returnBase64: process.env.FASHN_RETURN_BASE64 !== "false",
     maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
     maxFinisherItems: Math.max(0, Math.min(Number(process.env.FASHN_MAX_FINISHER_ITEMS || 2), 4)),
+    integrityRepairRounds: Math.max(0, Math.min(Number(process.env.FASHN_INTEGRITY_REPAIR_ROUNDS || 1), 2)),
     timeoutMs: Math.max(15000, Math.min(Number(process.env.FASHN_TIMEOUT_MS || process.env.TRYON_TIMEOUT_MS || 90000), 180000)),
     pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 2000), 10000))
   };
@@ -597,6 +599,14 @@ export function createFashnTryOnProvider(): TryOnProvider {
       const coreProducts = products.filter((product) => CORE_ROLES.has(product.role));
       const finishingProducts = products.filter((product) => !CORE_ROLES.has(product.role));
       const orderedProducts = [...coreProducts, ...finishingProducts];
+      const integrityItems: TryOnIntegrityItem[] = orderedProducts.map((product) => ({
+        id: product.id,
+        name: String(product.item?.name || product.item?.subcategory || product.item?.category || "wardrobe item"),
+        category: String(product.item?.category || "unknown"),
+        color: String(product.item?.primaryColor?.value || product.item?.color || product.item?.primaryColor || "unknown"),
+        role: product.role,
+        referenceImageUrl: product.url
+      }));
       const referenceIds = new Set(loaded.referenceItemIds.map(String));
       const subjectItemIds = new Set(loaded.items.map((item: any) => String(item?._id || item?.id || "")).filter(Boolean));
       const providerProductIds = new Set(products.map((product) => String(product.item?._id || product.item?.id || "")).filter(Boolean));
@@ -788,6 +798,125 @@ export function createFashnTryOnProvider(): TryOnProvider {
           }
         }
 
+        let integrity = await validateTryOnVisualIntegrity({
+          previewImageUrl: result?.providerIntermediateImage || result?.previewUrls[0] || "",
+          items: integrityItems
+        });
+        console.info("fitpick.tryon.integrity", {
+          event: "final_validation",
+          status: integrity.valid ? "passed" : "failed",
+          selectedItemCount: integrityItems.length,
+          checkedItemCount: integrity.checkedItemIds.length,
+          missingItemCount: integrity.missingItemIds.length,
+          mismatchedItemCount: integrity.mismatchedItemIds.length,
+          unavailable: integrity.unavailable,
+          safeReason: integrity.safeReason,
+          timestamp: new Date().toISOString()
+        });
+
+        for (let repairRound = 0; !integrity.valid && !integrity.unavailable && repairRound < providerConfig.integrityRepairRounds; repairRound += 1) {
+          const invalidIds = new Set([...integrity.missingItemIds, ...integrity.mismatchedItemIds]);
+          const firstInvalidIndex = orderedProducts.findIndex((product) => invalidIds.has(product.id));
+          if (firstInvalidIndex < 0) break;
+
+          for (let index = firstInvalidIndex; index < orderedProducts.length; index += 1) {
+            const product = orderedProducts[index];
+            const repairStartedAt = Date.now();
+            const repaired = await runFashnTryOnStepWithRetry(input, {
+              productImage: product.url,
+              modelImage: currentModelImage,
+              stepIndex: index + 1,
+              role: product.role,
+              modelName: providerConfig.modelName,
+              mode: providerConfig.generationMode,
+              prompt: [
+                "Repair this MyFitPick virtual try-on so every selected piece remains visible and accurate.",
+                "Preserve the model identity, pose, body proportions, and every garment or accessory already present.",
+                "Apply the supplied product without replacing another selected clothing category.",
+                `Repair item: ${product.item.name || product.item.category || "wardrobe item"} (${product.item.category || "unknown"}).`,
+                `Required complete outfit: ${loaded.items.map((item) => `${item.name || item.category || "item"} (${item.category || "unknown"})`).join(", ")}.`
+              ].join(" ")
+            }, result?.previewUrls[0]);
+            const repairReady = repaired.status === "ready" && Boolean(repaired.previewUrls[0] && repaired.previewStorageKeys?.[0]);
+            logTryOnMetric({
+              metric: "visual_integrity_repair",
+              stage: "repair",
+              status: repairReady ? "success" : "failed",
+              durationMs: Date.now() - repairStartedAt,
+              attempt: repairRound + 1,
+              errorCode: repairReady ? "" : String(repaired.providerDiagnostics?.safeReason || repaired.status),
+              metadata: { stepIndex: index + 1, role: product.role }
+            });
+            if (!repairReady) {
+              repaired.status = "failed";
+              repaired.previewUrls = [];
+              repaired.previewStorageKeys = [];
+              repaired.warnings = ["Virtual Try-On could not preserve every selected piece. Try again."];
+              repaired.providerDiagnostics = {
+                ...(repaired.providerDiagnostics || {}),
+                completePreviewRequired: true,
+                visualIntegrityRepairFailed: true,
+                failedRole: product.role,
+                failedStepIndex: index + 1
+              };
+              return repaired;
+            }
+            result = repaired;
+            currentModelImage = repaired.providerIntermediateImage || repaired.previewUrls[0];
+          }
+
+          integrity = await validateTryOnVisualIntegrity({
+            previewImageUrl: result?.providerIntermediateImage || result?.previewUrls[0] || "",
+            items: integrityItems
+          });
+          console.info("fitpick.tryon.integrity", {
+            event: "repair_validation",
+            status: integrity.valid ? "passed" : "failed",
+            repairRound: repairRound + 1,
+            selectedItemCount: integrityItems.length,
+            checkedItemCount: integrity.checkedItemIds.length,
+            missingItemCount: integrity.missingItemIds.length,
+            mismatchedItemCount: integrity.mismatchedItemIds.length,
+            unavailable: integrity.unavailable,
+            safeReason: integrity.safeReason,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        if (!integrity.valid) {
+          return {
+            ...unavailableWithDiagnostics("Virtual Try-On could not verify every selected piece. Try again.", diagnostics({
+              stage: "visual_integrity",
+              modelName: providerConfig.modelName,
+              safeReason: integrity.safeReason || "visual_integrity_failed",
+              providerReturnedJobId: Boolean(result?.jobId),
+              providerJobId: result?.jobId || undefined
+            })),
+            status: "failed",
+            providerCompletedItemIds: integrity.checkedItemIds,
+            providerFailedItemIds: Array.from(new Set([...integrity.missingItemIds, ...integrity.mismatchedItemIds])),
+            providerSkippedItemIds: [],
+            pendingItemIds: [],
+            recommendationOnlyItemIds: [],
+            progressStage: "not_started",
+            previewFidelityLevel: "partial",
+            providerDiagnostics: {
+              ...diagnostics({
+                stage: "visual_integrity",
+                modelName: providerConfig.modelName,
+                safeReason: integrity.safeReason || "visual_integrity_failed",
+                providerReturnedJobId: Boolean(result?.jobId),
+                providerJobId: result?.jobId || undefined
+              }),
+              completePreviewRequired: true,
+              visualIntegrityValidated: false,
+              checkedItemCount: integrity.checkedItemIds.length,
+              missingItemCount: integrity.missingItemIds.length,
+              mismatchedItemCount: integrity.mismatchedItemIds.length
+            }
+          };
+        }
+
         if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
         result.requestedRoles = preparation.fidelity.requestedRoles;
@@ -809,6 +938,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
           completedItemCount: completedItemIds.length,
           failedItemCount: failedItemIds.length,
           recommendationOnlyItemCount: result.recommendationOnlyItemIds.length,
+          visualIntegrityValidated: true,
           previewFidelityLevel: result.previewFidelityLevel,
           progressStage: result.progressStage
         };

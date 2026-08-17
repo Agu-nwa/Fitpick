@@ -54,6 +54,7 @@ assert.ok(ecosystem.includes('WORKER_JOB_TYPES: "avatar_preview_generation"'), "
 assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation"'), "General worker must not compete for avatar preview jobs.");
 
 const fashnProvider = read("lib/tryon/providers/fashn-tryon.ts");
+const visualIntegrity = read("lib/tryon/visual-integrity.ts");
 assert.ok(fashnProvider.includes('coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6"'), "Core garments must default to the faster FASHN clothing model.");
 assert.ok(fashnProvider.includes('["upperBody", "lowerBody", "onePiece", "outerwear"]'), "Outerwear must use the fast core-garment pass instead of an unnecessary finisher pass.");
 assert.ok(fashnProvider.includes('process.env.FASHN_POLL_MS || 2000'), "Provider polling should use the lower-latency safe default.");
@@ -67,6 +68,11 @@ assert.ok(fashnProvider.includes('safeReason: "provider_cannot_render_complete_r
 assert.ok(fashnProvider.includes('result.previewFidelityLevel = "full"'), "A successful Try-On must represent the complete selected recommendation.");
 assert.ok(fashnProvider.includes('result.progressStage = "complete"'), "A successful Try-On must only finish at the complete stage.");
 assert.ok(fashnProvider.includes("did not publish an incomplete Try-On"), "A failed selected piece must prevent partial publication.");
+assert.ok(fashnProvider.includes("validateTryOnVisualIntegrity"), "Provider completion must be followed by independent final-image validation.");
+assert.ok(fashnProvider.includes('metric: "visual_integrity_repair"'), "A visually missing item must trigger a bounded repair pass.");
+assert.ok(fashnProvider.includes("visualIntegrityValidated: true"), "Only a visually verified outfit may be marked complete.");
+assert.ok(visualIntegrity.includes("shorts do not match trousers"), "Visual validation must reject category drift from trousers to shorts.");
+assert.ok(visualIntegrity.includes("Do not infer hidden items"), "Visual validation must not credit accessories that are absent from the preview.");
 assert.ok(fashnProvider.includes("providerIntermediateImage"), "Sequential FASHN steps must chain the provider output instead of a newly published CDN URL.");
 assert.ok(fashnProvider.includes("runFashnTryOnStepWithRetry"), "Invalid or temporarily unreachable provider images must receive one bounded retry.");
 assert.ok(fashnProvider.includes("providerFailedItemIds"), "Fallback diagnostics must identify failed Try-On items safely.");
