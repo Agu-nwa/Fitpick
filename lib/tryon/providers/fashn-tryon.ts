@@ -449,27 +449,56 @@ async function runFashnTryOnStepWithRetry(
 ) {
   let result = await runFashnTryOnStep(input, payload);
   const safeReason = String(result.providerDiagnostics?.safeReason || "");
-  if (result.status !== "failed" || safeReason !== "invalid_or_unreachable_image") return result;
+  if (result.status !== "failed") return result;
 
-  logTryOnMetric({
-    metric: "provider_step_retry",
-    stage: CORE_ROLES.has(payload.role) ? "core" : "finisher",
-    status: "retry",
-    attempt: 1,
-    errorCode: safeReason,
-    metadata: { stepIndex: payload.stepIndex, role: payload.role, modelName: payload.modelName }
-  });
-  await wait(1200);
   const retryModelImage = durableModelImage && durableModelImage !== payload.modelImage
     ? durableModelImage
     : payload.modelImage;
-  if (retryModelImage !== payload.modelImage) await preflightImage(retryModelImage, "model");
-  result = await runFashnTryOnStep(input, { ...payload, modelImage: retryModelImage });
-  result.providerDiagnostics = {
-    ...(result.providerDiagnostics || {}),
-    retryCount: 1,
-    retryInput: retryModelImage === payload.modelImage ? "same_input" : "durable_intermediate"
-  };
+  if (safeReason === "invalid_or_unreachable_image") {
+    logTryOnMetric({
+      metric: "provider_step_retry",
+      stage: CORE_ROLES.has(payload.role) ? "core" : "finisher",
+      status: "retry",
+      attempt: 1,
+      errorCode: safeReason,
+      metadata: { stepIndex: payload.stepIndex, role: payload.role, modelName: payload.modelName }
+    });
+    await wait(1200);
+    if (retryModelImage !== payload.modelImage) await preflightImage(retryModelImage, "model");
+    result = await runFashnTryOnStep(input, { ...payload, modelImage: retryModelImage });
+    result.providerDiagnostics = {
+      ...(result.providerDiagnostics || {}),
+      retryCount: 1,
+      retryInput: retryModelImage === payload.modelImage ? "same_input" : "durable_intermediate"
+    };
+  }
+  if (
+    result.status === "failed"
+    && payload.role === "outerwear"
+    && payload.modelName === config().coreModelName
+    && config().modelName !== payload.modelName
+  ) {
+    const alternateAttempt = Number(result.providerDiagnostics?.retryCount || 0) + 1;
+    logTryOnMetric({
+      metric: "provider_step_model_fallback",
+      stage: "core",
+      status: "retry",
+      attempt: alternateAttempt,
+      errorCode: String(result.providerDiagnostics?.safeReason || result.status),
+      metadata: { stepIndex: payload.stepIndex, role: payload.role, fromModel: payload.modelName, toModel: config().modelName }
+    });
+    result = await runFashnTryOnStep(input, {
+      ...payload,
+      modelImage: retryModelImage,
+      modelName: config().modelName,
+      mode: config().generationMode
+    });
+    result.providerDiagnostics = {
+      ...(result.providerDiagnostics || {}),
+      retryCount: alternateAttempt,
+      retryInput: "alternate_outerwear_model"
+    };
+  }
   return result;
 }
 
@@ -539,6 +568,31 @@ export function createFashnTryOnProvider(): TryOnProvider {
         maximumItems: providerConfig.maxOutfitItems,
         maximumFinishers: providerConfig.maxFinisherItems
       });
+      if (preparation.recommendationOnlyItemIds.length) {
+        return {
+          ...unavailableWithDiagnostics(
+            "Virtual Try-On cannot render every selected piece yet. Choose Try Again after updating the look.",
+            diagnostics({
+              stage: "input_validation",
+              modelName: providerConfig.modelName,
+              safeReason: "provider_cannot_render_complete_recommendation",
+              providerReturnedJobId: false
+            })
+          ),
+          status: "failed",
+          recommendationOnlyItemIds: preparation.recommendationOnlyItemIds,
+          providerDiagnostics: {
+            ...diagnostics({
+              stage: "input_validation",
+              modelName: providerConfig.modelName,
+              safeReason: "provider_cannot_render_complete_recommendation",
+              providerReturnedJobId: false
+            }),
+            completePreviewRequired: true,
+            recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length
+          }
+        };
+      }
       const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
       const coreProducts = products.filter((product) => CORE_ROLES.has(product.role));
       const finishingProducts = products.filter((product) => !CORE_ROLES.has(product.role));
@@ -667,8 +721,29 @@ export function createFashnTryOnProvider(): TryOnProvider {
                 safeReason: String(result.providerDiagnostics?.safeReason || result.status),
                 timestamp: new Date().toISOString()
               });
-              currentModelImage = lastReadyResult.providerIntermediateImage || lastReadyResult.previewUrls[0];
-              continue;
+              result.warnings = [
+                ...warnings,
+                `${product.item.name || "A selected piece"} could not be rendered, so MyFitPick did not publish an incomplete Try-On.`,
+                ...result.warnings
+              ].slice(0, 8);
+              result.providerSentItemIds = sentItemIds;
+              result.providerCompletedItemIds = completedItemIds;
+              result.providerFailedItemIds = failedItemIds;
+              result.providerSkippedItemIds = orderedProducts.slice(index + 1).map((entry) => entry.id).filter(Boolean);
+              result.pendingItemIds = [];
+              result.recommendationOnlyItemIds = [];
+              result.previewFidelityLevel = "partial";
+              result.progressStage = "not_started";
+              result.providerDiagnostics = {
+                ...(result.providerDiagnostics || {}),
+                completePreviewRequired: true,
+                completedItemCount: completedItemIds.length,
+                failedItemCount: failedItemIds.length,
+                skippedItemCount: result.providerSkippedItemIds.length,
+                failedRole: product.role,
+                failedStepIndex: index + 1
+              };
+              return result;
             }
 
             result.warnings = [...warnings, ...result.warnings].slice(0, 8);
@@ -713,7 +788,6 @@ export function createFashnTryOnProvider(): TryOnProvider {
           }
         }
 
-        if (failedItemIds.length && lastReadyResult) result = lastReadyResult;
         if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
         result.requestedRoles = preparation.fidelity.requestedRoles;
@@ -724,13 +798,11 @@ export function createFashnTryOnProvider(): TryOnProvider {
         result.providerSentItemIds = sentItemIds;
         result.providerCompletedItemIds = completedItemIds;
         result.providerFailedItemIds = failedItemIds;
-        result.providerSkippedItemIds = preparation.recommendationOnlyItemIds;
+        result.providerSkippedItemIds = [];
         result.pendingItemIds = [];
-        result.recommendationOnlyItemIds = Array.from(new Set([...preparation.recommendationOnlyItemIds, ...failedItemIds]));
-        result.previewFidelityLevel = failedItemIds.length
-          ? (completedItemIds.some((id) => finishingProducts.some((entry) => entry.id === id)) ? "partial" : "core_only")
-          : preparation.fidelity.previewFidelityLevel;
-        result.progressStage = failedItemIds.length ? "fallback" : "complete";
+        result.recommendationOnlyItemIds = [];
+        result.previewFidelityLevel = "full";
+        result.progressStage = "complete";
         result.providerDiagnostics = {
           ...(result.providerDiagnostics || {}),
           sentItemCount: sentItemIds.length,
@@ -740,21 +812,6 @@ export function createFashnTryOnProvider(): TryOnProvider {
           previewFidelityLevel: result.previewFidelityLevel,
           progressStage: result.progressStage
         };
-
-        if (failedItemIds.length) {
-          result.warnings = [
-            ...warnings,
-            `${failedItemIds.length} selected ${failedItemIds.length === 1 ? "piece was" : "pieces were"} not rendered; the remaining provider steps continued.`,
-            ...result.warnings
-          ].slice(0, 8);
-          logTryOnMetric({
-            metric: "finisher_fallback",
-            stage: "fallback",
-            status: "success",
-            durationMs: Date.now() - startedAt,
-            metadata: { completedItemCount: completedItemIds.length, failedItemCount: failedItemIds.length }
-          });
-        }
 
         logAiEvent({
           operation: "fashn-tryon-run",

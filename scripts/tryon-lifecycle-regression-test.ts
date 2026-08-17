@@ -60,8 +60,13 @@ assert.ok(fashnProvider.includes('process.env.FASHN_POLL_MS || 2000'), "Provider
 assert.ok(fashnProvider.includes("garment_image: payload.productImage"), "Core clothing requests must use the v1.6 garment_image contract.");
 assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finishing requests must use the Try-On Max product_image contract.");
 assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");
-assert.ok(fashnProvider.includes('result.progressStage = failedItemIds.length ? "fallback" : "complete"'), "A finishing-pass failure must preserve a usable core preview.");
-assert.ok(fashnProvider.includes('event: "step_skipped_after_failure"'), "A failed optional step must be recorded without preventing later pieces from being attempted.");
+assert.ok(fashnProvider.includes('metric: "provider_step_model_fallback"'), "A failed outerwear pass must retry through the alternate FASHN model.");
+assert.ok(fashnProvider.includes('retryInput: "alternate_outerwear_model"'), "Outerwear fallback diagnostics must identify the alternate-model retry safely.");
+assert.ok(fashnProvider.includes("completePreviewRequired: true"), "Try-On must require every selected recommendation piece before publishing a ready preview.");
+assert.ok(fashnProvider.includes('safeReason: "provider_cannot_render_complete_recommendation"'), "Unsupported selected pieces must fail before provider work instead of creating a partial preview.");
+assert.ok(fashnProvider.includes('result.previewFidelityLevel = "full"'), "A successful Try-On must represent the complete selected recommendation.");
+assert.ok(fashnProvider.includes('result.progressStage = "complete"'), "A successful Try-On must only finish at the complete stage.");
+assert.ok(fashnProvider.includes("did not publish an incomplete Try-On"), "A failed selected piece must prevent partial publication.");
 assert.ok(fashnProvider.includes("providerIntermediateImage"), "Sequential FASHN steps must chain the provider output instead of a newly published CDN URL.");
 assert.ok(fashnProvider.includes("runFashnTryOnStepWithRetry"), "Invalid or temporarily unreachable provider images must receive one bounded retry.");
 assert.ok(fashnProvider.includes("providerFailedItemIds"), "Fallback diagnostics must identify failed Try-On items safely.");
