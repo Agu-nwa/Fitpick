@@ -6,6 +6,7 @@ export type WardrobeBatchCandidate = {
   id: string;
   sizeBytes?: number | null;
   sourceImageHash?: string | null;
+  perceptualImageHash?: string | null;
   uploadStatus: string;
   createdItemId?: unknown;
   batchId?: unknown;

@@ -205,6 +205,7 @@ export function serializeWardrobeUpload(upload: any) {
     width: upload.width || 0,
     height: upload.height || 0,
     sourceImageHash: upload.sourceImageHash || "",
+    perceptualImageHash: upload.perceptualImageHash || "",
     batchId: upload.batchId ? String(upload.batchId) : null,
     batchPosition: typeof upload.batchPosition === "number" ? upload.batchPosition : null,
     uploadStatus: upload.uploadStatus,

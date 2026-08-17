@@ -198,6 +198,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       userId: auth.user._id,
       storageKey: upload.storageKey,
       sourceImageHash: upload.sourceImageHash || "",
+      perceptualImageHash: upload.perceptualImageHash || "",
       imageUrl: upload.imageUrl || "",
       thumbnailUrl: upload.thumbnailUrl || "",
       images: upload.images || {},

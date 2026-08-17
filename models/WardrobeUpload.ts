@@ -60,6 +60,7 @@ const WardrobeUploadSchema = new Schema(
     width: { type: Number, default: 0 },
     height: { type: Number, default: 0 },
     sourceImageHash: { type: String, default: "", index: true },
+    perceptualImageHash: { type: String, default: "", index: true },
     batchId: { type: Schema.Types.ObjectId, ref: "WardrobeUploadBatch", default: null, index: true },
     batchPosition: { type: Number, default: null },
     provider: { type: String, default: "metadata" },

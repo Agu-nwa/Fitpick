@@ -270,6 +270,7 @@ export const uploadMetadataSchema = z.object({
   width: z.number().int().positive().max(12000).optional(),
   height: z.number().int().positive().max(12000).optional(),
   sourceImageHash: z.string().regex(/^[a-f\d]{64}$/i).optional(),
+  perceptualImageHash: z.string().regex(/^[a-f\d]{16}$/i).optional(),
   provider: z.literal("s3").optional(),
   storageKey: z.string().trim().max(260).optional(),
   publicId: z.string().trim().max(260).optional(),

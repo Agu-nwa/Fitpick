@@ -67,6 +67,7 @@ const WardrobeItemSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     storageKey: { type: String, default: "" },
     sourceImageHash: { type: String, default: "", index: true },
+    perceptualImageHash: { type: String, default: "", index: true },
     imageUrl: { type: String, default: "" },
     thumbnailUrl: { type: String, default: "" },
     images: {

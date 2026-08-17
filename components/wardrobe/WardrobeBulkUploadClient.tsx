@@ -56,6 +56,7 @@ export function WardrobeBulkUploadClient() {
         storageKey: asset.storageKey,
         imageUrl: asset.publicUrl,
         sourceImageHash: asset.contentHash,
+        perceptualImageHash: asset.perceptualHash,
         uploadStatus: "uploaded",
         images: { front: { url: asset.publicUrl, storageKey: asset.storageKey, provider: "s3", purpose: "front", uploadedAt: new Date().toISOString() }, additional: [] },
         userInputMetadata: { intakeMode: "multi_item_batch", primaryImagePurpose: "front", photoCount: 1 }

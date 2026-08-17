@@ -150,6 +150,7 @@ export type WardrobeUploadRecord = {
   width: number;
   height: number;
   sourceImageHash?: string;
+  perceptualImageHash?: string;
   batchId?: string | null;
   batchPosition?: number | null;
   uploadStatus: string;
@@ -226,6 +227,7 @@ export type ServerUploadData = {
     width?: number;
     height?: number;
     contentHash?: string;
+    perceptualHash?: string;
     normalized?: {
       originalMimeType?: string;
       detectedMimeType?: string;
@@ -956,6 +958,12 @@ export const getWardrobeUploadBatch = (batchId: string) =>
   apiRequest<WardrobeUploadBatchData>(`/api/wardrobe/upload/batches/${batchId}`, { cache: "no-store" });
 export const removeWardrobeUploadBatchItem = (batchId: string, uploadId: string) =>
   apiRequest<{ removed: boolean; uploadId: string }>(`/api/wardrobe/upload/batches/${batchId}/items/${uploadId}`, { method: "DELETE" });
+
+export const retryWardrobeUploadBatchItem = (batchId: string, uploadId: string) =>
+  apiRequest<{ job: { id: string; status: string; attempts: number; maxAttempts: number }; alreadyRunning: boolean }>(
+    `/api/wardrobe/upload/batches/${batchId}/items/${uploadId}/retry`,
+    { method: "POST", body: {} }
+  );
 export const getWardrobeUpload = (uploadId: string) =>
   apiRequest<WardrobeUploadDetailData>(`/api/wardrobe/upload/${uploadId}`, { cache: "no-store" });
 export const reviewWardrobeUploadTags = (uploadId: string, body: unknown) =>

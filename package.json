@@ -75,6 +75,7 @@
     "backfill:accessory-taxonomy": "tsx scripts/backfill-accessory-taxonomy.ts",
     "backfill:styling-metadata": "tsx scripts/backfill-styling-metadata.ts",
     "backfill:wardrobe-thumbnails": "tsx scripts/backfill-wardrobe-thumbnails.ts",
+    "backfill:wardrobe-image-hashes": "tsx scripts/backfill-wardrobe-image-hashes.ts",
     "audit:wardrobe-taxonomy": "tsx scripts/audit-wardrobe-taxonomy.ts",
     "analyze:recommendation-diagnostics": "tsx scripts/analyze-recommendation-diagnostics.ts",
     "test:audit-tooling": "tsx scripts/audit-tooling-test.ts",

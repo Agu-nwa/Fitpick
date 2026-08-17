@@ -10,6 +10,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { validateWardrobeBatchCandidates } from "@/lib/wardrobe/batch-upload";
+import { perceptualHashDistance } from "@/lib/image-processing/perceptual-hash";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { WardrobeUploadBatch } from "@/models/WardrobeUploadBatch";
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       id: String(upload._id),
       sizeBytes: upload.sizeBytes,
       sourceImageHash: upload.sourceImageHash,
+      perceptualImageHash: upload.perceptualImageHash,
       uploadStatus: upload.uploadStatus,
       createdItemId: upload.createdItemId,
       batchId: upload.batchId
@@ -44,9 +46,28 @@ export async function POST(request: NextRequest) {
     }
 
     const { hashes } = validation;
+    const perceptualHashes = ordered.map((upload) => upload.perceptualImageHash).filter((hash): hash is string => Boolean(hash));
+    for (let left = 0; left < perceptualHashes.length; left += 1) {
+      for (let right = left + 1; right < perceptualHashes.length; right += 1) {
+        if (perceptualHashDistance(perceptualHashes[left], perceptualHashes[right]) <= 5) {
+          return apiError("CONFLICT", "Two photos appear to show the same closet item.");
+        }
+      }
+    }
     if (hashes.length) {
       const existing = await WardrobeItem.findOne({ userId: auth.user._id, archivedAt: null, sourceImageHash: { $in: hashes } }).select("_id").lean();
       if (existing) return apiError("CONFLICT", "One of these photos is already saved in your closet.");
+    }
+    if (perceptualHashes.length) {
+      const existingHashes = await WardrobeItem.find({
+        userId: auth.user._id,
+        archivedAt: null,
+        perceptualImageHash: { $ne: "" }
+      }).select("perceptualImageHash").lean();
+      const looksDuplicated = perceptualHashes.some((candidate) => existingHashes.some((item) =>
+        perceptualHashDistance(candidate, String(item.perceptualImageHash || "")) <= 5
+      ));
+      if (looksDuplicated) return apiError("CONFLICT", "One of these items appears to already be in your closet.");
     }
 
     const batch = await WardrobeUploadBatch.create({

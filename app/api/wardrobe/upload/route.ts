@@ -280,6 +280,7 @@ export async function POST(request: NextRequest) {
       width: parsed.data.width || 0,
       height: parsed.data.height || 0,
       sourceImageHash: parsed.data.sourceImageHash || "",
+      perceptualImageHash: parsed.data.perceptualImageHash || "",
       provider: parsed.data.provider || storage.provider,
       imageUrl,
       thumbnailUrl,
