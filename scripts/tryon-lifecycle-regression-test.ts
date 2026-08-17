@@ -60,10 +60,11 @@ assert.ok(fashnProvider.includes('process.env.FASHN_POLL_MS || 2000'), "Provider
 assert.ok(fashnProvider.includes("garment_image: payload.productImage"), "Core clothing requests must use the v1.6 garment_image contract.");
 assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finishing requests must use the Try-On Max product_image contract.");
 assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");
-assert.ok(fashnProvider.includes('progressStage: "fallback"'), "A finishing-pass failure must preserve a usable core preview.");
+assert.ok(fashnProvider.includes('result.progressStage = failedItemIds.length ? "fallback" : "complete"'), "A finishing-pass failure must preserve a usable core preview.");
+assert.ok(fashnProvider.includes('event: "step_skipped_after_failure"'), "A failed optional step must be recorded without preventing later pieces from being attempted.");
 assert.ok(fashnProvider.includes("providerIntermediateImage"), "Sequential FASHN steps must chain the provider output instead of a newly published CDN URL.");
 assert.ok(fashnProvider.includes("runFashnTryOnStepWithRetry"), "Invalid or temporarily unreachable provider images must receive one bounded retry.");
-assert.ok(fashnProvider.includes('failedStage: stepStage'), "Fallback diagnostics must identify the failed Try-On stage safely.");
+assert.ok(fashnProvider.includes("providerFailedItemIds"), "Fallback diagnostics must identify failed Try-On items safely.");
 assert.ok(fashnProvider.includes("providerJobId: data.id || jobId"), "Provider failures must retain the safe FASHN job identifier for diagnostics.");
 assert.ok(fashnProvider.includes("FASHN_MAX_FINISHER_ITEMS"), "Finishing passes must have a bounded production budget.");
 

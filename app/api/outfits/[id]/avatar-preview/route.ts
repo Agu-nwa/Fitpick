@@ -436,7 +436,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         });
         creditCharge = committed.creditCharge;
         activeGeneration = committed.generation;
-        await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, { billingStatus: "committed", generationId: activeGeneration.generationId });
+        await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, { billingStatus: committed.billingStatus, generationId: activeGeneration.generationId });
       } catch (error) {
         await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, {
           status: "failed",

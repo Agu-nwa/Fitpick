@@ -134,18 +134,29 @@ export async function createTryOnReadyNotification(input: {
   outfitId: string | Types.ObjectId;
   generationId: string;
   previewId?: string | Types.ObjectId | null;
+  previewFidelityLevel?: "full" | "partial" | "core_only";
+  progressStage?: string;
+  renderedCount?: number;
+  selectedCount?: number;
 }) {
+  const fallback = input.progressStage === "fallback";
+  const title = fallback
+    ? (input.previewFidelityLevel === "core_only" ? "Your core outfit preview is ready." : "Your partial outfit preview is ready.")
+    : "Your Virtual Try-On is ready.";
+  const body = fallback && Number.isFinite(input.renderedCount) && Number.isFinite(input.selectedCount)
+    ? `${input.renderedCount} of ${input.selectedCount} selected pieces were rendered. Open the preview to review the remaining pieces.`
+    : "Your preview has been created and saved.";
   return createAppNotification({
     userId: input.userId,
     type: "virtual_tryon_ready",
-    title: "Your Virtual Try-On is ready.",
-    body: "Your preview has been created and saved.",
+    title,
+    body,
     actionLabel: "View Preview",
     actionUrl: `/outfit/${String(input.outfitId)}/preview`,
     entityType: "TryOnGeneration",
     entityId: input.generationId,
     dedupeKey: `tryon-ready:${input.generationId}`,
-    metadata: { outfitId: String(input.outfitId), previewId: String(input.previewId || "") },
+    metadata: { outfitId: String(input.outfitId), previewId: String(input.previewId || ""), previewFidelityLevel: input.previewFidelityLevel || "partial", progressStage: input.progressStage || "complete" },
     sendEmail: true
   });
 }

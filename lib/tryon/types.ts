@@ -51,6 +51,8 @@ export type TryOnProviderOutput = {
   previewFidelityLevel?: PreviewFidelityLevel;
   providerSentItemIds?: string[];
   providerCompletedItemIds?: string[];
+  providerFailedItemIds?: string[];
+  providerSkippedItemIds?: string[];
   pendingItemIds?: string[];
   recommendationOnlyItemIds?: string[];
   progressStage?: TryOnProgressStage;

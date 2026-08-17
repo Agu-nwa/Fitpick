@@ -80,6 +80,8 @@ const OutfitRecommendationSchema = new Schema(
       previewFidelityLevel: { type: String, enum: ["full", "partial", "core_only"], default: "partial" },
       providerSentItemIds: { type: [String], default: [] },
       providerCompletedItemIds: { type: [String], default: [] },
+      providerFailedItemIds: { type: [String], default: [] },
+      providerSkippedItemIds: { type: [String], default: [] },
       pendingItemIds: { type: [String], default: [] },
       recommendationOnlyItemIds: { type: [String], default: [] },
       progressStage: { type: String, enum: ["not_started", "core_ready", "finishing", "complete", "fallback"], default: "not_started" },

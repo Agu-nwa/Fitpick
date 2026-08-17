@@ -25,7 +25,8 @@ assert.ok(source.includes("Core outfit ready"), "A durable core result must be d
 assert.ok(source.includes("Adding selected finishers"), "Progressive rendering must explain the accessory stage without an artificial percentage.");
 assert.ok(source.includes("Provider pass complete"), "Piece cards must distinguish completed provider passes.");
 assert.ok(source.includes("Selected — finishing"), "Piece cards must expose selected finishing pieces still in progress.");
-assert.ok(source.includes("Core preview preserved"), "A finishing-pass failure must retain and explain the usable core preview.");
+assert.ok(source.includes("Partial preview:"), "A fallback must report rendered and omitted pieces accurately.");
+assert.ok(source.includes("Provider pass failed"), "Piece cards must identify the provider step that failed.");
 assert.ok(source.includes("Studio Model ready"), "Waiting summary must expose model readiness when confirmed.");
 assert.ok(source.includes("pieces selected"), "Waiting summary must expose selected-piece count.");
 assert.ok(source.includes("Regenerate Preview"), "Completed preview must offer regeneration.");

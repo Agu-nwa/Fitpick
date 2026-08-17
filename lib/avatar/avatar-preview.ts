@@ -558,6 +558,8 @@ export function serializeAvatarPreview(preview: any) {
     previewFidelityLevel: preview?.previewFidelityLevel || "partial",
     providerSentItemIds: (preview?.providerSentItemIds || []).map(String),
     providerCompletedItemIds: (preview?.providerCompletedItemIds || []).map(String),
+    providerFailedItemIds: (preview?.providerFailedItemIds || []).map(String),
+    providerSkippedItemIds: (preview?.providerSkippedItemIds || []).map(String),
     pendingItemIds: (preview?.pendingItemIds || []).map(String),
     recommendationOnlyItemIds: (preview?.recommendationOnlyItemIds || []).map(String),
     progressStage: preview?.progressStage || "not_started",

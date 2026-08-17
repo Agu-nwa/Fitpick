@@ -442,7 +442,11 @@ async function status(jobId: string, input?: TryOnPreviewInput, modelName = conf
   };
 }
 
-async function runFashnTryOnStepWithRetry(input: TryOnPreviewInput, payload: Parameters<typeof runFashnTryOnStep>[1]) {
+async function runFashnTryOnStepWithRetry(
+  input: TryOnPreviewInput,
+  payload: Parameters<typeof runFashnTryOnStep>[1],
+  durableModelImage?: string
+) {
   let result = await runFashnTryOnStep(input, payload);
   const safeReason = String(result.providerDiagnostics?.safeReason || "");
   if (result.status !== "failed" || safeReason !== "invalid_or_unreachable_image") return result;
@@ -456,8 +460,16 @@ async function runFashnTryOnStepWithRetry(input: TryOnPreviewInput, payload: Par
     metadata: { stepIndex: payload.stepIndex, role: payload.role, modelName: payload.modelName }
   });
   await wait(1200);
-  result = await runFashnTryOnStep(input, payload);
-  result.providerDiagnostics = { ...(result.providerDiagnostics || {}), retryCount: 1 };
+  const retryModelImage = durableModelImage && durableModelImage !== payload.modelImage
+    ? durableModelImage
+    : payload.modelImage;
+  if (retryModelImage !== payload.modelImage) await preflightImage(retryModelImage, "model");
+  result = await runFashnTryOnStep(input, { ...payload, modelImage: retryModelImage });
+  result.providerDiagnostics = {
+    ...(result.providerDiagnostics || {}),
+    retryCount: 1,
+    retryInput: retryModelImage === payload.modelImage ? "same_input" : "durable_intermediate"
+  };
   return result;
 }
 
@@ -600,12 +612,15 @@ export function createFashnTryOnProvider(): TryOnProvider {
         let result: TryOnProviderOutput | null = null;
         let lastReadyResult: TryOnProviderOutput | null = null;
         const completedItemIds: string[] = [];
+        const failedItemIds: string[] = [];
+        const sentItemIds: string[] = [];
 
         for (let index = 0; index < orderedProducts.length; index += 1) {
           const product = orderedProducts[index];
           const coreStep = CORE_ROLES.has(product.role);
           const stepStage = coreStep ? "core" : "finisher";
           const stepStartedAt = Date.now();
+          if (product.id) sentItemIds.push(product.id);
           console.info("fitpick.tryon.stage", {
             event: "step_started",
             stage: stepStage,
@@ -629,7 +644,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
               `This step applies: ${product.item.name || product.item.category || "wardrobe item"} (${product.item.category || "unknown"}).`,
               `Complete outfit context: ${loaded.items.map((item) => `${item.name || item.category || "item"} (${item.category || "unknown"})`).join(", ")}.`
             ].join(" ")
-          });
+          }, lastReadyResult?.previewUrls[0]);
 
           const stepReady = result.status === "ready" && Boolean(result.previewUrls[0] && result.previewStorageKeys?.[0]);
           logTryOnMetric({
@@ -643,44 +658,17 @@ export function createFashnTryOnProvider(): TryOnProvider {
 
           if (!stepReady) {
             if (lastReadyResult?.previewUrls[0] && lastReadyResult.previewStorageKeys?.[0]) {
-              const unfinishedItemIds = orderedProducts.slice(index).map((entry) => entry.id).filter(Boolean);
-              const recommendationOnlyItemIds = Array.from(new Set([
-                ...preparation.recommendationOnlyItemIds,
-                ...unfinishedItemIds
-              ]));
-              const fallbackWarning = `The preview is ready through the last successful step, but ${product.item.name || "a selected item"} and later pieces could not be added.`;
-              const fallback: TryOnProviderOutput = {
-                ...lastReadyResult,
-                status: "ready",
-                warnings: [...warnings, fallbackWarning, ...result.warnings].slice(0, 8),
-                requestedRoles: preparation.fidelity.requestedRoles,
-                providerSupportedRoles: preparation.fidelity.providerSupportedRoles,
-                partiallySupportedRoles: preparation.fidelity.partiallySupportedRoles,
-                unsupportedRoles: preparation.fidelity.unsupportedRoles,
-                previewFidelityLevel: completedItemIds.length > coreProducts.length ? "partial" : "core_only",
-                providerSentItemIds: completedItemIds,
-                providerCompletedItemIds: completedItemIds,
-                pendingItemIds: [],
-                recommendationOnlyItemIds,
-                progressStage: "fallback",
-                providerDiagnostics: {
-                  ...(result.providerDiagnostics || lastReadyResult.providerDiagnostics || {}),
-                  completedItemCount: completedItemIds.length,
-                  recommendationOnlyItemCount: recommendationOnlyItemIds.length,
-                  failedRole: product.role,
-                  failedStepIndex: index + 1,
-                  failedStage: stepStage,
-                  progressStage: "fallback"
-                }
-              };
-              logTryOnMetric({
-                metric: "finisher_fallback",
-                stage: "fallback",
-                status: "success",
-                durationMs: Date.now() - startedAt,
-                metadata: { completedItemCount: completedItemIds.length, omittedFinisherCount: unfinishedItemIds.length }
+              if (product.id) failedItemIds.push(product.id);
+              console.info("fitpick.tryon.stage", {
+                event: "step_skipped_after_failure",
+                stage: stepStage,
+                stepIndex: index + 1,
+                role: product.role,
+                safeReason: String(result.providerDiagnostics?.safeReason || result.status),
+                timestamp: new Date().toISOString()
               });
-              return fallback;
+              currentModelImage = lastReadyResult.providerIntermediateImage || lastReadyResult.previewUrls[0];
+              continue;
             }
 
             result.warnings = [...warnings, ...result.warnings].slice(0, 8);
@@ -725,6 +713,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
           }
         }
 
+        if (failedItemIds.length && lastReadyResult) result = lastReadyResult;
         if (!result) return { ...unavailable("Virtual Try-On could not process the selected outfit."), status: "failed" };
         result.warnings = [...warnings, ...result.warnings].slice(0, 8);
         result.requestedRoles = preparation.fidelity.requestedRoles;
@@ -732,19 +721,40 @@ export function createFashnTryOnProvider(): TryOnProvider {
         result.partiallySupportedRoles = preparation.fidelity.partiallySupportedRoles;
         result.unsupportedRoles = preparation.fidelity.unsupportedRoles;
         result.previewFidelityLevel = preparation.fidelity.previewFidelityLevel;
-        result.providerSentItemIds = completedItemIds;
+        result.providerSentItemIds = sentItemIds;
         result.providerCompletedItemIds = completedItemIds;
+        result.providerFailedItemIds = failedItemIds;
+        result.providerSkippedItemIds = preparation.recommendationOnlyItemIds;
         result.pendingItemIds = [];
-        result.recommendationOnlyItemIds = preparation.recommendationOnlyItemIds;
-        result.progressStage = "complete";
+        result.recommendationOnlyItemIds = Array.from(new Set([...preparation.recommendationOnlyItemIds, ...failedItemIds]));
+        result.previewFidelityLevel = failedItemIds.length
+          ? (completedItemIds.some((id) => finishingProducts.some((entry) => entry.id === id)) ? "partial" : "core_only")
+          : preparation.fidelity.previewFidelityLevel;
+        result.progressStage = failedItemIds.length ? "fallback" : "complete";
         result.providerDiagnostics = {
           ...(result.providerDiagnostics || {}),
-          sentItemCount: completedItemIds.length,
+          sentItemCount: sentItemIds.length,
           completedItemCount: completedItemIds.length,
-          recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length,
-          previewFidelityLevel: preparation.fidelity.previewFidelityLevel,
-          progressStage: "complete"
+          failedItemCount: failedItemIds.length,
+          recommendationOnlyItemCount: result.recommendationOnlyItemIds.length,
+          previewFidelityLevel: result.previewFidelityLevel,
+          progressStage: result.progressStage
         };
+
+        if (failedItemIds.length) {
+          result.warnings = [
+            ...warnings,
+            `${failedItemIds.length} selected ${failedItemIds.length === 1 ? "piece was" : "pieces were"} not rendered; the remaining provider steps continued.`,
+            ...result.warnings
+          ].slice(0, 8);
+          logTryOnMetric({
+            metric: "finisher_fallback",
+            stage: "fallback",
+            status: "success",
+            durationMs: Date.now() - startedAt,
+            metadata: { completedItemCount: completedItemIds.length, failedItemCount: failedItemIds.length }
+          });
+        }
 
         logAiEvent({
           operation: "fashn-tryon-run",

@@ -228,7 +228,10 @@ export async function runBackgroundJobByType(job: any) {
         });
         creditCharge = committed.creditCharge;
         generation = committed.generation;
-        await AvatarOutfitPreview.findOneAndUpdate({ userId, outfitId, cacheKey }, { $set: { billingStatus: "committed", generationId: generation.generationId } });
+        await AvatarOutfitPreview.findOneAndUpdate(
+          { userId, outfitId, cacheKey },
+          { $set: { billingStatus: committed.billingStatus, generationId: generation.generationId } }
+        );
       }
 
       return {

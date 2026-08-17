@@ -96,6 +96,7 @@ async function safeCreateTryOnNotification(input: {
   status: "ready" | "failed";
   generation: TryOnGenerationDocument | any;
   previewId?: string | Types.ObjectId | null;
+  preview?: any;
 }) {
   try {
     if (input.status === "ready") {
@@ -103,7 +104,11 @@ async function safeCreateTryOnNotification(input: {
         userId: input.generation.userId,
         outfitId: input.generation.outfitId,
         generationId: input.generation.generationId,
-        previewId: input.previewId
+        previewId: input.previewId,
+        previewFidelityLevel: input.preview?.previewFidelityLevel,
+        progressStage: input.preview?.progressStage,
+        renderedCount: Array.isArray(input.preview?.providerCompletedItemIds) ? input.preview.providerCompletedItemIds.length : undefined,
+        selectedCount: Array.isArray(input.preview?.itemIds) ? input.preview.itemIds.length : undefined
       });
       return;
     }
@@ -325,11 +330,29 @@ export async function commitTryOnGenerationCredits(input: {
   }).lean();
   if (!assertUsablePreviewRecord(readBack)) throw new Error("tryon_preview_readback_failed");
 
+  const fallbackPreview = readBack?.progressStage === "fallback";
+
   await markTryOnGenerationStage(generation.generationId, "saving", {
     previewId: readBack?._id,
     previewUrl: readBack?.imageUrl || "",
     storageKey: readBack?.storageKey || ""
   });
+  if (fallbackPreview) {
+    await releaseTryOnGenerationCredits(generation, "partial_preview_fallback");
+    const completed = await markTryOnGenerationStage(generation.generationId, "completed", {
+      previewId: readBack?._id,
+      previewUrl: readBack?.imageUrl || "",
+      storageKey: readBack?.storageKey || "",
+      creditsCommitted: 0,
+      creditsReleased: getCreditCost(generation.creditFeature as CreditFeature),
+      failureStage: "",
+      failureCode: "",
+      failureMessage: ""
+    });
+    await safeCreateTryOnNotification({ status: "ready", generation: completed || generation, previewId: readBack?._id, preview: readBack });
+    return { creditCharge: null, billingStatus: "released" as const, generation: completed || generation, preview: readBack };
+  }
+
   const charge = await commitReservedCredits({
     userId: generation.userId,
     feature: generation.creditFeature as CreditFeature,
@@ -352,8 +375,8 @@ export async function commitTryOnGenerationCredits(input: {
     failureMessage: ""
   });
   logTryOnGenerationEvent({ event: "credit_committed", generationId: generation.generationId, userId: String(generation.userId), outfitId: String(generation.outfitId), provider: generation.provider, stage: "completed" });
-  await safeCreateTryOnNotification({ status: "ready", generation: completed || generation, previewId: readBack?._id });
-  return { creditCharge: charge, generation: completed || generation, preview: readBack };
+  await safeCreateTryOnNotification({ status: "ready", generation: completed || generation, previewId: readBack?._id, preview: readBack });
+  return { creditCharge: charge, billingStatus: "committed" as const, generation: completed || generation, preview: readBack };
 }
 
 export async function failTryOnGeneration(input: {

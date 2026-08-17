@@ -59,6 +59,13 @@ function createClientIdempotencyKey(prefix: string) {
   return `${prefix}:${randomPart}`.slice(0, 120);
 }
 
+function readyToastForPreview(preview?: { previewFidelityLevel?: string; progressStage?: string } | null) {
+  if (preview?.progressStage !== "fallback") return "Your Virtual Try-On is ready.";
+  return preview.previewFidelityLevel === "core_only"
+    ? "Your core outfit preview is ready."
+    : "Your partial outfit preview is ready.";
+}
+
 export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: string; initialOrigin?: string }) {
   const session = useSession();
   const [outfit, setOutfit] = useState<OutfitRecommendation | null>(null);
@@ -108,6 +115,8 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   const creditRestored = creditRestorationConfirmed({ preview: preview || outfit?.preview || null, generation });
   const progressStage = preview?.progressStage || outfit?.preview?.progressStage || "not_started";
   const providerCompletedItemIds = new Set(preview?.providerCompletedItemIds || outfit?.preview?.providerCompletedItemIds || []);
+  const providerFailedItemIds = new Set(preview?.providerFailedItemIds || outfit?.preview?.providerFailedItemIds || []);
+  const providerSkippedItemIds = new Set(preview?.providerSkippedItemIds || outfit?.preview?.providerSkippedItemIds || []);
   const pendingItemIds = new Set(preview?.pendingItemIds || outfit?.preview?.pendingItemIds || []);
   const recommendationOnlyItemIds = new Set(preview?.recommendationOnlyItemIds || outfit?.preview?.recommendationOnlyItemIds || []);
   const progressiveCoreReady = Boolean(
@@ -186,11 +195,11 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   useEffect(() => {
     const previous = previousPreviewStateRef.current;
     if (previewState === "completed" && previous && previous !== "completed") {
-      setToast("Your Virtual Try-On is ready.");
+      setToast(readyToastForPreview(preview || outfit?.preview));
       revealContent(previewStageRef, { delayMs: 90, topOffset: 24, bottomOffset: 136 });
     }
     previousPreviewStateRef.current = previewState;
-  }, [previewState, revealContent]);
+  }, [previewState, preview, outfit?.preview, revealContent]);
 
   function showToast(message: string) {
     setToast(message);
@@ -219,7 +228,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
     setAvatarProfile(result.data.avatarProfile || null);
     pollAttemptRef.current = 0;
     if (result.data.preview.status === "ready" && (result.data.preview.imageUrl || result.data.preview.previewUrl)) {
-      showToast("Your Virtual Try-On is ready.");
+      showToast(readyToastForPreview(result.data.preview));
     } else {
       showToast("MyFitPick is preparing your look.");
     }
@@ -260,8 +269,9 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
 
   const displayCopy = editorialLookCopy(outfit);
   const fidelityLevel = preview?.previewFidelityLevel || outfit.preview?.previewFidelityLevel || "partial";
-  const fidelityLabel = fidelityLevel === "full" ? "Complete preview" : fidelityLevel === "core_only" ? "Core outfit preview" : "Accessory details may vary";
-  const fallbackOmittedCount = presentationItems.filter((item) => recommendationOnlyItemIds.has(item.id)).length;
+  const fidelityLabel = fidelityLevel === "full" ? "Complete preview" : fidelityLevel === "core_only" ? "Core outfit preview" : "Partial preview";
+  const renderedCount = presentationItems.filter((item) => providerCompletedItemIds.has(item.id)).length;
+  const omittedNames = presentationItems.filter((item) => recommendationOnlyItemIds.has(item.id)).map((item) => item.name);
   const failedMessage = safeTryOnErrorMessage(localError || preview?.errorMessage || generation?.failureMessage || job?.errorMessage || "Virtual Try-On couldn’t be completed.");
 
   return (
@@ -413,7 +423,7 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
             <p className="text-sm leading-6 text-muted">This is a preview, not a perfect fitting.</p>
             {previewState === "completed" && progressStage === "fallback" ? (
               <p className="rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
-                Core preview preserved. {fallbackOmittedCount || "Some"} selected finishing {fallbackOmittedCount === 1 ? "piece was" : "pieces were"} not added by the preview provider.
+                Partial preview: {renderedCount} of {presentationItems.length} selected pieces rendered.{omittedNames.length ? ` Not rendered: ${omittedNames.join(", ")}.` : ""}
               </p>
             ) : previewState === "completed" && fidelityLevel !== "full" ? (
               <p className="text-xs leading-5 text-muted">The recommendation still includes every selected piece. Provider rendering of small accessories can vary.</p>
@@ -444,6 +454,8 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                   </button>
                   {item.source === "reference-upload" ? <Badge tone="premium">Uploaded item</Badge> : null}
                   {providerCompletedItemIds.has(item.id) ? <Badge tone="success">Provider pass complete</Badge> : null}
+                  {providerFailedItemIds.has(item.id) ? <Badge tone="warning">Provider pass failed</Badge> : null}
+                  {providerSkippedItemIds.has(item.id) ? <Badge tone="neutral">Not supported in preview</Badge> : null}
                   {pendingItemIds.has(item.id) ? <Badge tone="info">Selected — finishing</Badge> : null}
                   {previewState === "completed" && recommendationOnlyItemIds.has(item.id) ? <Badge tone="warning">Selected — not rendered</Badge> : null}
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>

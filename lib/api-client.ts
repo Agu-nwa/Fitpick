@@ -532,6 +532,8 @@ export type AvatarPreviewData = {
     previewFidelityLevel?: "full" | "partial" | "core_only";
     providerSentItemIds?: string[];
     providerCompletedItemIds?: string[];
+    providerFailedItemIds?: string[];
+    providerSkippedItemIds?: string[];
     pendingItemIds?: string[];
     recommendationOnlyItemIds?: string[];
     progressStage?: "not_started" | "core_ready" | "finishing" | "complete" | "fallback";

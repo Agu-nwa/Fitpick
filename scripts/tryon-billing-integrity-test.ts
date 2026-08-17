@@ -23,6 +23,8 @@ const generationService = read("lib/tryon/tryon-generation.ts");
 assert.ok(generationService.includes("expireStaleTryOnGenerations"), "Try-on generation service must support stale cleanup.");
 assert.ok(generationService.includes("refundTryOnGenerationIfCharged"), "Try-on generation service must refund committed credits after partial failures.");
 assert.ok(generationService.includes("credit_refunded"), "Try-on generation service must log compensating refunds.");
+assert.ok(generationService.includes('readBack?.progressStage === "fallback"'), "Fallback previews must use an explicit billing policy.");
+assert.ok(generationService.includes('releaseTryOnGenerationCredits(generation, "partial_preview_fallback")'), "Fallback previews must release reserved credits instead of charging as complete.");
 
 const avatarRoute = read("app/api/outfits/[id]/avatar-preview/route.ts");
 assert.ok(!avatarRoute.includes("spendCreditsAfterSuccess"), "Virtual try-on route must not spend directly.");
