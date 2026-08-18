@@ -3,10 +3,12 @@ const rateLimitPattern = /\b(rate[\s_-]*limit(?:ed)?|too many requests|http[\s_-
 
 export function safeErrorCategory(error: unknown) {
   if (error && typeof error === "object" && Number((error as { statusCode?: unknown; status?: unknown }).statusCode || (error as { status?: unknown }).status) === 429) return "rate_limit";
+  const errorName = error && typeof error === "object" && "name" in error ? String((error as { name?: unknown }).name || "") : "";
+  if (["ValidationError", "CastError", "MongoServerError", "MongooseError"].includes(errorName)) return "database";
   if (error instanceof SyntaxError) return "syntax_error";
   if (error instanceof TypeError) return "type_error";
   if (error instanceof Error && rateLimitPattern.test(error.message)) return "rate_limit";
-  if (error instanceof Error && /s3|storage|upload/i.test(error.message)) return "storage";
+  if (error instanceof Error && /s3|storage|upload object|putobject|getobject|bucket/i.test(error.message)) return "storage";
   if (error instanceof Error && /webhook|signature/i.test(error.message)) return "webhook";
   if (error instanceof Error && /mongo|mongoose|database/i.test(error.message)) return "database";
   if (error instanceof Error && /openai|ai|model/i.test(error.message)) return "ai_provider";

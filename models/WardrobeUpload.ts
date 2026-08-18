@@ -68,7 +68,9 @@ const WardrobeUploadSchema = new Schema(
     thumbnailUrl: { type: String, default: "" },
     selectedCategory: {
       type: String,
-      enum: ["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"],
+      // A newly uploaded photo is intentionally uncategorized until the
+      // wardrobe-analysis job proposes a category for user review.
+      enum: ["", "tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"],
       default: ""
     },
     selectedCategoryLabel: { type: String, default: "" },

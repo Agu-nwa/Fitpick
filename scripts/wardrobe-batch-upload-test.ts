@@ -6,6 +6,7 @@ import {
 } from "../lib/wardrobe/batch-upload";
 import { wardrobeUploadBatchSchema } from "../schemas/wardrobe.schema";
 import { perceptualHashDistance } from "../lib/image-processing/perceptual-hash";
+import { WardrobeUpload } from "../models/WardrobeUpload";
 
 const id = (suffix: string) => `${"0".repeat(23)}${suffix}`;
 const candidate = (suffix: string, overrides: Partial<WardrobeBatchCandidate> = {}): WardrobeBatchCandidate => ({
@@ -36,5 +37,17 @@ const oversized = validateWardrobeBatchCandidates([
 assert.deepEqual(oversized.ok ? null : oversized.code, "too_large", "the normalized batch byte limit must be enforced");
 assert.equal(perceptualHashDistance("0000000000000000", "0000000000000001"), 1, "perceptual distance should count changed bits");
 assert.equal(perceptualHashDistance("0000000000000000", "ffffffffffffffff"), 64, "completely different fingerprints should remain distant");
+
+const uncategorizedDraft = new WardrobeUpload({
+  userId: id("1"),
+  storageKey: `wardrobe/${id("1")}/wardrobe_original-test.webp`,
+  selectedCategory: "",
+  uploadStatus: "uploaded"
+});
+assert.equal(
+  uncategorizedDraft.validateSync()?.errors.selectedCategory,
+  undefined,
+  "a new upload must allow an empty category until AI analysis and user review"
+);
 
 console.log("wardrobe batch upload tests passed");
