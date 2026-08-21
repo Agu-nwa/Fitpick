@@ -51,9 +51,9 @@ function config() {
     statusEndpoint: process.env.FASHN_STATUS_ENDPOINT || `${baseUrl}/status`,
     modelName: process.env.FASHN_MODEL_NAME || "tryon-max",
     coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6",
-    coreMode: process.env.FASHN_CORE_MODE || "performance",
-    resolution: process.env.FASHN_RESOLUTION || "1k",
-    generationMode: process.env.FASHN_GENERATION_MODE || "fast",
+    coreMode: process.env.FASHN_CORE_MODE || "quality",
+    resolution: process.env.FASHN_RESOLUTION || "2k",
+    generationMode: process.env.FASHN_GENERATION_MODE || "quality",
     outputFormat: process.env.FASHN_OUTPUT_FORMAT || "png",
     returnBase64: process.env.FASHN_RETURN_BASE64 !== "false",
     maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
@@ -229,16 +229,15 @@ async function preflightImage(value: string, source: "model" | "product") {
   }
 }
 
-// Outerwear is a core garment, not a decorative finisher. Applying it with the
-// faster clothing model avoids an unnecessary Try-On Max pass and makes the
-// first progressive preview representative of the actual outfit.
-const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece", "outerwear"]);
+// v1.6 is limited to tops, bottoms, and one-pieces. Try-On Max is the provider's
+// recommended path for broader products such as outerwear, shoes, bags, and
+// accessories, and is less likely to replace the entire existing outfit.
+const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece"]);
 
 function coreCategory(role: TryOnVisualRole) {
   if (role === "upperBody") return "tops";
   if (role === "lowerBody") return "bottoms";
   if (role === "onePiece") return "one-pieces";
-  if (role === "outerwear") return "outerwear";
   return "auto";
 }
 
@@ -474,33 +473,6 @@ async function runFashnTryOnStepWithRetry(
       retryInput: retryModelImage === payload.modelImage ? "same_input" : "durable_intermediate"
     };
   }
-  if (
-    result.status === "failed"
-    && payload.role === "outerwear"
-    && payload.modelName === config().coreModelName
-    && config().modelName !== payload.modelName
-  ) {
-    const alternateAttempt = Number(result.providerDiagnostics?.retryCount || 0) + 1;
-    logTryOnMetric({
-      metric: "provider_step_model_fallback",
-      stage: "core",
-      status: "retry",
-      attempt: alternateAttempt,
-      errorCode: String(result.providerDiagnostics?.safeReason || result.status),
-      metadata: { stepIndex: payload.stepIndex, role: payload.role, fromModel: payload.modelName, toModel: config().modelName }
-    });
-    result = await runFashnTryOnStep(input, {
-      ...payload,
-      modelImage: retryModelImage,
-      modelName: config().modelName,
-      mode: config().generationMode
-    });
-    result.providerDiagnostics = {
-      ...(result.providerDiagnostics || {}),
-      retryCount: alternateAttempt,
-      retryInput: "alternate_outerwear_model"
-    };
-  }
   return result;
 }
 
@@ -702,8 +674,9 @@ export function createFashnTryOnProvider(): TryOnProvider {
             mode: coreStep ? providerConfig.coreMode : providerConfig.generationMode,
             prompt: [
               "Create a realistic virtual try-on image for MyFitPick.",
-              "Preserve the current model identity, face, pose, body proportions, and already-applied outfit pieces from the model image.",
+              "Strictly preserve the current model identity, facial geometry, skin texture, hair, pose, hands, body proportions, background, and already-applied outfit pieces from the model image.",
               "Apply only the provided product image in this step, without removing existing correctly applied garments.",
+              "Do not repaint the face, hands, exposed skin, hair, legs, or background. Do not smooth skin or introduce painterly texture.",
               "Keep the result premium, natural, and suitable for a fashion styling app.",
               `This step applies: ${product.item.name || product.item.category || "wardrobe item"} (${product.item.category || "unknown"}).`,
               `Complete outfit context: ${loaded.items.map((item) => `${item.name || item.category || "item"} (${item.category || "unknown"})`).join(", ")}.`

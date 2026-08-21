@@ -61,7 +61,9 @@ export async function validateTryOnVisualIntegrity(input: {
       "For bottoms, shorts do not match trousers; a skirt does not match trousers; and the leg shape must remain broadly consistent.",
       "For outerwear, it must be visibly worn, not merely implied. For footwear, at least one matching shoe must be visible.",
       "For bags and accessories, mark present only if visibly carried or worn. Do not infer hidden items.",
-      "Return JSON only: {\"items\":[{\"id\":string,\"present\":boolean,\"matches\":boolean,\"confidence\":number}],\"valid\":boolean}.",
+      "Also audit publishable image quality. faceNatural means the face is coherent and photorealistic, without identity-like feature drift, melting, asymmetry, or painterly distortion. handsNatural means visible hands and fingers have credible anatomy. anatomyNatural means limbs and body proportions are coherent. imageClean means the model and background are sharp and free from heavy noise, mottling, repeated-generation artifacts, or obvious compositing seams.",
+      "A preview is invalid if any quality check is false, even when every selected item is present.",
+      "Return JSON only: {\"items\":[{\"id\":string,\"present\":boolean,\"matches\":boolean,\"confidence\":number}],\"quality\":{\"faceNatural\":boolean,\"handsNatural\":boolean,\"anatomyNatural\":boolean,\"imageClean\":boolean},\"valid\":boolean}.",
       `Selected items: ${items.map((item, index) => `${index + 1}. id=${item.id}; name=${item.name}; category=${item.category}; color=${item.color}; role=${item.role}`).join(" | ")}`
     ].join("\n")
   }, {
@@ -86,6 +88,11 @@ export async function validateTryOnVisualIntegrity(input: {
     const raw = JSON.parse(response.choices[0]?.message?.content || "{}");
     const returnedItems = Array.isArray(raw.items) ? raw.items : [];
     const byId = new Map(returnedItems.map((item: any) => [String(item?.id || ""), item]));
+    const quality = raw.quality && typeof raw.quality === "object" ? raw.quality : {};
+    const qualityValid = quality.faceNatural === true
+      && quality.handsNatural === true
+      && quality.anatomyNatural === true
+      && quality.imageClean === true;
     const missingItemIds: string[] = [];
     const mismatchedItemIds: string[] = [];
     const checkedItemIds: string[] = [];
@@ -100,12 +107,16 @@ export async function validateTryOnVisualIntegrity(input: {
       else if (!assessment.matches) mismatchedItemIds.push(item.id);
     }
     return {
-      valid: missingItemIds.length === 0 && mismatchedItemIds.length === 0 && checkedItemIds.length === items.length,
+      valid: qualityValid && missingItemIds.length === 0 && mismatchedItemIds.length === 0 && checkedItemIds.length === items.length,
       missingItemIds,
       mismatchedItemIds,
       checkedItemIds,
       unavailable: false,
-      safeReason: missingItemIds.length || mismatchedItemIds.length ? "visual_integrity_failed" : ""
+      safeReason: !qualityValid
+        ? "visual_quality_failed"
+        : missingItemIds.length || mismatchedItemIds.length
+          ? "visual_integrity_failed"
+          : ""
     };
   } catch (error) {
     const providerStatusCode = error && typeof error === "object" && "status" in error

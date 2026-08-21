@@ -110,7 +110,7 @@ export function ImageFrame({
           key={`${currentSrc}:${retryCount}`}
           src={currentSrc}
           alt={alt}
-          className={cn("h-full w-full", fitClasses[fit], imageClassName)}
+          className={cn("absolute inset-0 h-full w-full", fitClasses[fit], imageClassName)}
           loading="lazy"
           decoding="async"
           onError={(event) => {
