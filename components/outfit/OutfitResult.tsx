@@ -351,9 +351,10 @@ export function OutfitResult({
   }
 
   async function pollAvatarPreviewJob(jobId: string) {
+    let activeJobId = jobId;
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await new Promise((resolve) => window.setTimeout(resolve, 2500));
-      const result = await getJobStatus(jobId);
+      const result = await getJobStatus(activeJobId);
       if (!result.ok) continue;
 
       const job = result.data.job;
@@ -362,6 +363,18 @@ export function OutfitResult({
       if (job.status === "completed") {
         const refreshed = await getAvatarPreview(outfit.id);
         const preview = refreshed.ok ? refreshed.data.preview : job.result?.preview || {};
+        const validationJobId = String(job.result?.validationJobId || "");
+        const validationPending = Boolean(
+          job.result?.validationPending
+          || preview.validationStatus === "pending"
+          || preview.status === "generating"
+        );
+        if (validationPending) {
+          applyAvatarPreview({ ...preview, status: "generating" }, refreshed.ok ? refreshed.data.avatarProfile || null : undefined);
+          setAvatarPreviewStatus("generating");
+          if (validationJobId) activeJobId = validationJobId;
+          continue;
+        }
         const url = preview.imageUrl || preview.previewUrl || "";
         applyAvatarPreview({ ...preview, status: "ready" }, refreshed.ok ? refreshed.data.avatarProfile || null : undefined);
         if (url) {

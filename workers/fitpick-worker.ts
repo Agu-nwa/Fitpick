@@ -12,6 +12,7 @@ const validJobTypes = new Set<string>([
   "label_ocr",
   "outfit_preview_generation",
   "avatar_preview_generation",
+  "tryon_visual_validation",
   "garment_asset_generation",
   "studio_model_asset_generation",
   "fit_locked_preview_generation",
@@ -101,6 +102,8 @@ async function processOneJob(runtime: Awaited<ReturnType<typeof loadRuntime>>, r
   } catch (error) {
     const message = job.type === "avatar_preview_generation"
       ? "Virtual Try-On could not be completed. Your credit was not deducted."
+      : job.type === "tryon_visual_validation"
+        ? "Your preview was generated, but its final visual check is temporarily delayed."
       : "Background job failed safely.";
     runtime.logJobEvent({
       event: "job_failed",

@@ -16,6 +16,7 @@ const outfitResult = read("components/outfit/OutfitResult.tsx");
 assert.ok(outfitResult.includes("handleGenerateAvatarPreview(Boolean(avatarPreviewUrl))"), "Primary try-on button must send regenerate=true when a preview already exists.");
 assert.ok(outfitResult.includes('idempotencyKey: createClientIdempotencyKey("avatar-preview")'), "Outfit page must send a fresh client idempotency key per generate click.");
 assert.ok(outfitResult.includes('job.status === "dead_letter"'), "Outfit page polling must treat dead-letter as a terminal state.");
+assert.ok(outfitResult.includes("job.result?.validationPending"), "Outfit page must continue polling when provider generation finishes before visual validation.");
 
 const lookPreview = read("components/outfit/LookPreviewClient.tsx");
 assert.ok(lookPreview.includes('idempotencyKey: createClientIdempotencyKey("avatar-preview")'), "Full look preview must send a fresh client idempotency key per generate click.");
@@ -23,6 +24,7 @@ assert.ok(lookPreview.includes("deriveTryOnPreviewUiState"), "Full look polling 
 const previewState = read("lib/tryon/preview-ui-state.ts");
 assert.ok(previewState.includes('"dead_letter"'), "Full look lifecycle resolver must treat dead-letter as terminal.");
 assert.ok(previewState.includes("shouldPollTryOnPreview"), "Full look lifecycle resolver must stop polling terminal states.");
+assert.ok(previewState.includes('validationStatus === "pending"'), "Full look lifecycle must not publish a validator-pending image as complete.");
 
 const generationService = read("lib/tryon/tryon-generation.ts");
 assert.ok(generationService.includes("activeTryOnGenerationStatuses"), "Generation service must define active blocking statuses.");
@@ -50,8 +52,8 @@ assert.ok(worker.includes("WORKER_EXCLUDED_JOB_TYPES"), "General workers must be
 
 const ecosystem = read("ecosystem.config.js");
 assert.ok(ecosystem.includes('name: "fitpick-tryon-worker"'), "Production PM2 must run a dedicated Try-On worker.");
-assert.ok(ecosystem.includes('WORKER_JOB_TYPES: "avatar_preview_generation"'), "Dedicated Try-On worker must claim only avatar preview jobs.");
-assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation"'), "General worker must not compete for avatar preview jobs.");
+assert.ok(ecosystem.includes('WORKER_JOB_TYPES: "avatar_preview_generation,tryon_visual_validation"'), "Dedicated Try-On worker must claim generation and deferred validation jobs.");
+assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation,tryon_visual_validation"'), "General worker must not compete for Try-On lifecycle jobs.");
 
 const fashnProvider = read("lib/tryon/providers/fashn-tryon.ts");
 const visualIntegrity = read("lib/tryon/visual-integrity.ts");
@@ -63,6 +65,9 @@ assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finish
 assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");
 assert.ok(fashnProvider.includes('metric: "provider_step_model_fallback"'), "A failed outerwear pass must retry through the alternate FASHN model.");
 assert.ok(fashnProvider.includes('retryInput: "alternate_outerwear_model"'), "Outerwear fallback diagnostics must identify the alternate-model retry safely.");
+assert.ok(fashnProvider.includes("visualIntegrityPending = true"), "Validator unavailability must preserve provider output for deferred verification.");
+assert.ok(jobHandlers.includes('job.type === tryOnValidationJobType'), "Deferred visual validation must run independently from provider generation.");
+assert.ok(jobHandlers.includes("maxAttempts: 6"), "Deferred validation retry duration must remain within the reserved-credit lifetime.");
 assert.ok(fashnProvider.includes("completePreviewRequired: true"), "Try-On must require every selected recommendation piece before publishing a ready preview.");
 assert.ok(fashnProvider.includes('safeReason: "provider_cannot_render_complete_recommendation"'), "Unsupported selected pieces must fail before provider work instead of creating a partial preview.");
 assert.ok(fashnProvider.includes('result.previewFidelityLevel = "full"'), "A successful Try-On must represent the complete selected recommendation.");

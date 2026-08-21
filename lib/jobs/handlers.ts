@@ -1,6 +1,6 @@
 import { suggestWardrobeTags } from "@/lib/ai/tagging";
 import { errorCategory } from "@/lib/ai/observability/ai-logger";
-import { serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
+import { loadOwnedAvatarPreviewSubject, serializeAvatarPreview } from "@/lib/avatar/avatar-preview";
 import { isCreditFeature, type CreditFeature } from "@/lib/credits/credit-costs";
 import { spendCreditsAfterSuccess } from "@/lib/credits/credit-engine";
 import { createGarmentAssetsForItemId, serializeGarmentAsset } from "@/lib/garment-assets/garment-assets";
@@ -14,22 +14,29 @@ import {
   markTryOnGenerationStage,
   reserveTryOnGenerationCredits
 } from "@/lib/tryon/tryon-generation";
-import { isTransientTryOnError, PermanentTryOnError } from "@/lib/tryon/reliability";
+import { isTransientTryOnError, PermanentTryOnError, TransientTryOnError } from "@/lib/tryon/reliability";
 import { getTryOnProvider, runConfiguredVirtualTryOnJob } from "@/lib/tryon/tryon-provider";
+import { validateTryOnVisualIntegrity } from "@/lib/tryon/visual-integrity";
+import { tryOnVisualRoleForItem } from "@/lib/tryon/provider-capabilities";
+import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
+import { enqueueJob } from "@/lib/jobs/queue";
 import { runWardrobeEnrichmentJob } from "@/lib/wardrobe/enrichment";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { TryOnGeneration } from "@/models/TryOnGeneration";
+import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { generateStudioModelAssetByKey } from "@/lib/studio-model/catalog/asset-generator";
 import { runAccountDeletionJob } from "@/lib/account-deletion/account-deletion";
 
 const avatarPreviewJobType = ["avatar", "preview", "generation"].join("_");
+const tryOnValidationJobType = "tryon_visual_validation";
 
 function isInsufficientCreditsLike(error: unknown) {
   return Boolean(error && typeof error === "object" && "name" in error && String((error as { name?: unknown }).name) === "InsufficientCreditsError");
 }
 
 export function isRetryableBackgroundJobFailure(job: any, error: unknown) {
+  if (job?.type === tryOnValidationJobType) return isTransientTryOnError(error);
   if (job?.type !== avatarPreviewJobType) return true;
   if (error instanceof PermanentTryOnError || isInsufficientCreditsLike(error)) return false;
   const message = error instanceof Error ? error.message : String(error || "");
@@ -39,6 +46,31 @@ export function isRetryableBackgroundJobFailure(job: any, error: unknown) {
 }
 
 export async function handleTerminalBackgroundJobFailure(job: any, code = "background_job_failed", message = "Virtual Try-On could not be completed. Your credit was not deducted.") {
+  if (job?.type === tryOnValidationJobType) {
+    const payload = job.payload || {};
+    const generation = await TryOnGeneration.findOne({ generationId: String(payload.generationId || "") });
+    if (generation && isActiveTryOnGenerationStatus(generation.status)) {
+      await failTryOnGeneration({
+        generation,
+        stage: "visual_validation_terminal",
+        code: "visual_integrity_provider_unavailable",
+        message: "Your preview was generated, but its final visual check could not be completed. Your credit was not deducted."
+      });
+    }
+    const validationPatch = {
+      validationStatus: "unavailable",
+      validationSafeReason: "visual_integrity_provider_unavailable",
+      billingStatus: "released",
+      errorMessage: "Your preview was generated, but its final visual check could not be completed. Your credit was not deducted.",
+      validationLastAttemptAt: new Date()
+    };
+    await AvatarOutfitPreview.findOneAndUpdate({ _id: String(payload.previewId || ""), userId: String(job.userId || "") }, { $set: validationPatch });
+    await OutfitRecommendation.findOneAndUpdate(
+      { _id: String(payload.outfitId || ""), userId: String(job.userId || "") },
+      { $set: Object.fromEntries(Object.entries(validationPatch).map(([key, value]) => [`preview.${key}`, value])) }
+    );
+    return;
+  }
   if (job?.type !== avatarPreviewJobType) return;
   const payload = job.payload || {};
   const userId = String(job.userId || "");
@@ -118,6 +150,120 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
 export async function runBackgroundJobByType(job: any) {
   const payload = job.payload || {};
   const userId = String(job.userId);
+
+  if (job.type === tryOnValidationJobType) {
+    const outfitId = String(payload.outfitId || "");
+    const previewId = String(payload.previewId || "");
+    const generationId = String(payload.generationId || "");
+    const loaded = await loadOwnedAvatarPreviewSubject(userId, outfitId);
+    const preview = await AvatarOutfitPreview.findOne({ _id: previewId, userId, outfitId });
+    const generation = await TryOnGeneration.findOne({ generationId, userId, outfitId });
+    if (!loaded || !preview || !generation) {
+      throw new PermanentTryOnError("Try-on verification record was not found.", "visual_integrity_record_missing");
+    }
+    if (generation.status === "completed" && preview.status === "ready") {
+      return { preview: serializeAvatarPreview({ ...preview.toObject(), cached: true }), generationId, validationStatus: "passed" };
+    }
+    if (!preview.imageUrl || !preview.storageKey) {
+      throw new PermanentTryOnError("Generated try-on image was not saved safely.", "visual_integrity_preview_missing");
+    }
+
+    const integrityItems = loaded.items.map((item: any) => ({
+      id: String(item?._id || item?.id || ""),
+      name: String(item?.name || "Wardrobe item"),
+      category: String(item?.category || "unknown"),
+      color: String(item?.color || "unknown"),
+      role: tryOnVisualRoleForItem(item),
+      referenceImageUrl: preferredVisualReferenceUrl(item)
+    })).filter((item: any) => Boolean(item.id && item.role && item.referenceImageUrl));
+
+    if (integrityItems.length !== loaded.items.length) {
+      throw new PermanentTryOnError("One or more selected items lack a verifiable visual reference.", "visual_integrity_input_unavailable");
+    }
+
+    const integrity = await validateTryOnVisualIntegrity({
+      previewImageUrl: preview.imageUrl,
+      items: integrityItems as any
+    });
+    const validationPatch = {
+      validationStatus: integrity.unavailable ? "pending" : integrity.valid ? "passed" : "failed",
+      validationSafeReason: integrity.safeReason,
+      validationCheckedItemIds: integrity.checkedItemIds,
+      validationMissingItemIds: integrity.missingItemIds,
+      validationMismatchedItemIds: integrity.mismatchedItemIds,
+      validationLastAttemptAt: new Date()
+    };
+    await AvatarOutfitPreview.findByIdAndUpdate(preview._id, { $set: validationPatch, $inc: { validationAttempts: 1 } });
+    await OutfitRecommendation.findOneAndUpdate(
+      { _id: outfitId, userId },
+      {
+        $set: Object.fromEntries(Object.entries(validationPatch).map(([key, value]) => [`preview.${key}`, value])),
+        $inc: { "preview.validationAttempts": 1 }
+      }
+    );
+
+    console.info("fitpick.tryon.integrity", {
+      event: "deferred_validation",
+      generationId,
+      status: integrity.unavailable ? "unavailable" : integrity.valid ? "passed" : "failed",
+      checkedItemCount: integrity.checkedItemIds.length,
+      missingItemCount: integrity.missingItemIds.length,
+      mismatchedItemCount: integrity.mismatchedItemIds.length,
+      safeReason: integrity.safeReason,
+      timestamp: new Date().toISOString()
+    });
+
+    if (integrity.unavailable) {
+      throw new TransientTryOnError(
+        "Visual verification is temporarily unavailable.",
+        "visual_integrity_provider_unavailable"
+      );
+    }
+
+    if (!integrity.valid) {
+      const failureMessage = "Virtual Try-On could not verify every selected piece. Your credit was not deducted.";
+      await AvatarOutfitPreview.findByIdAndUpdate(preview._id, { $set: { status: "failed", billingStatus: "released", errorMessage: failureMessage } });
+      await OutfitRecommendation.findOneAndUpdate({ _id: outfitId, userId }, { $set: { "preview.status": "failed", "preview.billingStatus": "released", "preview.errorMessage": failureMessage } });
+      await failTryOnGeneration({ generation, stage: "visual_validation", code: "visual_integrity_failed", message: failureMessage });
+      return { preview: serializeAvatarPreview({ ...preview.toObject(), status: "failed", ...validationPatch }), generationId, validationStatus: "failed" };
+    }
+
+    const readyAt = new Date();
+    const readyPreview = await AvatarOutfitPreview.findByIdAndUpdate(preview._id, {
+      $set: { status: "ready", billingStatus: "reserved", errorMessage: "", generatedAt: readyAt, ...validationPatch }
+    }, { new: true });
+    if (!readyPreview) {
+      throw new PermanentTryOnError("Verified try-on preview could not be finalized.", "visual_integrity_preview_missing");
+    }
+    await OutfitRecommendation.findOneAndUpdate({ _id: outfitId, userId }, {
+      $set: {
+        "preview.status": "ready",
+        "preview.errorMessage": "",
+        "preview.generatedAt": readyAt,
+        ...Object.fromEntries(Object.entries(validationPatch).map(([key, value]) => [`preview.${key}`, value]))
+      }
+    });
+    const committed = await commitTryOnGenerationCredits({
+      generation,
+      preview: readyPreview,
+      metadata: { jobType: job.type, jobId: String(job._id), outfitId, source: "deferred_visual_validation" }
+    });
+    await AvatarOutfitPreview.findByIdAndUpdate(preview._id, { $set: { billingStatus: committed.billingStatus } });
+    await OutfitRecommendation.findOneAndUpdate({ _id: outfitId, userId }, { $set: { "preview.billingStatus": committed.billingStatus } });
+    return {
+      preview: serializeAvatarPreview({
+        ...readyPreview.toObject(),
+        billingStatus: committed.billingStatus
+      }),
+      generationId,
+      validationStatus: "passed",
+      creditCharge: committed.creditCharge ? {
+        feature: committed.creditCharge.transaction.feature,
+        credits: committed.creditCharge.transaction.credits,
+        balance: committed.creditCharge.wallet.balance
+      } : null
+    };
+  }
 
   if (job.type === "account_deletion") {
     const request = await runAccountDeletionJob(userId);
@@ -214,6 +360,34 @@ export async function runBackgroundJobByType(job: any) {
         providerJobId: result.providerOutput?.jobId || "",
         providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
       }) || generation;
+      if ((result as any).validationPending) {
+        generation = await markTryOnGenerationStage(generation.generationId, "processing", {
+          previewId: preview?._id,
+          previewUrl: preview?.imageUrl || "",
+          storageKey: preview?.storageKey || "",
+          providerDiagnostics: {
+            status: result.providerOutput?.status || "processing",
+            visualIntegrityPending: true,
+            visualIntegritySafeReason: result.providerOutput?.visualIntegritySafeReason || "visual_integrity_provider_unavailable"
+          }
+        }) || generation;
+        await AvatarOutfitPreview.findOneAndUpdate({ userId, outfitId, cacheKey }, {
+          $set: { billingStatus: "reserved", generationId: generation.generationId, validationStatus: "pending" }
+        });
+        const validationJob = await enqueueJob(tryOnValidationJobType, {
+          outfitId,
+          previewId: String(preview?._id || ""),
+          generationId: generation.generationId,
+          cacheKey
+        }, { userId, maxAttempts: 6, availableAt: new Date(Date.now() + 30_000) });
+        return {
+          preview: serializeAvatarPreview(preview),
+          generationId: generation.generationId,
+          validationPending: true,
+          validationJobId: String(validationJob._id),
+          creditCharge: null
+        };
+      }
       let creditCharge: Awaited<ReturnType<typeof commitTryOnGenerationCredits>>["creditCharge"] | null = null;
       if (!result.cached) {
         const committed = await commitTryOnGenerationCredits({

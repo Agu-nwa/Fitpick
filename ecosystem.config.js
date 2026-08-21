@@ -20,7 +20,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         WORKER_NAME: "fitpick-worker",
-        WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation"
+        WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generation,tryon_visual_validation"
       },
       stop_exit_codes: [0],
       restart_delay: 5000,
@@ -35,7 +35,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         WORKER_NAME: "fitpick-tryon-worker",
-        WORKER_JOB_TYPES: "avatar_preview_generation",
+        WORKER_JOB_TYPES: "avatar_preview_generation,tryon_visual_validation",
         WORKER_POLL_MS: "1000",
         WORKER_ENABLE_MAINTENANCE: "false"
       },

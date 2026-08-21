@@ -96,6 +96,9 @@ async function saveProviderPreview(input: {
   });
   const ready = output.status === "ready" && Boolean(imageUrl) && Boolean(storageKey);
   const failed = output.status === "failed" || output.status === "provider_unavailable";
+  const validationPending = Boolean(output.visualIntegrityPending);
+  const validationStatus = validationPending ? "pending" : ready ? "passed" : "not_started";
+  const verificationMessage = validationPending ? "Your preview was generated and is awaiting a final visual check." : "";
 
   const preview = await AvatarOutfitPreview.findOneAndUpdate(
     { userId: input.userId, outfitId: input.outfitId, cacheKey },
@@ -136,8 +139,14 @@ async function saveProviderPreview(input: {
         pendingItemIds: output.pendingItemIds || [],
         recommendationOnlyItemIds: output.recommendationOnlyItemIds || [],
         progressStage: output.progressStage || (ready ? "complete" : "not_started"),
+        validationStatus,
+        validationSafeReason: output.visualIntegritySafeReason || "",
+        validationCheckedItemIds: output.visualIntegrityCheckedItemIds || [],
+        validationMissingItemIds: output.visualIntegrityMissingItemIds || [],
+        validationMismatchedItemIds: output.visualIntegrityMismatchedItemIds || [],
+        validationLastAttemptAt: validationPending ? new Date() : null,
         generatedAt: ready ? new Date() : null,
-        errorMessage: failed ? failureMessage : "",
+        errorMessage: failed ? failureMessage : verificationMessage,
         lastAttemptAt: new Date()
       }
     },
@@ -172,8 +181,14 @@ async function saveProviderPreview(input: {
         "preview.pendingItemIds": output.pendingItemIds || [],
         "preview.recommendationOnlyItemIds": output.recommendationOnlyItemIds || [],
         "preview.progressStage": output.progressStage || (ready ? "complete" : "not_started"),
+        "preview.validationStatus": validationStatus,
+        "preview.validationSafeReason": output.visualIntegritySafeReason || "",
+        "preview.validationCheckedItemIds": output.visualIntegrityCheckedItemIds || [],
+        "preview.validationMissingItemIds": output.visualIntegrityMissingItemIds || [],
+        "preview.validationMismatchedItemIds": output.visualIntegrityMismatchedItemIds || [],
+        "preview.validationLastAttemptAt": validationPending ? new Date() : null,
         "preview.generatedAt": ready ? new Date() : null,
-        "preview.errorMessage": failed ? failureMessage : ""
+        "preview.errorMessage": failed ? failureMessage : verificationMessage
       }
     }
   );
@@ -225,6 +240,12 @@ export async function runConfiguredVirtualTryOnJob(input: {
   const saved = await saveProviderPreview(input, output);
   if (output.status === "failed" || output.status === "provider_unavailable") {
     throw errorWithProviderDiagnostics(safeTryOnErrorMessage(output.warnings[0]), output.providerDiagnostics);
+  }
+  if (output.status === "processing" && output.visualIntegrityPending) {
+    if (!saved?.imageUrl || !saved?.storageKey) {
+      throw errorWithProviderDiagnostics("Virtual Try-On couldn't save the generated preview safely.", output.providerDiagnostics);
+    }
+    return { preview: saved, cached: false, providerOutput: output, validationPending: true };
   }
   if (output.status === "queued" || output.status === "processing") {
     throw new TransientTryOnError("Virtual Try-On provider is still processing.", "provider_still_processing");

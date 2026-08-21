@@ -883,6 +883,40 @@ export function createFashnTryOnProvider(): TryOnProvider {
           });
         }
 
+        if (integrity.unavailable && result) {
+          result.status = "processing";
+          result.warnings = [
+            ...warnings,
+            "Your preview was generated and is awaiting a final visual check."
+          ].slice(0, 8);
+          result.requestedRoles = preparation.fidelity.requestedRoles;
+          result.providerSupportedRoles = preparation.fidelity.providerSupportedRoles;
+          result.partiallySupportedRoles = preparation.fidelity.partiallySupportedRoles;
+          result.unsupportedRoles = preparation.fidelity.unsupportedRoles;
+          result.providerSentItemIds = sentItemIds;
+          result.providerCompletedItemIds = completedItemIds;
+          result.providerFailedItemIds = failedItemIds;
+          result.providerSkippedItemIds = [];
+          result.pendingItemIds = [];
+          result.recommendationOnlyItemIds = [];
+          result.previewFidelityLevel = "full";
+          result.progressStage = "complete";
+          result.visualIntegrityPending = true;
+          result.visualIntegritySafeReason = integrity.safeReason;
+          result.visualIntegrityCheckedItemIds = integrity.checkedItemIds;
+          result.visualIntegrityMissingItemIds = integrity.missingItemIds;
+          result.visualIntegrityMismatchedItemIds = integrity.mismatchedItemIds;
+          result.providerDiagnostics = {
+            ...(result.providerDiagnostics || {}),
+            visualIntegrityPending: true,
+            visualIntegrityValidated: false,
+            visualIntegritySafeReason: integrity.safeReason,
+            sentItemCount: sentItemIds.length,
+            completedItemCount: completedItemIds.length
+          };
+          return result;
+        }
+
         if (!integrity.valid) {
           return {
             ...unavailableWithDiagnostics("Virtual Try-On could not verify every selected piece. Try again.", diagnostics({

@@ -1012,6 +1012,40 @@ export async function triggerDigitalHumanPreviewForStylist(
       providerJobId: result.providerOutput?.jobId || "",
       providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
     }) || generation;
+    if ((result as any).validationPending) {
+      generation = await markTryOnGenerationStage(generation.generationId, "processing", {
+        previewId: saved._id,
+        previewUrl: saved.imageUrl || "",
+        storageKey: saved.storageKey || "",
+        providerDiagnostics: {
+          status: result.providerOutput?.status || "processing",
+          visualIntegrityPending: true,
+          visualIntegritySafeReason: result.providerOutput?.visualIntegritySafeReason || "visual_integrity_provider_unavailable"
+        }
+      }) || generation;
+      await markAvatarPreviewStatus(userId, outfitRecommendationId, String(loaded.avatarProfile._id), cacheKey, {
+        billingStatus: "reserved",
+        generationId: generation.generationId,
+        validationStatus: "pending"
+      });
+      const validationJob = await enqueueJob("tryon_visual_validation", {
+        outfitId: outfitRecommendationId,
+        previewId: String(saved._id || ""),
+        generationId: generation.generationId,
+        cacheKey
+      }, { userId, maxAttempts: 6, availableAt: new Date(Date.now() + 30_000) });
+      return serializeStylistVisualization({
+        visualMode,
+        outfitRecommendationId,
+        avatarPreview: defaultAvatarPreview({
+          ...serializeAvatarPreview(saved),
+          status: "generating",
+          jobId: String(validationJob._id)
+        }),
+        fitLock: fitLockSummary(fitEvaluation),
+        job: validationJob
+      });
+    }
     if (!result.cached) {
       const committed = await commitTryOnGenerationCredits({
         generation,

@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const job = generation?.generationId
       ? await BackgroundJob.findOne({
           userId: auth.user._id,
-          type: "avatar_preview_generation",
+          type: { $in: ["avatar_preview_generation", "tryon_visual_validation"] },
           "payload.generationId": generation.generationId
         }).sort({ createdAt: -1 }).lean()
       : null;
@@ -416,6 +416,35 @@ export async function POST(request: NextRequest, context: RouteContext) {
       providerJobId: result.providerOutput?.jobId || "",
       providerDiagnostics: { status: result.providerOutput?.status || "", warningCount: result.providerOutput?.warnings?.length || 0 }
     }) || activeGeneration;
+    if ((result as any).validationPending) {
+      activeGeneration = await markTryOnGenerationStage(activeGeneration.generationId, "processing", {
+        previewId: saved._id,
+        previewUrl: saved.imageUrl || "",
+        storageKey: saved.storageKey || "",
+        providerDiagnostics: {
+          status: result.providerOutput?.status || "processing",
+          visualIntegrityPending: true,
+          visualIntegritySafeReason: result.providerOutput?.visualIntegritySafeReason || "visual_integrity_provider_unavailable"
+        }
+      }) || activeGeneration;
+      await markAvatarPreviewStatus(activeUserId, id, activeAvatarProfileId, cacheKey, {
+        billingStatus: "reserved",
+        generationId: activeGeneration.generationId,
+        validationStatus: "pending"
+      });
+      const validationJob = await enqueueJob("tryon_visual_validation", {
+        outfitId: id,
+        previewId: String(saved._id || ""),
+        generationId: activeGeneration.generationId,
+        cacheKey
+      }, { userId: activeUserId, maxAttempts: 6, availableAt: new Date(Date.now() + 30_000) });
+      return apiSuccess({
+        preview: serializeAvatarPreview(saved),
+        avatarProfile: serializeAvatarProfile(loaded.avatarProfile),
+        generation: serializeTryOnGeneration(activeGeneration),
+        job: serializeJob(validationJob)
+      }, { message: "Your preview was generated and is awaiting a final visual check.", status: 202 });
+    }
     await recordOutfitHistory({
       userId: auth.user._id,
       outfitId: loaded.outfit._id,

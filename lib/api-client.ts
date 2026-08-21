@@ -556,6 +556,13 @@ export type AvatarPreviewData = {
     pendingItemIds?: string[];
     recommendationOnlyItemIds?: string[];
     progressStage?: "not_started" | "core_ready" | "finishing" | "complete" | "fallback";
+    validationStatus?: "not_started" | "pending" | "passed" | "failed" | "unavailable";
+    validationSafeReason?: string;
+    validationCheckedItemIds?: string[];
+    validationMissingItemIds?: string[];
+    validationMismatchedItemIds?: string[];
+    validationAttempts?: number;
+    validationLastAttemptAt?: string | null;
     progressiveTrigger?: StylistAvatarPreview["progressiveTrigger"];
     setupPath?: string | null;
     generatedAt: string | null;

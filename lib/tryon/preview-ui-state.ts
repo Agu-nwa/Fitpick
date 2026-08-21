@@ -18,7 +18,7 @@ const failedGenerationStatuses = new Set(["failed", "cancelled", "expired"]);
 const failedJobStatuses = new Set(["failed", "cancelled", "dead_letter"]);
 
 type PreviewStatusInput = {
-  preview?: { status?: string; billingStatus?: string; generatedAt?: string | null; updatedAt?: string | null } | null;
+  preview?: { status?: string; billingStatus?: string; validationStatus?: string; generatedAt?: string | null; updatedAt?: string | null } | null;
   generation?: {
     status?: string;
     creditsReleased?: number;
@@ -46,7 +46,8 @@ export function deriveTryOnPreviewUiState(input: PreviewStatusInput): TryOnPrevi
   const generationStatus = input.generation?.status || "";
   const jobStatus = input.job?.status || "";
 
-  if ((previewStatus === "ready" || generationStatus === "completed") && input.imageUrl) return "completed";
+  const validationPending = input.preview?.validationStatus === "pending";
+  if (!validationPending && (previewStatus === "ready" || generationStatus === "completed") && input.imageUrl) return "completed";
   if (input.localFailure || previewStatus === "failed" || failedGenerationStatuses.has(generationStatus) || failedJobStatuses.has(jobStatus)) return "failed";
 
   const queued = jobStatus === "queued" || queuedGenerationStatuses.has(generationStatus);
@@ -54,7 +55,8 @@ export function deriveTryOnPreviewUiState(input: PreviewStatusInput): TryOnPrevi
     || jobStatus === "processing"
     || jobStatus === "completed"
     || processingGenerationStatuses.has(generationStatus)
-    || generationStatus === "completed";
+    || generationStatus === "completed"
+    || validationPending;
   const processing = activelyProcessing || (!queued && previewStatus === "generating");
 
   if (!queued && !processing) return "idle";

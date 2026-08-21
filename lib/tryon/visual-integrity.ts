@@ -1,6 +1,7 @@
 import { getOpenAIClient } from "@/lib/ai/openai";
 import { getAiModel } from "@/lib/ai/models/registry";
 import type { TryOnVisualRole } from "@/lib/tryon/provider-capabilities";
+import { errorCategory } from "@/lib/ai/observability/ai-logger";
 
 export type TryOnIntegrityItem = {
   id: string;
@@ -106,7 +107,21 @@ export async function validateTryOnVisualIntegrity(input: {
       unavailable: false,
       safeReason: missingItemIds.length || mismatchedItemIds.length ? "visual_integrity_failed" : ""
     };
-  } catch {
+  } catch (error) {
+    const providerStatusCode = error && typeof error === "object" && "status" in error
+      ? Number((error as { status?: unknown }).status) || undefined
+      : undefined;
+    const providerCode = error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code || "").slice(0, 80) || undefined
+      : undefined;
+    console.error("fitpick.error", {
+      context: "tryon.visual-integrity",
+      errorCategory: errorCategory(error),
+      failureCode: "visual_integrity_provider_unavailable",
+      providerStatusCode,
+      providerCode,
+      timestamp: new Date().toISOString()
+    });
     return emptyResult(items, "visual_integrity_provider_unavailable");
   }
 }

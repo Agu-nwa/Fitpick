@@ -58,6 +58,12 @@ export type TryOnProviderOutput = {
   progressStage?: TryOnProgressStage;
   /** Provider-only image reference used to chain multi-step generation without CDN propagation races. */
   providerIntermediateImage?: string;
+  /** The provider completed generation, but independent visual verification must be retried. */
+  visualIntegrityPending?: boolean;
+  visualIntegritySafeReason?: string;
+  visualIntegrityCheckedItemIds?: string[];
+  visualIntegrityMissingItemIds?: string[];
+  visualIntegrityMismatchedItemIds?: string[];
 };
 
 export interface TryOnProvider {

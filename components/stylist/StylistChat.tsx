@@ -1104,14 +1104,30 @@ export function StylistChat({
   }
 
   async function pollAvatarJob(messageIdToPatch: string, jobId: string) {
+    let activeJobId = jobId;
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await wait(2500);
-      const result = await getJobStatus(jobId);
+      const result = await getJobStatus(activeJobId);
       if (!result.ok) continue;
 
       const job = result.data.job;
       if (job.status === "completed") {
         const preview = job.result?.preview || {};
+        const validationJobId = String(job.result?.validationJobId || "");
+        if (job.result?.validationPending || preview.validationStatus === "pending" || preview.status === "generating") {
+          patchMessage(messageIdToPatch, {
+            avatarPreview: compactPreview({
+              status: "generating",
+              previewId: preview.id || null,
+              imageUrl: preview.imageUrl || preview.previewUrl || null,
+              cacheKey: preview.cacheKey || null,
+              errorMessage: null
+            }),
+            jobId: validationJobId || activeJobId
+          });
+          if (validationJobId) activeJobId = validationJobId;
+          continue;
+        }
         patchMessage(messageIdToPatch, {
           avatarPreview: compactPreview({
             status: "ready",
