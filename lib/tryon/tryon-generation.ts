@@ -116,7 +116,8 @@ async function safeCreateTryOnNotification(input: {
     await createTryOnFailedNotification({
       userId: input.generation.userId,
       outfitId: input.generation.outfitId,
-      generationId: input.generation.generationId
+      generationId: input.generation.generationId,
+      failureCode: input.generation.failureCode
     });
   } catch (error) {
     Sentry.captureException(error instanceof Error ? error : new Error(String(error)), {

@@ -165,13 +165,17 @@ export async function createTryOnFailedNotification(input: {
   userId: string | Types.ObjectId;
   outfitId: string | Types.ObjectId;
   generationId: string;
+  failureCode?: string;
 }) {
+  const validationUnavailable = input.failureCode === "visual_integrity_provider_unavailable";
   return createAppNotification({
     userId: input.userId,
     type: "virtual_tryon_failed",
-    title: "Virtual Try-On could not be completed.",
-    body: "Your preview could not be completed. Open MyFitPick to review the status and try again.",
-    actionLabel: "Try Again",
+    title: validationUnavailable ? "Your preview's final check is unavailable." : "Virtual Try-On could not be completed.",
+    body: validationUnavailable
+      ? "Your preview was generated, but MyFitPick could not complete its final visual check. Your credit was not deducted."
+      : "Your preview could not be completed. Open MyFitPick to review the status and try again.",
+    actionLabel: validationUnavailable ? "Review Status" : "Try Again",
     actionUrl: `/outfit/${String(input.outfitId)}/preview`,
     entityType: "TryOnGeneration",
     entityId: input.generationId,

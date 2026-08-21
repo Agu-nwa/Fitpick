@@ -40,8 +40,9 @@ type RetryOptions = {
 };
 
 function scrubPayload(payload: Record<string, unknown> = {}) {
+  const safeLifecycleKeys = new Set(["cacheKey", "idempotencyKey", "creditReferenceId"]);
   return JSON.parse(JSON.stringify(payload, (key, value) => {
-    if (key !== "cacheKey" && /secret|token|key|base64|b64|signed/i.test(key)) return undefined;
+    if (!safeLifecycleKeys.has(key) && /secret|token|key|base64|b64|signed/i.test(key)) return undefined;
     if (typeof value === "string" && value.length > 600) return value.slice(0, 600);
     return value;
   }));

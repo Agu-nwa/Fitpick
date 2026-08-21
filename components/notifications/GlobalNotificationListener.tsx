@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCircle2, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { getAppNotifications, markAppNotificationRead, type AppNotificationSummary } from "@/lib/api-client";
 import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ function isActionableTryOnNotification(notification: AppNotificationSummary) {
 
 export default function GlobalNotificationListener() {
   const session = useSession();
+  const pathname = usePathname();
   const [notification, setNotification] = useState<AppNotificationSummary | null>(null);
   const [visible, setVisible] = useState(false);
   const announcedIds = useRef<Set<string>>(new Set());
@@ -46,7 +48,12 @@ export default function GlobalNotificationListener() {
         return;
       }
 
-      const next = result.data.notifications.find(isActionableTryOnNotification);
+      const currentOutfitMatch = pathname.match(/^\/outfit\/([^/]+)(?:\/preview)?$/);
+      const currentOutfitId = currentOutfitMatch?.[1] || "";
+      const actionable = result.data.notifications.filter(isActionableTryOnNotification);
+      const next = currentOutfitId
+        ? actionable.find((candidate) => candidate.actionUrl.startsWith(`/outfit/${currentOutfitId}/`))
+        : actionable[0];
       if (!next || announcedIds.current.has(next.id)) return;
 
       announcedIds.current.add(next.id);
@@ -75,7 +82,7 @@ export default function GlobalNotificationListener() {
       cancelled = true;
       if (pollingRef.current) window.clearInterval(pollingRef.current);
     };
-  }, [session.status]);
+  }, [pathname, session.status]);
 
   async function openNotification() {
     if (!notification) return;

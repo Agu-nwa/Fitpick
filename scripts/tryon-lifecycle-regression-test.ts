@@ -36,12 +36,22 @@ assert.ok(jobHandlers.includes("isRetryableBackgroundJobFailure"), "Worker must 
 assert.ok(jobHandlers.includes("handleTerminalBackgroundJobFailure"), "Worker must release terminal failed try-on jobs.");
 assert.ok(jobHandlers.includes('generation.status === "completed"'), "Worker must not revive completed try-on generations.");
 assert.ok(jobHandlers.includes('status: "generating"'), "Retryable worker failures must leave preview state in progress instead of terminal failed.");
+assert.ok(jobHandlers.includes("requestedGenerationId"), "Worker must continue the generation identity supplied by the API job.");
+assert.ok(jobHandlers.includes("generation_record_missing"), "Worker must fail safely instead of silently creating a duplicate generation when a supplied generation is missing.");
 
 const queue = read("lib/jobs/queue.ts");
 assert.ok(queue.includes('"dead_letter"'), "Queue must expose dead-letter state.");
 assert.ok(queue.includes("heartbeatJob"), "Queue must support worker heartbeats.");
 assert.ok(queue.includes("recoverStaleProcessingJobs"), "Queue must recover stale processing jobs.");
 assert.ok(queue.includes("excludeJobTypes"), "Queue claims must support isolating Try-On work from general jobs.");
+assert.ok(queue.includes('"idempotencyKey"'), "Queue scrubbing must preserve the safe idempotency lifecycle key.");
+
+const notificationListener = read("components/notifications/GlobalNotificationListener.tsx");
+assert.ok(notificationListener.includes("currentOutfitId"), "Try-On notifications must be scoped to the currently viewed outfit.");
+assert.ok(notificationListener.includes("candidate.actionUrl.startsWith"), "An unrelated outfit failure must not override the current outfit's notification.");
+const notifications = read("lib/notifications/app-notifications.ts");
+assert.ok(notifications.includes("visual_integrity_provider_unavailable"), "Validator unavailability must be distinguished from a provider generation failure in user notifications.");
+assert.ok(notifications.includes("Review Status"), "Validator-unavailable notifications must direct users to status instead of implying a fresh generation retry.");
 
 const worker = read("workers/fitpick-worker.ts");
 assert.ok(worker.includes("heartbeatJob"), "Worker must heartbeat claimed jobs.");

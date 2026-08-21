@@ -306,19 +306,28 @@ export async function runBackgroundJobByType(job: any) {
     const outfitId = String(payload.outfitId || "");
     const avatarProfileId = String(payload.avatarProfileId || "");
     const cacheKey = String(payload.cacheKey || "");
-    const generationResult = await getOrCreateTryOnGeneration({
-      userId,
-      outfitId,
-      avatarProfileId,
-      cacheKey,
-      creditFeature: feature,
-      idempotencyKey: String(payload.idempotencyKey || createTryOnIdempotencyKey({ source: "avatar-preview-job", userId, outfitId, cacheKey, clientKey: String(job._id) })),
-      provider: String(process.env.TRYON_PROVIDER || "internal_preview"),
-      metadata: {
-        source: typeof payload.source === "string" ? payload.source : "background_job",
-        jobId: String(job._id)
-      }
-    });
+    const requestedGenerationId = String(payload.generationId || "");
+    const queuedGeneration = requestedGenerationId
+      ? await TryOnGeneration.findOne({ generationId: requestedGenerationId, userId, outfitId, cacheKey })
+      : null;
+    if (requestedGenerationId && !queuedGeneration) {
+      throw new PermanentTryOnError("Queued try-on generation was not found.", "generation_record_missing");
+    }
+    const generationResult = queuedGeneration
+      ? { generation: queuedGeneration, reused: true }
+      : await getOrCreateTryOnGeneration({
+          userId,
+          outfitId,
+          avatarProfileId,
+          cacheKey,
+          creditFeature: feature,
+          idempotencyKey: String(payload.idempotencyKey || createTryOnIdempotencyKey({ source: "avatar-preview-job", userId, outfitId, cacheKey, clientKey: String(job._id) })),
+          provider: String(process.env.TRYON_PROVIDER || "internal_preview"),
+          metadata: {
+            source: typeof payload.source === "string" ? payload.source : "background_job",
+            jobId: String(job._id)
+          }
+        });
     let generation: any = generationResult.generation;
     if (generationResult.reused && generation.status === "completed") {
       const completedPreview = await AvatarOutfitPreview.findOne({
