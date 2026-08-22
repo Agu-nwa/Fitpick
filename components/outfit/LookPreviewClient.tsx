@@ -290,15 +290,49 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
         <section ref={previewStageRef} tabIndex={-1} className="min-w-0 outline-none">
           <Card className="min-w-0 overflow-hidden p-0">
             {previewState === "completed" && imageUrl ? (
-              <div className="transition-opacity duration-200 motion-reduce:transition-none" aria-live="polite">
-                <ImageFrame
-                  src={imageUrl}
-                  alt={`${displayCopy.title} Virtual Try-On preview`}
-                  aspect="fullBody"
-                  fit="contain"
-                  placeholder="Virtual Try-On preview"
-                  className="min-w-0 w-full rounded-none border-0 bg-canvasSubtle p-2 sm:p-4"
-                />
+              <div className={accessoryItems.length ? "grid min-w-0 transition-opacity duration-200 motion-reduce:transition-none md:grid-cols-[minmax(0,1fr)_176px]" : "transition-opacity duration-200 motion-reduce:transition-none"} aria-live="polite">
+                <div className="min-w-0 bg-canvasSubtle">
+                  <ImageFrame
+                    src={imageUrl}
+                    alt={`${displayCopy.title} Virtual Try-On preview`}
+                    aspect="fullBody"
+                    fit="contain"
+                    placeholder="Virtual Try-On preview"
+                    className="min-w-0 w-full rounded-none border-0 bg-canvasSubtle p-2 sm:p-4"
+                  />
+                </div>
+                {accessoryItems.length ? (
+                  <section className="border-t border-cocoa/20 bg-surfaceWarm p-3 md:border-l md:border-t-0 md:p-4" aria-labelledby="preview-accessories-title">
+                    <div className="flex items-center justify-between gap-2 md:block">
+                      <div>
+                        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-cocoa">
+                          <Sparkles size={14} aria-hidden="true" /> Complete the look
+                        </p>
+                        <h2 id="preview-accessories-title" className="mt-1 text-sm font-semibold leading-5 text-ink">Accessories</h2>
+                      </div>
+                      <Badge tone="premium">{accessoryItems.length} paired</Badge>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-muted">Selected to wear with this preview.</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-1">
+                      {accessoryItems.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className="focus-ring group min-w-0 rounded-2xl border border-cocoa/20 bg-white/80 p-2 text-left shadow-sm transition-colors duration-200 hover:border-cocoa/40 hover:bg-white motion-reduce:transition-none"
+                          onClick={() => {
+                            if (!item.imageUrl) return;
+                            setViewingImage({ src: item.imageUrl, alt: item.name, title: item.name, subtitle: [item.color, item.category].filter(Boolean).join(" · ") });
+                          }}
+                          aria-label={`View paired accessory ${item.name}`}
+                        >
+                          <ImageFrame src={item.imageUrl} alt="" aspect="square" fit="contain" placeholder={item.category} className="rounded-xl border-0 bg-canvasSubtle" />
+                          <span className="mt-2 block line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</span>
+                          <span className="mt-1 block truncate text-[11px] text-muted">{item.color || item.category}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
               </div>
             ) : progressiveCoreReady ? (
               <div className="relative overflow-hidden bg-canvasSubtle" role="status" aria-live="polite">
@@ -431,39 +465,6 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
               <p className="text-xs leading-5 text-muted">The recommendation still includes every selected piece. Provider rendering of small accessories can vary.</p>
             ) : null}
           </Card>
-
-          {accessoryItems.length ? (
-            <Card className="space-y-4 border-cocoa/20 bg-gradient-to-br from-surfaceWarm to-canvas">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Complete the look</p>
-                  <p className="mt-1 text-base font-semibold text-ink">Accessories paired with this look</p>
-                  <p className="mt-1 text-xs leading-5 text-muted">Styled alongside your preview so every finishing piece stays visible without changing the generated outfit.</p>
-                </div>
-                <Badge tone="premium">{accessoryItems.length}</Badge>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {accessoryItems.map((item) => (
-                  <article key={item.key} className="min-w-0 rounded-2xl border border-cocoa/15 bg-white/70 p-2.5 shadow-sm">
-                    <button
-                      type="button"
-                      className="focus-ring block w-full rounded-2xl text-left"
-                      onClick={() => {
-                        if (!item.imageUrl) return;
-                        setViewingImage({ src: item.imageUrl, alt: item.name, title: item.name, subtitle: [item.color, item.category].filter(Boolean).join(" · ") });
-                      }}
-                      aria-label={`View accessory ${item.name}`}
-                    >
-                      <ImageFrame src={item.imageUrl} alt={item.name} aspect="square" fit="contain" placeholder={item.category} className="mb-2 bg-canvasSubtle" />
-                    </button>
-                    <Badge tone="premium">Paired with preview</Badge>
-                    <p className="mt-1 line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
-                    <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
-                  </article>
-                ))}
-              </div>
-            </Card>
-          ) : null}
 
           <Card className="space-y-3">
             <div className="flex items-start justify-between gap-3">
