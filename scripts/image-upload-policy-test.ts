@@ -14,6 +14,7 @@ import {
 } from "../lib/image-upload-policy";
 import { signedUploadSchema } from "../schemas/upload.schema";
 import { uploadMetadataSchema } from "../schemas/wardrobe.schema";
+import { encodedBlobMatchesMimeType } from "../lib/image-upload/browser-normalize";
 
 const heic = detectImageFileType({ name: "IMG_1001.HEIC", type: "", size: 4_000_000 });
 assert.equal(heic.detectedMimeType, "image/heic", "HEIC should be detected by extension when MIME is missing");
@@ -122,4 +123,15 @@ assert.match(messageForImageUploadError("IMAGE_TOO_LARGE"), /50 MB/);
 assert.equal(messageForImageUploadError("IMAGE_DECODE_FAILED").length > 0, true, "decode failure must map to user copy");
 assert.equal(new ImageUploadError("IMAGE_PREVIEW_FAILED", messageForImageUploadError("IMAGE_PREVIEW_FAILED")).code, "IMAGE_PREVIEW_FAILED");
 
-console.log("Image upload policy regression checks passed.");
+async function verifyEncodedBlobContracts() {
+  const pngBlobLabeledWebp = new Blob([
+    new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  ], { type: "image/webp" });
+  const webpBlob = new Blob([
+    new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])
+  ], { type: "image/webp" });
+  assert.equal(await encodedBlobMatchesMimeType(pngBlobLabeledWebp, "image/webp"), false, "PNG bytes must never be uploaded under a WebP MIME type.");
+  assert.equal(await encodedBlobMatchesMimeType(webpBlob, "image/webp"), true, "A genuine WebP blob should satisfy the normalized upload contract.");
+}
+
+verifyEncodedBlobContracts().then(() => console.log("Image upload policy regression checks passed."));

@@ -19,6 +19,8 @@ export type TryOnIntegrityResult = {
   checkedItemIds: string[];
   unavailable: boolean;
   safeReason: string;
+  providerStatusCode?: number;
+  providerCode?: string;
 };
 
 function usableImageUrl(value: string) {
@@ -133,6 +135,10 @@ export async function validateTryOnVisualIntegrity(input: {
       providerCode,
       timestamp: new Date().toISOString()
     });
-    return emptyResult(items, "visual_integrity_provider_unavailable");
+    return {
+      ...emptyResult(items, "visual_integrity_provider_unavailable"),
+      providerStatusCode,
+      providerCode
+    };
   }
 }

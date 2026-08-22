@@ -214,6 +214,13 @@ export async function runBackgroundJobByType(job: any) {
     });
 
     if (integrity.unavailable) {
+      if (integrity.providerStatusCode === 400 || integrity.providerCode === "invalid_image") {
+        throw new PermanentTryOnError(
+          "Visual verification rejected an invalid image input.",
+          "visual_integrity_invalid_image",
+          integrity.providerStatusCode || 400
+        );
+      }
       throw new TransientTryOnError(
         "Visual verification is temporarily unavailable.",
         "visual_integrity_provider_unavailable"

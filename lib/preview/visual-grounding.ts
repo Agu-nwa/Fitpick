@@ -33,9 +33,9 @@ export function preferredVisualReferenceUrl(item: any) {
   const front = item?.images?.front || {};
   const back = item?.images?.back || {};
   return (
-    item?.thumbnailUrl ||
     variantUrl(front, "thumbnail") ||
     variantUrl(back, "thumbnail") ||
+    item?.thumbnailUrl ||
     item?.imageUrl ||
     variantUrl(front, "original") ||
     variantUrl(back, "original") ||

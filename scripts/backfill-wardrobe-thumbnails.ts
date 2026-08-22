@@ -14,6 +14,8 @@ for (const filename of [".env.local", ".env.production", ".env"]) {
 
 const valueFor = (name: string) => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) || "";
 const bounded = (value: string, fallback: number, maximum: number) => Math.max(1, Math.min(Number(value || fallback) || fallback, maximum));
+const recordIds = valueFor("record-ids").split(",").map((value) => value.trim()).filter((value) => mongoose.isValidObjectId(value));
+const requestedCollection = valueFor("collection");
 
 function primaryAsset(record: any) {
   return record.images?.front || record.images?.back || (record.images?.additional || [])[0] || null;
@@ -53,7 +55,11 @@ async function processModel(input: {
         { "images.additional.0.storageKey": { $type: "string", $ne: "" } },
         { storageKey: { $type: "string", $ne: "" } }
       ],
-      ...(lastId ? { _id: { $gt: lastId } } : {})
+      ...(recordIds.length
+        ? { _id: { $in: recordIds } }
+        : lastId
+          ? { _id: { $gt: lastId } }
+          : {})
     };
     const records: any[] = await input.model.find(query).sort({ _id: 1 }).limit(Math.min(input.batchSize, input.limit - summary.scanned)).lean();
     if (!records.length) break;
@@ -75,7 +81,7 @@ async function processModel(input: {
       }
 
       try {
-        const thumbnail = await createWardrobeThumbnailFromStorage(storageKey);
+        const thumbnail = await createWardrobeThumbnailFromStorage(storageKey, { downloadTimeoutMs: 60_000 });
         const assetPath = primaryPath(record);
         const originalUrl = asset?.url || record.imageUrl || "";
         const originalProvider = asset?.provider || record.provider || "s3";
@@ -95,11 +101,15 @@ async function processModel(input: {
         await input.model.updateOne({ _id: record._id }, { $set: patch });
         summary.created += 1;
         console.log(JSON.stringify({ collection: input.label, recordId: String(record._id), status: "created", thumbnailBytes: thumbnail.bytes }));
-      } catch {
+      } catch (error) {
         summary.failed += 1;
-        console.error(JSON.stringify({ collection: input.label, recordId: String(record._id), status: "failed" }));
+        const reason = error instanceof Error
+          ? error.message.replace(/https?:\/\/\S+/gi, "[url]").slice(0, 240)
+          : "Unknown error";
+        console.error(JSON.stringify({ collection: input.label, recordId: String(record._id), status: "failed", reason }));
       }
     }
+    if (recordIds.length) break;
   }
   return summary;
 }
@@ -110,8 +120,12 @@ async function main() {
   const batchSize = bounded(valueFor("batch-size"), 20, 100);
   await connectDB();
 
-  const wardrobeItems = await processModel({ label: "wardrobe_items", model: WardrobeItem, write, limit, batchSize });
-  const wardrobeUploads = await processModel({ label: "wardrobe_uploads", model: WardrobeUpload, write, limit, batchSize });
+  const wardrobeItems = requestedCollection && requestedCollection !== "wardrobe_items"
+    ? { collection: "wardrobe_items", scanned: 0, eligible: 0, created: 0, failed: 0, skipped: 0 }
+    : await processModel({ label: "wardrobe_items", model: WardrobeItem, write, limit, batchSize });
+  const wardrobeUploads = requestedCollection && requestedCollection !== "wardrobe_uploads"
+    ? { collection: "wardrobe_uploads", scanned: 0, eligible: 0, created: 0, failed: 0, skipped: 0 }
+    : await processModel({ label: "wardrobe_uploads", model: WardrobeUpload, write, limit, batchSize });
   console.log(JSON.stringify({ mode: write ? "write" : "dry-run", wardrobeItems, wardrobeUploads }, null, 2));
 }
 

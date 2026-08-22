@@ -41,14 +41,31 @@ export async function createWardrobeThumbnailBuffer(body: Buffer) {
   };
 }
 
-export async function createWardrobeThumbnailFromStorage(originalStorageKey: string) {
-  const source = await downloadImageObject({ storageKey: originalStorageKey });
-  const thumbnail = await createWardrobeThumbnailBuffer(source.body);
-  const uploaded = await uploadImageObject({
-    storageKey: wardrobeThumbnailStorageKey(originalStorageKey),
-    mimeType: thumbnail.mimeType,
-    body: thumbnail.buffer
-  });
+export async function createWardrobeThumbnailFromStorage(originalStorageKey: string, options: { downloadTimeoutMs?: number } = {}) {
+  let source: Awaited<ReturnType<typeof downloadImageObject>>;
+  try {
+    source = await downloadImageObject({ storageKey: originalStorageKey, timeoutMs: options.downloadTimeoutMs });
+  } catch (error) {
+    throw new Error(`Wardrobe thumbnail source download failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+
+  let thumbnail: Awaited<ReturnType<typeof createWardrobeThumbnailBuffer>>;
+  try {
+    thumbnail = await createWardrobeThumbnailBuffer(source.body);
+  } catch (error) {
+    throw new Error(`Wardrobe thumbnail conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+
+  let uploaded: Awaited<ReturnType<typeof uploadImageObject>>;
+  try {
+    uploaded = await uploadImageObject({
+      storageKey: wardrobeThumbnailStorageKey(originalStorageKey),
+      mimeType: thumbnail.mimeType,
+      body: thumbnail.buffer
+    });
+  } catch (error) {
+    throw new Error(`Wardrobe thumbnail upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
 
   return {
     url: uploaded.url,

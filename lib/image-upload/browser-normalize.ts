@@ -5,6 +5,7 @@ import {
   type ImageUploadDiagnostics,
   type ImageUploadSource,
   type ImageUploadStage,
+  detectImageByteFormat,
   detectImageFileType,
   messageForImageUploadError,
   normalizedImageFilename,
@@ -187,6 +188,12 @@ async function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality
   return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, quality));
 }
 
+export async function encodedBlobMatchesMimeType(blob: Blob, expectedMimeType: string) {
+  const bytes = new Uint8Array(await blob.slice(0, 32).arrayBuffer());
+  const detected = detectImageByteFormat(bytes);
+  return Boolean(detected.mimeType && detected.mimeType === expectedMimeType && blob.type === expectedMimeType);
+}
+
 async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageElement) {
   const { width, height } = dimensionsOf(image);
   const max = IMAGE_UPLOAD_POLICY.maxDimensionPx;
@@ -206,7 +213,13 @@ async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageE
   let mimeType: "image/webp" | "image/jpeg" = IMAGE_UPLOAD_POLICY.acceptedOutputMimeType;
   for (const quality of qualities) {
     blob = await canvasToBlob(canvas, IMAGE_UPLOAD_POLICY.acceptedOutputMimeType, quality);
-    if (blob && blob.size > 0 && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes) break;
+    if (
+      blob
+      && blob.size > 0
+      && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes
+      && await encodedBlobMatchesMimeType(blob, IMAGE_UPLOAD_POLICY.acceptedOutputMimeType)
+    ) break;
+    blob = null;
   }
 
   if (!blob || blob.size <= 0 || blob.size > IMAGE_UPLOAD_POLICY.maxInputBytes) {
@@ -221,7 +234,13 @@ async function normalizeDecodedImage(file: File, image: ImageBitmap | HTMLImageE
     mimeType = IMAGE_UPLOAD_POLICY.fallbackOutputMimeType;
     for (const quality of qualities) {
       blob = await canvasToBlob(jpegCanvas, IMAGE_UPLOAD_POLICY.fallbackOutputMimeType, quality);
-      if (blob && blob.size > 0 && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes) break;
+      if (
+        blob
+        && blob.size > 0
+        && blob.size <= IMAGE_UPLOAD_POLICY.maxInputBytes
+        && await encodedBlobMatchesMimeType(blob, IMAGE_UPLOAD_POLICY.fallbackOutputMimeType)
+      ) break;
+      blob = null;
     }
   }
 

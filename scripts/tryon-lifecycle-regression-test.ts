@@ -93,6 +93,7 @@ assert.ok(visualIntegrity.includes("Do not infer hidden items"), "Visual validat
 assert.ok(visualIntegrity.includes("faceNatural"), "Visual validation must reject distorted or painterly faces.");
 assert.ok(visualIntegrity.includes("handsNatural"), "Visual validation must reject malformed visible hands.");
 assert.ok(visualIntegrity.includes("imageClean"), "Visual validation must reject cumulative generation noise and compositing artifacts.");
+assert.ok(jobHandlers.includes("visual_integrity_invalid_image"), "Invalid validator image inputs must fail permanently without six pointless retries.");
 assert.ok(fashnProvider.includes("providerIntermediateImage"), "Sequential FASHN steps must chain the provider output instead of a newly published CDN URL.");
 assert.ok(fashnProvider.includes("runFashnTryOnStepWithRetry"), "Invalid or temporarily unreachable provider images must receive one bounded retry.");
 assert.ok(fashnProvider.includes("providerFailedItemIds"), "Fallback diagnostics must identify failed Try-On items safely.");

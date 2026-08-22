@@ -254,7 +254,7 @@ export async function uploadImageObject(input: { storageKey: string; mimeType: s
   };
 }
 
-export async function downloadImageObject(input: { storageKey: string; maxBytes?: number }) {
+export async function downloadImageObject(input: { storageKey: string; maxBytes?: number; timeoutMs?: number }) {
   const storage = assertStorageConfigured();
   if (!storage.ready) throw new Error("S3 image storage is not configured.");
 
@@ -288,7 +288,7 @@ export async function downloadImageObject(input: { storageKey: string; maxBytes?
   const response = await fetch(`https://${host}${canonicalUri}`, {
     method: "GET",
     headers,
-    signal: AbortSignal.timeout(15_000)
+    signal: AbortSignal.timeout(Math.max(1_000, Math.min(input.timeoutMs || 15_000, 120_000)))
   });
   if (!response.ok) throw new Error(`S3 image download failed with status ${response.status}.`);
 

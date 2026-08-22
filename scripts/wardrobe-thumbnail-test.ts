@@ -7,8 +7,12 @@ import {
   WARDROBE_THUMBNAIL_WIDTH,
   wardrobeThumbnailStorageKey
 } from "@/lib/image-processing/wardrobe-thumbnail";
+import { readFileSync } from "node:fs";
 
 async function main() {
+  const backfillSource = readFileSync("scripts/backfill-wardrobe-thumbnails.ts", "utf8");
+  assert.ok(backfillSource.includes('valueFor("record-ids")'), "Thumbnail repair must support explicit record IDs.");
+  assert.ok(backfillSource.includes('valueFor("collection")'), "Thumbnail repair must support collection scoping.");
   const original = await sharp({
     create: {
       width: 3072,
