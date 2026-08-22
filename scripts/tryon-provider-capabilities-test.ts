@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildTryOnFidelity, getTryOnProviderCapabilities, prepareTryOnItems } from "../lib/tryon/provider-capabilities";
+import { selectSingleIntegrityRepairIndex } from "../lib/tryon/providers/fashn-tryon";
 
 const reference = { _id: "reference-shoe", category: "shoes", canonicalSubtype: "loafers", name: "Reference loafers" };
 const top = { _id: "top", category: "tops", canonicalSubtype: "shirt", name: "Shirt" };
@@ -25,4 +26,32 @@ assert.equal(prepared.sentItemIds.length, 6, "core, outerwear, footwear, and two
 assert.equal(prepared.fidelity.previewFidelityLevel, "partial", "partially supported finishing roles produce an honest partial fidelity classification");
 assert.deepEqual(buildTryOnFidelity("fashn", [top, bottom]).unsupportedRoles, [], "complete core garment set has no unsupported role");
 assert.equal(buildTryOnFidelity("fashn", [belt]).partiallySupportedRoles[0], "accessories", "generic accessory taxonomy maps to a provider-visible role");
+
+const repairProducts = [
+  { id: "top", role: "upperBody" as const },
+  { id: "bottom", role: "lowerBody" as const },
+  { id: "coat", role: "outerwear" as const },
+  { id: "bag", role: "bags" as const },
+  { id: "watch", role: "watches" as const }
+];
+assert.equal(selectSingleIntegrityRepairIndex(repairProducts, {
+  safeReason: "visual_quality_failed",
+  missingItemIds: ["bottom"],
+  mismatchedItemIds: []
+}), -1, "quality failures never trigger another generation");
+assert.equal(selectSingleIntegrityRepairIndex(repairProducts, {
+  safeReason: "visual_integrity_failed",
+  missingItemIds: ["top"],
+  mismatchedItemIds: []
+}), -1, "an upper-body layer hidden by outerwear does not trigger destructive replay");
+assert.equal(selectSingleIntegrityRepairIndex(repairProducts, {
+  safeReason: "visual_integrity_failed",
+  missingItemIds: ["bag", "watch"],
+  mismatchedItemIds: []
+}), -1, "finishing accessories do not trigger person-wide repair generations");
+assert.equal(selectSingleIntegrityRepairIndex(repairProducts, {
+  safeReason: "visual_integrity_failed",
+  missingItemIds: ["bottom", "coat"],
+  mismatchedItemIds: []
+}), 1, "only the first eligible missing core garment is selected for one repair");
 console.log("Try-on provider capability checks passed.");

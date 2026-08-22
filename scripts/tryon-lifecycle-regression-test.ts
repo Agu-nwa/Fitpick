@@ -87,7 +87,12 @@ assert.ok(fashnProvider.includes('result.progressStage = "complete"'), "A succes
 assert.ok(fashnProvider.includes("did not publish an incomplete Try-On"), "A failed selected piece must prevent partial publication.");
 assert.ok(fashnProvider.includes("validateTryOnVisualIntegrity"), "Provider completion must be followed by independent final-image validation.");
 assert.ok(fashnProvider.includes('metric: "visual_integrity_repair"'), "A visually missing item must trigger a bounded repair pass.");
-assert.ok(fashnProvider.includes("visualIntegrityValidated: true"), "Only a visually verified outfit may be marked complete.");
+assert.ok(fashnProvider.includes("selectSingleIntegrityRepairIndex"), "Integrity repair must select at most one targeted item instead of replaying the outfit tail.");
+assert.ok(fashnProvider.includes('integrity.safeReason === "visual_quality_failed"'), "A quality failure must never trigger another destructive generation pass.");
+assert.ok(fashnProvider.includes('repairStrategy: "single_item"'), "Repair telemetry must identify the single-item strategy.");
+assert.ok(fashnProvider.includes("result = baselineResult"), "A failed targeted repair must preserve the cleaner pre-repair baseline.");
+assert.ok(!fashnProvider.includes("for (let index = firstInvalidIndex"), "Integrity repair must not replay every subsequent outfit item.");
+assert.ok(fashnProvider.includes("visualIntegrityValidated: integrity.valid"), "Completion metadata must distinguish full validation from an honest partial-fidelity baseline.");
 assert.ok(visualIntegrity.includes("shorts do not match trousers"), "Visual validation must reject category drift from trousers to shorts.");
 assert.ok(visualIntegrity.includes("Do not infer hidden items"), "Visual validation must not credit accessories that are absent from the preview.");
 assert.ok(visualIntegrity.includes("faceNatural"), "Visual validation must reject distorted or painterly faces.");
