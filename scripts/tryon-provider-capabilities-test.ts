@@ -24,6 +24,9 @@ assert.ok(prepared.sentItemIds.includes("bag") && prepared.sentItemIds.includes(
 assert.ok(prepared.recommendationOnlyItemIds.includes("necklace"), "additional finishers remain in the recommendation when the provider finisher budget is reached");
 assert.equal(prepared.sentItemIds.length, 6, "core, outerwear, footwear, and two bounded finishers are retained");
 assert.equal(prepared.fidelity.previewFidelityLevel, "partial", "partially supported finishing roles produce an honest partial fidelity classification");
+const qualityFirstPrepared = prepareTryOnItems({ provider: "fashn", items: [top, bottom, coat, bag, watch, reference], referenceItemIds: ["reference-shoe"], maximumItems: 6, maximumFinishers: 0 });
+assert.deepEqual(qualityFirstPrepared.sentItemIds, ["reference-shoe", "top", "bottom", "coat"], "quality-first generation limits the chain to clothing and footwear");
+assert.deepEqual(qualityFirstPrepared.recommendationOnlyItemIds, ["bag", "watch"], "bag and watch remain in the styled look without repainting the person");
 assert.deepEqual(buildTryOnFidelity("fashn", [top, bottom]).unsupportedRoles, [], "complete core garment set has no unsupported role");
 assert.equal(buildTryOnFidelity("fashn", [belt]).partiallySupportedRoles[0], "accessories", "generic accessory taxonomy maps to a provider-visible role");
 

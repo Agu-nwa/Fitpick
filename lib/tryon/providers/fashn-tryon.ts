@@ -2,7 +2,7 @@ import { preferredTryOnModelImageUrl } from "@/lib/avatar/avatar-profile";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { loadOwnedAvatarPreviewSubject } from "@/lib/avatar/avatar-preview";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
-import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
+import { preferredTryOnProductReferenceUrl, preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
 import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
 import { prepareTryOnItems, tryOnVisualRoleForItem, type TryOnVisualRole } from "@/lib/tryon/provider-capabilities";
@@ -50,14 +50,11 @@ function config() {
     runEndpoint: process.env.FASHN_RUN_ENDPOINT || `${baseUrl}/run`,
     statusEndpoint: process.env.FASHN_STATUS_ENDPOINT || `${baseUrl}/status`,
     modelName: process.env.FASHN_MODEL_NAME || "tryon-max",
-    coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6",
-    coreMode: process.env.FASHN_CORE_MODE || "quality",
     resolution: process.env.FASHN_RESOLUTION || "2k",
     generationMode: process.env.FASHN_GENERATION_MODE || "quality",
     outputFormat: process.env.FASHN_OUTPUT_FORMAT || "png",
     returnBase64: process.env.FASHN_RETURN_BASE64 !== "false",
     maxOutfitItems: Math.max(1, Math.min(Number(process.env.FASHN_MAX_OUTFIT_ITEMS || 6), 10)),
-    maxFinisherItems: Math.max(0, Math.min(Number(process.env.FASHN_MAX_FINISHER_ITEMS || 2), 4)),
     timeoutMs: Math.max(15000, Math.min(Number(process.env.FASHN_TIMEOUT_MS || process.env.TRYON_TIMEOUT_MS || 90000), 180000)),
     pollMs: Math.max(1500, Math.min(Number(process.env.FASHN_POLL_MS || 2000), 10000))
   };
@@ -189,8 +186,9 @@ function rankedProductImages(items: any[]) {
     item,
     id: String(item?._id || item?.id || ""),
     role: tryOnVisualRoleForItem(item),
-    url: preferredVisualReferenceUrl(item)
-  })).filter((entry): entry is typeof entry & { url: string; role: TryOnVisualRole } => Boolean(entry.url && entry.role));
+    url: preferredTryOnProductReferenceUrl(item),
+    validationUrl: preferredVisualReferenceUrl(item)
+  })).filter((entry): entry is typeof entry & { url: string; validationUrl: string; role: TryOnVisualRole } => Boolean(entry.url && entry.validationUrl && entry.role));
 }
 
 function isProviderImage(value: string) {
@@ -228,9 +226,6 @@ async function preflightImage(value: string, source: "model" | "product") {
   }
 }
 
-// v1.6 is limited to tops, bottoms, and one-pieces. Try-On Max is the provider's
-// recommended path for broader products such as outerwear, shoes, bags, and
-// accessories, and is less likely to replace the entire existing outfit.
 const CORE_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece"]);
 const SAFE_SINGLE_REPAIR_ROLES = new Set<TryOnVisualRole>(["upperBody", "lowerBody", "onePiece", "outerwear", "footwear"]);
 
@@ -246,13 +241,6 @@ export function selectSingleIntegrityRepairIndex(
     && SAFE_SINGLE_REPAIR_ROLES.has(product.role)
     && !(outerwearPresent && product.role === "upperBody")
   );
-}
-
-function coreCategory(role: TryOnVisualRole) {
-  if (role === "upperBody") return "tops";
-  if (role === "lowerBody") return "bottoms";
-  if (role === "onePiece") return "one-pieces";
-  return "auto";
 }
 
 async function publishProgress(input: TryOnPreviewInput, output: TryOnProviderOutput) {
@@ -322,26 +310,15 @@ async function runFashnTryOnStep(input: TryOnPreviewInput, payload: {
   mode: string;
 }) {
   const providerConfig = config();
-  const coreRequest = CORE_ROLES.has(payload.role) && payload.modelName === providerConfig.coreModelName;
-  const inputs = coreRequest
-    ? {
-        garment_image: payload.productImage,
-        model_image: payload.modelImage,
-        category: coreCategory(payload.role),
-        mode: payload.mode,
-        garment_photo_type: "auto",
-        output_format: providerConfig.outputFormat,
-        return_base64: providerConfig.returnBase64
-      }
-    : {
-        product_image: payload.productImage,
-        model_image: payload.modelImage,
-        prompt: payload.prompt,
-        resolution: providerConfig.resolution,
-        generation_mode: payload.mode,
-        output_format: providerConfig.outputFormat,
-        return_base64: providerConfig.returnBase64
-      };
+  const inputs = {
+    product_image: payload.productImage,
+    model_image: payload.modelImage,
+    prompt: payload.prompt,
+    resolution: providerConfig.resolution,
+    generation_mode: payload.mode,
+    output_format: providerConfig.outputFormat,
+    return_base64: providerConfig.returnBase64
+  };
   const response = await fetch(providerConfig.runEndpoint, {
     method: "POST",
     headers: {
@@ -554,33 +531,8 @@ export function createFashnTryOnProvider(): TryOnProvider {
         items: loaded.items,
         referenceItemIds: loaded.referenceItemIds,
         maximumItems: providerConfig.maxOutfitItems,
-        maximumFinishers: providerConfig.maxFinisherItems
+        maximumFinishers: 0
       });
-      if (preparation.recommendationOnlyItemIds.length) {
-        return {
-          ...unavailableWithDiagnostics(
-            "Virtual Try-On cannot render every selected piece yet. Choose Try Again after updating the look.",
-            diagnostics({
-              stage: "input_validation",
-              modelName: providerConfig.modelName,
-              safeReason: "provider_cannot_render_complete_recommendation",
-              providerReturnedJobId: false
-            })
-          ),
-          status: "failed",
-          recommendationOnlyItemIds: preparation.recommendationOnlyItemIds,
-          providerDiagnostics: {
-            ...diagnostics({
-              stage: "input_validation",
-              modelName: providerConfig.modelName,
-              safeReason: "provider_cannot_render_complete_recommendation",
-              providerReturnedJobId: false
-            }),
-            completePreviewRequired: true,
-            recommendationOnlyItemCount: preparation.recommendationOnlyItemIds.length
-          }
-        };
-      }
       const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
       const coreProducts = products.filter((product) => CORE_ROLES.has(product.role));
       const finishingProducts = products.filter((product) => !CORE_ROLES.has(product.role));
@@ -591,7 +543,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
         category: String(product.item?.category || "unknown"),
         color: String(product.item?.primaryColor?.value || product.item?.color || product.item?.primaryColor || "unknown"),
         role: product.role,
-        referenceImageUrl: product.url
+        referenceImageUrl: product.validationUrl
       }));
       const referenceIds = new Set(loaded.referenceItemIds.map(String));
       const subjectItemIds = new Set(loaded.items.map((item: any) => String(item?._id || item?.id || "")).filter(Boolean));
@@ -653,9 +605,12 @@ export function createFashnTryOnProvider(): TryOnProvider {
       });
 
       const startedAt = Date.now();
-      const warnings = products.length > 1
-        ? [`MyFitPick applied ${products.length} wardrobe references sequentially for a cleaner preview.`]
-        : [];
+      const warnings = [
+        ...(products.length > 1 ? [`MyFitPick applied ${products.length} wardrobe references sequentially for a cleaner preview.`] : []),
+        ...(preparation.recommendationOnlyItemIds.length
+          ? ["Your complete look includes every selected piece. Small accessories may not appear in the generated preview."]
+          : [])
+      ];
 
       try {
         let currentModelImage = modelImage;
@@ -676,7 +631,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
             stage: stepStage,
             stepIndex: index + 1,
             role: product.role,
-            modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName,
+            modelName: providerConfig.modelName,
             timestamp: new Date().toISOString()
           });
           result = await runFashnTryOnStepWithRetry(input, {
@@ -684,8 +639,8 @@ export function createFashnTryOnProvider(): TryOnProvider {
             modelImage: currentModelImage,
             stepIndex: index + 1,
             role: product.role,
-            modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName,
-            mode: coreStep ? providerConfig.coreMode : providerConfig.generationMode,
+            modelName: providerConfig.modelName,
+            mode: providerConfig.generationMode,
             prompt: [
               "Create a realistic virtual try-on image for MyFitPick.",
               "Strictly preserve the current model identity, facial geometry, skin texture, hair, pose, hands, body proportions, background, and already-applied outfit pieces from the model image.",
@@ -704,7 +659,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
             status: stepReady ? "success" : "failed",
             durationMs: Date.now() - stepStartedAt,
             errorCode: stepReady ? "" : String(result.providerDiagnostics?.safeReason || result.status),
-            metadata: { stepIndex: index + 1, role: product.role, modelName: coreStep ? providerConfig.coreModelName : providerConfig.modelName }
+            metadata: { stepIndex: index + 1, role: product.role, modelName: providerConfig.modelName }
           });
 
           if (!stepReady) {
@@ -946,8 +901,8 @@ export function createFashnTryOnProvider(): TryOnProvider {
         result.providerFailedItemIds = failedItemIds;
         result.providerSkippedItemIds = [];
         result.pendingItemIds = [];
-        result.recommendationOnlyItemIds = [];
-        result.previewFidelityLevel = integrityAcceptedWithWarnings ? "partial" : "full";
+        result.recommendationOnlyItemIds = preparation.recommendationOnlyItemIds;
+        result.previewFidelityLevel = integrityAcceptedWithWarnings || preparation.recommendationOnlyItemIds.length ? "partial" : "full";
         result.progressStage = "complete";
         result.providerDiagnostics = {
           ...(result.providerDiagnostics || {}),

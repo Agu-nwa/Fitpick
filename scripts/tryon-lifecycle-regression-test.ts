@@ -67,22 +67,20 @@ assert.ok(ecosystem.includes('WORKER_EXCLUDED_JOB_TYPES: "avatar_preview_generat
 
 const fashnProvider = read("lib/tryon/providers/fashn-tryon.ts");
 const visualIntegrity = read("lib/tryon/visual-integrity.ts");
-assert.ok(fashnProvider.includes('coreModelName: process.env.FASHN_CORE_MODEL_NAME || "tryon-v1.6"'), "Core garments must use the dedicated FASHN clothing model.");
-assert.ok(fashnProvider.includes('["upperBody", "lowerBody", "onePiece"]'), "Only roles supported by v1.6 may use the core clothing endpoint.");
-assert.ok(fashnProvider.includes('process.env.FASHN_CORE_MODE || "quality"'), "Published core garments must use the provider's quality mode by default.");
+assert.ok(fashnProvider.includes('["upperBody", "lowerBody", "onePiece"]'), "Core garment roles must remain explicit for progressive status.");
 assert.ok(fashnProvider.includes('process.env.FASHN_GENERATION_MODE || "quality"'), "Published finishing passes must use the provider's quality mode by default.");
 assert.ok(fashnProvider.includes('process.env.FASHN_RESOLUTION || "2k"'), "Published Try-On Max passes must default to 2k output.");
 assert.ok(fashnProvider.includes('process.env.FASHN_POLL_MS || 2000'), "Provider polling should use the lower-latency safe default.");
-assert.ok(fashnProvider.includes("garment_image: payload.productImage"), "Core clothing requests must use the v1.6 garment_image contract.");
-assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Finishing requests must use the Try-On Max product_image contract.");
+assert.ok(!fashnProvider.includes("garment_image: payload.productImage"), "The quality pipeline must not mix lightweight v1.6 outputs into Try-On Max generations.");
+assert.ok(fashnProvider.includes("product_image: payload.productImage"), "Every generated role must use the recommended Try-On Max product contract.");
 assert.ok(fashnProvider.includes('progressStage: "finishing"'), "A durable core preview must be published before finishing passes complete.");
 assert.ok(!fashnProvider.includes('retryInput: "alternate_outerwear_model"'), "Outerwear must go directly to Try-On Max instead of failing through an incompatible v1.6 attempt first.");
 assert.ok(fashnProvider.includes("visualIntegrityPending = true"), "Validator unavailability must preserve provider output for deferred verification.");
 assert.ok(jobHandlers.includes('job.type === tryOnValidationJobType'), "Deferred visual validation must run independently from provider generation.");
 assert.ok(jobHandlers.includes("maxAttempts: 6"), "Deferred validation retry duration must remain within the reserved-credit lifetime.");
 assert.ok(fashnProvider.includes("completePreviewRequired: true"), "Try-On must require every selected recommendation piece before publishing a ready preview.");
-assert.ok(fashnProvider.includes('safeReason: "provider_cannot_render_complete_recommendation"'), "Unsupported selected pieces must fail before provider work instead of creating a partial preview.");
-assert.ok(fashnProvider.includes('result.previewFidelityLevel = "full"'), "A successful Try-On must represent the complete selected recommendation.");
+assert.ok(fashnProvider.includes("maximumFinishers: 0"), "Small accessories must not add destructive person-wide generation passes.");
+assert.ok(fashnProvider.includes("Small accessories may not appear"), "A quality-first preview must disclose recommendation-only accessories honestly.");
 assert.ok(fashnProvider.includes('result.progressStage = "complete"'), "A successful Try-On must only finish at the complete stage.");
 assert.ok(fashnProvider.includes("did not publish an incomplete Try-On"), "A failed selected piece must prevent partial publication.");
 assert.ok(fashnProvider.includes("validateTryOnVisualIntegrity"), "Provider completion must be followed by independent final-image validation.");
@@ -100,10 +98,12 @@ assert.ok(visualIntegrity.includes("handsNatural"), "Visual validation must reje
 assert.ok(visualIntegrity.includes("imageClean"), "Visual validation must reject cumulative generation noise and compositing artifacts.");
 assert.ok(jobHandlers.includes("visual_integrity_invalid_image"), "Invalid validator image inputs must fail permanently without six pointless retries.");
 assert.ok(fashnProvider.includes("providerIntermediateImage"), "Sequential FASHN steps must chain the provider output instead of a newly published CDN URL.");
+assert.ok(fashnProvider.includes("preferredTryOnProductReferenceUrl"), "FASHN generation must receive the highest-quality original wardrobe reference.");
+assert.ok(fashnProvider.includes("referenceImageUrl: product.validationUrl"), "OpenAI validation must receive the normalized thumbnail instead of a mislabeled legacy original.");
 assert.ok(fashnProvider.includes("runFashnTryOnStepWithRetry"), "Invalid or temporarily unreachable provider images must receive one bounded retry.");
 assert.ok(fashnProvider.includes("providerFailedItemIds"), "Fallback diagnostics must identify failed Try-On items safely.");
 assert.ok(fashnProvider.includes("providerJobId: data.id || jobId"), "Provider failures must retain the safe FASHN job identifier for diagnostics.");
-assert.ok(fashnProvider.includes("FASHN_MAX_FINISHER_ITEMS"), "Finishing passes must have a bounded production budget.");
+assert.ok(!fashnProvider.includes("FASHN_MAX_FINISHER_ITEMS"), "Production environment overrides must not re-enable destructive accessory passes.");
 
 const downloadRoute = read("app/api/outfits/[id]/avatar-preview/download/route.ts");
 assert.ok(downloadRoute.includes("requireUser"), "Preview downloads must require authentication.");

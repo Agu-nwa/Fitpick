@@ -8,11 +8,21 @@ import {
   wardrobeThumbnailStorageKey
 } from "@/lib/image-processing/wardrobe-thumbnail";
 import { readFileSync } from "node:fs";
+import { preferredTryOnProductReferenceUrl, preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
 
 async function main() {
   const backfillSource = readFileSync("scripts/backfill-wardrobe-thumbnails.ts", "utf8");
   assert.ok(backfillSource.includes('valueFor("record-ids")'), "Thumbnail repair must support explicit record IDs.");
   assert.ok(backfillSource.includes('valueFor("collection")'), "Thumbnail repair must support collection scoping.");
+  const referenceItem = {
+    imageUrl: "https://example.com/legacy.jpg",
+    images: { front: { url: "https://example.com/front.jpg", variants: {
+      original: { status: "ready", url: "https://example.com/original.png" },
+      thumbnail: { status: "ready", url: "https://example.com/thumbnail.webp" }
+    } } }
+  };
+  assert.equal(preferredTryOnProductReferenceUrl(referenceItem), "https://example.com/original.png", "FASHN should receive the highest-resolution original reference.");
+  assert.equal(preferredVisualReferenceUrl(referenceItem), "https://example.com/thumbnail.webp", "visual validation should receive the normalized thumbnail.");
   const original = await sharp({
     create: {
       width: 3072,

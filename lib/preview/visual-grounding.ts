@@ -45,6 +45,19 @@ export function preferredVisualReferenceUrl(item: any) {
   );
 }
 
+export function preferredTryOnProductReferenceUrl(item: any) {
+  const front = item?.images?.front || {};
+  const back = item?.images?.back || {};
+  return (
+    variantUrl(front, "original") ||
+    variantUrl(back, "original") ||
+    front?.url ||
+    back?.url ||
+    item?.imageUrl ||
+    preferredVisualReferenceUrl(item)
+  );
+}
+
 export function buildVisualGroundingChecklist(outfitItems: any[] = []): VisualGroundingChecklistItem[] {
   return outfitItems.filter(Boolean).map((item) => {
     const imageReferenceUrl = preferredVisualReferenceUrl(item);

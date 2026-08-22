@@ -91,7 +91,9 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
   const referenceFootwear = useMemo(() => referenceItems.find(isReferenceFootwear) || null, [referenceItems]);
   const footwear = useMemo(() => outfit?.items.find(isFootwear) || null, [outfit]);
   const footwearLabel = footwear?.name || (referenceFootwear ? referenceLabel(referenceFootwear) : "");
-  const accessoryCount = useMemo(() => presentationItems.filter((item) => isAccessoryCategory(item.category)).length, [presentationItems]);
+  const accessoryItems = useMemo(() => presentationItems.filter((item) => isAccessoryCategory(item.category)), [presentationItems]);
+  const corePresentationItems = useMemo(() => presentationItems.filter((item) => !isAccessoryCategory(item.category)), [presentationItems]);
+  const accessoryCount = accessoryItems.length;
   const studioModelReady = Boolean(avatarProfile && (
     avatarProfile.tryOnModelSource !== "none"
     || avatarProfile.studioModelImageUrl
@@ -430,16 +432,49 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
             ) : null}
           </Card>
 
+          {accessoryItems.length ? (
+            <Card className="space-y-4 border-cocoa/20 bg-gradient-to-br from-surfaceWarm to-canvas">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Complete the look</p>
+                  <p className="mt-1 text-base font-semibold text-ink">Accessories paired with this look</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">Styled alongside your preview so every finishing piece stays visible without changing the generated outfit.</p>
+                </div>
+                <Badge tone="premium">{accessoryItems.length}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {accessoryItems.map((item) => (
+                  <article key={item.key} className="min-w-0 rounded-2xl border border-cocoa/15 bg-white/70 p-2.5 shadow-sm">
+                    <button
+                      type="button"
+                      className="focus-ring block w-full rounded-2xl text-left"
+                      onClick={() => {
+                        if (!item.imageUrl) return;
+                        setViewingImage({ src: item.imageUrl, alt: item.name, title: item.name, subtitle: [item.color, item.category].filter(Boolean).join(" · ") });
+                      }}
+                      aria-label={`View accessory ${item.name}`}
+                    >
+                      <ImageFrame src={item.imageUrl} alt={item.name} aspect="square" fit="contain" placeholder={item.category} className="mb-2 bg-canvasSubtle" />
+                    </button>
+                    <Badge tone="premium">Paired with preview</Badge>
+                    <p className="mt-1 line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
+                    <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
+                  </article>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
           <Card className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cocoa">Styled Look</p>
-                <p className="mt-1 text-sm font-semibold text-ink">Pieces in this look</p>
+                <p className="mt-1 text-sm font-semibold text-ink">Garments and footwear</p>
               </div>
-              <Badge tone="neutral">{presentationItems.length}</Badge>
+              <Badge tone="neutral">{corePresentationItems.length}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-              {presentationItems.map((item) => (
+              {corePresentationItems.map((item) => (
                 <article key={item.key} className={item.source === "reference-upload" ? "rounded-2xl border border-cocoa/20 bg-cocoa/10 p-2" : "rounded-2xl border border-line bg-canvas/60 p-2"}>
                   <button
                     type="button"
