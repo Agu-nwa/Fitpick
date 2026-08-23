@@ -8,6 +8,7 @@ import { wardrobeUploadBatchSchema } from "../schemas/wardrobe.schema";
 import { MAX_IMAGE_UPLOAD_BYTES } from "../lib/image-upload-policy";
 import { perceptualHashDistance } from "../lib/image-processing/perceptual-hash";
 import { WardrobeUpload } from "../models/WardrobeUpload";
+import { WardrobeUploadBatch } from "../models/WardrobeUploadBatch";
 
 const id = (suffix: string) => `${"0".repeat(23)}${suffix}`;
 const candidate = (suffix: string, overrides: Partial<WardrobeBatchCandidate> = {}): WardrobeBatchCandidate => ({
@@ -23,6 +24,20 @@ assert.equal(wardrobeUploadBatchSchema.safeParse({ uploadIds: Array.from({ lengt
 assert.equal(wardrobeUploadBatchSchema.safeParse({ uploadIds: Array.from({ length: 11 }, (_, index) => `${String(index + 1).padStart(24, "0")}`) }).success, false, "a batch must contain no more than ten items");
 assert.equal(validateWardrobeBatchCandidates([candidate("1"), candidate("2")]).ok, true, "separate uploaded photos should be accepted");
 assert.equal(WARDROBE_BATCH_MAX_BYTES, 10 * MAX_IMAGE_UPLOAD_BYTES, "ten-item batches must retain the single-upload allowance for every item");
+
+const tenItemBatch = new WardrobeUploadBatch({
+  userId: id("1"),
+  uploadIds: Array.from({ length: 10 }, (_, index) => id(String(index + 1).slice(-1))),
+  itemCount: 10
+});
+assert.equal(tenItemBatch.validateSync(), undefined, "the persisted batch model must accept ten items");
+
+const elevenItemBatch = new WardrobeUploadBatch({
+  userId: id("1"),
+  uploadIds: Array.from({ length: 11 }, (_, index) => String(index + 1).padStart(24, "0")),
+  itemCount: 11
+});
+assert.ok(elevenItemBatch.validateSync()?.errors.itemCount, "the persisted batch model must reject more than ten items");
 
 const duplicateId = validateWardrobeBatchCandidates([candidate("1"), candidate("1", { sourceImageHash: "2".repeat(64) })]);
 assert.deepEqual(duplicateId.ok ? null : duplicateId.code, "duplicate_id", "the same upload record must not appear twice");
