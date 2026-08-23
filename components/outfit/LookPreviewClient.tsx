@@ -488,12 +488,12 @@ export function LookPreviewClient({ outfitId, initialOrigin }: { outfitId: strin
                   >
                     <ImageFrame src={item.imageUrl} alt={item.name} aspect="square" fit={item.source === "reference-upload" ? "contain" : "cover"} placeholder={item.category} className="mb-2" />
                   </button>
-                  {item.source === "reference-upload" ? <Badge tone="premium">Uploaded item</Badge> : null}
-                  {providerCompletedItemIds.has(item.id) ? <Badge tone="success">Provider pass complete</Badge> : null}
-                  {providerFailedItemIds.has(item.id) ? <Badge tone="warning">Provider pass failed</Badge> : null}
-                  {providerSkippedItemIds.has(item.id) ? <Badge tone="neutral">Not supported in preview</Badge> : null}
-                  {pendingItemIds.has(item.id) ? <Badge tone="info">Selected — finishing</Badge> : null}
-                  {previewState === "completed" && recommendationOnlyItemIds.has(item.id) ? <Badge tone="warning">Selected — not rendered</Badge> : null}
+                  {item.source === "reference-upload" ? <Badge tone="premium" wrap>Uploaded item</Badge> : null}
+                  {providerCompletedItemIds.has(item.id) ? <Badge tone="success" wrap>Provider pass complete</Badge> : null}
+                  {providerFailedItemIds.has(item.id) ? <Badge tone="warning" wrap>Provider pass failed</Badge> : null}
+                  {providerSkippedItemIds.has(item.id) ? <Badge tone="neutral" wrap>Not supported in preview</Badge> : null}
+                  {pendingItemIds.has(item.id) ? <Badge tone="info" wrap>Selected — finishing</Badge> : null}
+                  {previewState === "completed" && recommendationOnlyItemIds.has(item.id) ? <Badge tone="warning" wrap>Selected — not rendered</Badge> : null}
                   <p className="line-clamp-2 text-xs font-semibold leading-4 text-ink">{item.name}</p>
                   <p className="mt-1 truncate text-[11px] text-muted">{[item.color, item.category].filter(Boolean).join(" · ")}</p>
                 </article>

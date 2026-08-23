@@ -15,11 +15,13 @@ const tones: Record<BadgeTone, string> = {
 export function Badge({
   children,
   tone = "neutral",
-  className
+  className,
+  wrap = false
 }: {
   children: ReactNode;
   tone?: BadgeTone;
   className?: string;
+  wrap?: boolean;
 }) {
   return (
     <span
@@ -29,7 +31,7 @@ export function Badge({
         className
       )}
     >
-      <span className="truncate">{children}</span>
+      <span className={wrap ? "break-words text-center leading-4 whitespace-normal" : "truncate"}>{children}</span>
     </span>
   );
 }
