@@ -96,7 +96,7 @@ export function WardrobeBulkUploadClient() {
     const batch = await createWardrobeUploadBatch(readyUploadIds);
     setBusy(false);
     if (!batch.ok) { setMessage(safeUserMessage(batch.error, "We couldn’t create this upload batch. Please try again.")); return; }
-    router.push(`/wardrobe/bulk-upload/${batch.data.batch.id}`);
+    router.push(`/wardrobe?uploadBatch=${encodeURIComponent(batch.data.batch.id)}`);
   }
 
   return (
@@ -119,7 +119,7 @@ export function WardrobeBulkUploadClient() {
         </div>
         {message ? <p role="status" className="rounded-xl bg-canvasSubtle px-3 py-2 text-sm text-ink">{message}</p> : null}
         <div className="flex items-start gap-2 rounded-2xl border border-success/20 bg-success/5 p-3 text-xs leading-5 text-muted"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-success" aria-hidden="true" /><p>Nothing enters recommendations until you review and confirm that item. Duplicate photos are blocked.</p></div>
-        <Button type="button" className="w-full" disabled={!canSubmit} onClick={() => void prepareBatch()}>{busy ? `Preparing ${readyCount + 1} of ${photos.length}…` : "Analyze these items"}</Button>
+        <Button type="button" className="w-full" disabled={!canSubmit} onClick={() => void prepareBatch()}>{busy ? `Uploading ${readyCount + 1} of ${photos.length}…` : "Upload to closet"}</Button>
       </Card>
     </div>
   );

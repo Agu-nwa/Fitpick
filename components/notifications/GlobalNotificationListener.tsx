@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 
 const POLL_MS = 15_000;
 
-function isActionableTryOnNotification(notification: AppNotificationSummary) {
+function isActionableNotification(notification: AppNotificationSummary) {
   return (
     !notification.readAt &&
-    (notification.type === "virtual_tryon_ready" || notification.type === "virtual_tryon_failed")
+    (notification.type === "virtual_tryon_ready" || notification.type === "virtual_tryon_failed" || notification.type === "wardrobe_review_ready")
   );
 }
 
@@ -50,7 +50,7 @@ export default function GlobalNotificationListener() {
 
       const currentOutfitMatch = pathname.match(/^\/outfit\/([^/]+)(?:\/preview)?$/);
       const currentOutfitId = currentOutfitMatch?.[1] || "";
-      const actionable = result.data.notifications.filter(isActionableTryOnNotification);
+      const actionable = result.data.notifications.filter(isActionableNotification);
       const next = currentOutfitId
         ? actionable.find((candidate) => candidate.actionUrl.startsWith(`/outfit/${currentOutfitId}/`))
         : actionable[0];

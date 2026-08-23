@@ -20,11 +20,14 @@ import { validateTryOnVisualIntegrity } from "@/lib/tryon/visual-integrity";
 import { tryOnVisualRoleForItem } from "@/lib/tryon/provider-capabilities";
 import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
 import { enqueueJob } from "@/lib/jobs/queue";
+import { createWardrobeReviewReadyNotification } from "@/lib/notifications/app-notifications";
+import { logSafeError } from "@/lib/security/safe-log";
 import { runWardrobeEnrichmentJob } from "@/lib/wardrobe/enrichment";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { TryOnGeneration } from "@/models/TryOnGeneration";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeUpload } from "@/models/WardrobeUpload";
+import { WardrobeUploadBatch } from "@/models/WardrobeUploadBatch";
 import { generateStudioModelAssetByKey } from "@/lib/studio-model/catalog/asset-generator";
 import { runAccountDeletionJob } from "@/lib/account-deletion/account-deletion";
 
@@ -138,6 +141,22 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
   upload.aiAnalysis = result.aiAnalysis || null;
   upload.aiErrorSafeMessage = result.ok ? "" : result.safeMessage || "We could not suggest tags for this item. You can add them manually.";
   await upload.save();
+
+  if (upload.batchId) {
+    try {
+      const batch = await WardrobeUploadBatch.findOne({ _id: upload.batchId, userId: input.userId }).lean();
+      if (batch) {
+        const batchUploads = await WardrobeUpload.find({ _id: { $in: batch.uploadIds }, userId: input.userId }).select("aiTagStatus").lean();
+        const allReadyForReview = batchUploads.length === batch.itemCount && batchUploads.every((item) => ["suggested", "needs-review", "failed"].includes(item.aiTagStatus));
+        if (allReadyForReview) {
+          await createWardrobeReviewReadyNotification({ userId: input.userId, batchId: String(batch._id), itemCount: batch.itemCount });
+        }
+      }
+    } catch (error) {
+      // A notification must never make completed AI analysis retry or charge twice.
+      logSafeError("wardrobe.review.notification", error);
+    }
+  }
 
   if (!result.ok || !result.suggestedTags) {
     const failure = new Error(upload.aiErrorSafeMessage || "Wardrobe analysis failed.");

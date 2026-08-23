@@ -17,7 +17,7 @@ import { ProgressCard } from "@/components/ui/ProgressCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
-import { getWardrobe, type WardrobeListData } from "@/lib/api-client";
+import { getWardrobe, getWardrobeUploadBatch, type WardrobeListData, type WardrobeUploadBatchData } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import {
   buildWardrobeFacetOptions,
@@ -44,6 +44,39 @@ const emptySummary: WardrobeSummary = {
   countsByCategory: {},
   missingEssentials: []
 };
+
+function UploadBatchNotice({ batchId }: { batchId: string }) {
+  const [batch, setBatch] = useState<WardrobeUploadBatchData["batch"] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const result = await getWardrobeUploadBatch(batchId);
+      if (!cancelled && result.ok) setBatch(result.data.batch);
+    }
+    void load();
+    const timer = window.setInterval(() => void load(), 5000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [batchId]);
+
+  if (!batch || batch.status === "completed") return null;
+  const ready = batch.status === "review";
+  return (
+    <Card className={`mt-6 border-warning/30 p-4 ${ready ? "bg-warning/10" : "bg-canvas/70"}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-semibold text-ink">{ready ? "❗ Your uploaded items are ready to review" : "Your items are safely uploaded"}</p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            {ready
+              ? "Review and confirm the detected details. Until confirmed, these pieces stay out of Stylist recommendations to prevent inaccurate outfit suggestions."
+              : "MyFitPick is analyzing them in the background. You can keep using the app—we’ll prompt you when review is ready."}
+          </p>
+        </div>
+        {ready ? <Link href={`/wardrobe/bulk-upload/${batch.id}`} className="focus-ring inline-flex min-h-11 shrink-0 items-center justify-center rounded-2xl bg-cocoa px-5 text-sm font-semibold text-canvas">Review now</Link> : null}
+      </div>
+    </Card>
+  );
+}
 
 function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
   return (
@@ -481,6 +514,7 @@ export function WardrobeListClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const uploadBatchId = searchParams.get("uploadBatch") || "";
   const resultsRef = useRef<HTMLElement>(null);
   const revealContent = useRevealContent();
   const [wardrobe, setWardrobe] = useState<WardrobeListData | null>(null);
@@ -556,6 +590,7 @@ export function WardrobeListClient() {
   if (status === "empty") {
     return (
       <>
+        {uploadBatchId ? <UploadBatchNotice batchId={uploadBatchId} /> : null}
         <FilterToolbar
           filters={filters}
           colors={facetOptions.colors}
@@ -576,6 +611,7 @@ export function WardrobeListClient() {
 
   return (
     <>
+      {uploadBatchId ? <UploadBatchNotice batchId={uploadBatchId} /> : null}
       {taxonomyReviewCount > 0 ? <Card className="mt-6 flex flex-col gap-3 border-warning/25 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-ink">{taxonomyReviewCount} {taxonomyReviewCount === 1 ? "item needs" : "items need"} review</p><p className="mt-1 text-sm text-muted">Confirm shoes, sets and accessories to improve complete outfit suggestions.</p></div><Link href="/wardrobe/review" className="focus-ring inline-flex min-h-11 items-center justify-center rounded-2xl bg-cocoa px-5 text-sm font-semibold text-canvas">Start review</Link></Card> : null}
       <FilterToolbar
         filters={filters}

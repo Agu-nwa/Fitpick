@@ -2,7 +2,8 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 export const appNotificationTypes = [
   "virtual_tryon_ready",
-  "virtual_tryon_failed"
+  "virtual_tryon_failed",
+  "wardrobe_review_ready"
 ] as const;
 
 const AppNotificationSchema = new Schema(

@@ -7,7 +7,7 @@ import { User } from "@/models/User";
 
 type NotificationInput = {
   userId: string | Types.ObjectId;
-  type: "virtual_tryon_ready" | "virtual_tryon_failed";
+  type: "virtual_tryon_ready" | "virtual_tryon_failed" | "wardrobe_review_ready";
   title: string;
   body: string;
   actionLabel?: string;
@@ -181,6 +181,27 @@ export async function createTryOnFailedNotification(input: {
     entityId: input.generationId,
     dedupeKey: `tryon-failed:${input.generationId}`,
     metadata: { outfitId: String(input.outfitId) },
+    sendEmail: false
+  });
+}
+
+export async function createWardrobeReviewReadyNotification(input: {
+  userId: string | Types.ObjectId;
+  batchId: string | Types.ObjectId;
+  itemCount: number;
+}) {
+  const count = Math.max(1, Math.floor(input.itemCount));
+  return createAppNotification({
+    userId: input.userId,
+    type: "wardrobe_review_ready",
+    title: `❗ ${count === 1 ? "Your closet item is" : "Your closet items are"} ready to review`,
+    body: "Confirm the detected details so Stylist can use these pieces in accurate outfit recommendations.",
+    actionLabel: "Review items",
+    actionUrl: `/wardrobe/bulk-upload/${String(input.batchId)}`,
+    entityType: "WardrobeUploadBatch",
+    entityId: String(input.batchId),
+    dedupeKey: `wardrobe-review-ready:${String(input.batchId)}`,
+    metadata: { itemCount: count },
     sendEmail: false
   });
 }

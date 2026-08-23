@@ -9,6 +9,9 @@ import { MAX_IMAGE_UPLOAD_BYTES } from "../lib/image-upload-policy";
 import { perceptualHashDistance } from "../lib/image-processing/perceptual-hash";
 import { WardrobeUpload } from "../models/WardrobeUpload";
 import { WardrobeUploadBatch } from "../models/WardrobeUploadBatch";
+import { appNotificationTypes } from "../models/AppNotification";
+import fs from "node:fs";
+import path from "node:path";
 
 const id = (suffix: string) => `${"0".repeat(23)}${suffix}`;
 const candidate = (suffix: string, overrides: Partial<WardrobeBatchCandidate> = {}): WardrobeBatchCandidate => ({
@@ -67,5 +70,14 @@ assert.equal(
   undefined,
   "a new upload must allow an empty category until AI analysis and user review"
 );
+
+const projectRoot = path.resolve(import.meta.dirname, "..");
+const bulkUploadClient = fs.readFileSync(path.join(projectRoot, "components/wardrobe/WardrobeBulkUploadClient.tsx"), "utf8");
+const closetClient = fs.readFileSync(path.join(projectRoot, "components/wardrobe/WardrobeListClient.tsx"), "utf8");
+const reviewClient = fs.readFileSync(path.join(projectRoot, "components/wardrobe/WardrobeBatchReviewClient.tsx"), "utf8");
+assert.ok(bulkUploadClient.includes("/wardrobe?uploadBatch="), "batch upload should return users to the closet instead of trapping them on analysis");
+assert.ok(closetClient.includes("You can keep using the app—we’ll prompt you when review is ready."), "closet should explain background analysis");
+assert.ok(reviewClient.includes("❗ Review matters"), "review should prominently explain why confirmation matters");
+assert.ok(appNotificationTypes.includes("wardrobe_review_ready"), "wardrobe review-ready notifications must be supported");
 
 console.log("wardrobe batch upload tests passed");
