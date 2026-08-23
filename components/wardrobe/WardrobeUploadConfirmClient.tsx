@@ -91,12 +91,12 @@ function selectedDefaultsFromUpload(upload: WardrobeUploadRecord | null): AITagC
     category,
     subcategory,
     itemLabel,
-    primaryColor: stringValue(userInput.primaryColor) || stringValue(userInput.color),
-    fit: stringValue(userInput.fit),
-    formality: stringValue(userInput.formality),
-    occasions: stringList(userInput.occasions),
-    weather: stringList(userInput.weather),
-    fabric: stringValue(userInput.fabric) || stringValue(userInput.material),
+    primaryColor: stringValue(userInput.primaryColor) || stringValue(userInput.color) || stringValue(upload.suggestedTags?.color),
+    fit: stringValue(userInput.fit) || stringValue(upload.suggestedTags?.fit),
+    formality: stringValue(userInput.formality) || stringList(upload.suggestedTags?.formality)[0] || "",
+    occasions: stringList(userInput.occasions).length ? stringList(userInput.occasions) : stringList(upload.suggestedTags?.occasions),
+    weather: stringList(userInput.weather).length ? stringList(userInput.weather) : stringList(upload.suggestedTags?.weather),
+    fabric: stringValue(userInput.fabric) || stringValue(userInput.material) || stringValue(upload.suggestedTags?.fabric),
     size: stringValue(userInput.size),
     brand: stringValue(userInput.brand)
   };

@@ -19,6 +19,10 @@ assert.match(handlerSource, /throw failure;/, "failed wardrobe analysis must ent
 assert.doesNotMatch(confirmSource, /WardrobeImageSlots/, "manual confirmation must not repeat front, back, fabric, or label photo slots");
 assert.match(confirmSource, /manualMode=\{Boolean\(batchId\) \|\| !upload\.aiAnalysis\}/, "failed and batch reviews must use the direct manual form");
 assert.match(formSource, /useState\(manualMode\)/, "manual review details must be open immediately");
+assert.match(formSource, /\["category", "subcategory", "primaryColor"\]/, "manual review must show only the essential editable fields");
+assert.match(confirmSource, /upload\.suggestedTags\?\.color/, "manual review must prefill colour from degraded AI tags");
+assert.match(analysisSource, /wardrobe-analysis-basic-fallback/, "schema mismatch must preserve safe basic garment detections");
+assert.match(analysisSource, /if \(!category && !subcategory && !color\) return null/, "basic fallback must require usable garment evidence");
 
 const prepared = prepareWardrobeAnalysisCandidate({
   fields: {

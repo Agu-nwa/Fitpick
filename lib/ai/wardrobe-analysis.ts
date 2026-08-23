@@ -57,6 +57,61 @@ export function prepareWardrobeAnalysisCandidate(value: unknown, selectedCategor
   };
 }
 
+function basicFieldValue(candidate: any, key: string) {
+  return candidate?.fields?.[key]?.value;
+}
+
+function basicText(value: unknown, max = 80) {
+  if (typeof value === "string") return value.trim().slice(0, max);
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function basicList(value: unknown) {
+  if (Array.isArray(value)) return value.map((entry) => basicText(entry)).filter(Boolean).slice(0, 12);
+  const text = basicText(value, 240);
+  return text ? text.split(",").map((entry) => entry.trim()).filter(Boolean).slice(0, 12) : [];
+}
+
+function buildBasicWardrobeFallback(candidate: any, input: AiTaggingInput): AiTaggingResult | null {
+  const allowedCategories = new Set(["tops", "bottoms", "dresses", "native", "outerwear", "shoes", "bags", "accessories", "womens_hair"]);
+  const detectedCategory = basicText(input.selectedCategory || basicFieldValue(candidate, "category")).toLowerCase();
+  const category = allowedCategories.has(detectedCategory) ? detectedCategory as AiSuggestedWardrobeTags["category"] : undefined;
+  const subcategory = basicText(input.selectedCategoryLabel || basicFieldValue(candidate, "subcategory") || basicFieldValue(candidate, "garmentType"));
+  const color = basicText(basicFieldValue(candidate, "primaryColor"), 60);
+  if (!category && !subcategory && !color) return null;
+
+  const confidenceValues = ["category", "subcategory", "garmentType", "primaryColor", "pattern", "fabricEstimate", "fit"]
+    .map((key) => Number(candidate?.fields?.[key]?.confidence))
+    .filter((value) => Number.isFinite(value));
+  const confidence = confidenceValues.length
+    ? Math.max(0, Math.min(0.79, confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length))
+    : 0.45;
+  const brand = basicText(basicFieldValue(candidate, "brand"));
+  const name = [brand, color, subcategory || category].filter(Boolean).join(" ").trim().slice(0, 120);
+
+  return {
+    ok: true,
+    provider: "openai",
+    aiTagStatus: "needs-review",
+    confidence,
+    suggestedTags: {
+      ...(name ? { name } : {}),
+      ...(category ? { category } : {}),
+      subcategory,
+      color,
+      pattern: basicText(basicFieldValue(candidate, "pattern"), 60),
+      fabric: basicText(basicFieldValue(candidate, "fabricEstimate") || basicFieldValue(candidate, "fabricComposition"), 60),
+      fit: basicText(basicFieldValue(candidate, "fit") || basicFieldValue(candidate, "garmentFit"), 60),
+      formality: basicList(basicFieldValue(candidate, "formalityScore")),
+      occasions: basicList(basicFieldValue(candidate, "occasionSuitability")),
+      weather: basicList(basicFieldValue(candidate, "weatherSuitability")),
+      confidence,
+      needsReview: true
+    }
+  };
+}
+
 function withReviewWarning(analysis: WardrobeAiAnalysis, warning: string) {
   if (analysis.labelWarnings.includes(warning)) return analysis;
   return {
@@ -356,7 +411,22 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     failureStage = "schema_validation";
     const preparedCandidate = prepareWardrobeAnalysisCandidate(json.data, input.selectedCategory);
     const validated = validateJsonResponse(wardrobeAiAnalysisSchema.partial({ provider: true, model: true, status: true }), preparedCandidate);
-    if (!validated.ok) throw new Error(validated.reason);
+    if (!validated.ok) {
+      logAiEvent({
+        operation: "wardrobe-analysis-full",
+        model,
+        latencyMs: Date.now() - startedAt,
+        status: "failed",
+        errorCategory: "schema_validation",
+        validationIssue: validated.reason
+      });
+      const fallback = buildBasicWardrobeFallback(preparedCandidate, input);
+      if (fallback) {
+        logAiEvent({ operation: "wardrobe-analysis-basic-fallback", model, latencyMs: Date.now() - startedAt, status: "success", cacheHit: false });
+        return fallback;
+      }
+      throw new Error(validated.reason);
+    }
 
     const fallbackUploadIntelligence = buildImageQualityIntelligence({ images: input.images });
     failureStage = "final_validation";

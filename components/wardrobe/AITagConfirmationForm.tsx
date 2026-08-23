@@ -315,6 +315,10 @@ export function AITagConfirmationForm({
     return garmentMeasurementFields.filter((field) => allowed.has(field.key));
   }, [values.category, values.subcategory]);
   const visibleMeasurementKeys = useMemo(() => visibleMeasurementFields.map((field) => field.key), [visibleMeasurementFields]);
+  const editableReviewFields = useMemo(
+    () => manualMode ? reviewFields.filter((field) => ["category", "subcategory", "primaryColor"].includes(field.key)) : reviewFields,
+    [manualMode]
+  );
   const reviewSummary = useMemo(() => {
     const itemType = [values.primaryColor, values.subcategory || values.garmentType || values.category]
       .filter(Boolean)
@@ -519,7 +523,7 @@ export function AITagConfirmationForm({
 
         {editDetails ? (
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {reviewFields.map((field) => {
+            {editableReviewFields.map((field) => {
               const fieldId = `ai-field-${field.key}`;
               const original = fieldFromAnalysis(aiAnalysis, field.key);
               return (
