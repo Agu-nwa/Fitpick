@@ -79,6 +79,22 @@ export const canonicalTaxonomyDefinitions: CanonicalTaxonomyDefinition[] = [
   ...[["wig", "Wig"], ["hair_extension", "Hair Extension"], ["braiding_hair", "Braiding Hair"], ["ponytail_extension", "Ponytail Extension"], ["clip_in_extension", "Clip-In Extension"], ["hair_topper", "Hair Topper"], ["hair_bundle", "Hair Bundle"], ["closure", "Closure"], ["frontal", "Frontal"], ["hairpiece_other", "Other Hair Piece"]].map(([value, label]) => d({ value, label, category: "womens_hair", structureRole: "hair_piece", stylingRole: "other", visibilityRole: "appearance_item" }))
 ];
 
+// AI providers use open vocabulary. Keep recommendation data closed by mapping
+// common free-form descriptions onto stable canonical values at this boundary.
+const canonicalAliasOverrides: Record<string, string[]> = {
+  trousers: ["trouser", "dress trouser", "dress trousers", "formal trouser", "formal trousers", "suit trouser", "suit trousers", "tailored trouser", "tailored trousers"],
+  handbag: ["top handle bag", "top-handle bag", "top_handle_bag", "top handle purse", "structured top handle bag"],
+  loafers: ["loafer"],
+  oxfords: ["oxford", "oxford shoe", "oxford shoes"],
+  derbies: ["derby", "derby shoe", "derby shoes"],
+  sneakers: ["sneaker", "trainer", "trainers"],
+  heels: ["heel", "high heel", "high heels"]
+};
+
+for (const definition of canonicalTaxonomyDefinitions) {
+  definition.aliases = Array.from(new Set([...(definition.aliases || []), ...(canonicalAliasOverrides[definition.value] || [])]));
+}
+
 const byValue = new Map(canonicalTaxonomyDefinitions.map((entry) => [entry.value, entry]));
 const normalize = (value: unknown) => String(value || "").trim().toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
@@ -149,6 +165,18 @@ export function resolveCanonicalTaxonomy(item: any): ResolvedCanonicalTaxonomy {
 
 export function getCanonicalSubtypeOptions(category?: WardrobeCategory | string) {
   return canonicalTaxonomyDefinitions.filter((entry) => !category || entry.category === category);
+}
+
+export function canonicalizeDetectedSubtype(category: WardrobeCategory | string, detectedSubtype: unknown) {
+  const original = String(detectedSubtype || "").trim();
+  const definition = exactDefinition(original, category);
+  return {
+    detectedSubtype: original,
+    canonicalSubtype: definition?.value || "",
+    label: definition?.label || original.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    matched: Boolean(definition),
+    needsReview: !definition || Boolean(definition.needsReview)
+  };
 }
 
 export function getStructureRoleForSubtype(subtype: string) { return exactDefinition(subtype)?.structureRole || "unknown"; }

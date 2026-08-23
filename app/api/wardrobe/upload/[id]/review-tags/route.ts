@@ -9,6 +9,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { inferCondition, isObjectId, serializeWardrobeItem, serializeWardrobeUpload } from "@/lib/wardrobe";
 import { cleanGarmentMeasurements } from "@/lib/wardrobe/category-intelligence";
+import { resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 import { sanitizeCategorySpecificMetadata } from "@/lib/wardrobe/metadata-validation";
 import {
   buildRecommendationMetadata,
@@ -127,6 +128,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const parsed = validateBody(uploadTagReviewSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
+    const taxonomy = resolveCanonicalTaxonomy({
+      category: parsed.data.category,
+      canonicalSubtype: parsed.data.canonicalSubtype,
+      subcategory: parsed.data.subcategory,
+      name: parsed.data.name
+    });
+    if (!taxonomy.canonicalSubtype) {
+      return apiError("VALIDATION_ERROR", "Choose the closest available subcategory before saving.");
+    }
+
     const upload = await WardrobeUpload.findOne({ _id: id, userId: auth.user._id });
     if (!upload) return apiError("NOT_FOUND", "Wardrobe upload was not found.");
     if (upload.createdItemId) {
@@ -168,17 +179,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       name: parsed.data.name,
       category: parsed.data.category,
       subcategory: parsed.data.subcategory || "",
-      canonicalSubtype: parsed.data.canonicalSubtype || "",
-      structureRole: parsed.data.structureRole || "unknown",
-      stylingRole: parsed.data.stylingRole || "unknown",
-      setComponents: parsed.data.setComponents || [],
-      visibilityRole: parsed.data.visibilityRole || "unknown",
+      canonicalSubtype: taxonomy.canonicalSubtype,
+      structureRole: taxonomy.structureRole,
+      stylingRole: taxonomy.stylingRole,
+      setComponents: taxonomy.setComponents,
+      visibilityRole: taxonomy.visibilityRole,
       occasionRange: parsed.data.occasionRange || [],
-      formalityLevel: parsed.data.formalityLevel || "",
-      taxonomyConfidence: parsed.data.taxonomyConfidence ?? 0,
+      formalityLevel: parsed.data.formalityLevel || taxonomy.formalityLevel,
+      taxonomyConfidence: taxonomy.confidence,
       taxonomyEvidence: parsed.data.taxonomyEvidence || [],
-      taxonomyNeedsReview: parsed.data.taxonomyNeedsReview !== false,
-      taxonomyVersion: parsed.data.taxonomyVersion || "",
+      taxonomyNeedsReview: taxonomy.needsReview,
+      taxonomyVersion: taxonomy.taxonomyVersion,
       color: parsed.data.color,
       pattern: parsed.data.pattern || "",
       fabric: parsed.data.fabric || "",

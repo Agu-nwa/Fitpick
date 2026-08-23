@@ -14,6 +14,7 @@ import {
   WardrobeSaveSuccessState
 } from "@/components/wardrobe/WardrobeIntegrationStates";
 import { AITagConfirmationForm, type AITagConfirmationDefaults, type AITagConfirmationValues } from "@/components/wardrobe/AITagConfirmationForm";
+import { canonicalizeDetectedSubtype } from "@/lib/wardrobe/canonical-taxonomy";
 import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import { analyzeWardrobeUpload, confirmWardrobeUploadTags, getJobStatus, getWardrobeUpload, type WardrobeUploadRecord } from "@/lib/api-client";
@@ -78,12 +79,17 @@ function selectedDefaultsFromUpload(upload: WardrobeUploadRecord | null): AITagC
     categoryValue(upload.selectedCategory) ||
     categoryValue(upload.userInputMetadata?.category) ||
     categoryValue(upload.suggestedTags?.category);
-  const subcategory =
+  const detectedSubcategory =
     stringValue(upload.selectedCategoryLabel) ||
     stringValue(upload.userInputMetadata?.subcategory) ||
     stringValue(upload.suggestedTags?.subcategory) ||
     stringValue(upload.categorySpecificMetadata?.title);
-  const itemLabel = stringValue(upload.categorySpecificMetadata?.title) || subcategory;
+  const resolvedSubtype = canonicalizeDetectedSubtype(category, detectedSubcategory);
+  const subcategory = resolvedSubtype.matched ? resolvedSubtype.canonicalSubtype : detectedSubcategory;
+  const detectedTitle = stringValue(upload.categorySpecificMetadata?.title);
+  const itemLabel = detectedTitle
+    ? canonicalizeDetectedSubtype(category, detectedTitle).label
+    : resolvedSubtype.label || subcategory;
   const userInput = upload.userInputMetadata || {};
 
   if (!category && !subcategory && !itemLabel) return undefined;

@@ -8,7 +8,7 @@ import { useRevealContent } from "@/hooks/use-reveal-content";
 import type { WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { confidenceLabel, garmentMeasurementKeysForCategory } from "@/lib/wardrobe/category-intelligence";
 import type { FabricDrape, GarmentFit, GarmentMeasurements, MeasurementSource, SizeSystem, StretchLevel, TaggedSize, WardrobeCategory, WardrobeCondition, WardrobeItem } from "@/types/wardrobe";
-import { getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
+import { canonicalizeDetectedSubtype, getCanonicalSubtypeOptions, resolveCanonicalTaxonomy } from "@/lib/wardrobe/canonical-taxonomy";
 
 type FieldKind = "text" | "list" | "category";
 
@@ -58,7 +58,7 @@ export type AITagConfirmationDefaults = {
 
 const reviewFields: FieldConfig[] = [
   { key: "category", label: "Category", kind: "category", required: true },
-  { key: "subcategory", label: "Subcategory" },
+  { key: "subcategory", label: "Subcategory", required: true },
   { key: "primaryColor", label: "Colour", required: true },
   { key: "fit", label: "Fit" },
   { key: "formalityScore", label: "Formality" },
@@ -343,11 +343,21 @@ export function AITagConfirmationForm({
     if (!aiAnalysis) warnings.push("AI details need review");
     return warnings.slice(0, 5);
   }, [aiAnalysis, lowConfidenceCount, values.category, values.occasionSuitability, values.primaryColor, values.weatherSuitability]);
+  const hasDetectedBasics = Boolean(values.category && values.subcategory && values.primaryColor);
+  const subtypeResolution = useMemo(
+    () => canonicalizeDetectedSubtype(values.category, values.subcategory),
+    [values.category, values.subcategory]
+  );
+
+  useEffect(() => {
+    if (!subtypeResolution.matched) setEditDetails(true);
+  }, [subtypeResolution.matched]);
 
   useEffect(() => {
     const next = initialValues;
     setValues(next);
-    setName([next.brand, next.primaryColor, next.garmentType || next.subcategory].filter(Boolean).join(" ").trim() || selectedDefaults?.itemLabel || selectedDefaults?.subcategory || "");
+    const friendlySubtype = canonicalizeDetectedSubtype(next.category, next.garmentType || next.subcategory).label;
+    setName([next.brand, next.primaryColor, friendlySubtype].filter(Boolean).join(" ").trim() || selectedDefaults?.itemLabel || friendlySubtype || "");
     const sizeField = fieldFromAnalysis(aiAnalysis, "taggedSize")?.value || fieldFromAnalysis(aiAnalysis, "size")?.value;
     const fitField = fieldFromAnalysis(aiAnalysis, "garmentFit")?.value || fieldFromAnalysis(aiAnalysis, "fit")?.value;
     setTaggedSize(normalizeTaggedSize(sizeField));
@@ -412,6 +422,12 @@ export function AITagConfirmationForm({
       revealContent(errorRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
       return;
     }
+    if (!taxonomy.canonicalSubtype) {
+      setError("Choose the closest available subcategory before saving.");
+      setEditDetails(true);
+      revealContent(errorRef, { delayMs: 60, topOffset: 24, bottomOffset: 136 });
+      return;
+    }
 
     const parsedGarmentMeasurements = Object.fromEntries(
       visibleMeasurementFields
@@ -430,7 +446,12 @@ export function AITagConfirmationForm({
       visibilityRole: taxonomy.visibilityRole,
       formalityLevel: taxonomy.formalityLevel,
       taxonomyConfidence: taxonomy.confidence,
-      taxonomyEvidence: taxonomy.evidence,
+      taxonomyEvidence: [
+        ...taxonomy.evidence,
+        ...(selectedDefaults?.subcategory && selectedDefaults.subcategory !== taxonomy.canonicalSubtype
+          ? [`detected-subtype:${selectedDefaults.subcategory.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`]
+          : [])
+      ].slice(0, 12),
       taxonomyNeedsReview: taxonomy.needsReview,
       taxonomyVersion: taxonomy.taxonomyVersion,
       color: primaryColor,
@@ -470,7 +491,9 @@ export function AITagConfirmationForm({
         ) : null}
         {!aiAnalysis ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
-            MyFitPick could not read enough details. Review the basics and save the piece.
+            {hasDetectedBasics
+              ? "Basics detected. Confirm them before saving. We’ll enrich styling details where possible."
+              : "We couldn’t identify all required details. Add the missing basics to continue."}
           </p>
         ) : null}
         <div className="mt-3">
@@ -520,6 +543,13 @@ export function AITagConfirmationForm({
           Edit details
           <span className="text-xs font-bold uppercase tracking-[0.14em] text-cocoa">{editDetails ? "Close" : "Optional"}</span>
         </button> : <p className="px-2 py-2 text-sm font-semibold text-ink">Required details</p>}
+
+        {!subtypeResolution.matched ? (
+          <div className="mt-3 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-3 text-xs leading-5 text-ink">
+            <p className="font-semibold">{values.subcategory ? <>We found “{subtypeResolution.label}” but could not match it confidently.</> : <>We could not identify a subcategory confidently.</>}</p>
+            <p className="mt-1 text-muted">Choose the closest subcategory below before saving.</p>
+          </div>
+        ) : null}
 
         {editDetails ? (
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -583,7 +613,7 @@ export function AITagConfirmationForm({
         {!manualMode ? <Button type="button" variant="secondary" onClick={() => setEditDetails((current) => !current)} disabled={disabled}>
           {editDetails ? "Hide edits" : "Edit details"}
         </Button> : null}
-        <Button type="submit" className="w-full" disabled={disabled}>
+        <Button type="submit" className="w-full" disabled={disabled || !subtypeResolution.matched}>
           Save to closet
         </Button>
       </div>

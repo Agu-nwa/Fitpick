@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getCanonicalSubtypeOptions, isCanonicalTaxonomyComplete, resolveCanonicalTaxonomy } from "../lib/wardrobe/canonical-taxonomy";
+import { canonicalizeDetectedSubtype, getCanonicalSubtypeOptions, isCanonicalTaxonomyComplete, resolveCanonicalTaxonomy } from "../lib/wardrobe/canonical-taxonomy";
 import { intakeCategories } from "../lib/wardrobe/category-intelligence";
 import { wardrobeReadiness } from "../lib/recommendation/gaps";
 
@@ -39,6 +39,20 @@ assert.equal(resolved("accessories", "Hair Clip").stylingRole, "hair_accessory")
 assert.equal(resolved("bags", "Handbag").visibilityRole, "primary_carry");
 assert.equal(resolved("bags", "Wallet").visibilityRole, "small_leather_good");
 assert.equal(resolved("bags", "Travel Bag").visibilityRole, "travel_luggage");
+assert.equal(resolved("bottoms", "dress trouser").canonicalSubtype, "trousers");
+assert.equal(resolved("bottoms", "formal_trousers").canonicalSubtype, "trousers");
+assert.equal(resolved("bags", "top_handle_bag").canonicalSubtype, "handbag");
+assert.equal(resolved("shoes", "loafer").canonicalSubtype, "loafers");
+assert.deepEqual(canonicalizeDetectedSubtype("bags", "top_handle_bag"), {
+  detectedSubtype: "top_handle_bag",
+  canonicalSubtype: "handbag",
+  label: "Handbag",
+  matched: true,
+  needsReview: false
+});
+assert.equal(canonicalizeDetectedSubtype("bags", "new futuristic purse").matched, false);
+assert.equal(canonicalizeDetectedSubtype("bags", "new_futuristic_purse").label, "New Futuristic Purse");
+assert.equal(resolveCanonicalTaxonomy({ category: "bags", subcategory: "new futuristic purse" }).canonicalSubtype, "");
 
 for (const subtype of ["slides", "mules", "pumps", "oxfords", "slippers"]) {
   const item = resolved("shoes", subtype);
