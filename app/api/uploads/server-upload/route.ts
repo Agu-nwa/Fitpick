@@ -10,7 +10,6 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
-import { backgroundRemovalConfigured, removeImageBackground } from "@/lib/image-processing/background-removal";
 import { createHash } from "node:crypto";
 import { createPerceptualImageHash } from "@/lib/image-processing/perceptual-hash";
 
@@ -51,8 +50,8 @@ export async function POST(request: NextRequest) {
       purpose: `${parsedPurpose.data}_original`
     });
     const originalUploaded = await uploadImageObject({ storageKey: originalStorageKey, mimeType: normalized.mimeType, body: normalized.buffer });
-    const shouldRemoveBackground = parsedPurpose.data.startsWith("wardrobe_");
-    let processed = {
+    // Preserve the normalized original. Clear, contrasting photo guidance now replaces paid background removal.
+    const processed = {
       applied: false,
       buffer: normalized.buffer,
       mimeType: normalized.mimeType,
@@ -60,15 +59,8 @@ export async function POST(request: NextRequest) {
       width: normalized.width,
       height: normalized.height,
       provider: "",
-      state: shouldRemoveBackground ? "background_removal_unavailable" : "not_requested"
+      state: "not_requested"
     };
-    if (shouldRemoveBackground && backgroundRemovalConfigured()) {
-      try {
-        processed = await removeImageBackground({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
-      } catch (error) {
-        logSafeError("uploads.background-removal", error, { provider: "remove_bg", status: "failed" });
-      }
-    }
     const storageKey = createStorageKey({
       userId: String(auth.user._id),
       filename: processed.filename,

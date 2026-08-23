@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { createWardrobeUploadBatch, uploadImageViaServer, uploadWardrobeMetadata } from "@/lib/api-client";
 import { safeUploadErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 
-type SelectedPhoto = { file: File; previewUrl: string; state: "selected" | "uploading" | "ready" | "failed"; message?: string; uploadId?: string; backgroundRemoved?: boolean };
+type SelectedPhoto = { file: File; previewUrl: string; state: "selected" | "uploading" | "ready" | "failed"; message?: string; uploadId?: string };
 
 export function WardrobeBulkUploadClient() {
   const router = useRouter();
@@ -18,17 +18,24 @@ export function WardrobeBulkUploadClient() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const readyCount = photos.filter((photo) => photo.state === "ready").length;
-  const canSubmit = photos.length >= 2 && photos.length <= 5 && !busy;
+  const canSubmit = photos.length >= 2 && photos.length <= 10 && !busy;
   const totalMb = useMemo(() => photos.reduce((sum, photo) => sum + photo.file.size, 0) / 1024 / 1024, [photos]);
 
   function chooseFiles(files: FileList | null) {
     if (!files) return;
-    const selected = Array.from(files).slice(0, 5);
+    const allSelected = Array.from(files);
+    const selected = allSelected.slice(0, 10);
     setPhotos((current) => {
       current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
       return selected.map((file) => ({ file, previewUrl: URL.createObjectURL(file), state: "selected" }));
     });
-    setMessage(selected.length < 2 ? "Choose at least two separate closet items." : "");
+    setMessage(
+      allSelected.length > 10
+        ? "You can upload up to 10 items at once. The first 10 were selected."
+        : selected.length < 2
+          ? "Choose at least two separate closet items."
+          : ""
+    );
   }
 
   function removePhoto(index: number) {
@@ -56,7 +63,6 @@ export function WardrobeBulkUploadClient() {
         continue;
       }
       const asset = uploaded.data.upload;
-      const backgroundMessage = asset.backgroundRemovalApplied ? "Background removed · Ready" : "Ready · Original background kept";
       const recorded = await uploadWardrobeMetadata({
         filename: asset.filename || working[index].file.name,
         mimeType: asset.mimeType,
@@ -77,7 +83,7 @@ export function WardrobeBulkUploadClient() {
         setPhotos([...working]);
         continue;
       }
-      working[index] = { ...working[index], state: "ready", message: backgroundMessage, uploadId: recorded.data.upload.id, backgroundRemoved: asset.backgroundRemovalApplied };
+      working[index] = { ...working[index], state: "ready", message: "Ready", uploadId: recorded.data.upload.id };
       setPhotos([...working]);
     }
 
@@ -98,7 +104,12 @@ export function WardrobeBulkUploadClient() {
       <Card className="space-y-5">
         <div className="flex items-start gap-3">
           <span className="rounded-xl bg-cocoa/10 p-2 text-cocoa"><Images size={22} aria-hidden="true" /></span>
-          <div><h2 className="text-lg font-semibold text-ink">Add 2–5 separate items</h2><p className="mt-1 text-sm leading-6 text-muted">Use one clear photo per fashion item. MyFitPick analyzes every photo separately.</p></div>
+          <div><h2 className="text-lg font-semibold text-ink">Add 2–10 separate items</h2><p className="mt-1 text-sm leading-6 text-muted">Use one clear photo per fashion item. MyFitPick analyzes every photo separately.</p></div>
+        </div>
+        <div className="rounded-2xl border border-line bg-canvas/60 p-4 text-xs leading-5 text-muted">
+          <p className="font-semibold text-ink">For the most accurate item details</p>
+          <p className="mt-1">Lay or hang one item flat against a plain, uncluttered background that contrasts with it—light behind dark clothes and dark behind light clothes. Show the whole item, use bright even lighting, keep colours true, avoid shadows, hands, people and overlapping garments, and make sure logos, patterns, neckline, sleeves and hem are sharp and visible.</p>
+          <p className="mt-2">Use one photo per item here. You can add close-up label photos during individual review when you want brand, size or fabric text read accurately.</p>
         </div>
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="sr-only" onChange={(event) => chooseFiles(event.target.files)} />
         <Button type="button" variant="secondary" className="w-full" onClick={() => inputRef.current?.click()} disabled={busy}><Upload size={17} aria-hidden="true" />Choose item photos</Button>

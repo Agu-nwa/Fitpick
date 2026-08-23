@@ -483,7 +483,7 @@ export function WardrobeAddClient() {
       ...(input.original ? { variants: { original: input.original } } : {})
     });
 
-    // Wardrobe images use the server path so background removal cannot be bypassed by a direct S3 upload.
+    // Wardrobe images use the server path for consistent normalization, hashing and validation.
     const prepared = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
     if (prepared.ok) {
       const original = prepared.data.upload.original;
@@ -829,7 +829,7 @@ export function WardrobeAddClient() {
                   2 of 2
                 </p>
                 <h2 className="font-editorial mt-1 text-3xl font-semibold leading-none text-ink">Add clear item photos</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">Use a full front and back view.</p>
+                <p className="mt-2 text-sm leading-6 text-muted">Use a full front and back view against a plain, contrasting background.</p>
               </div>
               <Badge tone={!missingRequired.length ? "success" : "warning"}>{selectedCount} added</Badge>
             </div>
@@ -841,6 +841,12 @@ export function WardrobeAddClient() {
                   <p className="mt-1 text-[11px] leading-4 text-muted">{guide.body}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="rounded-2xl border border-line bg-canvas/60 p-4 text-xs leading-5 text-muted">
+              <p className="font-semibold text-ink">Help the AI see the real item</p>
+              <p className="mt-1">Lay or hang it flat with the full outline visible. Use bright, even light and a clean background that contrasts with the item. Avoid people, hands, strong shadows, filters, clutter and other overlapping clothes. Keep patterns, logos, neckline, sleeves and hem in sharp focus.</p>
+              <p className="mt-2">Photograph the label separately for reliable brand, tagged size and fabric details.</p>
             </div>
 
             <div

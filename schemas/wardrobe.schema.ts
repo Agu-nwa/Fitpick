@@ -294,7 +294,7 @@ export const uploadMetadataSchema = z.object({
 });
 
 export const wardrobeUploadBatchSchema = z.object({
-  uploadIds: z.array(objectId).min(2, "Choose at least two items.").max(5, "Upload up to five items at once.")
+  uploadIds: z.array(objectId).min(2, "Choose at least two items.").max(10, "Upload up to 10 items at once.")
 });
 
 export const uploadTagReviewSchema = withCategoryAwareGarmentMeasurements(

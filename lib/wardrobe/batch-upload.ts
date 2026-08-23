@@ -1,6 +1,9 @@
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-upload-policy";
+
 export const WARDROBE_BATCH_MIN_ITEMS = 2;
-export const WARDROBE_BATCH_MAX_ITEMS = 5;
-export const WARDROBE_BATCH_MAX_BYTES = 25 * 1024 * 1024;
+export const WARDROBE_BATCH_MAX_ITEMS = 10;
+// Every candidate has already passed the single-image normalization limit before batching.
+export const WARDROBE_BATCH_MAX_BYTES = WARDROBE_BATCH_MAX_ITEMS * MAX_IMAGE_UPLOAD_BYTES;
 
 export type WardrobeBatchCandidate = {
   id: string;
@@ -18,7 +21,7 @@ export type WardrobeBatchValidation =
 
 export function validateWardrobeBatchCandidates(candidates: WardrobeBatchCandidate[]): WardrobeBatchValidation {
   if (candidates.length < WARDROBE_BATCH_MIN_ITEMS || candidates.length > WARDROBE_BATCH_MAX_ITEMS) {
-    return { ok: false, code: "count", message: "Choose between 2 and 5 separate closet items." };
+    return { ok: false, code: "count", message: "Choose between 2 and 10 separate closet items." };
   }
 
   const ids = candidates.map((candidate) => candidate.id);
@@ -32,7 +35,7 @@ export function validateWardrobeBatchCandidates(candidates: WardrobeBatchCandida
 
   const totalBytes = candidates.reduce((sum, candidate) => sum + Number(candidate.sizeBytes || 0), 0);
   if (totalBytes > WARDROBE_BATCH_MAX_BYTES) {
-    return { ok: false, code: "too_large", message: "This batch is too large. Choose fewer or smaller photos." };
+    return { ok: false, code: "too_large", message: "Each prepared photo must be under 50 MB. Choose fewer or smaller photos." };
   }
 
   const hashes = candidates
