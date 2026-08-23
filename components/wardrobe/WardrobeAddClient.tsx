@@ -29,7 +29,6 @@ import { useSession } from "@/hooks/use-session";
 import {
   analyzeWardrobeUpload,
   confirmWardrobeUploadTags,
-  requestSignedUploadUrl,
   uploadImageViaServer,
   uploadWardrobeMetadata
 } from "@/lib/api-client";
@@ -501,91 +500,6 @@ export function WardrobeAddClient() {
       });
     }
     throw new Error(safeUploadErrorMessage(prepared.error, "We couldn’t upload this image. Try another photo."));
-
-    if (slot.serverNormalizationRequired) {
-      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
-      if (fallback.ok) {
-        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
-        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true, normalizedOnServer: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
-      }
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "server_normalization_failed" } });
-      throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
-    }
-
-    const signed = await requestSignedUploadUrl({
-      filename: slot.file.name,
-      mimeType,
-      sizeBytes: slot.file.size,
-      purpose: `wardrobe_${purpose}`
-    });
-    setUploadProgress((current) => ({ ...current, [progressKey]: 45 }));
-
-    if (!signed.ok) {
-      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
-      if (fallback.ok) {
-        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
-        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
-      }
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "upload_access_failed" } });
-      throw new Error(safeUploadErrorMessage(signed.error, safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo.")));
-    }
-
-    const uploadAccess = signed.data.upload;
-    const uploadUrl = uploadAccess.uploadUrl;
-    if (!uploadAccess.ready || !uploadUrl) {
-      throw new Error(safeUploadErrorMessage(uploadAccess.message, "We couldn’t upload this image. Try another photo."));
-    }
-
-    try {
-      setUploadProgress((current) => ({ ...current, [progressKey]: 72 }));
-      const s3Response = await fetch(uploadUrl, {
-        method: uploadAccess.method || "PUT",
-        headers: uploadAccess.headers || { "content-type": mimeType },
-        body: slot.file
-      });
-
-      if (!s3Response.ok) throw new Error("direct_upload_failed");
-
-      const publicUrl = uploadAccess.publicUrl || uploadAccess.uploadUrl?.split("?")[0] || "";
-      setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: false } });
-      return makeUploadedSlot({ url: publicUrl, storageKey: uploadAccess.storageKey });
-    } catch {
-      const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
-      if (fallback.ok) {
-        setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
-        Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_completed", level: "info", data: { purpose, source: slot.source, fallback: true } });
-        return makeUploadedSlot({
-          url: fallback.data.upload.publicUrl,
-          storageKey: fallback.data.upload.storageKey,
-          filename: fallback.data.upload.filename,
-          mimeType: fallback.data.upload.mimeType,
-          sizeBytes: fallback.data.upload.sizeBytes,
-          width: fallback.data.upload.width,
-          height: fallback.data.upload.height
-        });
-      }
-      Sentry.addBreadcrumb({ category: "wardrobe.image_upload", message: "wardrobe_image_upload_failed", level: "error", data: { purpose, source: slot.source, reason: "direct_upload_failed" } });
-      throw new Error(safeUploadErrorMessage(fallback.error, "We couldn’t upload this image. Try another photo."));
-    }
   }
 
   async function handlePhotoUpload() {

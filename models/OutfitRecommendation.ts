@@ -108,7 +108,18 @@ const OutfitRecommendationSchema = new Schema(
     reuseKey: { type: String, default: "", maxlength: 96, index: true },
     reasoningMetadata: { type: Schema.Types.Mixed, default: {} },
     savedAt: { type: Date, default: null, index: true },
-    favorite: { type: Boolean, default: false, index: true }
+    favorite: { type: Boolean, default: false, index: true },
+    feedback: {
+      liked: { type: Boolean, default: null },
+      rating: { type: Number, default: null, min: 1, max: 5 },
+      tags: { type: [String], default: [] },
+      reason: { type: String, default: "", maxlength: 240 },
+      itemFeedback: {
+        type: [{ itemId: { type: Schema.Types.ObjectId, ref: "WardrobeItem" }, liked: Boolean, reason: { type: String, default: "", maxlength: 120 } }],
+        default: []
+      },
+      updatedAt: { type: Date, default: null }
+    }
   },
   { timestamps: true }
 );

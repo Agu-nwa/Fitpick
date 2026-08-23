@@ -109,6 +109,14 @@ export type OutfitRecommendation = {
   source?: "rule_based" | "manual" | "ai" | "outfit_page" | "stylist_chat" | "system" | string;
   savedAt?: string | null;
   favorite?: boolean;
+  feedback?: {
+    liked: boolean | null;
+    rating: number | null;
+    tags: string[];
+    reason: string;
+    itemFeedback: Array<{ itemId: string; liked: boolean; reason: string }>;
+    updatedAt: string | null;
+  } | null;
   createdAt?: string;
   preview?: {
     status: "not_started" | "generating" | "ready" | "failed" | string;

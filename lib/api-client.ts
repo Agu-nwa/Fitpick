@@ -1004,6 +1004,7 @@ export const wearOutfit = (id: string, body: unknown) => apiRequest(`/api/outfit
 export const submitOutfitFeedback = (id: string, body: unknown) => apiRequest(`/api/outfits/${id}/feedback`, { method: "POST", body });
 export const getFashionMemorySummary = () => apiRequest<FashionMemoryData>("/api/fashion-memory", { cache: "no-store" });
 export const recordFashionMemory = (event: unknown) => apiRequest<FashionMemoryData>("/api/fashion-memory", { method: "POST", body: event });
+export const clearFashionMemory = () => apiRequest<{ revokedCount: number; summary: FashionMemorySummary }>("/api/fashion-memory", { method: "DELETE" });
 export const getWallet = () => apiRequest<CreditWalletData>("/api/wallet", { cache: "no-store" });
 export const getPaymentProviders = () => apiRequest<PaymentProvidersData>("/api/payments/providers", { cache: "no-store" });
 export const getPaymentPurchases = () => apiRequest<PaymentPurchasesData>("/api/payments/purchases", { cache: "no-store" });

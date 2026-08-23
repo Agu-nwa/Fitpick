@@ -7,6 +7,7 @@ import { Images, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { createWardrobeUploadBatch, uploadImageViaServer, uploadWardrobeMetadata } from "@/lib/api-client";
+import { safeUploadErrorMessage, safeUserMessage } from "@/lib/user-facing-errors";
 
 type SelectedPhoto = { file: File; previewUrl: string; state: "selected" | "uploading" | "ready" | "failed"; message?: string; uploadId?: string; backgroundRemoved?: boolean };
 
@@ -50,7 +51,7 @@ export function WardrobeBulkUploadClient() {
       setPhotos([...working]);
       const uploaded = await uploadImageViaServer({ file: working[index].file, purpose: "wardrobe_original" });
       if (!uploaded.ok) {
-        working[index] = { ...working[index], state: "failed", message: uploaded.error.message };
+        working[index] = { ...working[index], state: "failed", message: safeUploadErrorMessage(uploaded.error, "We couldn’t upload this photo. Try another image.") };
         setPhotos([...working]);
         continue;
       }
@@ -72,7 +73,7 @@ export function WardrobeBulkUploadClient() {
         userInputMetadata: { intakeMode: "multi_item_batch", primaryImagePurpose: "front", photoCount: 1 }
       });
       if (!recorded.ok) {
-        working[index] = { ...working[index], state: "failed", message: recorded.error.message };
+        working[index] = { ...working[index], state: "failed", message: safeUserMessage(recorded.error, "We couldn’t prepare this closet item. Try again.") };
         setPhotos([...working]);
         continue;
       }
@@ -88,7 +89,7 @@ export function WardrobeBulkUploadClient() {
     }
     const batch = await createWardrobeUploadBatch(readyUploadIds);
     setBusy(false);
-    if (!batch.ok) { setMessage(batch.error.message); return; }
+    if (!batch.ok) { setMessage(safeUserMessage(batch.error, "We couldn’t create this upload batch. Please try again.")); return; }
     router.push(`/wardrobe/bulk-upload/${batch.data.batch.id}`);
   }
 

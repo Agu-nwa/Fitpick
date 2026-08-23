@@ -89,6 +89,16 @@ export async function POST(
       return apiError("BAD_REQUEST", "Feedback contains an item outside this outfit.");
     }
 
+    outfit.feedback = {
+      liked: parsed.data.liked,
+      rating: parsed.data.rating || (parsed.data.liked ? 5 : 1),
+      tags: parsed.data.feedbackTags || [],
+      reason: parsed.data.reason || "",
+      itemFeedback: parsed.data.itemFeedback || [],
+      updatedAt: new Date()
+    } as any;
+    await outfit.save();
+
     const preferences =
       await StylePreference.findOne({
         userId: auth.user._id

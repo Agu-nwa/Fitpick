@@ -31,6 +31,7 @@ import { safeTryOnErrorMessage, safeUserMessage, safeUserMessages } from "@/lib/
 import type { AvatarProfileData } from "@/lib/api-client";
 import type { OutfitRecommendation } from "@/types/outfit";
 import { OutfitPreview } from "@/components/outfit/OutfitPreview";
+import { Heart, HeartOff, ThumbsDown, ThumbsUp } from "lucide-react";
 
 const swapDirections = [
   { value: "best-match", label: "Best match" },
@@ -54,7 +55,11 @@ const feedbackTags = [
   { label: "Too formal", value: "too-formal" },
   { label: "Wrong color", value: "wrong-color" },
   { label: "Weather issue", value: "weather-issue" },
-  { label: "Needs polish", value: "needs-polish" }
+  { label: "Wrong item", value: "wrong-item" },
+  { label: "Wrong fit", value: "wrong-fit" },
+  { label: "Uncomfortable", value: "uncomfortable" },
+  { label: "Already worn", value: "already-worn" },
+  { label: "Not my style", value: "not-my-style" }
 ];
 
 function Notes({ outfit }: { outfit: OutfitRecommendation }) {
@@ -121,6 +126,8 @@ export function OutfitResult({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [rating, setRating] = useState(4);
   const [selectedFeedbackTags, setSelectedFeedbackTags] = useState<string[]>([]);
+  const [feedbackState, setFeedbackState] = useState<boolean | null>(outfit.feedback?.liked ?? null);
+  const [itemFeedback, setItemFeedback] = useState<Record<string, { liked: boolean; reason: string }>>(() => Object.fromEntries((outfit.feedback?.itemFeedback || []).map((entry) => [entry.itemId, { liked: entry.liked, reason: entry.reason }])));
   const [toast, setToast] = useState("");
   const [isSaved, setIsSaved] = useState(Boolean(outfit.savedAt));
   const [actionFailed, setActionFailed] = useState(false);
@@ -233,10 +240,11 @@ export function OutfitResult({
   async function handleFeedback() {
     setActionFailed(false);
     const liked = rating >= 4;
-    const result = await submitOutfitFeedback(outfit.id, { liked, reason: selectedFeedbackTags.join(", ") });
-    await remember(liked ? "outfit_liked" : "outfit_disliked", rating, selectedFeedbackTags.join(", "));
+    const result = await submitOutfitFeedback(outfit.id, { liked, rating, feedbackTags: selectedFeedbackTags, reason: selectedFeedbackTags.join(", "), itemFeedback: Object.entries(itemFeedback).map(([itemId, entry]) => ({ itemId, ...entry })) });
     if (result.ok) {
-      setToast("Refine my style saved");
+      await remember(liked ? "outfit_liked" : "outfit_disliked", rating, selectedFeedbackTags.join(", "));
+      setFeedbackState(liked);
+      setToast(liked ? "You liked this look" : "You disliked this look");
       window.setTimeout(() => setToast(""), 1800);
       setFeedbackOpen(false);
       return;
@@ -244,11 +252,13 @@ export function OutfitResult({
     setActionFailed(true);
   }
 
-  async function handleQuickMemory(type: "outfit_liked" | "outfit_rejected") {
+  async function handleQuickFeedback(liked: boolean) {
     setActionFailed(false);
-    const result = await remember(type, type === "outfit_liked" ? 5 : 1, type === "outfit_liked" ? "Liked from outfit UI" : "Not my style");
+    const result = await submitOutfitFeedback(outfit.id, { liked, rating: liked ? 5 : 1, feedbackTags: liked ? ["great-combination"] : ["not-my-style"], itemFeedback: Object.entries(itemFeedback).map(([itemId, entry]) => ({ itemId, ...entry })) });
     if (result.ok) {
-      setToast(type === "outfit_liked" ? "Refined your style" : "Not my style saved");
+      await remember(liked ? "outfit_liked" : "outfit_disliked", liked ? 5 : 1, liked ? "Liked from outfit UI" : "Not my style");
+      setFeedbackState(liked);
+      setToast(liked ? "You liked this look" : "You disliked this look");
       window.setTimeout(() => setToast(""), 1800);
       return;
     }
@@ -534,15 +544,15 @@ export function OutfitResult({
       {actionFailed ? <div className="mt-6"><OutfitApiErrorState /></div> : null}
 
       <CTABar className="mt-6 grid grid-cols-2 gap-2">
-        {canSwap ? <Button onClick={() => void handleQuickMemory("outfit_liked")}>Refine my style</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
+        {canSwap ? <Button aria-pressed={feedbackState === true} variant={feedbackState === true ? "primary" : "secondary"} onClick={() => void handleQuickFeedback(true)}><ThumbsUp size={17} aria-hidden="true" />{feedbackState === true ? "Liked" : "Like"}</Button> : <Link href="/wardrobe/add"><Button className="w-full">Add clothes</Button></Link>}
+        {canSwap ? <Button aria-pressed={feedbackState === false} variant={feedbackState === false ? "danger" : "secondary"} onClick={() => void handleQuickFeedback(false)}><ThumbsDown size={17} aria-hidden="true" />{feedbackState === false ? "Disliked" : "Dislike"}</Button> : null}
         {canSwap ? <Button variant="secondary" onClick={() => setSwapOpen(true)}>Swap item</Button> : <Link href={`/outfit/${outfit.id}`}><Button variant="secondary" className="w-full">Open detail</Button></Link>}
         {canSwap ? isSaved ? (
           <Link href="/looks"><Button variant="secondary" className="w-full">View saved looks</Button></Link>
         ) : <Button variant="secondary" onClick={() => void handleSave(false)}>Save this look</Button> : null}
         {canSwap ? <Link href={`/outfit/${outfit.id}/preview`}><Button variant="secondary" className="w-full">View full look</Button></Link> : null}
         {canSwap ? <Button variant="secondary" onClick={() => void handleWear()}>Mark as worn</Button> : null}
-        {canSwap ? <Button variant="ghost" onClick={() => void handleQuickMemory("outfit_rejected")}>Not my style</Button> : null}
-        {canSwap ? <Button variant="ghost" onClick={() => setFeedbackOpen(true)}>Rate</Button> : null}
+        {canSwap ? <Button variant="ghost" onClick={() => setFeedbackOpen(true)}>More feedback</Button> : null}
       </CTABar>
       <Toast show={Boolean(toast)} message={toast} />
 
@@ -595,6 +605,13 @@ export function OutfitResult({
               </button>
             ))}
           </div>
+        </div>
+        <div className="mt-5 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-terracotta">Individual items</p>
+          {outfit.items.map((item) => {
+            const current = itemFeedback[item.id];
+            return <div key={item.id} className="rounded-2xl border border-line bg-canvas/60 p-3"><p className="text-sm font-semibold text-ink">{item.name}</p><div className="mt-2 grid grid-cols-2 gap-2"><Button type="button" variant={current?.liked === true ? "primary" : "secondary"} aria-pressed={current?.liked === true} onClick={() => setItemFeedback((values) => ({ ...values, [item.id]: { liked: true, reason: "like-this-item" } }))}><Heart size={16} aria-hidden="true" />Like item</Button><Button type="button" variant={current?.liked === false ? "danger" : "secondary"} aria-pressed={current?.liked === false} onClick={() => setItemFeedback((values) => ({ ...values, [item.id]: { liked: false, reason: "avoid-this-item" } }))}><HeartOff size={16} aria-hidden="true" />Avoid item</Button></div></div>;
+          })}
         </div>
         <Button className="mt-5 w-full" onClick={() => void handleFeedback()}>Save feedback</Button>
         <Button className="mt-2 w-full" variant="ghost" onClick={() => void handleSave(true)}>Favorite this look</Button>

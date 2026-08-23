@@ -833,7 +833,7 @@ export function StylistChat({
     setVoiceState("transcribing");
     const result = await transcribeStylistVoiceNote(audio);
     if (!result.ok) {
-      setVoiceError(result.error.message || "I couldn't transcribe that voice note. Try again or type your request.");
+      setVoiceError(safeUserMessage(result.error, "I couldn't transcribe that voice note. Try again or type your request."));
       setVoiceState("idle");
       return;
     }

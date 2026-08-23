@@ -8,14 +8,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getWardrobeUploadBatch, removeWardrobeUploadBatchItem, retryWardrobeUploadBatchItem, type WardrobeUploadBatchData } from "@/lib/api-client";
+import { safeUserMessage } from "@/lib/user-facing-errors";
 
 export function WardrobeBatchReviewClient({ batchId }: { batchId: string }) {
   const [batch, setBatch] = useState<WardrobeUploadBatchData["batch"] | null>(null);
   const [error, setError] = useState("");
   const [retryingId, setRetryingId] = useState("");
-  const load = useCallback(async () => { const result = await getWardrobeUploadBatch(batchId); if (result.ok) { setBatch(result.data.batch); setError(""); } else setError(result.error.message); }, [batchId]);
-  const removeItem = useCallback(async (uploadId: string) => { const result = await removeWardrobeUploadBatchItem(batchId, uploadId); if (result.ok) await load(); else setError(result.error.message); }, [batchId, load]);
-  const retryItem = useCallback(async (uploadId: string) => { setRetryingId(uploadId); const result = await retryWardrobeUploadBatchItem(batchId, uploadId); if (result.ok) await load(); else setError(result.error.message); setRetryingId(""); }, [batchId, load]);
+  const load = useCallback(async () => { const result = await getWardrobeUploadBatch(batchId); if (result.ok) { setBatch(result.data.batch); setError(""); } else setError(safeUserMessage(result.error, "Unable to load these closet items right now.")); }, [batchId]);
+  const removeItem = useCallback(async (uploadId: string) => { const result = await removeWardrobeUploadBatchItem(batchId, uploadId); if (result.ok) await load(); else setError(safeUserMessage(result.error, "Unable to remove this photo right now.")); }, [batchId, load]);
+  const retryItem = useCallback(async (uploadId: string) => { setRetryingId(uploadId); const result = await retryWardrobeUploadBatchItem(batchId, uploadId); if (result.ok) await load(); else setError(safeUserMessage(result.error, "Unable to retry this item right now.")); setRetryingId(""); }, [batchId, load]);
   useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 5000); return () => window.clearInterval(timer); }, [load]);
   if (!batch) return <Card className="mt-7"><p className="text-sm text-muted">{error || "Preparing your items…"}</p></Card>;
   return <div className="mt-7 space-y-5">

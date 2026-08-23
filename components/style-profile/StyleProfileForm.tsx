@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { useRevealContent } from "@/hooks/use-reveal-content";
-import { getStyleProfile, updateStyleProfile, type StyleProfileData } from "@/lib/api-client";
+import { clearFashionMemory, getFashionMemorySummary, getStyleProfile, updateStyleProfile, type FashionMemorySummary, type StyleProfileData } from "@/lib/api-client";
 
 const inputClass =
   "focus-ring min-h-11 w-full rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-muted";
@@ -25,6 +25,8 @@ function joinList(values?: string[]) {
 
 export function StyleProfileForm() {
   const [profile, setProfile] = useState<StyleProfileData["profile"] | null>(null);
+  const [memory, setMemory] = useState<FashionMemorySummary | null>(null);
+  const [clearingMemory, setClearingMemory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -48,8 +50,9 @@ export function StyleProfileForm() {
 
   useEffect(() => {
     void (async () => {
-      const result = await getStyleProfile();
+      const [result, memoryResult] = await Promise.all([getStyleProfile(), getFashionMemorySummary()]);
       setLoading(false);
+      if (memoryResult.ok) setMemory(memoryResult.data.summary);
       if (!result.ok) {
         setError("Unable to load your style preferences.");
         return;
@@ -107,6 +110,16 @@ export function StyleProfileForm() {
     revealContent(statusRef, { delayMs: 80, topOffset: 24, bottomOffset: 136 });
   }
 
+  async function clearLearning() {
+    setClearingMemory(true);
+    setError("");
+    const result = await clearFashionMemory();
+    setClearingMemory(false);
+    if (!result.ok) { setError("Unable to clear your learned style history."); return; }
+    setMemory(result.data.summary);
+    setNotice("Learned style history cleared. Your explicit preferences remain unchanged.");
+  }
+
   if (loading) {
     return <LoadingState title="Loading your style preferences" />;
   }
@@ -122,6 +135,12 @@ export function StyleProfileForm() {
         {error ? <p className="rounded-2xl bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
         {notice ? <p className="rounded-2xl bg-success/10 px-3 py-2 text-xs font-semibold text-ink">{notice}</p> : null}
       </div>
+
+      <section className="space-y-4 rounded-2xl border border-cocoa/15 bg-canvasSubtle p-4" aria-labelledby="style-learning-title">
+        <div><h3 id="style-learning-title" className="text-sm font-semibold text-ink">What MyFitPick has learned</h3><p className="mt-1 text-xs leading-5 text-muted">Based on looks you liked, disliked, saved, or wore. You remain in control.</p></div>
+        {memory?.eventCount ? <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-3"><p className="text-xs font-semibold text-success">More of this</p><p className="mt-2 text-sm leading-6 text-ink">{[...memory.positive.colors, ...memory.positive.fits, ...memory.positive.brands].slice(0, 8).join(", ") || "Learning from your positive feedback"}</p></div><div className="rounded-2xl bg-white p-3"><p className="text-xs font-semibold text-danger">Avoid this</p><p className="mt-2 text-sm leading-6 text-ink">{[...memory.negative.colors, ...memory.negative.fits, ...memory.negative.brands].slice(0, 8).join(", ") || "No repeated dislikes yet"}</p></div></div> : <p className="rounded-2xl bg-white p-3 text-sm leading-6 text-muted">No learned preferences yet. Like or dislike a recommended look to start personalizing your results.</p>}
+        <div className="flex items-center justify-between gap-3"><p className="text-xs text-muted">{memory?.eventCount || 0} learning event{memory?.eventCount === 1 ? "" : "s"}</p>{memory?.eventCount ? <Button type="button" variant="ghost" onClick={() => void clearLearning()} disabled={clearingMemory}>{clearingMemory ? "Clearing…" : "Clear learning history"}</Button> : null}</div>
+      </section>
 
       <section className="space-y-3 rounded-2xl border border-line bg-white p-3">
         <div>

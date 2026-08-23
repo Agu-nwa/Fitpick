@@ -36,7 +36,7 @@ export async function removeImageBackground(input: { buffer: Buffer; filename: s
   }
 
   const form = new FormData();
-  form.set("image_file", new Blob([input.buffer], { type: input.mimeType }), input.filename);
+  form.set("image_file", new Blob([Uint8Array.from(input.buffer)], { type: input.mimeType }), input.filename);
   form.set("size", "auto");
   form.set("format", "png");
   const controller = new AbortController();

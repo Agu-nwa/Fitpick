@@ -893,6 +893,14 @@ export function serializeOutfit(
       ? new Date(outfit.savedAt).toISOString()
       : null,
     favorite: Boolean(outfit.favorite),
+    feedback: outfit.feedback ? {
+      liked: typeof outfit.feedback.liked === "boolean" ? outfit.feedback.liked : null,
+      rating: outfit.feedback.rating ?? null,
+      tags: outfit.feedback.tags || [],
+      reason: outfit.feedback.reason || "",
+      itemFeedback: (outfit.feedback.itemFeedback || []).map((entry: any) => ({ itemId: String(entry.itemId), liked: Boolean(entry.liked), reason: entry.reason || "" })),
+      updatedAt: outfit.feedback.updatedAt ? new Date(outfit.feedback.updatedAt).toISOString() : null
+    } : null,
     createdAt: outfit.createdAt
       ? new Date(outfit.createdAt).toISOString()
       : undefined
