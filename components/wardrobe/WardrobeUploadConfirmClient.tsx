@@ -3,13 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { WardrobeImageSlots } from "@/components/wardrobe/WardrobeImageSlots";
 import {
   WardrobeApiErrorState,
   WardrobeAuthRequiredState,
@@ -121,20 +117,6 @@ export function WardrobeUploadConfirmClient({ uploadId, batchId = "" }: { upload
   const revealContent = useRevealContent();
   const selectedDefaults = useMemo(() => selectedDefaultsFromUpload(upload), [upload]);
 
-  const warnings = useMemo(() => upload?.aiAnalysis?.labelWarnings || [], [upload]);
-  const lowConfidenceCount = useMemo(() => {
-    const fields = upload?.aiAnalysis?.fields;
-    if (!fields) return 0;
-    return Object.values(fields).filter((field) => field.confidence < 0.65).length;
-  }, [upload]);
-  const reviewSteps = useMemo(
-    () => [
-      { label: "Photos uploaded", status: "complete" as const },
-      { label: "Piece review", status: isAnalyzing ? "current" as const : upload?.aiAnalysis ? "complete" as const : "warning" as const },
-      { label: "Save item", status: createdItem ? "complete" as const : "pending" as const }
-    ],
-    [createdItem, isAnalyzing, upload?.aiAnalysis]
-  );
 
   const loadUpload = useCallback(async () => {
     setStatus("loading");
@@ -198,11 +180,6 @@ export function WardrobeUploadConfirmClient({ uploadId, batchId = "" }: { upload
     setStatus(result.error.code === "INTERNAL_ERROR" ? "unavailable" : "error");
     return null;
   }, [loadUpload, uploadId]);
-
-  async function checkPhotosAgain() {
-    const refreshed = await analyzeUpload();
-    if (refreshed) revealContent(formSectionRef, { delayMs: 120, topOffset: 24, bottomOffset: 136 });
-  }
 
   useEffect(() => {
     if (session.status !== "authenticated") return;
@@ -275,54 +252,18 @@ export function WardrobeUploadConfirmClient({ uploadId, batchId = "" }: { upload
   }
 
   return (
-    <div className="mt-7 space-y-7">
-      <section>
-        <SectionHeader title="Review your garment intelligence." eyebrow="Uploaded photos" />
-        <Card className="space-y-4 overflow-hidden border-olive/20 bg-gradient-to-br from-surface via-surface to-olive/10">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cocoa">
-                <Sparkles size={14} aria-hidden="true" />
-                Review details
-              </p>
-              <h2 className="font-editorial mt-2 text-4xl font-semibold leading-none text-ink">Confirm what MyFitPick detected.</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">Check the category, subtype, colour, material, fit, occasion, weather, and readiness before saving the item to your closet.</p>
-            </div>
+    <div className="mt-4">
+      <section ref={formSectionRef} className="mx-auto max-w-[680px]">
+        <Card className="space-y-4">
+          <div>
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cocoa"><Sparkles size={14} aria-hidden="true" />Item details</p>
+            <h1 className="mt-1 text-2xl font-semibold text-ink">Review and save</h1>
+            {message && isAnalyzing ? <p className="mt-2 text-xs leading-5 text-muted">{message}</p> : null}
           </div>
-          <ProgressSteps steps={reviewSteps} />
-          <WardrobeImageSlots images={upload.images as any} disabled />
-          <div className="rounded-2xl border border-cocoa/15 bg-cocoa/10 px-3 py-2 text-xs leading-5 text-ink">
-            <div className="flex items-center justify-between gap-3">
-              <p className="inline-flex items-center gap-2 font-semibold">
-                {upload.aiAnalysis ? <CheckCircle2 size={14} className="text-success" aria-hidden="true" /> : <Sparkles size={14} className="text-cocoa" aria-hidden="true" />}
-                {isAnalyzing ? "Checking photos..." : upload.aiAnalysis ? "Confirm what MyFitPick detected" : "Waiting for review"}
-              </p>
-            </div>
-            {message ? <p className="mt-1 text-muted">{message}</p> : null}
-          </div>
-          {warnings.length || lowConfidenceCount ? (
-            <div className="rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs leading-5 text-ink">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold">Confirm what MyFitPick detected</p>
-                <Badge tone="warning">Needs review</Badge>
-              </div>
-              {lowConfidenceCount ? <p className="mt-1 text-muted">{lowConfidenceCount} field{lowConfidenceCount === 1 ? "" : "s"} marked low confidence — please verify.</p> : null}
-              {warnings.map((warning) => <p key={warning} className="mt-1 text-muted">{warning}</p>)}
-            </div>
-          ) : null}
-          <Button type="button" variant="secondary" className="w-full" onClick={() => void checkPhotosAgain()} disabled={isAnalyzing || isSaving}>
-            <RotateCcw size={16} aria-hidden="true" />
-            {isAnalyzing ? "Checking..." : "Check photos again"}
-          </Button>
-        </Card>
-      </section>
-
-      <section ref={formSectionRef}>
-        <SectionHeader title="Save to closet" eyebrow="Check details" />
-        <Card>
           <AITagConfirmationForm
             aiAnalysis={upload.aiAnalysis}
             selectedDefaults={selectedDefaults}
+            manualMode={Boolean(batchId) || !upload.aiAnalysis}
             disabled={isAnalyzing || isSaving}
             onSubmit={handleConfirm}
           />

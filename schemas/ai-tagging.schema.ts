@@ -27,5 +27,6 @@ export const aiTaggingResultSchema = z.object({
   suggestedTags: aiSuggestedWardrobeTagsSchema.optional(),
   aiAnalysis: wardrobeAiAnalysisSchema.optional(),
   confidence: z.number().min(0).max(1).optional(),
-  safeMessage: z.string().trim().max(180).optional()
+  safeMessage: z.string().trim().max(180).optional(),
+  failureCode: z.enum(["configuration", "missing_image", "provider_request", "json_parse", "schema_validation", "final_validation", "unknown"]).optional()
 });

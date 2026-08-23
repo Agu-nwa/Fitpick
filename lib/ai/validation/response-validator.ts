@@ -11,7 +11,13 @@ export function safeParseJson(text: string) {
 
 export function validateJsonResponse<TSchema extends z.ZodTypeAny>(schema: TSchema, data: unknown) {
   const parsed = schema.safeParse(data);
-  if (!parsed.success) return buildValidationFailure("AI response did not match the expected schema.");
+  if (!parsed.success) {
+    const issueSummary = parsed.error.issues
+      .slice(0, 3)
+      .map((issue) => `${issue.path.join(".") || "root"}:${issue.code}`)
+      .join(",");
+    return buildValidationFailure(`AI response did not match the expected schema${issueSummary ? ` (${issueSummary})` : ""}.`);
+  }
   return { ok: true as const, data: parsed.data as z.infer<TSchema> };
 }
 

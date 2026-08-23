@@ -7,6 +7,7 @@ type AiLogEvent = {
   provider?: string;
   bytes?: number;
   errorCategory?: string;
+  validationIssue?: string;
 };
 
 const rateLimitPattern = /\b(rate[\s_-]*limit(?:ed)?|too many requests|http[\s_-]*429|status[\s_-]*429|quota[\s_-]*exceeded|provider[\s_-]*quota|billing[\s_-]*hard[\s_-]*limit(?:[\s_-]*reached)?)\b/i;
@@ -21,6 +22,7 @@ export function logAiEvent(event: AiLogEvent) {
     provider: event.provider || "",
     bytes: event.bytes || 0,
     errorCategory: event.errorCategory || "",
+    validationIssue: String(event.validationIssue || "").replace(/[^a-zA-Z0-9_.:,()-]/g, "").slice(0, 240),
     timestamp: new Date().toISOString()
   });
 }

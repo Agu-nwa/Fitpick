@@ -245,11 +245,13 @@ function sourceLabel(source?: string) {
 export function AITagConfirmationForm({
   aiAnalysis,
   selectedDefaults,
+  manualMode = false,
   disabled = false,
   onSubmit
 }: {
   aiAnalysis?: WardrobeAiAnalysis | null;
   selectedDefaults?: AITagConfirmationDefaults;
+  manualMode?: boolean;
   disabled?: boolean;
   onSubmit: (values: AITagConfirmationValues) => void | Promise<void>;
 }) {
@@ -301,7 +303,7 @@ export function AITagConfirmationForm({
   const [garmentMeasurements, setGarmentMeasurements] = useState<Record<string, string>>({});
   const [condition, setCondition] = useState<WardrobeCondition>("ready");
   const [error, setError] = useState("");
-  const [editDetails, setEditDetails] = useState(false);
+  const [editDetails, setEditDetails] = useState(manualMode);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const revealContent = useRevealContent();
   const lowConfidenceCount = useMemo(() => {
@@ -455,11 +457,8 @@ export function AITagConfirmationForm({
         submit();
       }}
     >
-      <div className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <p className="text-sm font-semibold text-ink">Quick review</p>
-        <p className="mt-1 text-xs leading-5 text-muted">
-          Save it if this looks right. Edit only what needs correction.
-        </p>
+      <div className={manualMode ? "" : "rounded-2xl border border-line bg-canvas/60 p-3"}>
+        {!manualMode ? <><p className="text-sm font-semibold text-ink">Quick review</p><p className="mt-1 text-xs leading-5 text-muted">Save it if this looks right. Edit only what needs correction.</p></> : null}
         {lowConfidenceCount ? (
           <p className="mt-2 rounded-2xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold text-ink">
             Some details may need a quick check.
@@ -479,7 +478,7 @@ export function AITagConfirmationForm({
 
       {error ? <p ref={errorRef} className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-xs font-semibold text-ink">{error}</p> : null}
 
-      <section className="rounded-[1.5rem] border border-olive/20 bg-olive/10 p-4">
+      {!manualMode ? <section className="rounded-[1.5rem] border border-olive/20 bg-olive/10 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="font-editorial text-2xl font-semibold leading-none text-ink">{reviewSummary.title}</h3>
@@ -505,10 +504,10 @@ export function AITagConfirmationForm({
             ))}
           </div>
         ) : null}
-      </section>
+      </section> : null}
 
       <section className="rounded-2xl border border-line bg-canvas/60 p-3">
-        <button
+        {!manualMode ? <button
           type="button"
           className="focus-ring flex w-full items-center justify-between rounded-2xl px-2 py-2 text-left text-sm font-semibold text-ink"
           onClick={() => setEditDetails((current) => !current)}
@@ -516,7 +515,7 @@ export function AITagConfirmationForm({
         >
           Edit details
           <span className="text-xs font-bold uppercase tracking-[0.14em] text-cocoa">{editDetails ? "Close" : "Optional"}</span>
-        </button>
+        </button> : <p className="px-2 py-2 text-sm font-semibold text-ink">Required details</p>}
 
         {editDetails ? (
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -576,11 +575,11 @@ export function AITagConfirmationForm({
         ) : null}
       </section>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Button type="button" variant="secondary" onClick={() => setEditDetails((current) => !current)} disabled={disabled}>
+      <div className={manualMode ? "" : "grid grid-cols-1 gap-2 sm:grid-cols-2"}>
+        {!manualMode ? <Button type="button" variant="secondary" onClick={() => setEditDetails((current) => !current)} disabled={disabled}>
           {editDetails ? "Hide edits" : "Edit details"}
-        </Button>
-        <Button type="submit" disabled={disabled}>
+        </Button> : null}
+        <Button type="submit" className="w-full" disabled={disabled}>
           Save to closet
         </Button>
       </div>

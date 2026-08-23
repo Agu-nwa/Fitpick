@@ -18,6 +18,45 @@ function averageConfidence(analysis: WardrobeAiAnalysis) {
   return fields.reduce((sum, field) => sum + field.confidence, 0) / fields.length;
 }
 
+function safeScoreField(field: unknown) {
+  if (!field || typeof field !== "object" || Array.isArray(field)) return field;
+  const candidate = field as Record<string, unknown>;
+  const rawValue = candidate.value;
+  const value = Array.isArray(rawValue)
+    ? rawValue.map((entry) => String(entry || "").trim()).filter(Boolean).slice(0, 5).join(", ") || null
+    : typeof rawValue === "number" && Number.isFinite(rawValue)
+      ? String(rawValue)
+      : rawValue;
+  return { ...candidate, value };
+}
+
+function safeConfidenceRecord(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).flatMap(([key, raw]) => {
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) ? [[key, Math.max(0, Math.min(1, numeric))]] : [];
+  }));
+}
+
+export function prepareWardrobeAnalysisCandidate(value: unknown, selectedCategory?: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const candidate = value as Record<string, any>;
+  const fields = candidate.fields && typeof candidate.fields === "object" && !Array.isArray(candidate.fields)
+    ? { ...candidate.fields }
+    : candidate.fields;
+  if (fields) {
+    fields.formalityScore = safeScoreField(fields.formalityScore);
+    fields.luxuryScore = safeScoreField(fields.luxuryScore);
+  }
+  const detectedCategory = selectedCategory || String(fields?.category?.value || "");
+  return {
+    ...candidate,
+    fields,
+    categorySpecificMetadata: sanitizeCategorySpecificMetadata(candidate.categorySpecificMetadata, detectedCategory),
+    categorySpecificMetadataConfidence: safeConfidenceRecord(candidate.categorySpecificMetadataConfidence)
+  };
+}
+
 function withReviewWarning(analysis: WardrobeAiAnalysis, warning: string) {
   if (analysis.labelWarnings.includes(warning)) return analysis;
   return {
@@ -315,7 +354,8 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     const json = safeParseJson(response.output_text || "{}");
     if (!json.ok) throw new Error(json.reason);
     failureStage = "schema_validation";
-    const validated = validateJsonResponse(wardrobeAiAnalysisSchema.partial({ provider: true, model: true, status: true }), json.data);
+    const preparedCandidate = prepareWardrobeAnalysisCandidate(json.data, input.selectedCategory);
+    const validated = validateJsonResponse(wardrobeAiAnalysisSchema.partial({ provider: true, model: true, status: true }), preparedCandidate);
     if (!validated.ok) throw new Error(validated.reason);
 
     const fallbackUploadIntelligence = buildImageQualityIntelligence({ images: input.images });
@@ -368,7 +408,14 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     const failureCode = failureStage === "provider_request" && providerCategory !== "Error" && providerCategory !== "unknown"
       ? providerCategory
       : failureStage;
-    logAiEvent({ operation: "wardrobe-analysis", model, latencyMs: Date.now() - startedAt, status: "failed", errorCategory: failureCode });
+    logAiEvent({
+      operation: "wardrobe-analysis",
+      model,
+      latencyMs: Date.now() - startedAt,
+      status: "failed",
+      errorCategory: failureCode,
+      validationIssue: failureStage === "schema_validation" && error instanceof Error ? error.message : ""
+    });
     return {
       ok: false,
       provider: "openai",

@@ -17,6 +17,7 @@ function cleanValue(value: unknown) {
     return text || null;
   }
   if (typeof value === "boolean" || value === null) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
   if (Array.isArray(value)) {
     const list = value.map((entry) => String(entry || "").trim().slice(0, 80)).filter(Boolean).slice(0, 20);
     return list.length ? list : null;
