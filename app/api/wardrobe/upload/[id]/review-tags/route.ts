@@ -221,15 +221,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       aiAnalysis: buildConfirmedAnalysis(upload.aiAnalysis, verifiedFields)
     });
 
+    // Make core styling metadata available immediately. The background job still
+    // performs the heavier compatibility refresh and can safely rebuild this data.
+    item.searchMetadata = buildWardrobeSearchMetadata(item);
+    item.recommendationMetadata = {
+      ...(item.recommendationMetadata || {}),
+      ...buildRecommendationMetadata(item)
+    };
+    item.virtualTryOnMetadata = buildVirtualTryOnMetadata(item);
+    await item.save();
+
     if (!backgroundJobsEnabled()) {
-      item.searchMetadata = buildWardrobeSearchMetadata(item);
-      item.recommendationMetadata = {
-        ...(item.recommendationMetadata || {}),
-        ...buildRecommendationMetadata(item)
-      };
-      item.virtualTryOnMetadata = buildVirtualTryOnMetadata(item);
-      item.enrichmentStatus = "completed";
-      await item.save();
       await refreshCompatibilityGraphForItem({
         userId: String(auth.user._id),
         wardrobeItemId: String(item._id)

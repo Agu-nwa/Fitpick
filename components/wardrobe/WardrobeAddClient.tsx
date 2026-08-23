@@ -98,7 +98,8 @@ function toImageAsset(uploaded?: UploadedSlot): WardrobeImageAsset | undefined {
     storageKey: uploaded.storageKey,
     provider: uploaded.provider,
     uploadedAt: uploaded.uploadedAt,
-    purpose: uploaded.purpose
+    purpose: uploaded.purpose,
+    variants: uploaded.variants
   };
 }
 
@@ -468,7 +469,7 @@ export function WardrobeAddClient() {
     setUploadProgress((current) => ({ ...current, [progressKey]: 15 }));
     const dimensions = { width: slot.width, height: slot.height };
 
-    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number }): UploadedSlot => ({
+    const makeUploadedSlot = (input: { url: string; storageKey: string; provider?: string; filename?: string; mimeType?: string; sizeBytes?: number; width?: number; height?: number; original?: NonNullable<UploadedSlot["variants"]>["original"] }): UploadedSlot => ({
       url: input.url,
       storageKey: input.storageKey,
       provider: "s3",
@@ -479,8 +480,27 @@ export function WardrobeAddClient() {
       sizeBytes: input.sizeBytes || slot.file.size,
       width: input.width || dimensions.width,
       height: input.height || dimensions.height,
-      thumbnailUrl: input.url
+      thumbnailUrl: input.url,
+      ...(input.original ? { variants: { original: input.original } } : {})
     });
+
+    // Wardrobe images use the server path so background removal cannot be bypassed by a direct S3 upload.
+    const prepared = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });
+    if (prepared.ok) {
+      const original = prepared.data.upload.original;
+      setUploadProgress((current) => ({ ...current, [progressKey]: 100 }));
+      return makeUploadedSlot({
+        url: prepared.data.upload.publicUrl,
+        storageKey: prepared.data.upload.storageKey,
+        filename: prepared.data.upload.filename,
+        mimeType: prepared.data.upload.mimeType,
+        sizeBytes: prepared.data.upload.sizeBytes,
+        width: prepared.data.upload.width,
+        height: prepared.data.upload.height,
+        original: original ? { url: original.publicUrl, storageKey: original.storageKey, provider: "s3", width: original.width, height: original.height, bytes: original.sizeBytes, status: "ready", processedAt: new Date().toISOString() } : undefined
+      });
+    }
+    throw new Error(safeUploadErrorMessage(prepared.error, "We couldn’t upload this image. Try another photo."));
 
     if (slot.serverNormalizationRequired) {
       const fallback = await uploadImageViaServer({ file: slot.file, purpose: `wardrobe_${purpose}` });

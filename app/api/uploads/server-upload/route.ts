@@ -10,7 +10,7 @@ import { createStorageKey, getAllowedImageTypes, getMaxImageSizeBytes, uploadIma
 import { normalizeUploadedImageBuffer } from "@/lib/image-normalization/server";
 import { ImageUploadError, imageUploadRequirementText, messageForImageUploadError } from "@/lib/upload-limits";
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
-import { reportBackgroundRemovalDisabled } from "@/lib/image-processing/background-removal-state";
+import { backgroundRemovalConfigured, removeImageBackground } from "@/lib/image-processing/background-removal";
 import { createHash } from "node:crypto";
 import { createPerceptualImageHash } from "@/lib/image-processing/perceptual-hash";
 
@@ -44,15 +44,41 @@ export async function POST(request: NextRequest) {
       mimeType: file.type || "",
       source: parsedPurpose.data === "avatar_model" ? "avatar_model" : "unknown"
     });
+    const userId = String(auth.user._id);
+    const originalStorageKey = createStorageKey({
+      userId,
+      filename: normalized.filename,
+      purpose: `${parsedPurpose.data}_original`
+    });
+    const originalUploaded = await uploadImageObject({ storageKey: originalStorageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    const shouldRemoveBackground = parsedPurpose.data.startsWith("wardrobe_");
+    let processed = {
+      applied: false,
+      buffer: normalized.buffer,
+      mimeType: normalized.mimeType,
+      filename: normalized.filename,
+      width: normalized.width,
+      height: normalized.height,
+      provider: "",
+      state: shouldRemoveBackground ? "background_removal_unavailable" : "not_requested"
+    };
+    if (shouldRemoveBackground && backgroundRemovalConfigured()) {
+      try {
+        processed = await removeImageBackground({ buffer: normalized.buffer, filename: normalized.filename, mimeType: normalized.mimeType });
+      } catch (error) {
+        logSafeError("uploads.background-removal", error, { provider: "remove_bg", status: "failed" });
+      }
+    }
     const storageKey = createStorageKey({
       userId: String(auth.user._id),
-      filename: normalized.filename,
-      purpose: parsedPurpose.data
+      filename: processed.filename,
+      purpose: processed.applied ? `${parsedPurpose.data}_white` : parsedPurpose.data
     });
-    const uploaded = await uploadImageObject({ storageKey, mimeType: normalized.mimeType, body: normalized.buffer });
+    const uploaded = processed.applied
+      ? await uploadImageObject({ storageKey, mimeType: processed.mimeType, body: processed.buffer })
+      : originalUploaded;
     const contentHash = createHash("sha256").update(normalized.buffer).digest("hex");
     const perceptualHash = await createPerceptualImageHash(normalized.buffer);
-    const backgroundRemovalState = reportBackgroundRemovalDisabled();
 
     await recordAuditEvent({
       request,
@@ -69,11 +95,11 @@ export async function POST(request: NextRequest) {
           provider: uploaded.provider,
           storageKey: uploaded.storageKey,
           publicUrl: uploaded.url,
-          filename: normalized.filename,
-          mimeType: normalized.mimeType,
-          sizeBytes: normalized.sizeBytes,
-          width: normalized.width,
-          height: normalized.height,
+          filename: processed.filename,
+          mimeType: processed.mimeType,
+          sizeBytes: processed.buffer.byteLength,
+          width: processed.width,
+          height: processed.height,
           contentHash,
           perceptualHash,
           normalized: {
@@ -89,9 +115,18 @@ export async function POST(request: NextRequest) {
           },
           maxSizeBytes: getMaxImageSizeBytes(),
           allowedMimeTypes: getAllowedImageTypes(),
-          backgroundRemovalState,
-          backgroundRemovalApplied: false,
-          backgroundRemovalProvider: "",
+          original: {
+            storageKey: originalUploaded.storageKey,
+            publicUrl: originalUploaded.url,
+            filename: normalized.filename,
+            mimeType: normalized.mimeType,
+            sizeBytes: normalized.sizeBytes,
+            width: normalized.width,
+            height: normalized.height
+          },
+          backgroundRemovalState: processed.state,
+          backgroundRemovalApplied: processed.applied,
+          backgroundRemovalProvider: processed.provider,
           nextAction: "uploaded_to_s3"
         }
       },

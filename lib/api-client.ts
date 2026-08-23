@@ -244,6 +244,15 @@ export type ServerUploadData = {
     backgroundRemovalState?: "background_removal_disabled" | string;
     backgroundRemovalApplied?: boolean;
     backgroundRemovalProvider?: string;
+    original?: {
+      storageKey: string;
+      publicUrl: string;
+      filename: string;
+      mimeType: string;
+      sizeBytes: number;
+      width?: number;
+      height?: number;
+    };
     nextAction: string;
   };
 };

@@ -21,6 +21,7 @@ function list(value: unknown) {
 }
 
 export function compactWardrobeItemContext(item: any, options: { includeImageUrl?: boolean } = {}) {
+  const categorySpecific = item.normalisedMetadata?.specific || item.categorySpecificMetadata?.inferred || item.categorySpecificMetadata || item.aiAnalysis?.categorySpecificMetadata || {};
   return {
     id: String(item._id),
     name: item.name || "unnamed",
@@ -28,14 +29,33 @@ export function compactWardrobeItemContext(item: any, options: { includeImageUrl
     garmentType: fieldValue(item, "garmentType") || item.subcategory || "unknown",
     color: fieldValue(item, "primaryColor") || item.color || "unknown",
     secondaryColors: list(fieldValue(item, "secondaryColors")),
+    pattern: fieldValue(item, "pattern") || item.pattern || "unknown",
+    brand: fieldValue(item, "brand") || "unknown",
     fabric: fieldValue(item, "fabricComposition") || fieldValue(item, "fabricEstimate") || item.fabric || "unknown",
     fit: fieldValue(item, "fit") || item.fit || "unknown",
+    garmentFit: fieldValue(item, "garmentFit") || item.garmentFit || "unknown",
+    fitConfidence: fieldValue(item, "fitConfidence") ?? item.fitConfidence ?? 0,
     silhouette: fieldValue(item, "silhouette") || "unknown",
+    stretchLevel: fieldValue(item, "stretchLevel") || item.stretchLevel || "unknown",
+    fabricDrape: fieldValue(item, "fabricDrape") || item.fabricDrape || "unknown",
+    layeringSuitability: fieldValue(item, "layeringSuitability") || "unknown",
+    sleeveLength: fieldValue(item, "sleeveLength") || "unknown",
+    necklineCollar: fieldValue(item, "necklineCollar") || item.neckline || "unknown",
+    garmentLength: fieldValue(item, "length") || item.garmentLength || "unknown",
+    stylingNotes: list(fieldValue(item, "stylingNotes")),
     occasions: list(fieldValue(item, "occasionSuitability")).concat(list(item.occasions)).slice(0, 10),
     weather: list(fieldValue(item, "weatherSuitability")).concat(list(item.weather)).slice(0, 10),
     season: list(fieldValue(item, "seasonSuitability")).slice(0, 10),
     formality: fieldValue(item, "formalityScore") || "unknown",
     eventRelevance: fieldValue(item, "eventRelevance") || "unknown",
+    canonicalSubtype: item.canonicalSubtype || item.subcategory || "unknown",
+    structureRole: item.structureRole || "unknown",
+    stylingRole: item.stylingRole || "unknown",
+    visibilityRole: item.visibilityRole || "unknown",
+    condition: item.condition || "unknown",
+    taggedSize: item.taggedSize || "unknown",
+    sizeSystem: item.sizeSystem || "unknown",
+    categorySpecific,
     ...(options.includeImageUrl ? { imageUrl: item.imageUrl || item.thumbnailUrl || "" } : {})
   };
 }
