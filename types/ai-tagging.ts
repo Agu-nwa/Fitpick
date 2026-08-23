@@ -57,6 +57,7 @@ export type AiTaggingResult = {
   aiAnalysis?: WardrobeAiAnalysis;
   confidence?: number;
   safeMessage?: string;
+  failureCode?: "configuration" | "missing_image" | "provider_request" | "json_parse" | "schema_validation" | "final_validation" | "unknown";
 };
 
 export type WardrobeImagePurpose = "front" | "back" | "fabricCloseUp" | "label" | "additional";

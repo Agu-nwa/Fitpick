@@ -139,6 +139,12 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
   upload.aiErrorSafeMessage = result.ok ? "" : result.safeMessage || "We could not suggest tags for this item. You can add them manually.";
   await upload.save();
 
+  if (!result.ok || !result.suggestedTags) {
+    const failure = new Error(upload.aiErrorSafeMessage || "Wardrobe analysis failed.");
+    failure.name = `WardrobeAnalysis_${result.failureCode || "unknown"}`;
+    throw failure;
+  }
+
   return {
     uploadId: String(upload._id),
     aiTagStatus: upload.aiTagStatus,

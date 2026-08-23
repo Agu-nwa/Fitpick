@@ -70,6 +70,7 @@
     "audit:wardrobe-taxonomy-readonly": "tsx scripts/wardrobe-taxonomy-audit.ts --dry-run --summary",
     "test:wardrobe-validation": "tsx scripts/wardrobe-upload-validation-test.ts",
     "test:wardrobe-batch-upload": "tsx scripts/wardrobe-batch-upload-test.ts",
+    "test:wardrobe-analysis-reliability": "tsx scripts/wardrobe-analysis-reliability-test.ts",
     "test:wardrobe-taxonomy": "tsx scripts/wardrobe-canonical-taxonomy-test.ts",
     "backfill:wardrobe-taxonomy": "tsx scripts/backfill-wardrobe-taxonomy-v2.ts",
     "backfill:accessory-taxonomy": "tsx scripts/backfill-accessory-taxonomy.ts",

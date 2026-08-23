@@ -241,7 +241,8 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
       ok: false,
       provider: "openai",
       aiTagStatus: "failed",
-      safeMessage: "OpenAI API key is missing."
+      safeMessage: "OpenAI API key is missing.",
+      failureCode: "configuration"
     };
   }
 
@@ -258,7 +259,8 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
       ok: false,
       provider: "openai",
       aiTagStatus: "failed",
-      safeMessage: "Upload image details are not available for analysis."
+      safeMessage: "Upload image details are not available for analysis.",
+      failureCode: "missing_image"
     };
   }
 
@@ -281,9 +283,11 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
   }
 
   const startedAt = Date.now();
+  let failureStage: NonNullable<AiTaggingResult["failureCode"]> = "provider_request";
   try {
     const response = await openai.responses.create({
       model,
+      text: { format: { type: "json_object" } },
       input: [
         {
           role: "user",
@@ -307,12 +311,15 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
       ]
     });
 
+    failureStage = "json_parse";
     const json = safeParseJson(response.output_text || "{}");
     if (!json.ok) throw new Error(json.reason);
+    failureStage = "schema_validation";
     const validated = validateJsonResponse(wardrobeAiAnalysisSchema.partial({ provider: true, model: true, status: true }), json.data);
     if (!validated.ok) throw new Error(validated.reason);
 
     const fallbackUploadIntelligence = buildImageQualityIntelligence({ images: input.images });
+    failureStage = "final_validation";
     const visionAnalysis = wardrobeAiAnalysisSchema.parse({
       ...validated.data,
       provider: "openai",
@@ -357,12 +364,17 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     logAiEvent({ operation: "wardrobe-analysis", model, latencyMs: Date.now() - startedAt, status: "success", cacheHit: false });
     return result;
   } catch (error) {
-    logAiEvent({ operation: "wardrobe-analysis", model, latencyMs: Date.now() - startedAt, status: "failed", errorCategory: errorCategory(error) });
+    const providerCategory = errorCategory(error);
+    const failureCode = failureStage === "provider_request" && providerCategory !== "Error" && providerCategory !== "unknown"
+      ? providerCategory
+      : failureStage;
+    logAiEvent({ operation: "wardrobe-analysis", model, latencyMs: Date.now() - startedAt, status: "failed", errorCategory: failureCode });
     return {
       ok: false,
       provider: "openai",
       aiTagStatus: "failed",
-      safeMessage: safeAIError(error)
+      safeMessage: safeAIError(error),
+      failureCode: failureCode as AiTaggingResult["failureCode"]
     };
   }
 }
