@@ -27,7 +27,7 @@ export type MarketingPageConfig = {
 const digitalClosetImage = "/marketing/myfitpick-digital-closet-diverse-v2.png";
 const stylistImage = "/marketing/myfitpick-ai-stylist-editorial-v1.png";
 const assemblyImage = "/marketing/myfitpick-outfit-assembly-editorial-v1.png";
-const studioImage = "/fashion/editorial-blue-blouse-canonical-v1.png";
+const studioImage = "/marketing/myfitpick-studio-model-brand-v2.png";
 
 export const marketingPages: Record<string, MarketingPageConfig> = {
   home: {

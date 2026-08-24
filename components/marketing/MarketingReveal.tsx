@@ -34,7 +34,7 @@ export function CinematicHeroMedia({ still, alt, animated = false }: { still: st
       transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         "absolute inset-0 bg-cover bg-no-repeat",
-        isBrandModelHero ? "bg-[66%_center] sm:bg-center" : "bg-center"
+        isBrandModelHero ? "bg-[66%_center]" : "bg-center"
       )}
       style={{ backgroundImage: `url(${source})` }}
     />
