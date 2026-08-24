@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/Card";
 export default function ProfilePage() {
   return (
     <AppShell>
-      <header className="relative overflow-hidden rounded-xl4 border border-line bg-surface/80 p-5 shadow-card sm:p-8">
-        <div className="absolute right-[-5rem] top-[-6rem] size-60 rounded-full bg-cocoa/10 blur-3xl" />
+      <header className="relative overflow-hidden rounded-xl4 border border-line bg-surface p-5 shadow-card sm:p-8">
+        <div className="absolute inset-y-0 left-0 w-1 bg-cocoa" aria-hidden="true" />
         <div className="relative max-w-4xl">
           <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-cocoa">
             <UserRound size={14} aria-hidden="true" />

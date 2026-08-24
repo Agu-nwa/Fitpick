@@ -42,7 +42,7 @@ export function SupportLauncher() {
   return (
     <Link
       href="/support"
-      className="focus-ring fixed bottom-[calc(6.4rem+var(--safe-bottom))] right-4 z-30 inline-flex size-12 items-center justify-center rounded-full border border-line bg-surfaceWarm text-ink shadow-card transition hover:border-cocoa/40 hover:text-cocoa lg:bottom-6 lg:right-6 lg:w-auto lg:px-4"
+      className="focus-ring fixed bottom-[calc(6.4rem+var(--safe-bottom))] right-4 z-30 inline-flex size-12 items-center justify-center rounded-full border border-cocoa/25 bg-surfaceWarm text-cocoa shadow-card transition hover:border-cocoa hover:bg-cocoa hover:text-canvas lg:bottom-6 lg:right-6 lg:w-auto lg:px-4"
       aria-label={unread ? `Chat with Support, ${unread} unread` : "Chat with Support"}
     >
       <MessageCircle size={17} aria-hidden="true" />

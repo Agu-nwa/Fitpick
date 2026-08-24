@@ -10,7 +10,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
   ...props
 }, ref) {
   const styles = {
-    primary: "bg-cocoa text-white shadow-soft hover:bg-[#456A66] active:bg-espresso",
+    primary: "bg-cocoa text-white shadow-soft hover:bg-sageDark active:bg-charcoal",
     secondary: "border border-line bg-surfaceWarm text-ink hover:border-cocoa/40 hover:bg-white",
     ghost: "text-ink hover:bg-canvasSubtle hover:text-cocoa",
     danger: "bg-danger text-canvas hover:bg-danger/90"

@@ -25,8 +25,8 @@ export default function GlobalNotificationListener() {
   const pollingRef = useRef<number | null>(null);
 
   const tone = useMemo(() => {
-    if (notification?.type === "virtual_tryon_failed") return "border-[#E8B7AC] bg-[#FFF7F4] text-[#4A2E22]";
-    return "border-[#D8B98C] bg-[#FFFCF5] text-[#171514]";
+    if (notification?.type === "virtual_tryon_failed") return "border-danger/30 bg-danger/10 text-ink";
+    return "border-cocoa/25 bg-surfaceWarm text-ink";
   }, [notification?.type]);
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function GlobalNotificationListener() {
     <div className="fixed inset-x-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md md:bottom-6 md:right-6 md:left-auto">
       <div className={cn("rounded-[28px] border p-4 shadow-[0_24px_70px_rgba(23,21,20,0.16)] backdrop-blur-xl", tone)}>
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#557C78] text-white">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cocoa text-canvas">
             {notification.type === "virtual_tryon_ready" ? <CheckCircle2 className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -112,7 +112,7 @@ export default function GlobalNotificationListener() {
             <button
               type="button"
               onClick={openNotification}
-              className="mt-3 rounded-full bg-[#557C78] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4A6F6B] focus:outline-none focus:ring-2 focus:ring-[#557C78]/30"
+              className="focus-ring mt-3 rounded-full bg-cocoa px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sageDark"
             >
               {notification.actionLabel || "Open"}
             </button>
@@ -121,7 +121,7 @@ export default function GlobalNotificationListener() {
             type="button"
             onClick={dismissNotification}
             aria-label="Dismiss notification"
-            className="rounded-full p-2 text-muted transition hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[#557C78]/30"
+            className="focus-ring rounded-full p-2 text-muted transition hover:bg-cocoa/10 hover:text-cocoa"
           >
             <X className="h-4 w-4" />
           </button>

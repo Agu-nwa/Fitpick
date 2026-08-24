@@ -1,0 +1,288 @@
+{
+  "meta": {
+    "url": "https://myfitpick.com",
+    "title": "MyFitPick | AI Personal Stylist for Your Wardrobe",
+    "description": "Know what to wear using what you already own. MyFitPick creates complete outfits for the occasion, weather and way you want to feel.",
+    "language": "en",
+    "viewport": "width=device-width, initial-scale=1, viewport-fit=cover",
+    "themeColor": "#0a0a09",
+    "ogImage": "https://myfitpick.com/marketing/myfitpick-social-share-v1.png",
+    "ogTitle": "Know what to wear, using what you already own.",
+    "ogDescription": "MyFitPick creates complete outfits from your wardrobe—including shoes and accessories."
+  },
+  "theme": {
+    "mode": "light",
+    "bodyBackground": "#faf7f0",
+    "isDark": false,
+    "confidence": 0.9
+  },
+  "brand": {
+    "name": "MyFitPick",
+    "favicon": {
+      "href": "https://myfitpick.com/icon.svg",
+      "type": null
+    }
+  },
+  "colors": {
+    "dominant": [
+      {
+        "hex": "#e5e7eb",
+        "ratio": 0.626
+      },
+      {
+        "hex": "#000000",
+        "ratio": 0.133
+      },
+      {
+        "hex": "#171514",
+        "ratio": 0.081
+      },
+      {
+        "hex": "#e8ded0",
+        "ratio": 0.057
+      },
+      {
+        "hex": "#557c78",
+        "ratio": 0.052
+      },
+      {
+        "hex": "#ffffff",
+        "ratio": 0.026
+      },
+      {
+        "hex": "#746e67",
+        "ratio": 0.013
+      },
+      {
+        "hex": "#faf7f0",
+        "ratio": 0.005
+      },
+      {
+        "hex": "#f4efe7",
+        "ratio": 0.005
+      },
+      {
+        "hex": "#d8b98c",
+        "ratio": 0.001
+      },
+      {
+        "hex": "#4a2e22",
+        "ratio": 0
+      }
+    ],
+    "palette": [
+      {
+        "hex": "#faf7f0",
+        "role": "background",
+        "source": "computed"
+      },
+      {
+        "hex": "#171514",
+        "role": "foreground",
+        "source": "computed"
+      },
+      {
+        "hex": "#d8b98c",
+        "role": "primary",
+        "source": "heuristic"
+      },
+      {
+        "hex": "#e8ded0",
+        "role": "secondary",
+        "source": "heuristic"
+      },
+      {
+        "hex": "#746e67",
+        "role": "neutral",
+        "source": "heuristic"
+      }
+    ],
+    "cssVariables": {
+      "--tw-ring-offset-color": "#faf7f0",
+      "--tw-shadow": "#4a2e22"
+    },
+    "gradients": []
+  },
+  "logo": {
+    "status": "confirmed",
+    "reason": null,
+    "best": {
+      "selector": "img.h-auto",
+      "href": "https://myfitpick.com/_next/image?url=%2Fbrand%2Fmyfitpick-logo.png&w=1920&q=75",
+      "type": "png&w=3840&q=75",
+      "width": 1468,
+      "height": 479,
+      "svgContent": null,
+      "colors": [],
+      "isLight": false,
+      "isDark": false,
+      "needsDarkBackground": false,
+      "needsLightBackground": false,
+      "ownership": "first-party",
+      "headerScoped": true,
+      "variant": "color",
+      "brandNameOnLogo": "MyFitPick",
+      "uploadedUrl": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/f4e2964a-3ccc-46f7-86a0-287d91d5faee.png"
+    },
+    "candidates": [
+      {
+        "selector": "img.h-auto",
+        "href": "https://myfitpick.com/_next/image?url=%2Fbrand%2Fmyfitpick-logo.png&w=1920&q=75",
+        "type": "png&w=3840&q=75",
+        "width": 1468,
+        "height": 479,
+        "svgContent": null,
+        "colors": [],
+        "isLight": false,
+        "isDark": false,
+        "needsDarkBackground": false,
+        "needsLightBackground": false,
+        "ownership": "first-party",
+        "headerScoped": true
+      }
+    ]
+  },
+  "fonts": {
+    "computed": [
+      {
+        "family": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "weights": [
+          "400",
+          "600",
+          "700"
+        ],
+        "source": "system"
+      },
+      {
+        "family": "Georgia, Georgia, serif",
+        "weights": [
+          "600"
+        ],
+        "source": "web"
+      }
+    ],
+    "baseSizePx": 16
+  },
+  "confidence": {
+    "colorExtraction": 0.9,
+    "logoDetection": 0.95,
+    "fontDetection": 0.8
+  },
+  "screenshot": {
+    "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/screenshot.png",
+    "width": 1920,
+    "height": 1080,
+    "sizeBytes": 114212,
+    "uploadedAt": "2026-08-24T15:24:13.006Z"
+  },
+  "assets": {
+    "f4e2964a-3ccc-46f7-86a0-287d91d5faee": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/f4e2964a-3ccc-46f7-86a0-287d91d5faee.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "60.61 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 62065,
+        "uploadedAt": "2026-08-24T15:24:13.212Z"
+      }
+    },
+    "0c36522c-04b1-4e3c-984b-ef0c0d66de40": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/0c36522c-04b1-4e3c-984b-ef0c0d66de40.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "361.50 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 370172,
+        "uploadedAt": "2026-08-24T15:24:13.985Z"
+      }
+    },
+    "c2a54b51-6ae9-4b65-94ac-d1649938ec58": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/c2a54b51-6ae9-4b65-94ac-d1649938ec58.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "9.43 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 9656,
+        "uploadedAt": "2026-08-24T15:24:13.437Z"
+      }
+    },
+    "9af7b832-861c-4d16-8681-aeb1e3723016": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/9af7b832-861c-4d16-8681-aeb1e3723016.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "13.32 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 13636,
+        "uploadedAt": "2026-08-24T15:24:14.293Z"
+      }
+    },
+    "49ffd3c3-4a16-4ef8-8aeb-424792e08ea5": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/49ffd3c3-4a16-4ef8-8aeb-424792e08ea5.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "17.89 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 18324,
+        "uploadedAt": "2026-08-24T15:24:13.194Z"
+      }
+    },
+    "e9629563-91ff-47de-8c71-fd2f2ea6b9a3": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/e9629563-91ff-47de-8c71-fd2f2ea6b9a3.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "17.05 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 17460,
+        "uploadedAt": "2026-08-24T15:24:14.561Z"
+      }
+    },
+    "043a1b88-c734-401f-8efd-06858017806c": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/043a1b88-c734-401f-8efd-06858017806c.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "69.39 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 71054,
+        "uploadedAt": "2026-08-24T15:24:14.541Z"
+      }
+    },
+    "d90dba08-d389-4938-bc8e-4d82ad4cd309": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/d90dba08-d389-4938-bc8e-4d82ad4cd309.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "52.63 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 53895,
+        "uploadedAt": "2026-08-24T15:24:14.493Z"
+      }
+    },
+    "470e77a5-ca36-43ea-bf10-8cf5a74a82dd": {
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/brand/9b05eac3-2de3-4261-a6d7-87bf2b3ef2ea/assets/470e77a5-ca36-43ea-bf10-8cf5a74a82dd.png",
+      "name": "image",
+      "type": "image",
+      "description": "",
+      "metadata": {
+        "size": "66.58 KB",
+        "mimeType": "image/png",
+        "sizeBytes": 68180,
+        "uploadedAt": "2026-08-24T15:24:14.533Z"
+      }
+    }
+  }
+}

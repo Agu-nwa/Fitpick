@@ -191,13 +191,13 @@ export const legalPolicies: Record<LegalPolicyId, LegalPolicy> = {
       {
         title: "Analytics and improvement",
         body: [
-          "We may use privacy-conscious analytics to understand product performance, feature usage, and errors. These tools help us improve MyFitPick without showing your private wardrobe publicly."
+          "With your permission, we may use privacy-conscious analytics to understand visitor counts, page usage, product performance, and errors. Optional analytics stays off until you allow it. We do not intentionally send wardrobe photos, clothing details, names, email addresses, or private URL query information to analytics providers."
         ]
       },
       {
         title: "Managing cookies",
         body: [
-          "You can control cookies through your browser settings. Blocking essential cookies may sign you out or prevent parts of MyFitPick from working."
+          "You can decline optional analytics without affecting sign-in or core app features. You can also clear your saved analytics choice through your browser site-data settings. Blocking essential cookies may sign you out or prevent parts of MyFitPick from working."
         ]
       }
     ]

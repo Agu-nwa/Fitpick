@@ -85,7 +85,7 @@ async function maybeSendTryOnEmail(notification: any, input: NotificationInput) 
           <h1 style="font-size:24px;margin:8px 0 16px">${input.title}</h1>
           <p style="font-size:15px;color:#5f5a55">${input.body}</p>
           <p style="margin-top:24px">
-            <a href="${actionUrl}" style="display:inline-block;border-radius:999px;background:#557C78;color:#fff;text-decoration:none;padding:12px 20px;font-weight:700">
+            <a href="${actionUrl}" style="display:inline-block;border-radius:999px;background:#557C78;color:#FFFFFF;text-decoration:none;padding:12px 20px;font-weight:700">
               ${input.actionLabel || "Open MyFitPick"}
             </a>
           </p>

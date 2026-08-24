@@ -1525,7 +1525,7 @@ export function StylistChat({
                     </button>
                   ) : null}
                 </div>
-                <button type="submit" disabled={loading || referenceBusy || voiceState !== "idle" || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-[#456A66] disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
+                <button type="submit" disabled={loading || referenceBusy || voiceState !== "idle" || (!message.trim() && activeReference?.status !== "ready")} className="focus-ring inline-flex size-11 items-center justify-center rounded-xl bg-cocoa text-white transition hover:bg-sageDark disabled:cursor-not-allowed disabled:opacity-35" aria-label={loading ? "Styling your look" : "Send message"}>
                   {loading ? <RefreshCw size={16} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={17} aria-hidden="true" />}
                 </button>
               </div>

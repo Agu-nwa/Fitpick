@@ -58,6 +58,8 @@
     "test:recommendation-integrity": "tsx scripts/recommendation-integrity-test.ts",
     "test:recommendation-persistence": "tsx scripts/recommendation-persistence-integrity-test.ts",
     "test:safe-log-classification": "tsx scripts/safe-log-classification-test.ts",
+    "test:analytics-privacy": "tsx scripts/analytics-privacy-test.ts",
+    "test:marketing-site": "tsx scripts/marketing-site-test.ts",
     "test:occasion-intent": "tsx scripts/occasion-intent-test.ts",
     "test:stylist-weather": "tsx scripts/stylist-weather-state-test.ts",
     "test:background-removal-state": "tsx scripts/background-removal-state-test.ts",

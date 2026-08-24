@@ -127,7 +127,7 @@ export function TryOnHistoryClient() {
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-canvasSubtle text-cocoa"><Images size={21} aria-hidden="true" /></span>
         <h2 id="empty-tryon-title" className="mt-5 text-2xl font-semibold tracking-tight text-ink">No try-ons yet</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">Try on an outfit and your generated results will appear here.</p>
-        <Link href="/stylist/create-look" className="focus-ring mx-auto mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cocoa px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-[#456A66] active:scale-[0.985]">
+        <Link href="/stylist/create-look" className="focus-ring mx-auto mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cocoa px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-sageDark active:scale-[0.985]">
           <Sparkles size={16} aria-hidden="true" />
           Try on a look
         </Link>

@@ -4,6 +4,7 @@ import ClientRecovery from "@/components/system/ClientRecovery";
 import GlobalNotificationListener from "@/components/notifications/GlobalNotificationListener";
 import PwaServiceWorker from "@/components/system/PwaServiceWorker";
 import { SessionProvider } from "@/components/auth/SessionProvider";
+import PrivacySafeAnalytics from "@/components/analytics/PrivacySafeAnalytics";
 
 export const metadata: Metadata = {
   title: { default: "MyFitPick - Your AI Wardrobe", template: "%s - MyFitPick" },
@@ -46,6 +47,7 @@ export default function RootLayout({
           <ClientRecovery />
           <GlobalNotificationListener />
           <PwaServiceWorker />
+          <PrivacySafeAnalytics />
 
           <a
             href="#main-content"

@@ -47,7 +47,7 @@ function ContextPageHeader({ config }: { config: HeaderConfig }) {
   const router = useRouter();
 
   return (
-    <header className="sticky top-[var(--safe-top)] z-30 mb-6 border-b border-line bg-canvas/95 px-1 py-2 backdrop-blur-xl">
+    <header className="sticky top-[var(--safe-top)] z-30 mb-6 border-b border-cocoa/15 bg-canvas/95 px-1 py-2 backdrop-blur-xl">
       <div className={config.dismissible ? "grid min-h-12 grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] items-center gap-2" : "grid min-h-12 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-2 pr-[3.25rem]"}>
         <button
           type="button"
