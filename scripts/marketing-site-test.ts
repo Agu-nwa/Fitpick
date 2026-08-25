@@ -16,6 +16,8 @@ const expectedAssets = [
   "public/marketing/myfitpick-digital-closet-diverse-v2.png",
   "public/marketing/myfitpick-ai-stylist-editorial-v1.png",
   "public/marketing/myfitpick-outfit-assembly-editorial-v1.png",
+  "public/marketing/myfitpick-studio-model-brand-v2.png",
+  "public/marketing/myfitpick-brand-models-transparent-v2.png",
   "assets/video/HIGGSFIELD-SEEDANCE-2-MINI.md"
 ];
 
@@ -29,5 +31,9 @@ const searchableCopy = [
 for (const unsupportedClaim of ["background removed automatically", "automatic background removal", "guaranteed fit", "seen in the world's"]) {
   assert(!searchableCopy.includes(unsupportedClaim), `Unsupported marketing claim found: ${unsupportedClaim}`);
 }
+
+const revealSource = readFileSync(join(root, "components/marketing/MarketingReveal.tsx"), "utf8");
+assert(!revealSource.includes("opacity: 0"), "Marketing content must remain visible when client-side motion does not start");
+assert(!revealSource.includes("whileInView"), "Marketing content must not depend on viewport observers to become visible");
 
 console.log(`Marketing site verified: ${expectedPages.length} pages, ${expectedAssets.length} production assets.`);

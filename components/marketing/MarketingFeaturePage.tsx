@@ -4,6 +4,7 @@ import { ArrowRight, Check, Sparkles } from "lucide-react";
 import type { MarketingPageConfig, MarketingTone } from "@/lib/marketing/site";
 import { CinematicHeroMedia, MarketingReveal } from "@/components/marketing/MarketingReveal";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
+import { MarketingProductStoryVisual, type MarketingStoryVariant } from "@/components/marketing/MarketingProductStoryVisual";
 import { PublicNavigation } from "@/components/marketing/PublicNavigation";
 
 function toneClasses(tone: MarketingTone) {
@@ -13,6 +14,7 @@ function toneClasses(tone: MarketingTone) {
 }
 
 export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPageConfig; signedIn: boolean }) {
+  const isHome = config.slug === "home";
   const protectedDestination = config.primaryHref.startsWith("/stylist") || config.primaryHref.startsWith("/wardrobe");
   const primaryHref = protectedDestination
     ? signedIn
@@ -24,9 +26,22 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
     <div className="marketing-editorial min-h-screen overflow-x-clip bg-canvas text-ink">
       <PublicNavigation signedIn={signedIn} />
       <main id="main-content">
-        <section className="overflow-hidden border-b border-line bg-canvas text-ink">
-          <div className="mx-auto grid min-h-[76svh] max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.94fr_1.06fr] lg:gap-16 lg:px-12 lg:py-24">
-            <MarketingReveal className="max-w-3xl">
+        <section className="relative overflow-hidden border-b border-line bg-canvas text-ink">
+          {isHome ? (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden" aria-hidden="true">
+              <Image
+                src="/marketing/myfitpick-brand-models-transparent-v2.png"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[72%_center] opacity-[0.28]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-canvas/95 via-canvas/58 to-canvas/82" />
+            </div>
+          ) : null}
+          <div className="relative z-10 mx-auto grid min-h-[76svh] max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.94fr_1.06fr] lg:gap-16 lg:px-12 lg:py-24">
+            <MarketingReveal className="relative z-10 max-w-3xl">
               <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-sage">{config.eyebrow}</p>
               <h1 className="mt-6 max-w-3xl font-editorial text-5xl font-semibold leading-[0.96] tracking-editorial sm:text-7xl lg:text-[80px]">{config.title}</h1>
               <p className="mt-7 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">{config.description}</p>
@@ -37,7 +52,7 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
                 <Link href="/features" className="focus-ring inline-flex min-h-14 items-center justify-center rounded-xl border border-line bg-white px-7 text-sm font-bold text-ink transition hover:bg-surfaceWarm">Explore Features</Link>
               </div>
             </MarketingReveal>
-            <MarketingReveal delay={0.08} className="relative min-h-[430px] overflow-hidden rounded-[32px] border border-line bg-ink shadow-soft sm:min-h-[560px] lg:min-h-[640px]">
+            <MarketingReveal delay={0.08} className={`${isHome ? "hidden lg:block" : ""} relative min-h-[430px] overflow-hidden rounded-[32px] border border-line bg-ink shadow-soft sm:min-h-[560px] lg:min-h-[640px]`}>
               <CinematicHeroMedia still={config.heroImage} alt={config.heroAlt} />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/18 via-transparent to-transparent" aria-hidden="true" />
             </MarketingReveal>
@@ -45,6 +60,7 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
         </section>
 
         {config.sections.map((section, index) => {
+          const storyVariant = isHome ? (["closet", "stylist", "assembly", "studio"] as MarketingStoryVariant[])[index] : undefined;
           return (
             <section key={`${config.slug}-${section.eyebrow}`} className={`${toneClasses(section.tone)} px-5 py-20 sm:px-8 lg:px-12 lg:py-28`}>
               <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
@@ -60,7 +76,7 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
                 </MarketingReveal>
                 <MarketingReveal delay={0.08} className={index % 2 ? "lg:order-1" : ""}>
                   <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] border border-line bg-white shadow-soft">
-                    <Image src={section.image} alt={section.imageAlt} fill sizes="(max-width: 1023px) 92vw, 48vw" className="object-cover" />
+                    {storyVariant ? <MarketingProductStoryVisual variant={storyVariant} /> : <Image src={section.image} alt={section.imageAlt} fill sizes="(max-width: 1023px) 92vw, 48vw" className="object-cover" />}
                   </div>
                 </MarketingReveal>
               </div>
