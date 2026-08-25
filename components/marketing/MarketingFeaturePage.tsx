@@ -75,7 +75,7 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
                   ) : null}
                 </MarketingReveal>
                 <MarketingReveal delay={0.08} className={index % 2 ? "lg:order-1" : ""}>
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] border border-line bg-white shadow-soft">
+                  <div className={storyVariant ? "relative overflow-hidden rounded-[28px] border border-line bg-white shadow-soft lg:aspect-[4/3]" : "relative aspect-[4/3] overflow-hidden rounded-[28px] border border-line bg-white shadow-soft"}>
                     {storyVariant ? <MarketingProductStoryVisual variant={storyVariant} /> : <Image src={section.image} alt={section.imageAlt} fill sizes="(max-width: 1023px) 92vw, 48vw" className="object-cover" />}
                   </div>
                 </MarketingReveal>

@@ -87,12 +87,14 @@ function AssemblyStory() {
 
 function StudioStory() {
   return (
-    <div className="relative h-full overflow-hidden bg-canvasSubtle">
-      <Image src="/fashion/editorial-blue-blouse-canonical-v1.png" alt="MyFitPick brand model wearing the recommended blue blouse, ivory skirt, white sandals and gold cuff" fill sizes="(max-width: 1023px) 92vw, 48vw" className="object-cover object-[50%_28%]" />
-      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/35 to-transparent p-4 sm:p-5"><Badge className="border-white/35 bg-black/30 text-white backdrop-blur" tone="neutral">Virtual Try-On preview</Badge></div>
-      <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/45 bg-white/92 p-3 shadow-soft backdrop-blur sm:inset-x-5 sm:bottom-5 sm:p-4">
+    <div className="bg-canvasSubtle lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(180px,0.55fr)]">
+      <div className="relative aspect-[2/3] min-h-0 bg-surfaceWarm lg:aspect-auto lg:h-full">
+        <Image src="/fashion/editorial-blue-blouse-canonical-v1.png" alt="MyFitPick brand model wearing the recommended blue blouse, ivory skirt, white sandals and gold cuff, including the full outfit and shoes" fill sizes="(max-width: 1023px) 92vw, 31vw" className="object-contain" />
+        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/35 to-transparent p-4 sm:p-5"><Badge className="border-white/35 bg-black/30 text-white backdrop-blur" tone="neutral">Virtual Try-On preview</Badge></div>
+      </div>
+      <div className="border-t border-line bg-white p-4 lg:flex lg:flex-col lg:justify-center lg:border-l lg:border-t-0 lg:p-5">
         <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[0.15em] text-sage">Same closet pieces</p><p className="mt-1 text-xs font-semibold text-ink sm:text-sm">The recommendation, shown on your Studio Model.</p></div><CircleCheck className="shrink-0 text-sage" size={20} aria-hidden="true" /></div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-4 gap-2 lg:grid-cols-2">
           {storyItems.map((item) => <div key={item.name} className="relative aspect-square overflow-hidden rounded-xl border border-line bg-canvasSubtle"><Image src={item.src} alt="" fill sizes="72px" className="object-contain p-1" /></div>)}
         </div>
       </div>
@@ -109,7 +111,7 @@ export function MarketingProductStoryVisual({ variant }: { variant: MarketingSto
   };
 
   return (
-    <div role="img" aria-label={labels[variant]} className="h-full w-full">
+    <div role="img" aria-label={labels[variant]} className="w-full lg:h-full">
       {variant === "closet" ? <ClosetStory /> : null}
       {variant === "stylist" ? <StylistStory /> : null}
       {variant === "assembly" ? <AssemblyStory /> : null}
