@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
-export type MarketingStoryVariant = "closet" | "stylist" | "assembly" | "studio";
+export type MarketingStoryVariant = "closet" | "stylist" | "studio";
 
 const storyItems = [
   { name: "Blue satin blouse", role: "Top", color: "Blue", src: "/fashion/product-blue-satin-blouse-v1.png" },
@@ -56,31 +56,18 @@ function StylistStory() {
       <div className="mt-2 grid grid-cols-4 gap-2">
         {storyItems.map((item, index) => <ProductTile key={item.name} index={index} compact selected />)}
       </div>
-      <div className="mt-auto flex flex-wrap gap-2 pt-3">
-        {["Warm weather", "Polished", "Complete look"].map((label) => <span key={label} className="rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-semibold text-muted">{label}</span>)}
-      </div>
-    </div>
-  );
-}
-
-function AssemblyStory() {
-  return (
-    <div className="flex h-full flex-col bg-canvas p-4 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sage">Recommendation</p><h3 className="mt-1 font-editorial text-2xl font-semibold text-ink sm:text-3xl">Your complete look</h3></div>
-        <WandSparkles className="text-sage" size={21} aria-hidden="true" />
-      </div>
-      <Card className="mt-4 border border-line bg-white p-3 sm:p-4">
-        <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold text-ink">Closet pieces</p><Badge tone="success">Ready</Badge></div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {storyItems.map((item, index) => <ProductTile key={item.name} index={index} compact />)}
+      <Card className="mt-3 border border-line bg-white/90 p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-cocoa">Complete look ready</p>
+            <p className="mt-1.5 text-xs leading-5 text-muted sm:text-sm">The blouse, skirt, sandals and cuff form one polished warm-weather outfit.</p>
+          </div>
+          <WandSparkles className="shrink-0 text-sage" size={20} aria-hidden="true" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Context matched", "Footwear included", "Styling notes ready"].map((label) => <span key={label} className="rounded-full border border-line bg-canvas px-2.5 py-1 text-[10px] font-semibold text-muted">{label}</span>)}
         </div>
       </Card>
-      <Card className="mt-3 border border-line bg-surface p-3 sm:p-4">
-        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-cocoa">Styling notes</p>
-        <p className="mt-1.5 text-xs leading-5 text-muted sm:text-sm">The satin blouse and flowing skirt stay light for the weather. White sandals finish the look; the gold cuff adds one restrained accent.</p>
-      </Card>
-      <div className="mt-auto grid grid-cols-2 gap-2 pt-3"><span className="flex min-h-10 items-center justify-center rounded-xl bg-sage px-3 text-xs font-bold text-white">Save this look</span><span className="flex min-h-10 items-center justify-center rounded-xl border border-line bg-white px-3 text-xs font-bold text-ink">Virtual Try-On</span></div>
     </div>
   );
 }
@@ -105,8 +92,7 @@ function StudioStory() {
 export function MarketingProductStoryVisual({ variant }: { variant: MarketingStoryVariant }) {
   const labels: Record<MarketingStoryVariant, string> = {
     closet: "MyFitPick Closet showing four confirmed wardrobe items",
-    stylist: "MyFitPick AI Stylist selecting the same four closet items",
-    assembly: "MyFitPick outfit recommendation assembled from those closet items",
+    stylist: "MyFitPick AI Stylist selecting and assembling a complete outfit from the same four closet items",
     studio: "MyFitPick brand model wearing the recommended closet items"
   };
 
@@ -114,7 +100,6 @@ export function MarketingProductStoryVisual({ variant }: { variant: MarketingSto
     <div role="img" aria-label={labels[variant]} className="w-full lg:h-full">
       {variant === "closet" ? <ClosetStory /> : null}
       {variant === "stylist" ? <StylistStory /> : null}
-      {variant === "assembly" ? <AssemblyStory /> : null}
       {variant === "studio" ? <StudioStory /> : null}
     </div>
   );

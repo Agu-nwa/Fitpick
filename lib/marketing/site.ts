@@ -50,22 +50,13 @@ export const marketingPages: Record<string, MarketingPageConfig> = {
         bullets: ["Multi-item upload", "Background analysis", "Review before recommendations"]
       },
       {
-        eyebrow: "AI STYLIST",
-        title: "Outfits that know the weather and the occasion.",
-        body: "MyFitPick studies your confirmed wardrobe and coordinates colour, fit, formality, weather and occasion to create outfits that make sense for your day.",
+        eyebrow: "AI STYLIST · COMPLETE LOOK",
+        title: "One request. One complete look.",
+        body: "Tell MyFitPick what you are dressing for. The Stylist considers colour, fit, formality, weather and occasion, selects the right pieces from your confirmed wardrobe and explains the finished outfit in one connected result.",
         image: stylistImage,
         imageAlt: "A complete outfit composed from coordinated wardrobe pieces",
         tone: "dark",
-        bullets: ["Your actual clothes", "Context-aware styling", "Footwear and finishing pieces"]
-      },
-      {
-        eyebrow: "OUTFIT ASSEMBLY",
-        title: "Complete looks from the pieces you own.",
-        body: "See how individual wardrobe pieces come together as a coordinated outfit—balanced for colour, proportion, formality and your plans.",
-        image: assemblyImage,
-        imageAlt: "Separate wardrobe pieces becoming a complete outfit",
-        tone: "light",
-        bullets: ["Clear selections", "Styling rationale", "Optional Virtual Try-On"]
+        bullets: ["Your actual clothes", "Context-aware selection", "Complete outfit with footwear and styling rationale"]
       },
       {
         eyebrow: "STUDIO MODEL",

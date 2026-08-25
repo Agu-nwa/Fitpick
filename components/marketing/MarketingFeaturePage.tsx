@@ -60,7 +60,7 @@ export function MarketingFeaturePage({ config, signedIn }: { config: MarketingPa
         </section>
 
         {config.sections.map((section, index) => {
-          const storyVariant = isHome ? (["closet", "stylist", "assembly", "studio"] as MarketingStoryVariant[])[index] : undefined;
+          const storyVariant = isHome ? (["closet", "stylist", "studio"] as MarketingStoryVariant[])[index] : undefined;
           return (
             <section key={`${config.slug}-${section.eyebrow}`} className={`${toneClasses(section.tone)} px-5 py-20 sm:px-8 lg:px-12 lg:py-28`}>
               <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
