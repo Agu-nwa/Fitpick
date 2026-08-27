@@ -152,6 +152,29 @@ async function createPresignedPutUrl(input: { storageKey: string; mimeType: stri
   return `https://${host}${canonicalUri}?${canonicalQuery({ ...params, "X-Amz-Signature": signature })}`;
 }
 
+export async function createPresignedGetUrl(input: { storageKey: string; expiresSeconds?: number }) {
+  const config = s3Config();
+  const credentials = await resolveAwsCredentials();
+  const now = amzDate();
+  const stamp = now.slice(0, 8);
+  const scope = `${stamp}/${config.region}/${service}/aws4_request`;
+  const host = objectHost(config.bucket, config.region);
+  const signedHeaders = "host";
+  const params: Record<string, string> = {
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Credential": `${credentials.accessKeyId}/${scope}`,
+    "X-Amz-Date": now,
+    "X-Amz-Expires": String(Math.max(60, Math.min(input.expiresSeconds || 300, 900))),
+    "X-Amz-SignedHeaders": signedHeaders
+  };
+  if (credentials.sessionToken) params["X-Amz-Security-Token"] = credentials.sessionToken;
+  const canonicalUri = `/${normalizeStorageKey(input.storageKey).split("/").map(encodePathPart).join("/")}`;
+  const canonicalRequest = ["GET", canonicalUri, canonicalQuery(params), `host:${host}\n`, signedHeaders, "UNSIGNED-PAYLOAD"].join("\n");
+  const stringToSign = ["AWS4-HMAC-SHA256", now, scope, hash(canonicalRequest)].join("\n");
+  const signature = crypto.createHmac("sha256", signingKey(credentials.secretAccessKey, stamp, config.region)).update(stringToSign).digest("hex");
+  return `https://${host}${canonicalUri}?${canonicalQuery({ ...params, "X-Amz-Signature": signature })}`;
+}
+
 export async function createSignedUploadUrl(input: {
   userId: string;
   filename: string;
@@ -310,7 +333,7 @@ export async function createSignedViewUrl(input: { storageKey: string }) {
     ready: storage.ready,
     provider: storage.provider,
     storageKey: input.storageKey,
-    viewUrl: storage.ready ? await getGeneratedImageUrl(input.storageKey) : null,
+    viewUrl: storage.ready ? await createPresignedGetUrl({ storageKey: input.storageKey }) : null,
     nextAction: storage.ready ? "view" : "configure_s3"
   };
 }

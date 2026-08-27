@@ -9,6 +9,7 @@ import { requestMeta } from "@/lib/audit";
 import { openai } from "@/lib/ai/openai";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const MAX_TRANSCRIPT_LENGTH = 800;
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before sending voice notes for transcription.");
+    }
 
     if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_ADMIN_KEY) {
       return apiError("SETUP_REQUIRED", "Voice notes are not configured yet.");

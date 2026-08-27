@@ -4,13 +4,15 @@ import { deleteStoredObject, storageKeyBelongsToUser } from "@/lib/storage";
 import { AccountDeletionRequest } from "@/models/AccountDeletionRequest";
 import { BackgroundJob } from "@/models/BackgroundJob";
 import { User } from "@/models/User";
+import { sendTransactionalEmail } from "@/lib/email/resend";
+import { logSafeError } from "@/lib/security/safe-log";
 
 const deletableCollections = [
   "appnotifications", "avataroutfitpreviews", "avatarprofiles", "dailyusages", "fashionmemories",
   "garmentassets", "notificationpreferences", "occasions", "outfits", "outfitfeedbacks", "outfithistories",
-  "outfitpreviews", "outfitrecommendations", "privacypreferences", "progressivepromptstates",
+  "outfitpreviews", "outfitrecommendations", "privacypreferences", "privacyrequests", "progressivepromptstates",
   "referencefashionitems", "stylepreferences", "styleprofiles", "tryongenerations", "wardrobecompatibilityedges",
-  "wardrobeitems", "wardrobeuploads", "wornlooks"
+  "stylistplans", "wardrobeitems", "wardrobeuploads", "wardrobeuploadbatches", "wornlooks"
 ] as const;
 
 const retainedCollections = ["creditpurchases", "credittransactions", "auditevents", "processedpaymentevents"] as const;
@@ -42,7 +44,7 @@ export function isOwnedDeletionKey(userId: string, key: string) {
 async function collectUserObjectKeys(userId: string) {
   const db = mongoose.connection.db;
   if (!db) throw new Error("Database is unavailable for account deletion.");
-  const sources = ["avatarprofiles", "wardrobeitems", "wardrobeuploads", "garmentassets", "referencefashionitems", "outfitpreviews", "avataroutfitpreviews", "outfitrecommendations", "tryongenerations"];
+  const sources = ["avatarprofiles", "wardrobeitems", "wardrobeuploads", "wardrobeuploadbatches", "garmentassets", "referencefashionitems", "outfitpreviews", "avataroutfitpreviews", "outfitrecommendations", "tryongenerations"];
   const keys = new Set<string>();
   for (const collectionName of sources) {
     const records = await db.collection(collectionName).find({ userId: new mongoose.Types.ObjectId(userId) }).toArray();
@@ -53,7 +55,62 @@ async function collectUserObjectKeys(userId: string) {
     const messages = await db.collection("supportmessages").find({ conversationId: { $in: conversations.map((entry) => entry._id) } }).toArray();
     messages.forEach((record) => collectStorageKeys(record, keys));
   }
+
+  const objectId = new mongoose.Types.ObjectId(userId);
+  const supportConversations = await db.collection("supportconversations")
+    .find({ userId: objectId })
+    .project({ _id: 1 })
+    .toArray();
+  const supportConversationIds = supportConversations.map((entry) => entry._id);
+  if (supportConversationIds.length) {
+    const supportMessages = await db.collection("supportmessages")
+      .find({ conversationId: { $in: supportConversationIds } })
+      .project({ attachments: 1 })
+      .toArray();
+    for (const message of supportMessages) collectStorageKeys(message.attachments, keys);
+  }
   return Array.from(keys).filter((key) => isOwnedDeletionKey(userId, key));
+}
+
+async function deleteExternalSupportData(db: NonNullable<typeof mongoose.connection.db>, subjectEmail: string) {
+  const email = subjectEmail.trim().toLowerCase();
+  if (!email) return { customers: 0, conversations: 0, messages: 0 };
+
+  const customers = await db.collection("externalsupportcustomers")
+    .find({ email })
+    .project({ _id: 1, externalId: 1 })
+    .toArray();
+  if (!customers.length) return { customers: 0, conversations: 0, messages: 0 };
+
+  const customerIds = customers.map((entry) => entry._id);
+  const conversations = await db.collection("externalsupportconversations")
+    .find({ customerId: { $in: customerIds } })
+    .project({ _id: 1 })
+    .toArray();
+  const conversationIds = conversations.map((entry) => entry._id);
+  let deletedMessages = 0;
+  if (conversationIds.length) {
+    deletedMessages = (await db.collection("externalsupportmessages").deleteMany({ conversationId: { $in: conversationIds } })).deletedCount;
+    await db.collection("externalsupportconversations").deleteMany({ _id: { $in: conversationIds } });
+  }
+  await db.collection("externalsupportcustomers").deleteMany({ _id: { $in: customerIds } });
+
+  return { customers: customerIds.length, conversations: conversationIds.length, messages: deletedMessages };
+}
+
+async function sendDeletionProgressEmail(input: { to: string; reference: string; pendingProviders: number }) {
+  if (!input.to) return;
+  const pending = input.pendingProviders > 0;
+  const subject = pending ? "Your MyFitPick account deletion is being completed" : "Your MyFitPick account has been deleted";
+  const body = pending
+    ? "Your account access and MyFitPick profile data have been removed. A limited number of provider cleanup checks are still in progress. We will not mark the request complete until those checks finish."
+    : "Your MyFitPick account and associated profile data have been deleted. Limited transaction or security records may remain only where legally required.";
+  await sendTransactionalEmail({
+    to: input.to,
+    subject,
+    text: `${body}\n\nDeletion reference: ${input.reference}`,
+    html: `<div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#171514;max-width:560px;margin:0 auto;padding:24px"><p style="font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#557C78">MyFitPick</p><h1 style="font-size:24px;margin:8px 0 16px">${subject}</h1><p style="font-size:15px;color:#5f5a55">${body}</p><p style="font-size:13px;color:#69635D;margin-top:24px">Deletion reference: ${input.reference}</p></div>`
+  });
 }
 
 export async function createAccountDeletionRequest(input: { user: any; reason?: string }) {
@@ -125,13 +182,29 @@ export async function runAccountDeletionJob(userId: string) {
     }
     for (const collectionName of deletableCollections) await db.collection(collectionName).deleteMany({ userId: objectId });
     await db.collection("backgroundjobs").deleteMany({ userId: objectId, type: { $ne: "account_deletion" } });
+
+    const supportConversations = await db.collection("supportconversations")
+      .find({ userId: objectId })
+      .project({ _id: 1 })
+      .toArray();
+    const supportConversationIds = supportConversations.map((entry) => entry._id);
+    if (supportConversationIds.length) {
+      await Promise.all([
+        db.collection("supportmessages").deleteMany({ conversationId: { $in: supportConversationIds } }),
+        db.collection("supportinternalnotes").deleteMany({ conversationId: { $in: supportConversationIds } }),
+        db.collection("supportconversations").deleteMany({ _id: { $in: supportConversationIds } })
+      ]);
+    }
     if (request.subjectEmail) {
       await db.collection("emailotps").deleteMany({ email: request.subjectEmail.toLowerCase() });
-      await db.collection("externalsupportcustomers").updateMany(
-        { email: request.subjectEmail.toLowerCase() },
-        { $set: { email: `deleted+${request.deletionReference}@invalid.local`, name: "Deleted user" } }
-      );
+      await deleteExternalSupportData(db, request.subjectEmail);
     }
+
+    // Remove user references from shared support administration records without
+    // deleting other customers' conversations or operational tenant records.
+    await db.collection("supportconversations").updateMany({ assignedAgentId: objectId }, { $set: { assignedAgentId: null } });
+    await db.collection("supportapikeys").updateMany({ createdByUserId: objectId }, { $set: { createdByUserId: null } });
+    await db.collection("supporttenants").updateMany({ createdByUserId: objectId }, { $set: { createdByUserId: null } });
 
     request.status = "object_storage_deletion_in_progress";
     await request.save();
@@ -154,6 +227,8 @@ export async function runAccountDeletionJob(userId: string) {
       { provider: "Resend", action: "No application-managed mailbox record identified; confirm provider retention contractually", status: "manual_pending", identifier: request.deletionReference, requestedAt: new Date(), completedAt: null, evidenceReference: "", error: "" }
     ]);
     request.retainedRecordClasses = [...retainedCollections, "accountdeletionrequests"];
+    request.localDeletionCompletedAt = new Date();
+    request.providerCleanupUpdatedAt = new Date();
     await request.save();
 
     await User.updateOne({ _id: objectId }, {
@@ -163,7 +238,7 @@ export async function runAccountDeletionJob(userId: string) {
         avatarUrl: "",
         passwordHash: "",
         activeSessionId: "",
-        deletionStatus: "completed",
+        deletionStatus: "pending",
         weatherLocationName: "",
         weatherCountryCode: "",
         weatherCountryName: "",
@@ -176,11 +251,29 @@ export async function runAccountDeletionJob(userId: string) {
       $unset: { creditedPurchaseReferences: 1, reversedCreditPurchaseReferences: 1 }
     });
 
-    request.status = "completed_with_retained_records";
-    request.completedAt = new Date();
-    request.subjectEmail = "";
+    const pendingProviderActions = request.providerActions.filter((action: any) => action.status === "manual_pending");
+    request.status = pendingProviderActions.length ? "provider_cleanup_pending" : "completed_with_retained_records";
+    request.completedAt = pendingProviderActions.length ? null : new Date();
     request.objectKeys = [];
     await request.save();
+
+    try {
+      await sendDeletionProgressEmail({
+        to: request.subjectEmail,
+        reference: request.deletionReference,
+        pendingProviders: pendingProviderActions.length
+      });
+    } catch (emailError) {
+      // Deletion must not fail or retry after destructive local cleanup solely
+      // because a transactional status email could not be delivered.
+      logSafeError("account-deletion.progress-email", emailError);
+    }
+
+    if (!pendingProviderActions.length) {
+      await User.updateOne({ _id: objectId }, { $set: { deletionStatus: "completed" } });
+      request.subjectEmail = "";
+      await request.save();
+    }
     return request;
   } catch (error) {
     request.status = "failed";
@@ -190,12 +283,60 @@ export async function runAccountDeletionJob(userId: string) {
   }
 }
 
+export async function updateDeletionProviderAction(input: {
+  requestId: string;
+  provider: string;
+  status: "completed" | "failed" | "not_applicable";
+  evidenceReference?: string;
+  error?: string;
+}) {
+  const request = await AccountDeletionRequest.findById(input.requestId).select("+subjectEmail +objectKeys");
+  if (!request) return null;
+  const action = request.providerActions.find((entry: any) => entry.provider === input.provider);
+  if (!action) throw new Error("Provider cleanup action was not found.");
+
+  action.status = input.status;
+  action.completedAt = input.status === "completed" || input.status === "not_applicable" ? new Date() : null;
+  action.evidenceReference = String(input.evidenceReference || "").trim().slice(0, 240);
+  action.error = input.status === "failed" ? String(input.error || "Provider cleanup failed.").trim().slice(0, 240) : "";
+  request.providerCleanupUpdatedAt = new Date();
+
+  const stillPending = request.providerActions.some((entry: any) => entry.status === "manual_pending" || entry.status === "failed");
+  if (stillPending) {
+    request.status = "provider_cleanup_pending";
+    request.completedAt = null;
+    await request.save();
+    return request;
+  }
+
+  const completionEmail = request.subjectEmail;
+  request.status = "completed_with_retained_records";
+  request.completedAt = new Date();
+  request.subjectEmail = "";
+  await request.save();
+  await User.updateOne({ _id: request.userId }, { $set: { deletionStatus: "completed" } });
+
+  try {
+    await sendDeletionProgressEmail({
+      to: completionEmail,
+      reference: request.deletionReference,
+      pendingProviders: 0
+    });
+  } catch (emailError) {
+    logSafeError("account-deletion.completion-email", emailError);
+  }
+
+  return request;
+}
+
 export function serializeAccountDeletionRequest(request: any) {
   return {
     deletionRequested: true,
     status: request.status,
     requestedAt: request.requestedAt ? new Date(request.requestedAt).toISOString() : null,
     completedAt: request.completedAt ? new Date(request.completedAt).toISOString() : null,
-    retainedRecords: request.retainedRecordClasses || []
+    retainedRecords: request.retainedRecordClasses || [],
+    providerCleanupPending: (request.providerActions || []).some((action: any) => action.status === "manual_pending" || action.status === "failed"),
+    deletionReference: request.deletionReference || ""
   };
 }

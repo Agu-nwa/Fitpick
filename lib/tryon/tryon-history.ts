@@ -1,4 +1,4 @@
-import { getPublicStorageUrl } from "@/lib/storage/url";
+import { getProtectedStorageUrl } from "@/lib/storage/url";
 
 export type TryOnHistoryItem = {
   generationId: string;
@@ -16,7 +16,7 @@ function isoDate(value: unknown) {
 export function serializeTryOnHistoryItem(generation: any): TryOnHistoryItem | null {
   if (!generation || generation.status !== "completed") return null;
 
-  const storageUrl = generation.storageKey ? getPublicStorageUrl(String(generation.storageKey)) : "";
+  const storageUrl = generation.storageKey ? getProtectedStorageUrl(String(generation.storageKey)) : "";
   const previewUrl = storageUrl || String(generation.previewUrl || "").trim();
   const generationId = String(generation.generationId || "").trim();
   const outfitId = generation.outfitId ? String(generation.outfitId) : "";

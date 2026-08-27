@@ -30,6 +30,7 @@ import { WardrobeUpload } from "@/models/WardrobeUpload";
 import { WardrobeUploadBatch } from "@/models/WardrobeUploadBatch";
 import { generateStudioModelAssetByKey } from "@/lib/studio-model/catalog/asset-generator";
 import { runAccountDeletionJob } from "@/lib/account-deletion/account-deletion";
+import { createSignedViewUrl } from "@/lib/storage";
 
 const avatarPreviewJobType = ["avatar", "preview", "generation"].join("_");
 const tryOnValidationJobType = "tryon_visual_validation";
@@ -118,6 +119,14 @@ export async function runWardrobeAnalysisJob(input: { userId: string; uploadId: 
   upload.aiErrorSafeMessage = "";
   await upload.save();
 
+  const { hasAiProcessingConsent } = await import("@/lib/privacy/privacy-preferences");
+  if (!(await hasAiProcessingConsent(input.userId))) {
+    upload.aiTagStatus = "failed";
+    upload.aiErrorSafeMessage = "AI analysis is paused. Allow AI processing in Profile → Privacy, then retry.";
+    await upload.save();
+    return;
+  }
+
   const result = await suggestWardrobeTags({
     uploadId: String(upload._id),
     filename: upload.filename || "",
@@ -193,21 +202,26 @@ export async function runBackgroundJobByType(job: any) {
       throw new PermanentTryOnError("Generated try-on image was not saved safely.", "visual_integrity_preview_missing");
     }
 
-    const integrityItems = loaded.items.map((item: any) => ({
-      id: String(item?._id || item?.id || ""),
-      name: String(item?.name || "Wardrobe item"),
-      category: String(item?.category || "unknown"),
-      color: String(item?.color || "unknown"),
-      role: tryOnVisualRoleForItem(item),
-      referenceImageUrl: preferredVisualReferenceUrl(item)
-    })).filter((item: any) => Boolean(item.id && item.role && item.referenceImageUrl));
+    const integrityItems = (await Promise.all(loaded.items.map(async (item: any) => {
+      const storageKey = item?.images?.front?.variants?.original?.storageKey || item?.images?.front?.storageKey || item?.storageKey || "";
+      const signed = storageKey ? await createSignedViewUrl({ storageKey }) : null;
+      return {
+        id: String(item?._id || item?.id || ""),
+        name: String(item?.name || "Wardrobe item"),
+        category: String(item?.category || "unknown"),
+        color: String(item?.color || "unknown"),
+        role: tryOnVisualRoleForItem(item),
+        referenceImageUrl: signed?.viewUrl || preferredVisualReferenceUrl(item)
+      };
+    }))).filter((item: any) => Boolean(item.id && item.role && item.referenceImageUrl));
 
     if (integrityItems.length !== loaded.items.length) {
       throw new PermanentTryOnError("One or more selected items lack a verifiable visual reference.", "visual_integrity_input_unavailable");
     }
 
+    const signedPreview = await createSignedViewUrl({ storageKey: preview.storageKey });
     const integrity = await validateTryOnVisualIntegrity({
-      previewImageUrl: preview.imageUrl,
+      previewImageUrl: signedPreview.viewUrl || preview.imageUrl,
       items: integrityItems as any
     });
     const validationPatch = {

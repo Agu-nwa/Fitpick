@@ -11,6 +11,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 const visionStylistSchema = z.object({
   imageUrl: z.string().trim().url().max(600),
@@ -27,6 +28,9 @@ export async function POST(
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before analyzing an image.");
+    }
 
     const parsed = validateBody(visionStylistSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;

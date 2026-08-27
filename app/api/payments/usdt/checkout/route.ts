@@ -12,8 +12,12 @@ import { createCoinPaymentsInvoice } from "@/lib/payments/providers/coinpayments
 import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { usdtCheckoutSchema } from "@/schemas/payment.schema";
+import { isIosAppStoreRequest } from "@/lib/payments/ios-request";
 
 export async function POST(request: NextRequest) {
+  if (isIosAppStoreRequest(request)) {
+    return apiError("FORBIDDEN", "Credit purchases in the iOS app use Apple In-App Purchase.");
+  }
   const meta = requestMeta(request);
   const limited = rateLimitRequest({
     key: `usdt-checkout:${meta.ip}`,

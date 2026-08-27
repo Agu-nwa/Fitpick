@@ -19,12 +19,12 @@ The iOS wrapper must not direct users to the website to avoid Apple payment rule
 
 Create consumable in-app purchases with these product IDs:
 
-| Pack | Product ID | Credits |
-| --- | --- | ---: |
-| Starter | `myfitpick_credits_starter` | 50 |
-| Popular | `myfitpick_credits_popular` | 150 |
-| Pro | `myfitpick_credits_pro` | 400 |
-| Creator | `myfitpick_credits_creator` | 1000 |
+| Pack | Product ID | Credits | Reference price |
+| --- | --- | ---: | ---: |
+| Essential | `myfitpick_credits_essential` | 80 | $11.99 |
+| Popular | `myfitpick_credits_popular` | 160 | $23.99 |
+| Pro | `myfitpick_credits_pro` | 320 | $47.99 |
+| Creator | `myfitpick_credits_creator` | 640 | $95.99 |
 
 Configure the same products in RevenueCat.
 

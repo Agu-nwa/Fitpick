@@ -11,6 +11,7 @@ import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/respons
 import { resolveGarmentEntity, serializeEntityRecognition } from "@/lib/garment-intelligence/entity-resolver";
 import { buildImageQualityIntelligence, mergeUploadIntelligence } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import type { AiSuggestedWardrobeTags, AiTaggingInput, AiTaggingResult } from "@/types/ai-tagging";
+import { createSignedViewUrl } from "@/lib/storage";
 
 function averageConfidence(analysis: WardrobeAiAnalysis) {
   const fields = Object.values(analysis.fields);
@@ -340,13 +341,18 @@ export async function analyzeWardrobeImages(input: AiTaggingInput): Promise<AiTa
     };
   }
 
-  const imageEntries = [
-    { label: "front view", url: input.imageUrl },
-    ...(input.images?.front?.url ? [{ label: "front view", url: input.images.front.url }] : []),
-    ...(input.images?.back?.url ? [{ label: "back view", url: input.images.back.url }] : []),
-    ...(input.images?.fabricCloseUp?.url ? [{ label: "fabric close-up", url: input.images.fabricCloseUp.url }] : []),
-    ...(input.images?.label?.url ? [{ label: "care and size label", url: input.images.label.url }] : [])
-  ].filter((entry, index, all) => entry.url && all.findIndex((candidate) => candidate.url === entry.url) === index);
+  const sourceImages = [
+    { label: "front view", url: input.imageUrl, storageKey: input.storageKey },
+    ...(input.images?.front?.url ? [{ label: "front view", url: input.images.front.url, storageKey: input.images.front.storageKey }] : []),
+    ...(input.images?.back?.url ? [{ label: "back view", url: input.images.back.url, storageKey: input.images.back.storageKey }] : []),
+    ...(input.images?.fabricCloseUp?.url ? [{ label: "fabric close-up", url: input.images.fabricCloseUp.url, storageKey: input.images.fabricCloseUp.storageKey }] : []),
+    ...(input.images?.label?.url ? [{ label: "care and size label", url: input.images.label.url, storageKey: input.images.label.storageKey }] : [])
+  ];
+  const imageEntries = (await Promise.all(sourceImages.map(async (entry) => {
+    if (!entry.storageKey) return { label: entry.label, url: entry.url };
+    const signed = await createSignedViewUrl({ storageKey: entry.storageKey });
+    return { label: entry.label, url: signed.viewUrl || entry.url };
+  }))).filter((entry, index, all) => entry.url && all.findIndex((candidate) => candidate.url === entry.url) === index);
 
   if (!imageEntries.length) {
     return {

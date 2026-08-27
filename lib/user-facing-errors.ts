@@ -15,6 +15,7 @@ const MESSAGE_BY_CODE: Record<ApiFailure["error"]["code"], string> = {
   BAD_REQUEST: "Please check the details and try again.",
   UNAUTHORIZED: "Please sign in to continue.",
   FORBIDDEN: "You do not have access to this.",
+  CONSENT_REQUIRED: "Review your privacy choices to continue.",
   NOT_FOUND: "We could not find that item.",
   CONFLICT: "This was already updated. Refresh and try again.",
   VALIDATION_ERROR: "Please review the highlighted fields.",

@@ -53,6 +53,7 @@ export function AuthEntryForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("");
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const revealContent = useRevealContent();
 
@@ -70,7 +71,7 @@ export function AuthEntryForm({
     setMessage("");
     setNotice("");
 
-    const result = await requestAuthOtp({ email, purpose: mode });
+    const result = await requestAuthOtp({ email, purpose: mode, ageConfirmed: mode === "signup" ? ageConfirmed : undefined });
     setLoading(false);
 
     if (!result.ok) {
@@ -90,7 +91,7 @@ export function AuthEntryForm({
     setMessage("");
     setNotice("");
 
-    const result = await verifyAuthOtp({ email, code, purpose: mode });
+    const result = await verifyAuthOtp({ email, code, purpose: mode, ageConfirmed: mode === "signup" ? ageConfirmed : undefined });
     setLoading(false);
 
     if (!result.ok) {
@@ -167,6 +168,21 @@ export function AuthEntryForm({
               placeholder="123456"
             />
             <p className="mt-2 text-xs leading-5 text-muted">Code expires in {expiresInMinutes} minutes.</p>
+          </label>
+        ) : null}
+
+        {step === "email" && mode === "signup" ? (
+          <label className="flex items-start gap-3 rounded-2xl border border-line bg-canvas/60 p-3 text-left">
+            <input
+              type="checkbox"
+              required
+              checked={ageConfirmed}
+              onChange={(event) => setAgeConfirmed(event.target.checked)}
+              className="mt-1 h-4 w-4 accent-cocoa"
+            />
+            <span className="text-xs leading-5 text-muted">
+              I confirm that I am at least 13 years old. MyFitPick does not accept registrations from children under 13.
+            </span>
           </label>
         ) : null}
 

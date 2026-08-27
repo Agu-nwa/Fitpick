@@ -3,32 +3,16 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryBreadcrumb, scrubSentryEvent } from "@/lib/monitoring/sentry-privacy";
 
 Sentry.init({
-  dsn: "https://928356b6e1ed2e1ed6cb7db563ca54b5@o4511775003049984.ingest.de.sentry.io/4511775056199760",
-
-  // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
-
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
-
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
-
-  dataCollection: {
-    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
-    // userInfo: false,
-    // httpBodies: [],
-  },
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  sendDefaultPii: false,
+  tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || (process.env.NODE_ENV === "production" ? 0.05 : 1)),
+  enableLogs: false,
+  dataCollection: { userInfo: false, httpBodies: [] },
+  beforeSend: (event) => scrubSentryEvent(event),
+  beforeBreadcrumb: (breadcrumb) => scrubSentryBreadcrumb(breadcrumb)
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

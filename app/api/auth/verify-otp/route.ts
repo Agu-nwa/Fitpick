@@ -77,7 +77,9 @@ export async function POST(request: NextRequest) {
           totalCreditsPurchased: 0,
           totalCreditsRefunded: 0,
           totalCreditsSpent: 0,
-          complimentaryCreditsUsed: 0
+          complimentaryCreditsUsed: 0,
+          minimumAgeConfirmedAt: new Date(),
+          minimumAgePolicyVersion: process.env.MINIMUM_AGE_POLICY_VERSION || "minimum-age-13-v1"
         });
         await ensureUserDefaults(user._id);
       } catch (error: any) {

@@ -8,6 +8,7 @@ import { analyzeReferenceFashionItem, serializeReferenceFashionItem } from "@/li
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { isObjectId } from "@/lib/wardrobe";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before analyzing a reference photo.");
+    }
     const { id } = await context.params;
     if (!isObjectId(id)) return apiError("NOT_FOUND", "That photo is no longer available.");
 

@@ -206,6 +206,10 @@ export async function runConfiguredVirtualTryOnJob(input: {
   posePreset?: "standing" | "walking" | "editorial" | "runway" | "casual" | "side" | "back";
   cacheKey?: string;
 }) {
+  const { hasAiProcessingConsent } = await import("@/lib/privacy/privacy-preferences");
+  if (!(await hasAiProcessingConsent(input.userId))) {
+    throw new Error("AI processing consent is required before Virtual Try-On.");
+  }
   const providerType = getConfiguredTryOnProviderType();
   const provider = getTryOnProvider(providerType);
   const output = await provider.generateTryOnPreview({

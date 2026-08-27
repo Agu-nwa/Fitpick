@@ -12,6 +12,7 @@ import { ImageUploadError, imageUploadRequirementText, messageForImageUploadErro
 import { uploadPurposeSchema } from "@/schemas/upload.schema";
 import { createHash } from "node:crypto";
 import { createPerceptualImageHash } from "@/lib/image-processing/perceptual-hash";
+import { hasPhotoStorageConsent } from "@/lib/privacy/privacy-preferences";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasPhotoStorageConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow private photo storage in Profile → Privacy before uploading images.");
+    }
 
     const formData = await request.formData();
     const file = formData.get("file");

@@ -1,6 +1,8 @@
-# FitPick S3 + CloudFront Storage
+# FitPick private S3 storage
 
-FitPick stores wardrobe photos and generated outfit previews in S3, then serves public image URLs through CloudFront when configured.
+FitPick stores user wardrobe photos, reference photos, Studio Model photos, and generated previews as private S3 objects. Authenticated app routes serve those images with ownership checks and `private, no-store` caching. External AI or Virtual Try-On providers receive short-lived signed URLs only when the user has enabled the relevant processing consent.
+
+Only non-user-specific assets under `studio-model/catalog/*` may use a public CloudFront URL.
 
 ## Required Environment
 
@@ -10,6 +12,7 @@ Do not commit real credentials.
 STORAGE_PROVIDER=s3
 S3_BUCKET=your-fitpick-production-bucket
 S3_REGION=your-aws-region
+# Optional: public base URL used only for studio-model/catalog/* assets.
 S3_PUBLIC_BASE_URL=https://your-cloudfront-distribution-domain
 NEXT_PUBLIC_APP_URL=https://your-app-domain
 # Optional for local/static-key deployments. Leave both empty on EC2 when using an IAM role.
@@ -17,7 +20,7 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-`S3_PUBLIC_BASE_URL`, `CLOUDFRONT_URL`, or `NEXT_PUBLIC_CLOUDFRONT_URL` can be used for public image URL generation.
+`S3_PUBLIC_BASE_URL`, `CLOUDFRONT_URL`, or `NEXT_PUBLIC_CLOUDFRONT_URL` must never be used to expose user-owned prefixes.
 
 On EC2, prefer an attached IAM role and leave `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` empty. If static credentials are provided, both values must be present.
 
@@ -40,14 +43,18 @@ Use this as the starting point for browser uploads. Replace the production origi
 ]
 ```
 
-## CloudFront Access
+## Bucket and CloudFront access
 
-CloudFront must be allowed to read objects from the configured `S3_BUCKET`. Prefer Origin Access Control (OAC) for production. Do not make the S3 bucket broadly public when CloudFront is the intended public image layer.
+Enable S3 Block Public Access for the bucket. Do not attach a public-read bucket policy or public object ACLs.
 
-Make sure CloudFront caches these prefixes:
+If CloudFront is used for the public Studio Model catalogue, use Origin Access Control and restrict the distribution behavior to `studio-model/catalog/*`. Do not create public CloudFront cache behaviors for:
 
 - `wardrobe/*`
 - `generated-previews/*`
+- `avatar-previews/*`
+- `support/*`
+
+Existing objects that were previously public remain an infrastructure exposure until the bucket policy/ACLs are corrected. Deploying the application code alone does not revoke an old public S3 policy.
 
 ## IAM
 
@@ -57,6 +64,8 @@ The application should only write server-generated object keys under:
 
 - `wardrobe/<userId>/*`
 - `generated-previews/<userId>/*`
+- `avatar-previews/<userId>/*`
+- `support/<userId>/*`
 
 Browser presigned uploads must not accept arbitrary object keys from the client.
 

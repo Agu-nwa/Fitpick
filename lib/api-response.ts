@@ -36,6 +36,7 @@ export function statusForCode(code: ApiErrorCode) {
     case "UNAUTHORIZED":
       return 401;
     case "FORBIDDEN":
+    case "CONSENT_REQUIRED":
       return 403;
     case "NOT_FOUND":
       return 404;

@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
     if (!ownership.ok) return ownership.response;
 
     const memory = await recordFashionMemory(auth.user._id, parsed.data);
+    if (!memory) {
+      return apiError("CONSENT_REQUIRED", "Learning from feedback is off. You can enable it in Profile → Privacy.");
+    }
     const summary = await getMemorySummary(auth.user._id);
 
     await recordAuditEvent({

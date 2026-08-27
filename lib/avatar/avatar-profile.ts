@@ -11,6 +11,8 @@ import { isBodyTypeAvailableForGender, type StudioModelAppearance } from "@/lib/
 import { legacySelectionForAppearance, parseStudioModelAppearance, studioModelAppearanceKey } from "@/lib/studio-model/configuration";
 import { resolveStudioModelForProfile, resolveStudioModelForTryOn } from "@/lib/studio-model/model-resolver";
 import { logStudioModelEvent } from "@/lib/studio-model/observability";
+import { createSignedViewUrl, storageKeyBelongsToUser } from "@/lib/storage";
+import { getProtectedStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
 
 export type GenderPresentation = "masculine" | "feminine" | "neutral";
 export type BodyPreset = "slim" | "average" | "athletic" | "curvy" | "plus";
@@ -156,6 +158,12 @@ export function validateModelImageUrl(value?: string | null) {
 
 export async function preferredTryOnModelImageUrl(profile: any) {
   if (profile?.studioModelConfiguration || (profile?.studioModelGender && profile?.studioModelType)) return (await resolveStudioModelForTryOn(profile)).imageUrl;
+  if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageStorageKey) {
+    return (await createSignedViewUrl({ storageKey: profile.generatedModelImageStorageKey })).viewUrl || profile.generatedModelImageUrl;
+  }
+  if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageStorageKey) {
+    return (await createSignedViewUrl({ storageKey: profile.uploadedModelImageStorageKey })).viewUrl || profile.uploadedModelImageUrl;
+  }
   if (profile?.tryOnModelSource === "generated" && profile?.generatedModelImageUrl) return profile.generatedModelImageUrl;
   if (profile?.tryOnModelSource === "uploaded" && profile?.uploadedModelImageUrl) return profile.uploadedModelImageUrl;
   return fallbackStudioModelForGender(profile?.genderPresentation);
@@ -169,6 +177,7 @@ export async function getOrCreateAvatarProfile(userId: string | Types.ObjectId) 
 }
 
 export async function updateAvatarProfile(userId: string | Types.ObjectId, patch: AvatarProfilePatch) {
+  const ownerId = String(userId);
   const cleaned: AvatarProfilePatch = {};
   const provider = (patch.avatarProvider && avatarProviders.has(patch.avatarProvider))
     ? patch.avatarProvider
@@ -203,9 +212,22 @@ export async function updateAvatarProfile(userId: string | Types.ObjectId, patch
   }
 
   if ("uploadedModelImageUrl" in patch) cleaned.uploadedModelImageUrl = validateModelImageUrl(patch.uploadedModelImageUrl);
-  if ("uploadedModelImageStorageKey" in patch) cleaned.uploadedModelImageStorageKey = cleanString(patch.uploadedModelImageStorageKey, 512);
+  if ("uploadedModelImageStorageKey" in patch) {
+    const storageKey = normalizeStorageKey(cleanString(patch.uploadedModelImageStorageKey, 512) || "");
+    if (storageKey && !storageKeyBelongsToUser({ userId: ownerId, storageKey, prefix: "wardrobe" })) {
+      throw new Error("invalid_model_image_storage_key");
+    }
+    cleaned.uploadedModelImageStorageKey = storageKey || null;
+  }
   if ("generatedModelImageUrl" in patch) cleaned.generatedModelImageUrl = validateModelImageUrl(patch.generatedModelImageUrl);
-  if ("generatedModelImageStorageKey" in patch) cleaned.generatedModelImageStorageKey = cleanString(patch.generatedModelImageStorageKey, 512);
+  if ("generatedModelImageStorageKey" in patch) {
+    const storageKey = normalizeStorageKey(cleanString(patch.generatedModelImageStorageKey, 512) || "");
+    const owned = !storageKey || ["wardrobe", "generated-previews", "avatar-previews"].some((prefix) =>
+      storageKeyBelongsToUser({ userId: ownerId, storageKey, prefix: prefix as "wardrobe" | "generated-previews" | "avatar-previews" })
+    );
+    if (!owned) throw new Error("invalid_model_image_storage_key");
+    cleaned.generatedModelImageStorageKey = storageKey || null;
+  }
   if ("studioModelConfiguration" in patch) {
     if (patch.studioModelConfiguration === null) {
       cleaned.studioModelConfiguration = null;
@@ -297,6 +319,12 @@ export function buildAvatarPromptContext(profile: any) {
 
 export function serializeAvatarProfile(profile: any) {
   const resolution = resolveStudioModelForProfile(profile);
+  const uploadedModelImageUrl = profile.uploadedModelImageStorageKey
+    ? getProtectedStorageUrl(profile.uploadedModelImageStorageKey)
+    : profile.uploadedModelImageUrl || null;
+  const generatedModelImageUrl = profile.generatedModelImageStorageKey
+    ? getProtectedStorageUrl(profile.generatedModelImageStorageKey)
+    : profile.generatedModelImageUrl || null;
   return {
     id: String(profile._id),
     genderPresentation: profile.genderPresentation || "neutral",
@@ -310,9 +338,9 @@ export function serializeAvatarProfile(profile: any) {
     avatarUrl: profile.avatarUrl || null,
     glbStorageKey: profile.glbStorageKey || null,
     tryOnModelSource: profile.tryOnModelSource || "none",
-    uploadedModelImageUrl: profile.uploadedModelImageUrl || null,
+    uploadedModelImageUrl,
     uploadedModelImageStorageKey: profile.uploadedModelImageStorageKey || null,
-    generatedModelImageUrl: profile.generatedModelImageUrl || null,
+    generatedModelImageUrl,
     generatedModelImageStorageKey: profile.generatedModelImageStorageKey || null,
     generatedModelPromptVersion: profile.generatedModelPromptVersion || "",
     generatedModelAt: profile.generatedModelAt ? new Date(profile.generatedModelAt).toISOString() : null,

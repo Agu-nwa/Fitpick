@@ -2,6 +2,7 @@ export type ApiErrorCode =
   | "BAD_REQUEST"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
+  | "CONSENT_REQUIRED"
   | "NOT_FOUND"
   | "CONFLICT"
   | "VALIDATION_ERROR"

@@ -9,8 +9,14 @@ import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { buildAvatarPromptContext, getOrCreateAvatarProfile, type PosePreset, type VisualizationStyle } from "@/lib/avatar/avatar-profile";
 import { buildFitLockPromptConstraints, evaluateOutfitFitOnAvatar } from "@/lib/fit/fit-lock";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
-import { preferredVisualReferenceUrl, summarizeVisualizationRisks } from "@/lib/preview/visual-grounding";
+import {
+  preferredVisualReferenceStorageKey,
+  preferredVisualReferenceUrl,
+  summarizeVisualizationRisks
+} from "@/lib/preview/visual-grounding";
+import { createSignedViewUrl } from "@/lib/storage";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { getProtectedStorageUrl } from "@/lib/storage/url";
 import { safeTryOnErrorMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { referenceItemToPseudoWardrobeItem } from "@/lib/ai/reference-fashion-item";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
@@ -139,13 +145,14 @@ async function imageUrlToUploadable(url: string, filename: string) {
 }
 
 async function buildGarmentReferenceInputs(items: any[]) {
-  const refs = items
-    .map((item) => ({
-      item,
-      url: safeImageReferenceUrl(preferredVisualReferenceUrl(item))
-    }))
-    .filter((entry) => entry.url)
-    .slice(0, 16);
+  const refs = (await Promise.all(items.slice(0, 16).map(async (item) => {
+    const storageKey = preferredVisualReferenceStorageKey(item);
+    if (storageKey) {
+      const signed = await createSignedViewUrl({ storageKey });
+      if (signed.ready && signed.viewUrl) return { item, url: signed.viewUrl };
+    }
+    return { item, url: safeImageReferenceUrl(preferredVisualReferenceUrl(item)) };
+  }))).filter((entry) => entry.url);
 
   const uploads = await Promise.allSettled(
     refs.map(async ({ item, url }, index): Promise<GarmentReferenceInput> => {
@@ -527,13 +534,14 @@ export async function saveAvatarPreview(
 
 export function serializeAvatarPreview(preview: any) {
   const accuracyLevel = getPreviewAccuracyLevel(preview?.accuracyLevel);
+  const imageUrl = preview?.storageKey ? getProtectedStorageUrl(preview.storageKey) : preview?.imageUrl || "";
   return {
     id: preview?._id ? String(preview._id) : "",
     status: preview?.status || "not_started",
     provider: preview?.provider || "s3",
     storageKey: preview?.storageKey || "",
-    imageUrl: preview?.imageUrl || "",
-    previewUrl: preview?.imageUrl || "",
+    imageUrl,
+    previewUrl: imageUrl,
     cacheKey: preview?.cacheKey || "",
     generationId: preview?.generationId || "",
     billingStatus: preview?.billingStatus || "pending",
@@ -597,6 +605,10 @@ export async function runAvatarPreviewGenerationJob(input: {
   posePreset?: PosePreset;
   cacheKey?: string;
 }) {
+  const { hasAiProcessingConsent } = await import("@/lib/privacy/privacy-preferences");
+  if (!(await hasAiProcessingConsent(input.userId))) {
+    throw new Error("AI processing consent is required before Virtual Try-On.");
+  }
   const loaded = await loadOwnedAvatarPreviewSubject(input.userId, input.outfitId);
   if (!loaded) throw new Error("Outfit was not found.");
   if (loaded.missingItems) throw new Error("Avatar preview requires all owned outfit items.");

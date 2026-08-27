@@ -7,7 +7,8 @@ import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { assertStorageConfigured, createWardrobeStorageKey, storageKeyBelongsToUser } from "@/lib/storage";
 import { logSafeError } from "@/lib/security/safe-log";
-import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
+import { getProtectedStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
+import { hasPhotoStorageConsent } from "@/lib/privacy/privacy-preferences";
 import { readJson, validateBody } from "@/lib/validation";
 import { serializeWardrobeUpload } from "@/lib/wardrobe";
 import { findIntakeCategory } from "@/lib/wardrobe/category-intelligence";
@@ -49,7 +50,7 @@ function sanitizeImageAssets(images: any, userId: string, fallback: { width?: nu
       ...withOriginalVariant(asset, fallback),
       purpose,
       storageKey,
-      url: asset.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : asset.url
+      url: asset.provider === "s3" && storageKey ? getProtectedStorageUrl(storageKey) : asset.url
     };
   }
 
@@ -199,7 +200,10 @@ export async function POST(request: NextRequest) {
         userId,
         filename: parsed.data.filename
       });
-    const imageUrl = parsed.data.provider === "s3" && storageKey ? getPublicStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
+    if (!(await hasPhotoStorageConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow private photo storage in Profile → Privacy before adding this item.");
+    }
+    const imageUrl = parsed.data.provider === "s3" && storageKey ? getProtectedStorageUrl(storageKey) : parsed.data.secureUrl || parsed.data.imageUrl || "";
     const intakeCategory = findIntakeCategory(parsed.data.intakeCategoryId || "");
     const attributeProfile = profileForCategory(parsed.data.selectedCategory || intakeCategory?.backendCategory || "");
     const labelPhotoKinds = Array.from(new Set(parsed.data.labelPhotoKinds || [])).slice(0, 7);

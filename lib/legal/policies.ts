@@ -25,7 +25,7 @@ export type LegalPolicy = {
   sections: LegalPolicySection[];
 };
 
-export const legalLastUpdated = "July 23, 2026";
+export const legalLastUpdated = "August 25, 2026";
 export const legalContactEmail = "support@myfitpick.com";
 
 export const legalPolicies: Record<LegalPolicyId, LegalPolicy> = {
@@ -85,11 +85,20 @@ export const legalPolicies: Record<LegalPolicyId, LegalPolicy> = {
         ]
       },
       {
+        title: "AI processing and international transfers",
+        body: [
+          "AI features are optional. When you enable AI processing and request a relevant feature, MyFitPick may send only the photos, prompts, wardrobe details, or model references needed for that request to OpenAI or FASHN. These providers may process data outside your country under their service terms and applicable contractual safeguards.",
+          "You can withdraw AI-processing permission in Profile → Privacy. Withdrawal stops new AI requests; it does not undo processing already completed at your request. Photo storage is a separate choice."
+        ]
+      },
+      {
         title: "Your choices",
         bullets: [
           "You can edit wardrobe details, Style DNA, avatar settings, and profile preferences.",
           "You can remove wardrobe items and update saved preferences.",
-          "You can request help with account access, privacy questions, or account deletion by contacting us."
+          "You can separately control private photo storage, AI processing, learning from feedback, and outfit-history storage in Profile → Privacy.",
+          "You can download a portable JSON copy of your account, wardrobe, styling, support, activity, privacy, and transaction data from Profile → Privacy.",
+          "You can request account deletion in Profile. Account access is disabled immediately, local profile data and user-owned images are removed, and any provider cleanup remains pending until it is verified."
         ]
       },
       {

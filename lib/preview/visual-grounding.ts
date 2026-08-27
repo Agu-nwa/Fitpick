@@ -29,6 +29,27 @@ function variantUrl(image: any, key: "thumbnail" | "original") {
   return variant?.status === "ready" && variant?.url ? variant.url : "";
 }
 
+function variantStorageKey(image: any, key: "thumbnail" | "original") {
+  const variant = image?.variants?.[key];
+  return variant?.status === "ready" && variant?.storageKey ? String(variant.storageKey) : "";
+}
+
+export function preferredVisualReferenceStorageKey(item: any) {
+  const front = item?.images?.front || {};
+  const back = item?.images?.back || {};
+  return (
+    variantStorageKey(front, "thumbnail") ||
+    variantStorageKey(back, "thumbnail") ||
+    String(item?.thumbnailStorageKey || "") ||
+    String(item?.storageKey || "") ||
+    variantStorageKey(front, "original") ||
+    variantStorageKey(back, "original") ||
+    String(front?.storageKey || "") ||
+    String(back?.storageKey || "") ||
+    ""
+  );
+}
+
 export function preferredVisualReferenceUrl(item: any) {
   const front = item?.images?.front || {};
   const back = item?.images?.back || {};

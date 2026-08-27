@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const consentKey = "fitpick_analytics_consent_v1";
+const openPreferencesEvent = "fitpick:open-cookie-preferences";
 type AnalyticsConsent = "accepted" | "declined" | "unknown";
 
 declare global {
@@ -21,6 +22,17 @@ function storedConsent(): AnalyticsConsent {
   return value === "accepted" || value === "declined" ? value : "unknown";
 }
 
+function clearAnalyticsCookies() {
+  const cookieNames = document.cookie.split(";").map((entry) => entry.split("=")[0]?.trim()).filter((name) => name && (name === "_ga" || name === "_gid" || name === "_gat" || name.startsWith("_ga_")));
+  const hostParts = window.location.hostname.split(".");
+  const domains = ["", window.location.hostname, hostParts.length > 1 ? `.${hostParts.slice(-2).join(".")}` : ""].filter((value, index, values) => values.indexOf(value) === index);
+  for (const name of cookieNames) {
+    for (const domain of domains) {
+      document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax${domain ? `; domain=${domain}` : ""}`;
+    }
+  }
+}
+
 export default function PrivacySafeAnalytics() {
   const pathname = usePathname();
   const configuredId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "";
@@ -28,10 +40,17 @@ export default function PrivacySafeAnalytics() {
   const [consent, setConsent] = useState<AnalyticsConsent>("unknown");
   const [loaded, setLoaded] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [preferenceOpen, setPreferenceOpen] = useState(false);
 
   useEffect(() => {
     setConsent(storedConsent());
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const open = () => setPreferenceOpen(true);
+    window.addEventListener(openPreferencesEvent, open);
+    return () => window.removeEventListener(openPreferencesEvent, open);
   }, []);
 
   useEffect(() => {
@@ -47,7 +66,13 @@ export default function PrivacySafeAnalytics() {
 
   function choose(next: Exclude<AnalyticsConsent, "unknown">) {
     window.localStorage.setItem(consentKey, next);
+    if (next === "declined") {
+      window.gtag?.("consent", "update", { analytics_storage: "denied" });
+      clearAnalyticsCookies();
+      setLoaded(false);
+    }
     setConsent(next);
+    setPreferenceOpen(false);
   }
 
   if (!measurementId) return null;
@@ -67,18 +92,25 @@ export default function PrivacySafeAnalytics() {
         </>
       ) : null}
 
-      {hydrated && consent === "unknown" ? (
-        <aside className="fixed inset-x-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-w-xl rounded-[24px] border border-line bg-surface/95 p-4 shadow-card backdrop-blur-xl md:bottom-6">
-          <p className="text-sm font-semibold text-ink">Help improve MyFitPick?</p>
+      {hydrated && (consent === "unknown" || preferenceOpen) ? (
+        <aside role="dialog" aria-modal="true" aria-labelledby="cookie-preferences-title" className="fixed inset-x-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-w-xl rounded-[24px] border border-line bg-surface/95 p-4 shadow-card backdrop-blur-xl md:bottom-6">
+          <p id="cookie-preferences-title" className="text-sm font-semibold text-ink">Cookie and analytics choices</p>
           <p className="mt-1 text-xs leading-5 text-muted">
             Optional analytics tells us how many people visit and which pages are useful. We do not send your name, email, wardrobe photos, clothing details, or URL query information.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => choose("accepted")} className="focus-ring min-h-10 rounded-full bg-cocoa px-4 text-xs font-semibold text-canvas">Allow analytics</button>
-            <button type="button" onClick={() => choose("declined")} className="focus-ring min-h-10 rounded-full border border-line bg-white/80 px-4 text-xs font-semibold text-ink">No thanks</button>
+            <button type="button" onClick={() => choose("declined")} className="focus-ring min-h-10 rounded-full border border-line bg-white/80 px-4 text-xs font-semibold text-ink">Decline analytics</button>
+            {consent !== "unknown" ? <button type="button" onClick={() => setPreferenceOpen(false)} className="focus-ring min-h-10 px-2 text-xs font-semibold text-muted">Keep current choice</button> : null}
             <Link href="/legal/cookie-policy" className="focus-ring inline-flex min-h-10 items-center px-2 text-xs font-semibold text-olive">Cookie policy</Link>
           </div>
         </aside>
+      ) : null}
+
+      {hydrated && consent !== "unknown" && !preferenceOpen ? (
+        <button type="button" onClick={() => setPreferenceOpen(true)} className="focus-ring fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-3 z-[80] min-h-9 rounded-full border border-line bg-surface/90 px-3 text-[11px] font-semibold text-muted shadow-soft backdrop-blur md:bottom-4" aria-label="Open cookie preferences">
+          Cookie choices
+        </button>
       ) : null}
     </>
   );

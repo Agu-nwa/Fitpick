@@ -9,6 +9,7 @@ export const stylePreferenceSchema = z.object({
   repeatSensitivity: z.enum(["low", "medium", "high"]).optional(),
   weatherEnabled: z.boolean().optional(),
   photoStorageConsent: z.boolean().optional(),
+  aiProcessingConsent: z.boolean().optional(),
   personalizedRecommendations: z.boolean().optional(),
   outfitHistoryEnabled: z.boolean().optional(),
   marketingNotifications: z.boolean().optional()

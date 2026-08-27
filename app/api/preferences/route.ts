@@ -9,7 +9,13 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { readJson, validateBody } from "@/lib/validation";
 import { StylePreference } from "@/models/StylePreference";
 import { PrivacyPreference } from "@/models/PrivacyPreference";
+import { FashionMemory } from "@/models/FashionMemory";
+import { OutfitHistory } from "@/models/OutfitHistory";
 import { stylePreferenceSchema } from "@/schemas/preference.schema";
+import {
+  AI_PROCESSING_CONSENT_VERSION,
+  PHOTO_STORAGE_CONSENT_VERSION
+} from "@/lib/privacy/privacy-preferences";
 
 export async function GET() {
   try {
@@ -42,8 +48,40 @@ export async function PATCH(request: NextRequest) {
     const parsed = validateBody(stylePreferenceSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
-    const { photoStorageConsent, personalizedRecommendations, outfitHistoryEnabled, marketingNotifications, ...styleData } = parsed.data;
-    const privacyData = { photoStorageConsent, personalizedRecommendations, outfitHistoryEnabled, marketingNotifications };
+    const {
+      photoStorageConsent,
+      aiProcessingConsent,
+      personalizedRecommendations,
+      outfitHistoryEnabled,
+      marketingNotifications,
+      ...styleData
+    } = parsed.data;
+    const now = new Date();
+    const privacyData = {
+      photoStorageConsent,
+      aiProcessingConsent,
+      personalizedRecommendations,
+      outfitHistoryEnabled,
+      marketingNotifications,
+      ...(photoStorageConsent === true ? {
+        photoStorageConsentAt: now,
+        photoStorageConsentWithdrawnAt: null,
+        photoStorageConsentVersion: PHOTO_STORAGE_CONSENT_VERSION
+      } : {}),
+      ...(photoStorageConsent === false ? {
+        photoStorageConsentWithdrawnAt: now,
+        photoStorageConsentVersion: ""
+      } : {}),
+      ...(aiProcessingConsent === true ? {
+        aiProcessingConsentAt: now,
+        aiProcessingConsentWithdrawnAt: null,
+        aiProcessingConsentVersion: AI_PROCESSING_CONSENT_VERSION
+      } : {}),
+      ...(aiProcessingConsent === false ? {
+        aiProcessingConsentWithdrawnAt: now,
+        aiProcessingConsentVersion: ""
+      } : {})
+    };
     const cleanPrivacyData = Object.fromEntries(Object.entries(privacyData).filter(([, value]) => value !== undefined));
 
     const [preferences, privacy] = await Promise.all([
@@ -55,11 +93,39 @@ export async function PATCH(request: NextRequest) {
       Object.keys(cleanPrivacyData).length
         ? PrivacyPreference.findOneAndUpdate(
             { userId: auth.user._id },
-            { $set: cleanPrivacyData },
+            {
+              $set: cleanPrivacyData,
+              ...(aiProcessingConsent !== undefined ? {
+                $push: {
+                  aiConsentRecords: {
+                    $each: [
+                      { provider: "openai", purpose: "wardrobe_analysis", policyVersion: AI_PROCESSING_CONSENT_VERSION, granted: aiProcessingConsent, recordedAt: now },
+                      { provider: "openai", purpose: "styling", policyVersion: AI_PROCESSING_CONSENT_VERSION, granted: aiProcessingConsent, recordedAt: now },
+                      { provider: "openai", purpose: "preview_generation", policyVersion: AI_PROCESSING_CONSENT_VERSION, granted: aiProcessingConsent, recordedAt: now },
+                      { provider: "openai", purpose: "voice_transcription", policyVersion: AI_PROCESSING_CONSENT_VERSION, granted: aiProcessingConsent, recordedAt: now },
+                      { provider: "fashn", purpose: "virtual_tryon", policyVersion: AI_PROCESSING_CONSENT_VERSION, granted: aiProcessingConsent, recordedAt: now }
+                    ],
+                    $slice: -50
+                  }
+                }
+              } : {})
+            },
             { new: true, upsert: true }
           ).lean()
         : PrivacyPreference.findOne({ userId: auth.user._id }).lean()
     ]);
+
+    const privacyCleanup: Promise<unknown>[] = [];
+    if (personalizedRecommendations === false) {
+      privacyCleanup.push(FashionMemory.updateMany(
+        { userId: auth.user._id, revokedAt: null },
+        { $set: { revokedAt: now } }
+      ));
+    }
+    if (outfitHistoryEnabled === false) {
+      privacyCleanup.push(OutfitHistory.deleteMany({ userId: auth.user._id }));
+    }
+    if (privacyCleanup.length) await Promise.all(privacyCleanup);
 
     await recordAuditEvent({
       request,

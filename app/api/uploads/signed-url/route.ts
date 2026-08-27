@@ -9,6 +9,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { createSignedUploadUrl } from "@/lib/storage";
 import { readJson, validateBody } from "@/lib/validation";
 import { signedUploadSchema } from "@/schemas/upload.schema";
+import { hasPhotoStorageConsent } from "@/lib/privacy/privacy-preferences";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -18,6 +19,9 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasPhotoStorageConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow private photo storage in Profile → Privacy before uploading images.");
+    }
 
     const parsed = validateBody(signedUploadSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;

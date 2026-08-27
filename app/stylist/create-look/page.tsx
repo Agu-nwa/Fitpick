@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { redirect } from "next/navigation";
+import { ConsentNotice } from "@/components/privacy/ConsentNotice";
 
 export default async function CreateLookPage({ searchParams }: { searchParams: Promise<{ wardrobeItemId?: string }> }) {
   const auth = await requireUser();
@@ -15,6 +16,7 @@ export default async function CreateLookPage({ searchParams }: { searchParams: P
 
   return (
     <StylistStudioShell className="gap-0 lg:px-8 lg:pb-0 lg:pt-0 xl:px-10">
+      <ConsentNotice requireAi />
       <StylistChat
         initialFlow="create"
         productMode="create"

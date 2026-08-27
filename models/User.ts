@@ -21,6 +21,8 @@ const UserSchema = new Schema(
     activeSessionIssuedAt: { type: Date, default: null },
     deletionStatus: { type: String, enum: ["active", "pending", "completed"], default: "active", index: true },
     deletionRequestedAt: { type: Date, default: null },
+    minimumAgeConfirmedAt: { type: Date, default: null },
+    minimumAgePolicyVersion: { type: String, default: "" },
     modelSetupCompletedAt: { type: Date, default: null },
     weatherLocationName: { type: String, default: "", trim: true, maxlength: 120 },
     weatherCountryCode: { type: String, default: "", trim: true, uppercase: true, maxlength: 2 },

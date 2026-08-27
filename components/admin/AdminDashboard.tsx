@@ -240,9 +240,12 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
                 </div>
               </Card>
               <Card className="p-4">
-                <p className="text-sm font-semibold text-ink">Support consoles</p>
-                <p className="mt-1 text-xs leading-5 text-muted">Open customer support or the external API support console.</p>
+                <p className="text-sm font-semibold text-ink">Operations consoles</p>
+                <p className="mt-1 text-xs leading-5 text-muted">Open support tools or review account-deletion provider follow-up.</p>
                 <div className="mt-4 grid gap-2">
+                  <Link href="/admin/account-deletions">
+                    <Button variant="secondary" className="w-full">Account deletions</Button>
+                  </Link>
                   <Link href="/admin/support">
                     <Button variant="secondary" className="w-full">FitPick inbox</Button>
                   </Link>

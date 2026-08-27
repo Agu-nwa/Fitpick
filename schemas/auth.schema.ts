@@ -21,12 +21,22 @@ export const otpPurposeSchema = z.enum(["signup", "signin"]);
 
 export const requestOtpSchema = z.object({
   email: z.string().trim().email().max(160),
-  purpose: otpPurposeSchema
+  purpose: otpPurposeSchema,
+  ageConfirmed: z.boolean().optional()
+}).superRefine((value, context) => {
+  if (value.purpose === "signup" && value.ageConfirmed !== true) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["ageConfirmed"], message: "Confirm that you meet the minimum age before creating an account." });
+  }
 });
 
 export const verifyOtpSchema = z.object({
   email: z.string().trim().email().max(160),
   code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code."),
   purpose: otpPurposeSchema,
-  name: z.string().trim().min(2).max(80).optional()
+  name: z.string().trim().min(2).max(80).optional(),
+  ageConfirmed: z.boolean().optional()
+}).superRefine((value, context) => {
+  if (value.purpose === "signup" && value.ageConfirmed !== true) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["ageConfirmed"], message: "Confirm that you meet the minimum age before creating an account." });
+  }
 });

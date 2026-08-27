@@ -20,6 +20,27 @@ export function normalizeStorageKey(storageKey: string) {
     .slice(0, 512);
 }
 
+export function encodeProtectedStorageKey(storageKey: string) {
+  const bytes = new TextEncoder().encode(normalizeStorageKey(storageKey));
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+  return `v1_${btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
+}
+
+export function decodeProtectedStorageKey(token: string) {
+  try {
+    const value = String(token || "");
+    if (!value.startsWith("v1_")) return normalizeStorageKey(decodeURIComponent(value));
+    const base64 = value.slice(3).replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return normalizeStorageKey(new TextDecoder().decode(bytes));
+  } catch {
+    return "";
+  }
+}
+
 export function s3PublicObjectUrl(input: { bucket?: string; region?: string; storageKey: string }) {
   const bucket = input.bucket || process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || "";
   const region = input.region || process.env.S3_REGION || process.env.AWS_REGION || "";
@@ -38,6 +59,17 @@ export function getPublicStorageUrl(storageKey: string) {
 
   if (cloudFront) return `${cloudFront}/${encodeStorageKey(key)}`;
   return s3PublicObjectUrl({ storageKey: key });
+}
+
+export function getProtectedStorageUrl(storageKey: string) {
+  const key = normalizeStorageKey(storageKey);
+  if (!key) return "";
+  const baseUrl = cleanBaseUrl(
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    "https://myfitpick.com"
+  );
+  return `${baseUrl}/api/uploads/${encodeProtectedStorageKey(key)}/content`;
 }
 
 export function redactSensitiveUrl(value = "") {

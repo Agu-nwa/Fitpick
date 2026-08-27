@@ -12,10 +12,10 @@ function read(path) {
 
 const packs = read("lib/payments/packs.ts");
 for (const [id, credits, amountMinor] of [
-  ["starter", 50, 499],
-  ["popular", 150, 999],
-  ["pro", 400, 1999],
-  ["creator", 1000, 3999]
+  ["essential", 80, 1199],
+  ["popular", 160, 2399],
+  ["pro", 320, 4799],
+  ["creator", 640, 9599]
 ]) {
   expect(packs.includes(`id: "${id}"`), `Missing credit pack id: ${id}`);
   expect(packs.includes(`credits: ${credits}`), `Wrong or missing credit amount for ${id}`);
@@ -60,9 +60,15 @@ for (const removed of [
 }
 
 const walletClient = read("components/wallet/WalletClient.tsx");
-expect(walletClient.includes("Top Up Credits"), "Wallet must expose Top Up Credits.");
-expect(walletClient.includes("Card or digital wallet"), "Wallet must present Stripe as card or digital wallet.");
-expect(walletClient.includes("USDT"), "Wallet must present USDT payment option.");
+expect(walletClient.includes('title="Top Up"'), "Wallet must expose the Top Up section.");
+expect(walletClient.includes("Continue with Card"), "Wallet must present secure card checkout on the web.");
+expect(walletClient.includes("Soon you&apos;ll be able to purchase MyFitPick Credits using USDT."), "Wallet must keep disabled USDT clearly marked as unavailable.");
+expect(walletClient.includes("nativeMode"), "Wallet must branch to native App Store purchasing.");
+
+const iosStripeRoute = read("app/api/payments/stripe/checkout/route.ts");
+const iosCryptoRoute = read("app/api/payments/usdt/checkout/route.ts");
+expect(iosStripeRoute.includes("isIosAppStoreRequest(request)"), "Stripe checkout must reject iOS App Store requests server-side.");
+expect(iosCryptoRoute.includes("isIosAppStoreRequest(request)"), "Crypto checkout must reject iOS App Store requests server-side.");
 
 const fulfilment = read("lib/payments/fulfilment.ts");
 expect(fulfilment.includes("credit-purchase:"), "Fulfilment must use stable credit-purchase ledger references.");

@@ -9,6 +9,7 @@ import { prepareTryOnItems, tryOnVisualRoleForItem, type TryOnVisualRole } from 
 import { logTryOnMetric } from "@/lib/tryon/reliability";
 import { validateTryOnVisualIntegrity, type TryOnIntegrityItem, type TryOnIntegrityResult } from "@/lib/tryon/visual-integrity";
 import { AvatarProfile } from "@/models/AvatarProfile";
+import { createSignedViewUrl } from "@/lib/storage";
 
 type FashnStatus = "starting" | "in_queue" | "processing" | "completed" | "failed" | string;
 
@@ -179,16 +180,35 @@ function errorMessage(error: FashnStatusResponse["error"] | FashnRunResponse["er
   return "Virtual Try-On could not be completed.";
 }
 
-function rankedProductImages(items: any[]) {
+function preferredProductStorageKey(item: any) {
+  const front = item?.images?.front || {};
+  const back = item?.images?.back || {};
+  return (
+    front?.variants?.original?.storageKey ||
+    back?.variants?.original?.storageKey ||
+    front?.storageKey ||
+    back?.storageKey ||
+    item?.storageKey ||
+    ""
+  );
+}
+
+async function rankedProductImages(items: any[]) {
   // prepareTryOnItems already applies the provider-aware, deterministic order.
   // Preserve it so a locked Match reference is always sent before supporting pieces.
-  return items.map((item) => ({
-    item,
-    id: String(item?._id || item?.id || ""),
-    role: tryOnVisualRoleForItem(item),
-    url: preferredTryOnProductReferenceUrl(item),
-    validationUrl: preferredVisualReferenceUrl(item)
-  })).filter((entry): entry is typeof entry & { url: string; validationUrl: string; role: TryOnVisualRole } => Boolean(entry.url && entry.validationUrl && entry.role));
+  const entries = await Promise.all(items.map(async (item) => {
+    const storageKey = preferredProductStorageKey(item);
+    const signed = storageKey ? await createSignedViewUrl({ storageKey }) : null;
+    const signedUrl = signed?.viewUrl || "";
+    return {
+      item,
+      id: String(item?._id || item?.id || ""),
+      role: tryOnVisualRoleForItem(item),
+      url: signedUrl || preferredTryOnProductReferenceUrl(item),
+      validationUrl: signedUrl || preferredVisualReferenceUrl(item)
+    };
+  }));
+  return entries.filter((entry): entry is typeof entry & { url: string; validationUrl: string; role: TryOnVisualRole } => Boolean(entry.url && entry.validationUrl && entry.role));
 }
 
 function isProviderImage(value: string) {
@@ -533,7 +553,7 @@ export function createFashnTryOnProvider(): TryOnProvider {
         maximumItems: providerConfig.maxOutfitItems,
         maximumFinishers: 0
       });
-      const products = rankedProductImages(preparation.sentItems).slice(0, providerConfig.maxOutfitItems);
+      const products = (await rankedProductImages(preparation.sentItems)).slice(0, providerConfig.maxOutfitItems);
       const coreProducts = products.filter((product) => CORE_ROLES.has(product.role));
       const finishingProducts = products.filter((product) => !CORE_ROLES.has(product.role));
       const orderedProducts = [...coreProducts, ...finishingProducts];

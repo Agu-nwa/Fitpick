@@ -21,6 +21,7 @@ import { isObjectId, serializeWardrobeItem } from "@/lib/wardrobe";
 import { getCompatibilityEdgesForItems } from "@/lib/wardrobe/compatibility/compatibility-graph";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before creating a recommendation.");
+    }
     const { id } = await context.params;
     if (!isObjectId(id)) return apiError("NOT_FOUND", "That photo is no longer available.");
 

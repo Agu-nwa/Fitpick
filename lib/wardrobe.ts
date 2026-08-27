@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import type { WardrobeCategory } from "@/types/wardrobe";
 import { normaliseWardrobeItemMetadata } from "@/lib/wardrobe/metadata-normaliser";
+import { getProtectedStorageUrl } from "@/lib/storage/url";
 
 export function isObjectId(value: string) {
   return mongoose.Types.ObjectId.isValid(value);
@@ -53,6 +54,40 @@ function preferredOriginalWardrobeImage(images: any = {}, fallback = "") {
   );
 }
 
+function protectImageVariant(variant: any) {
+  if (!variant || typeof variant !== "object") return variant;
+  return {
+    ...variant,
+    url: variant.storageKey ? getProtectedStorageUrl(variant.storageKey) : variant.url || ""
+  };
+}
+
+function protectImageAsset(asset: any) {
+  if (!asset || typeof asset !== "object") return asset;
+  return {
+    ...asset,
+    url: asset.storageKey ? getProtectedStorageUrl(asset.storageKey) : asset.url || "",
+    ...(asset.variants ? {
+      variants: {
+        ...asset.variants,
+        original: protectImageVariant(asset.variants.original),
+        thumbnail: protectImageVariant(asset.variants.thumbnail)
+      }
+    } : {})
+  };
+}
+
+function protectWardrobeImages(images: any = {}) {
+  return {
+    ...images,
+    front: protectImageAsset(images.front),
+    back: protectImageAsset(images.back),
+    fabricCloseUp: protectImageAsset(images.fabricCloseUp),
+    label: protectImageAsset(images.label),
+    additional: Array.isArray(images.additional) ? images.additional.map(protectImageAsset) : []
+  };
+}
+
 function recognizedEntityFromItem(item: any) {
   return (
     item.verifiedMetadata?.recognizedEntity?.value ||
@@ -63,7 +98,9 @@ function recognizedEntityFromItem(item: any) {
 }
 
 export function serializeWardrobeItem(item: any) {
-  const imageUrl = preferredOriginalWardrobeImage(item.images || {}, item.imageUrl || "");
+  const images = protectWardrobeImages(item.images || {});
+  const protectedRootUrl = item.storageKey ? getProtectedStorageUrl(item.storageKey) : item.imageUrl || "";
+  const imageUrl = preferredOriginalWardrobeImage(images, protectedRootUrl);
   const normalisedMetadata = normaliseWardrobeItemMetadata(item);
   const condition = inferCondition({
     category: item.category,
@@ -139,8 +176,8 @@ export function serializeWardrobeItem(item: any) {
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     archivedAt: item.archivedAt ? new Date(item.archivedAt).toISOString() : null,
     imageUrl,
-    thumbnailUrl: preferredWardrobeImage(item.images || {}, item.thumbnailUrl || imageUrl),
-    images: item.images || {},
+    thumbnailUrl: preferredWardrobeImage(images, item.storageKey ? protectedRootUrl : item.thumbnailUrl || imageUrl),
+    images,
     aiAnalysis: item.aiAnalysis || null,
     hasImage: Boolean(item.storageKey || item.thumbnailUrl || imageUrl),
     recognizedEntity: recognizedEntityFromItem(item)
@@ -154,7 +191,9 @@ export function serializeWardrobeItem(item: any) {
  * consume.
  */
 export function serializeWardrobeListItem(item: any) {
-  const imageUrl = preferredOriginalWardrobeImage(item.images || {}, item.imageUrl || "");
+  const images = protectWardrobeImages(item.images || {});
+  const protectedRootUrl = item.storageKey ? getProtectedStorageUrl(item.storageKey) : item.imageUrl || "";
+  const imageUrl = preferredOriginalWardrobeImage(images, protectedRootUrl);
   const condition = inferCondition({
     category: item.category,
     color: item.color,
@@ -191,12 +230,14 @@ export function serializeWardrobeListItem(item: any) {
     timesWorn: item.timesWorn || 0,
     lastWornAt: item.lastWornAt ? new Date(item.lastWornAt).toISOString() : null,
     imageUrl,
-    thumbnailUrl: preferredWardrobeImage(item.images || {}, item.thumbnailUrl || imageUrl),
+    thumbnailUrl: preferredWardrobeImage(images, item.storageKey ? protectedRootUrl : item.thumbnailUrl || imageUrl),
     hasImage: Boolean(item.storageKey || item.thumbnailUrl || imageUrl)
   };
 }
 
 export function serializeWardrobeUpload(upload: any) {
+  const images = protectWardrobeImages(upload.images || {});
+  const protectedRootUrl = upload.storageKey ? getProtectedStorageUrl(upload.storageKey) : upload.imageUrl || "";
   return {
     id: String(upload._id),
     filename: upload.filename || "",
@@ -213,8 +254,8 @@ export function serializeWardrobeUpload(upload: any) {
     aiProvider: upload.aiProvider || "",
     aiConfidence: upload.aiConfidence || 0,
     aiErrorSafeMessage: upload.aiErrorSafeMessage || "",
-    imageUrl: upload.imageUrl || "",
-    thumbnailUrl: upload.thumbnailUrl || "",
+    imageUrl: protectedRootUrl,
+    thumbnailUrl: upload.storageKey ? protectedRootUrl : upload.thumbnailUrl || "",
     selectedCategory: upload.selectedCategory || "",
     selectedCategoryLabel: upload.selectedCategoryLabel || "",
     intakeCategoryId: upload.intakeCategoryId || "",
@@ -227,7 +268,7 @@ export function serializeWardrobeUpload(upload: any) {
     virtualTryOnMetadata: upload.virtualTryOnMetadata || {},
     searchMetadata: upload.searchMetadata || {},
     enrichmentStatus: upload.enrichmentStatus || "not_started",
-    images: upload.images || {},
+    images,
     aiAnalysis: upload.aiAnalysis || null,
     suggestedTags: upload.suggestedTags || {},
     taggedSize: upload.taggedSize || "unknown",

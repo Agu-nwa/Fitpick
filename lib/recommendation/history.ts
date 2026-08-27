@@ -3,6 +3,7 @@ import "server-only";
 import type { Types } from "mongoose";
 import { OutfitHistory } from "@/models/OutfitHistory";
 import { outfitItemSignature } from "@/lib/recommendation/signature";
+import { outfitHistoryIsEnabled } from "@/lib/privacy/privacy-preferences";
 export { buildOutfitHistorySummary } from "@/lib/recommendation/history-summary";
 
 export type OutfitHistoryEventType =
@@ -65,6 +66,7 @@ function eventPatch(eventType: OutfitHistoryEventType, now: Date) {
 }
 
 export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
+  if (!(await outfitHistoryIsEnabled(input.userId))) return null;
   const itemSignature = outfitItemSignature(input.itemIds || []);
   if (!itemSignature) return null;
 
@@ -120,6 +122,7 @@ export async function recordOutfitHistory(input: RecordOutfitHistoryInput) {
 }
 
 export async function getRecentOutfitHistory(userId: string | Types.ObjectId, limit = 50) {
+  if (!(await outfitHistoryIsEnabled(userId))) return [];
   return OutfitHistory.find({ userId })
     .sort({ generatedAt: -1, createdAt: -1 })
     .limit(Math.max(1, Math.min(limit, 120)))

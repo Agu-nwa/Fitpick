@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LogOut, MapPin, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, ScanFace, type LucideIcon } from "lucide-react";
+import { Download, LogOut, MapPin, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, ScanFace, type LucideIcon } from "lucide-react";
 import { AvatarStudioClient } from "@/components/avatar/AvatarStudioClient";
 import { LocationSelector } from "@/components/home/LocationSelector";
 import { AuthRequiredState } from "@/components/integration/AuthRequiredState";
@@ -17,9 +17,11 @@ import { useRevealContent } from "@/hooks/use-reveal-content";
 import { useSession } from "@/hooks/use-session";
 import {
   getWallet,
+  getPreferences,
   logout,
   requestAccountDeletion,
   updateCurrentUser,
+  updatePreferences,
   type CreditWalletData,
   type CurrentUserSummary,
   type LocationCity
@@ -299,8 +301,40 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const [requestingDeletion, setRequestingDeletion] = useState(false);
+  const [downloadingData, setDownloadingData] = useState(false);
   const [confirmDeleteRequest, setConfirmDeleteRequest] = useState(false);
   const [message, setMessage] = useState("");
+  const [privacy, setPrivacy] = useState<Record<string, boolean> | null>(null);
+  const [savingPrivacyKey, setSavingPrivacyKey] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void getPreferences().then((result) => {
+      if (cancelled || !result.ok) return;
+      setPrivacy({
+        photoStorageConsent: Boolean(result.data.privacy?.photoStorageConsent),
+        aiProcessingConsent: Boolean(result.data.privacy?.aiProcessingConsent),
+        personalizedRecommendations: result.data.privacy?.personalizedRecommendations !== false,
+        outfitHistoryEnabled: result.data.privacy?.outfitHistoryEnabled !== false,
+        marketingNotifications: Boolean(result.data.privacy?.marketingNotifications)
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function setPrivacyChoice(key: string, checked: boolean) {
+    if (!privacy || savingPrivacyKey) return;
+    setSavingPrivacyKey(key);
+    setMessage("");
+    const result = await updatePreferences({ [key]: checked });
+    setSavingPrivacyKey("");
+    if (!result.ok) {
+      setMessage(safeUserMessage(result.error, "We couldn’t save that privacy choice. Please try again."));
+      return;
+    }
+    setPrivacy((current) => current ? { ...current, [key]: checked } : current);
+    setMessage(checked ? "Privacy choice saved." : "That processing has been turned off.");
+  }
 
   async function handleLogout() {
     setSigningOut(true);
@@ -337,8 +371,96 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
     setMessage("Your account has been disabled. Deletion will be processed according to retention and legal requirements.");
   }
 
+  async function handleDataExport() {
+    setDownloadingData(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/users/me/data-export", { credentials: "include", cache: "no-store" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+        setMessage(payload?.error?.message || "We couldn’t prepare your data export. Please try again.");
+        return;
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `myfitpick-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      setMessage("Your personal-data export has downloaded.");
+    } catch {
+      setMessage("We couldn’t prepare your data export. Please try again.");
+    } finally {
+      setDownloadingData(false);
+    }
+  }
+
+  function handleCookiePreferences() {
+    window.dispatchEvent(new Event("fitpick:open-cookie-preferences"));
+  }
+
   return (
     <div className="space-y-4">
+      <Card className="space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-ink">Your privacy choices</p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Choose what MyFitPick may store and process. Photo storage and third-party AI processing are separate choices and can be withdrawn at any time.
+          </p>
+        </div>
+        {!privacy ? <p className="text-sm text-muted">Loading privacy choices…</p> : (
+          <div className="divide-y divide-line rounded-2xl border border-line bg-white/70 px-4">
+            {[
+              {
+                key: "photoStorageConsent",
+                title: "Private photo storage",
+                detail: "Store wardrobe, reference and Studio Model photos in MyFitPick’s private image storage. Turning this off blocks new photo uploads; it does not silently delete existing closet items."
+              },
+              {
+                key: "aiProcessingConsent",
+                title: "AI photo and prompt processing",
+                detail: "Allow MyFitPick to send the photos, prompts and wardrobe details needed for a requested feature to specialist AI service providers. Processing may occur outside your country; the Privacy Policy identifies the providers and safeguards."
+              },
+              {
+                key: "personalizedRecommendations",
+                title: "Learn from my feedback",
+                detail: "Use likes, dislikes, saves and feedback to improve future recommendations. Turning this off revokes previously learned fashion-memory signals."
+              },
+              {
+                key: "outfitHistoryEnabled",
+                title: "Save outfit activity",
+                detail: "Keep generated, viewed, saved and worn outfit activity. Turning this off deletes stored outfit-history records and stops new history events."
+              },
+              {
+                key: "marketingNotifications",
+                title: "Marketing messages",
+                detail: "Receive optional product and campaign messages. Authentication, security, purchase and privacy-request emails remain transactional."
+              }
+            ].map((choice) => (
+              <label key={choice.key} className="flex cursor-pointer gap-3 py-4">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-5 accent-cocoa"
+                  checked={Boolean(privacy[choice.key])}
+                  disabled={Boolean(savingPrivacyKey)}
+                  onChange={(event) => void setPrivacyChoice(choice.key, event.target.checked)}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink">{choice.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">{choice.detail}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+        <p className="text-xs leading-5 text-muted">
+          See the <Link href="/legal/privacy" className="font-semibold text-cocoa underline underline-offset-2">Privacy Policy</Link> for retention, provider and deletion details.
+        </p>
+      </Card>
+
       <Card className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-ink">Session</p>
@@ -354,15 +476,22 @@ function AccountSection({ session }: { session: ReturnType<typeof useSession> })
       <Card className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-ink">Legal and privacy</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Review the public policies for privacy, Credits, refunds, and virtual try-on previews. Account deletion disables access immediately. Limited transaction, security, provider, or backup records may remain where legally or operationally required.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Download a portable copy of your account data or review the public policies for privacy, Credits, refunds, and virtual try-on previews. Account deletion disables access immediately. Limited transaction, security, provider, or backup records may remain where legally or operationally required.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" variant="secondary" className="w-full rounded-full sm:col-span-2" disabled={downloadingData} onClick={() => void handleDataExport()}>
+            <Download size={16} aria-hidden="true" />
+            {downloadingData ? "Preparing export..." : "Download my data"}
+          </Button>
           <Link href="/legal" className="block">
             <Button type="button" variant="secondary" className="w-full rounded-full">
               <ShieldCheck size={16} aria-hidden="true" />
               Legal center
             </Button>
           </Link>
+          <Button type="button" variant="secondary" className="w-full rounded-full" onClick={handleCookiePreferences}>
+            Cookie preferences
+          </Button>
           <Button
             type="button"
             variant="secondary"

@@ -12,8 +12,9 @@ import {
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
 import { storageKeyBelongsToUser } from "@/lib/storage";
-import { getPublicStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
+import { getProtectedStorageUrl, normalizeStorageKey } from "@/lib/storage/url";
 import { readJson, validateBody } from "@/lib/validation";
+import { hasPhotoStorageConsent } from "@/lib/privacy/privacy-preferences";
 
 export async function POST(request: NextRequest) {
   const meta = requestMeta(request);
@@ -28,6 +29,9 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) return parsed.response;
 
     const userId = String(auth.user._id);
+    if (!(await hasPhotoStorageConsent(userId))) {
+      return apiError("CONSENT_REQUIRED", "Allow private photo storage in Privacy settings before adding an inspiration image.");
+    }
     const storageKey = normalizeStorageKey(parsed.data.storageKey);
     if (!storageKeyBelongsToUser({ userId, storageKey, prefix: "wardrobe" })) {
       return apiError("BAD_REQUEST", "We couldn’t use that image. Try uploading it again.");
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
       ...parsed.data,
       userId,
       storageKey,
-      imageUrl: getPublicStorageUrl(storageKey)
+      imageUrl: getProtectedStorageUrl(storageKey)
     });
 
     await recordAuditEvent({

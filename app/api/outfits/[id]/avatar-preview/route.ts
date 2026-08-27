@@ -45,6 +45,7 @@ import { isObjectId } from "@/lib/wardrobe";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
 import { BackgroundJob } from "@/models/BackgroundJob";
 import { TryOnGeneration } from "@/models/TryOnGeneration";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 type RouteContext = {
   params: Promise<{
@@ -185,6 +186,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         preview: serializeAvatarPreview({ ...cached, ...groundingPatch(loaded.items, cached), cached: true }),
         avatarProfile: serializeAvatarProfile(loaded.avatarProfile)
       });
+    }
+
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before generating a Virtual Try-On preview.");
     }
 
     const creditFeature: CreditFeature = parsed.data.regenerate ? "regenerate_try_on" : "virtual_try_on";

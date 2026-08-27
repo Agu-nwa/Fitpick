@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { assertEnvReady } from "@/lib/config/env";
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { resolveAwsCredentials, validateS3CredentialPair } from "@/lib/storage/aws-credentials";
-import { getPublicStorageUrl, normalizeStorageKey, s3PublicObjectUrl } from "@/lib/storage/url";
+import { getProtectedStorageUrl, getPublicStorageUrl, normalizeStorageKey, s3PublicObjectUrl } from "@/lib/storage/url";
 import { assertGeneratedImageBuffer } from "@/lib/tryon/tryon-image-validation";
 
 type UploadOptions = {
@@ -197,7 +197,10 @@ export async function uploadGeneratedImageFromUrl(url: string, options: UploadOp
 }
 
 export async function getGeneratedImageUrl(storageKey: string) {
-  return getPublicStorageUrl(storageKey);
+  const key = normalizeStorageKey(storageKey);
+  return key.startsWith("studio-model/catalog/")
+    ? getPublicStorageUrl(key)
+    : getProtectedStorageUrl(key);
 }
 
 export async function deleteGeneratedImage(storageKey: string) {

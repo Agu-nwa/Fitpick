@@ -4,6 +4,7 @@ import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { getOrCreateStyleProfile, mergeMemorySignals, updateStyleProfile } from "@/lib/style-profile/style-profile";
 import { metadataList, metadataValue } from "@/lib/recommendation/scoring";
+import { personalizationIsEnabled } from "@/lib/privacy/privacy-preferences";
 
 export type FashionMemoryType =
   | "outfit_liked"
@@ -119,6 +120,7 @@ function itemMetadata(items: any[]) {
 }
 
 export async function recordFashionMemory(userId: string | Types.ObjectId, event: MemoryEventInput) {
+  if (!(await personalizationIsEnabled(userId))) return null;
   const outfitId = event.outfitId || event.recommendationId || null;
   const outfit = outfitId
     ? await OutfitRecommendation.findOne({ _id: outfitId, userId }).lean()
@@ -176,6 +178,7 @@ export async function recordFashionMemory(userId: string | Types.ObjectId, event
 }
 
 export async function getRecentFashionMemory(userId: string | Types.ObjectId, limit = 50) {
+  if (!(await personalizationIsEnabled(userId))) return [];
   return FashionMemory.find({ userId, revokedAt: null, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] })
     .sort({ createdAt: -1 })
     .limit(Math.max(1, Math.min(limit, 100)))

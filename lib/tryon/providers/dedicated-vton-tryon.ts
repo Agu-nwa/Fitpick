@@ -2,7 +2,8 @@ import { preferredTryOnModelImageUrl, serializeAvatarProfile } from "@/lib/avata
 import { errorCategory, logAiEvent } from "@/lib/ai/observability/ai-logger";
 import { loadOwnedAvatarPreviewSubject } from "@/lib/avatar/avatar-preview";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
-import { preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
+import { preferredVisualReferenceStorageKey, preferredVisualReferenceUrl } from "@/lib/preview/visual-grounding";
+import { createSignedViewUrl } from "@/lib/storage";
 import { uploadGeneratedImage, uploadGeneratedImageFromUrl } from "@/lib/storage/generated-images";
 import type { TryOnProvider, TryOnPreviewInput, TryOnProviderOutput } from "@/lib/tryon/types";
 import { AvatarProfile } from "@/models/AvatarProfile";
@@ -70,8 +71,12 @@ function contentFormat(contentType = "image/png") {
   return "png" as const;
 }
 
-function garmentPayload(item: any) {
-  const referenceImageUrl = preferredVisualReferenceUrl(item);
+async function garmentPayload(item: any) {
+  const storageKey = preferredVisualReferenceStorageKey(item);
+  const signed = storageKey ? await createSignedViewUrl({ storageKey }) : null;
+  const referenceImageUrl = signed?.ready && signed.viewUrl
+    ? signed.viewUrl
+    : preferredVisualReferenceUrl(item);
   return {
     id: String(item._id || item.id || ""),
     name: item.name || "",
@@ -87,10 +92,10 @@ function garmentPayload(item: any) {
     stretchLevel: item.stretchLevel || "",
     fabricDrape: item.fabricDrape || "",
     measurements: item.garmentMeasurements || {},
-    imageUrl: item.imageUrl || "",
-    thumbnailUrl: item.thumbnailUrl || "",
+    imageUrl: referenceImageUrl,
+    thumbnailUrl: referenceImageUrl,
     referenceImageUrl,
-    images: item.images || {}
+    images: {}
   };
 }
 
@@ -233,6 +238,7 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
       }
       const modelImageUrl = await preferredTryOnModelImageUrl(avatarProfile);
       if (!modelImageUrl) return { ...unavailable("Choose your My Model before using Virtual Try-On."), status: "failed" };
+      const garments = await Promise.all(loaded.items.map(garmentPayload));
 
       return callEndpoint(input, {
         requestType: "virtual_try_on",
@@ -245,7 +251,7 @@ export function createDedicatedVtonTryOnProvider(): TryOnProvider {
         avatar: serializeAvatarProfile(avatarProfile),
         modelImageUrl,
         avatarMeasurements: input.avatarMeasurements || {},
-        garments: loaded.items.map(garmentPayload),
+        garments,
         garmentAssets: input.garmentAssets || [],
         garmentMeasurements: input.garmentMeasurements || [],
         fitLockConstraints: input.fitLockConstraints || null,

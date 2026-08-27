@@ -11,6 +11,7 @@ import { logSafeError } from "@/lib/security/safe-log";
 import { safeShortText } from "@/lib/validation/common";
 import { readJson, validateBody } from "@/lib/validation";
 import { studioModelAppearanceSchema } from "@/lib/studio-model/appearance-taxonomy";
+import { hasPhotoStorageConsent } from "@/lib/privacy/privacy-preferences";
 
 const nullablePreset = (max = 60) => z.union([safeShortText(max), z.null()]).optional();
 const nullableMeasurement = (min: number, max: number) => z.union([z.number().min(min).max(max), z.null()]).optional();
@@ -78,6 +79,16 @@ export async function PATCH(request: NextRequest) {
     const parsed = validateBody(avatarProfilePatchSchema, await readJson(request));
     if (!parsed.ok) return parsed.response;
 
+    const changesStoredPhoto = [
+      parsed.data.uploadedModelImageUrl,
+      parsed.data.uploadedModelImageStorageKey,
+      parsed.data.generatedModelImageUrl,
+      parsed.data.generatedModelImageStorageKey
+    ].some((value) => typeof value === "string" && Boolean(value));
+    if (changesStoredPhoto && !(await hasPhotoStorageConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow private photo storage in Profile → Privacy before saving a model photo.");
+    }
+
     const profile = await updateAvatarProfile(auth.user._id, parsed.data);
     return apiSuccess({ profile: serializeAvatarProfile(profile) }, { message: "Avatar saved." });
   } catch (error) {
@@ -86,6 +97,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (error instanceof Error && error.message === "invalid_model_image_url") {
       return apiError("VALIDATION_ERROR", "Use a secure HTTPS image URL for your model photo.");
+    }
+    if (error instanceof Error && error.message === "invalid_model_image_storage_key") {
+      return apiError("VALIDATION_ERROR", "Upload the model photo from this account before saving it.");
     }
     if (error instanceof Error && error.message === "invalid_studio_model_selection") {
       return apiError("VALIDATION_ERROR", "Choose a valid FitPick Studio Model.");

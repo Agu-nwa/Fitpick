@@ -37,6 +37,7 @@ import { logReferenceItemEvent, serializeReferenceFashionItem } from "@/lib/ai/r
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
 import { WardrobeItem } from "@/models/WardrobeItem";
 import { recommendationRegenerationSchema } from "@/schemas/stylist.schema";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 
@@ -151,6 +152,9 @@ export async function POST(request: NextRequest) {
 
     if (!auth.ok) {
       return auth.response;
+    }
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before using the AI Stylist.");
     }
 
     const parsed = stylistChatSchema.safeParse(await request.json());

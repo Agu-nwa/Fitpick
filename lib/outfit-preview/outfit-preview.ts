@@ -6,6 +6,7 @@ import { buildImagePreviewPrompt } from "@/lib/ai/prompts";
 import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { getPreviewAccuracyLevel } from "@/lib/preview/preview-accuracy";
 import { uploadGeneratedImage } from "@/lib/storage/generated-images";
+import { getProtectedStorageUrl } from "@/lib/storage/url";
 import { safeUserMessage, safeUserMessages } from "@/lib/user-facing-errors";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
@@ -193,13 +194,14 @@ export async function saveGeneratedPreview(userId: string, outfitId: string, gen
 
 export function serializeOutfitPreview(preview: any) {
   const accuracyLevel = getPreviewAccuracyLevel(preview?.accuracyLevel || "garment_referenced");
+  const imageUrl = preview?.storageKey ? getProtectedStorageUrl(preview.storageKey) : preview?.imageUrl || "";
   return {
     id: preview?._id ? String(preview._id) : "",
     status: preview?.status || "not_started",
     provider: preview?.provider || "",
     storageKey: preview?.storageKey || "",
-    imageUrl: preview?.imageUrl || "",
-    previewUrl: preview?.imageUrl || "",
+    imageUrl,
+    previewUrl: imageUrl,
     cacheKey: preview?.cacheKey || "",
     promptVersion: preview?.promptVersion || "",
     model: preview?.model || "",
@@ -246,6 +248,10 @@ export async function runOutfitPreviewGenerationJob(input: {
   style?: PreviewStyle;
   cacheKey?: string;
 }) {
+  const { hasAiProcessingConsent } = await import("@/lib/privacy/privacy-preferences");
+  if (!(await hasAiProcessingConsent(input.userId))) {
+    throw new Error("AI processing consent is required before generating an outfit preview.");
+  }
   const loaded = await loadOwnedPreviewSubject(input.userId, input.outfitId);
   if (!loaded) throw new Error("Outfit was not found.");
   if (loaded.missingItems) throw new Error("Preview requires all owned outfit items.");

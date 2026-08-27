@@ -24,6 +24,7 @@ import { readJson, validateBody } from "@/lib/validation";
 import { isObjectId } from "@/lib/wardrobe";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { OutfitPreview } from "@/models/OutfitPreview";
+import { hasAiProcessingConsent } from "@/lib/privacy/privacy-preferences";
 
 type RouteContext = {
   params: Promise<{
@@ -134,6 +135,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         provider: cached.provider || "s3"
       });
       return apiSuccess({ preview: serializeOutfitPreview({ ...cached, cached: true }) });
+    }
+
+    if (!(await hasAiProcessingConsent(auth.user._id))) {
+      return apiError("CONSENT_REQUIRED", "Allow AI processing in Profile → Privacy before generating an outfit preview.");
     }
 
     const creditFeature: CreditFeature = parsed.data.regenerate ? "regenerate_try_on" : "outfit_preview";

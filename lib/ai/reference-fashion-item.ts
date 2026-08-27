@@ -9,7 +9,8 @@ import { sanitizeUserPrompt } from "@/lib/ai/safety/ai-safety";
 import { wardrobeAiAnalysisSchema, type WardrobeAiAnalysis } from "@/lib/ai/schemas/wardrobe-ai.schema";
 import { safeParseJson, validateJsonResponse } from "@/lib/ai/validation/response-validator";
 import { logSafeError } from "@/lib/security/safe-log";
-import { deleteStoredObject } from "@/lib/storage";
+import { createSignedViewUrl, deleteStoredObject } from "@/lib/storage";
+import { getProtectedStorageUrl } from "@/lib/storage/url";
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { OutfitRecommendation } from "@/models/OutfitRecommendation";
 import { ReferenceFashionItem } from "@/models/ReferenceFashionItem";
@@ -160,7 +161,7 @@ export function serializeReferenceFashionItem(item: any) {
   return {
     id: String(item._id),
     conversationId: item.conversationId || "",
-    imageUrl: item.imageUrl || "",
+    imageUrl: item.storageKey ? getProtectedStorageUrl(item.storageKey) : item.imageUrl || "",
     source: item.source || "upload",
     status: item.status || "uploaded",
     category: item.category || "",
@@ -530,6 +531,8 @@ export async function analyzeReferenceFashionItem(referenceItemId: string, userI
   logReferenceItemEvent({ event: "reference_image_analysis_started", userId, referenceItemId, status: "analyzing" });
 
   try {
+    const privateImage = item.storageKey ? await createSignedViewUrl({ storageKey: item.storageKey }) : null;
+    const providerImageUrl = privateImage?.viewUrl || item.imageUrl;
     const response = await openai.responses.create({
       model,
       input: [
@@ -537,7 +540,7 @@ export async function analyzeReferenceFashionItem(referenceItemId: string, userI
           role: "user",
           content: [
             { type: "input_text", text: buildReferenceAnalysisPrompt() },
-            { type: "input_image", image_url: item.imageUrl, detail: "high" }
+            { type: "input_image", image_url: providerImageUrl, detail: "high" }
           ]
         }
       ]

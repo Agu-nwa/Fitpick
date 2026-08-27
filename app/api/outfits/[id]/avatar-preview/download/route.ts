@@ -6,8 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { recordAuditEvent, requestMeta } from "@/lib/audit";
 import { rateLimitRequest } from "@/lib/rate-limit";
 import { logSafeError } from "@/lib/security/safe-log";
-import { getGeneratedImageUrl } from "@/lib/storage/generated-images";
-import { storageKeyBelongsToUser } from "@/lib/storage";
+import { downloadImageObject, storageKeyBelongsToUser } from "@/lib/storage";
 import { normalizeStorageKey } from "@/lib/storage/url";
 import { isObjectId } from "@/lib/wardrobe";
 import { AvatarOutfitPreview } from "@/models/AvatarOutfitPreview";
@@ -82,26 +81,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return apiError("NOT_FOUND", "Preview was not found.");
     }
 
-    const durableUrl = await getGeneratedImageUrl(storageKey);
-    let url: URL;
-    try {
-      url = new URL(durableUrl);
-    } catch {
-      return apiError("INTERNAL_ERROR", "Preview download is not available right now.");
-    }
-    if (url.protocol !== "https:" || url.search) {
-      return apiError("INTERNAL_ERROR", "Preview download is not available right now.");
-    }
-
-    const response = await fetch(url.toString(), {
-      cache: "no-store",
-      signal: AbortSignal.timeout(15000)
-    });
-    if (!response.ok || !response.body) {
-      return apiError("INTERNAL_ERROR", "Unable to prepare this preview download right now.");
-    }
-
-    const contentType = (response.headers.get("content-type") || "image/jpeg").split(";")[0].toLowerCase();
+    const stored = await downloadImageObject({ storageKey, timeoutMs: 15_000 });
+    const contentType = (stored.contentType || "image/jpeg").split(";")[0].toLowerCase();
     if (!imageContentTypes.has(contentType)) {
       return apiError("INTERNAL_ERROR", "Preview download is not available right now.");
     }
@@ -114,8 +95,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff"
     });
-    const contentLength = response.headers.get("content-length");
-    if (contentLength) headers.set("content-length", contentLength);
+    headers.set("content-length", String(stored.bytes));
 
     await recordAuditEvent({
       request,
@@ -125,7 +105,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       entityId: String(preview._id)
     });
 
-    return new Response(response.body, {
+    return new Response(stored.body as unknown as BodyInit, {
       status: 200,
       headers
     });

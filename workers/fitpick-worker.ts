@@ -155,6 +155,7 @@ async function loadRuntime() {
     handleTerminalBackgroundJobFailure: handlers.handleTerminalBackgroundJobFailure,
     expireStaleTryOnGenerations: (await import("../lib/tryon/tryon-generation")).expireStaleTryOnGenerations,
     expireStaleReferenceFashionItems: (await import("../lib/ai/reference-fashion-item")).expireStaleReferenceFashionItems,
+    runRetentionCleanup: (await import("../lib/privacy/retention")).runRetentionCleanup,
     errorCategory: logger.errorCategory,
     logJobEvent: logger.logJobEvent
   };
@@ -202,12 +203,14 @@ async function main() {
       }
       const expired = await runtime.expireStaleTryOnGenerations({ olderThanMs: 90 * 60_000, limit: 50 });
       const expiredReferences = await runtime.expireStaleReferenceFashionItems({ limit: 50 });
-      if (recovered.scanned || expired.expiredCount || expiredReferences.expiredCount || expiredReferences.retainedCount || expiredReferences.failedCount) {
+      const retention = await runtime.runRetentionCleanup();
+      if (recovered.scanned || expired.expiredCount || expiredReferences.expiredCount || expiredReferences.retainedCount || expiredReferences.failedCount || Object.values(retention).some(Boolean)) {
         console.info("fitpick.worker", {
           status: "maintenance",
           recovered,
           expired,
           expiredReferences,
+          retention,
           workerId,
           timestamp: new Date().toISOString()
         });
